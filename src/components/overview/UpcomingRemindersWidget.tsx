@@ -109,15 +109,26 @@ export function UpcomingRemindersWidget() {
                 const SourceIcon = sourceIcons[reminder.source] || Bell;
                 const priority = priorityConfig[reminder.priority] || priorityConfig.medium;
 
+                const openReminder = () => {
+                  if (reminder.client_id && reminder.source !== 'deal_milestone') {
+                    navigate(`/clients?clientId=${reminder.client_id}`);
+                  } else {
+                    navigate('/reminders');
+                  }
+                };
+
                 return (
                   <div
                     key={reminder.id}
-                    className="group flex cursor-pointer items-center justify-between rounded-2xl border border-border/70 bg-background/75 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.03] hover:shadow-md"
-                    onClick={() => {
-                      if (reminder.client_id && reminder.source !== 'deal_milestone') {
-                        navigate(`/clients?clientId=${reminder.client_id}`);
-                      } else {
-                        navigate('/reminders');
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open reminder ${reminder.title}`}
+                    className="group flex min-h-16 cursor-pointer items-center justify-between rounded-2xl border border-border/70 bg-background/75 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/[0.03] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                    onClick={openReminder}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openReminder();
                       }
                     }}
                   >

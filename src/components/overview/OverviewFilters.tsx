@@ -48,7 +48,12 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="relative min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0">
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={activeFilterCount > 0 ? `Open overview filters, ${activeFilterCount} active` : 'Open overview filters'}
+          className="relative min-h-11 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0"
+        >
           <Filter className="h-4 w-4 mr-2" />
           Filters
           {activeFilterCount > 0 && (
@@ -63,7 +68,7 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold tracking-tight">Filter Overview Data</h4>
             {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="min-h-9 rounded-full px-3 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/30 active:translate-y-0">
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="min-h-11 rounded-full px-3 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/30 active:translate-y-0">
                 <X className="h-4 w-4 mr-1" />
                 Clear all
               </Button>

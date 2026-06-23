@@ -85,12 +85,12 @@ const chartGridProps = {
   opacity: 0.55,
 };
 
-const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] px-3 pb-8 pt-2 sm:px-5 lg:px-8';
-const SECTION_SURFACE = 'rounded-[1.75rem] border border-border/60 bg-card/55 p-4 shadow-sm shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-card/45 md:p-6 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30';
+const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
+const SECTION_SURFACE = 'min-w-0 rounded-[1.35rem] border border-border/60 bg-card/55 p-3 shadow-sm shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-card/45 sm:rounded-[1.75rem] sm:p-4 md:p-6 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30';
 const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-sm shadow-black/5 transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
-const EXECUTIVE_KPI_CARD = 'group relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:text-3xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-10 [&_.dashboard-kpi-title+div]:w-10 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
+const EXECUTIVE_KPI_CARD = 'group relative min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
 const EXECUTIVE_KPI_WARNING_CARD = 'border-amber-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-amber-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-amber-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-amber-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-amber-300/15 [&_.dashboard-kpi-title]:text-amber-900/80 dark:[&_.dashboard-kpi-title]:text-amber-100/80 [&_.dashboard-kpi-title+div]:border-amber-400/35 [&_.dashboard-kpi-title+div]:bg-amber-500/15 [&_.dashboard-kpi-title+div]:text-amber-600 dark:[&_.dashboard-kpi-title+div]:text-amber-300';
-const CHART_CARD = `${PREMIUM_CARD} group overflow-hidden bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
+const CHART_CARD = `${PREMIUM_CARD} group min-w-0 overflow-hidden bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
 const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-primary/8 via-transparent to-transparent px-4 py-3 md:px-5 md:py-4';
 const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-primary before:shadow-[0_0_14px_rgba(245,158,11,0.55)]';
 const CHART_CONTENT = 'px-2 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5';
@@ -121,13 +121,13 @@ function OverviewSection({
             <span className={`h-1.5 w-1.5 rounded-full ${accent ? 'bg-amber-500 shadow-[0_0_14px_rgba(245,158,11,0.65)]' : 'bg-primary'}`} />
             {eyebrow}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
             {icon && (
               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${accent ? 'border-amber-400/30 bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'border-primary/20 bg-primary/10 text-primary'}`}>
                 {icon}
               </div>
             )}
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">{title}</h2>
               {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
             </div>
@@ -479,7 +479,7 @@ export default function Overview() {
 
   return (
     <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
-      <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-sm shadow-black/5 dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 md:p-7">
+      <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-4 shadow-sm shadow-black/5 dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 sm:rounded-[2rem] sm:p-5 md:p-7">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
         <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -493,7 +493,7 @@ export default function Overview() {
               Property intake dashboard overview and key metrics
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/50 bg-background/55 p-2 shadow-sm shadow-black/5 backdrop-blur lg:justify-end dark:border-white/10 dark:bg-slate-950/40">
+          <div className="flex w-full flex-wrap items-stretch gap-2 rounded-2xl border border-border/50 bg-background/55 p-2 shadow-sm shadow-black/5 backdrop-blur sm:items-center lg:w-auto lg:justify-end dark:border-white/10 dark:bg-slate-950/40 [&>button]:min-w-[44px] [&>button]:flex-1 sm:[&>button]:flex-none">
             <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className={OVERVIEW_SECONDARY_ACTION}>
               {isExporting ? (
                 <>
@@ -524,7 +524,7 @@ export default function Overview() {
 
       <OverviewSection eyebrow="Executive snapshot" title="Intake performance" description="Headline operating metrics for the filtered property pipeline." icon={<Activity className="h-4 w-4" />} accent>
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 gap-3 animate-fade-in sm:grid-cols-2 md:gap-5 xl:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-1 gap-3 animate-fade-in min-[520px]:grid-cols-2 md:gap-5 xl:grid-cols-4">
           <KPICard title="New This Week" value={kpis.newThisWeek} icon={<TrendingUp className="h-4 w-4" />} description="Properties received in last 7 days" className={EXECUTIVE_KPI_CARD} />
           <KPICard title="With Inspections" value={kpis.withInspections} icon={<Calendar className="h-4 w-4" />} description="Properties with scheduled inspections" className={EXECUTIVE_KPI_CARD} />
           <KPICard title="Needs Review" value={kpis.needsReview} icon={<AlertTriangle className="h-4 w-4" />} description="Low confidence (<0.7) properties" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
@@ -532,7 +532,7 @@ export default function Overview() {
         </div>
 
         {/* Content Statistics */}
-        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border/60 pt-4 sm:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 2xl:grid-cols-5">
+        <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 border-t border-border/60 pt-4 min-[520px]:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 xl:grid-cols-5">
           <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
           <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
           <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
@@ -543,7 +543,7 @@ export default function Overview() {
 
       <OverviewSection eyebrow="Operational reminders and validation" title="Workflow control" description="Current follow-ups and data consistency checks remain close to the executive metrics." icon={<ShieldCheck className="h-4 w-4" />}>
         {/* Upcoming Reminders & Data Integrity Panel */}
-        <div className="grid gap-4 lg:grid-cols-2 animate-fade-in [&_.rounded-lg]:rounded-xl [&_.border]:border-border/70 [&_.bg-muted\/50]:bg-muted/35">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2 animate-fade-in [&_.rounded-lg]:rounded-xl [&_.border]:border-border/70 [&_.bg-muted\/50]:bg-muted/35">
           <UpcomingRemindersWidget />
           <DataIntegrityPanel dashboardData={recentListings} className={PREMIUM_CARD} />
         </div>
@@ -551,7 +551,7 @@ export default function Overview() {
 
       <OverviewSection eyebrow="Portfolio position" title="Commercial and industrial exposure" description="Portfolio modules retain their existing actions while sitting in a clearer asset-position layer." icon={<Building2 className="h-4 w-4" />}>
         {/* Commercial Portfolio KPIs */}
-        <div className="grid gap-4 animate-fade-in [&_.rounded-md]:rounded-xl [&_.rounded-md]:border-border/70 [&_.rounded-md]:bg-muted/25 [&>div]:rounded-2xl [&>div]:border-border/70 [&>div]:bg-card/90 [&>div]:shadow-sm dark:[&>div]:border-white/10 dark:[&>div]:bg-slate-950/80">
+        <div className="grid min-w-0 gap-4 animate-fade-in [&_.rounded-md]:rounded-xl [&_.rounded-md]:border-border/70 [&_.rounded-md]:bg-muted/25 [&>div]:min-w-0 [&>div]:rounded-2xl [&>div]:border-border/70 [&>div]:bg-card/90 [&>div]:shadow-sm dark:[&>div]:border-white/10 dark:[&>div]:bg-slate-950/80">
           <CommercialPortfolioWidget />
           <IndustrialPortfolioWidget />
         </div>
@@ -559,16 +559,16 @@ export default function Overview() {
 
       {/* Charts Section */}
       <OverviewSection eyebrow="Listings intelligence" title="Market intake and classification" description="Distribution charts are grouped into a calmer analytics surface for faster scanning." icon={<BarChart3 className="h-4 w-4" />}>
-      <div className="space-y-4 md:space-y-6">
+      <div className="min-w-0 space-y-4 md:space-y-6">
         {/* Row 1: Suburbs and Property Types */}
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
+        <div className="grid min-w-0 gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className={CHART_CARD}>
             <CardHeader className={CHART_HEADER}>
               <CardTitle className={CHART_TITLE}>Listings by Suburb (Top 10)</CardTitle>
             </CardHeader>
             <CardContent className={CHART_CONTENT}>
               <ResponsiveContainer width="100%" height={isMobile ? 250 : 350}>
-                <BarChart data={suburbData} margin={isMobile ? { top: 10, right: 10, left: 0, bottom: 80 } : { top: 20, right: 30, left: 20, bottom: 100 }}>
+                <BarChart data={suburbData} margin={isMobile ? { top: 10, right: 8, left: -8, bottom: 80 } : { top: 20, right: 30, left: 20, bottom: 100 }}>
                   <CartesianGrid {...chartGridProps} />
                   <XAxis
                     dataKey="suburb"
@@ -671,7 +671,7 @@ export default function Overview() {
         </div>
 
         {/* Row 2: Daily Listings and Property Status */}
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
+        <div className="grid min-w-0 gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className={CHART_CARD}>
             <CardHeader className={CHART_HEADER}>
               <CardTitle className={CHART_TITLE}>Daily Listings (Last 30 Days)</CardTitle>
@@ -800,7 +800,7 @@ export default function Overview() {
         </div>
 
         {/* Row 3: Source and Agency Distribution */}
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
+        <div className="grid min-w-0 gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
           <Card className={CHART_CARD}>
             <CardHeader className={CHART_HEADER}>
               <CardTitle className={CHART_TITLE}>Top Sender Emails</CardTitle>
@@ -869,12 +869,12 @@ export default function Overview() {
       {/* Recent Activity */}
       <OverviewSection eyebrow="Recent activity" title="Latest property records" description="Newest listing records stay visible without competing with the analytics sections." icon={<FileText className="h-4 w-4" />} className="mb-4">
       <Card className={CHART_CARD}>
-        <CardHeader className="flex flex-row items-center justify-between pb-6">
+        <CardHeader className="flex flex-col gap-3 pb-6 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-xl">Recent Activity</CardTitle>
           <Button
             variant="outline"
             size="sm"
-            className="min-h-10 rounded-full border-primary/25 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0"
+            className="min-h-11 w-full rounded-full border-primary/25 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 sm:w-auto"
             onClick={() => navigate('/listings')}
           >
             View All Listings
@@ -944,13 +944,13 @@ export default function Overview() {
                           {listing.beds && listing.beds > 0 && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
                           {listing.baths && listing.baths > 0 && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
                           {listing.carSpaces && listing.carSpaces > 0 && <span>{listing.carSpaces} car</span>}
-                          {!isMobile && listing.images && listing.images.length > 0 && (
+                          {listing.images && listing.images.length > 0 && (
                             <div className="flex items-center gap-1">
                               <Image className="h-3 w-3" />
                               <span>{listing.images.length} image{listing.images.length !== 1 ? 's' : ''}</span>
                             </div>
                           )}
-                          {!isMobile && listing.floorplans && listing.floorplans.length > 0 && (
+                          {listing.floorplans && listing.floorplans.length > 0 && (
                             <div className="flex items-center gap-1">
                               <FileText className="h-3 w-3" />
                               <span>{listing.floorplans.length} floorplan{listing.floorplans.length !== 1 ? 's' : ''}</span>
