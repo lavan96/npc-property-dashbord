@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import type { ElementType, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
@@ -92,6 +93,85 @@ const DEFAULT_FILTERS = {
   includeNearbySuburbs: false,
 };
 
+type ListingsStatePanelProps = {
+  icon: ElementType;
+  eyebrow: string;
+  title: string;
+  description: string;
+  children?: ReactNode;
+  tone?: 'default' | 'error';
+};
+
+const ListingsStatePanel = ({ icon: Icon, eyebrow, title, description, children, tone = 'default' }: ListingsStatePanelProps) => (
+  <div className={cn(LISTINGS_STATE_CARD, tone === 'error' && 'to-destructive/[0.05] dark:to-destructive/10')}>
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+    <div className="pointer-events-none absolute -right-20 -top-24 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
+    <div className="relative">
+      <div className={cn(LISTINGS_STATE_ICON, tone === 'error' && 'border-destructive/20 bg-destructive/10 text-destructive shadow-[0_14px_34px_rgba(239,68,68,0.12)]')}>
+        <Icon className="h-7 w-7" />
+      </div>
+      <div className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground/75">{eyebrow}</div>
+      <h2 className="mt-2 text-2xl font-bold tracking-[-0.035em] text-foreground">{title}</h2>
+      <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-muted-foreground">{description}</p>
+      {children && <div className="mt-6 flex flex-wrap items-center justify-center gap-3">{children}</div>}
+    </div>
+  </div>
+);
+
+const ListingsLoadingSkeleton = ({ isMobile }: { isMobile: boolean }) => (
+  <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`} aria-busy="true" aria-live="polite">
+    <section className={`${LISTINGS_SECTION_SURFACE} relative overflow-hidden bg-gradient-to-br from-card/95 via-card/80 to-primary/5 dark:from-slate-950/80 dark:via-slate-950/55 dark:to-primary/10`}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary shadow-[0_0_14px_rgba(245,158,11,0.55)]" />
+            Property Intelligence
+          </div>
+          <Skeleton className="h-11 w-44 rounded-xl" />
+          <Skeleton className="mt-3 h-5 w-72 rounded-full" />
+        </div>
+        <div className="flex items-center gap-3 rounded-[1.35rem] border border-border/60 bg-background/65 p-2">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="pr-2 text-sm font-semibold text-muted-foreground">Preparing listings</span>
+        </div>
+      </div>
+    </section>
+
+    {isMobile ? (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Card key={i} className={LISTINGS_CARD_SURFACE}>
+            <CardContent className="space-y-4 p-4">
+              <Skeleton className="h-5 w-4/5 rounded-full" />
+              <Skeleton className="h-4 w-1/2 rounded-full" />
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-16 rounded-full" />
+                <Skeleton className="h-8 w-16 rounded-full" />
+                <Skeleton className="h-8 w-16 rounded-full" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    ) : (
+      <Card className={cn(LISTINGS_CARD_SURFACE, 'overflow-hidden')}>
+        <CardHeader className="border-b border-border/60 bg-muted/25">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 flex-1 rounded-full" />
+            <Skeleton className="h-12 w-32 rounded-full" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 p-5">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-xl" />
+          ))}
+        </CardContent>
+      </Card>
+    )}
+  </div>
+);
+
 // buildFullAddress, extractAUState, extractPostcode now imported from @/lib/addressUtils
 
 export default function Listings() {
@@ -104,7 +184,7 @@ export default function Listings() {
   const [selectedTable, setSelectedTable] = useState<string | null>(() => getSelectedAirtableTable());
 
   // Use React Query for caching and efficient data fetching
-  const { data: listings = [], isLoading, refetch, isFetching } = useQuery({
+  const { data: listings = [], isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['listings', selectedTable ?? '__default__'],
     queryFn: async () => {
       const result = await propertyDataService.fetchAllListings({
@@ -418,8 +498,35 @@ export default function Listings() {
     }
     return value !== '';
   });
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const emptyStateCopy = hasSearchQuery
+    ? {
+        icon: Search,
+        eyebrow: 'No search results',
+        title: 'No listings match that search',
+        description: 'Try a different address, suburb, agency, or agent name. Your existing filters are still being respected.',
+      }
+    : hasActiveFilters
+      ? {
+          icon: FilterX,
+          eyebrow: 'Filtered empty',
+          title: 'No listings match the active filters',
+          description: 'The current dataset does not contain listings for this filter combination. Clear filters to review the full dataset.',
+        }
+      : {
+          icon: Inbox,
+          eyebrow: 'Empty dataset',
+          title: 'No listings are available yet',
+          description: 'There are no listings in the selected dataset. Refresh to check whether new records are available.',
+        };
 
   if (isLoading) {
+    return <ListingsLoadingSkeleton isMobile={isMobile} />;
+  }
+
+  if (isError) {
+    const errorMessage = error instanceof Error ? error.message : 'The listings service returned an error.';
+
     return (
       <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`}>
         <div className={LISTINGS_SECTION_SURFACE}>
@@ -653,14 +760,23 @@ export default function Listings() {
       {isMobile ? (
         <div className="space-y-3">
           {filteredListings.length === 0 ? (
-            <Card className={LISTINGS_CARD_SURFACE}>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">No listings found.</p>
-                <Button variant="outline" onClick={loadListings} className="mt-4">
-                  Refresh
+            <ListingsStatePanel
+              icon={emptyStateCopy.icon}
+              eyebrow={emptyStateCopy.eyebrow}
+              title={emptyStateCopy.title}
+              description={emptyStateCopy.description}
+            >
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearAllFilters} className={`${LISTINGS_SECONDARY_ACTION} gap-2`}>
+                  <X className="h-4 w-4" />
+                  Clear filters
                 </Button>
-              </CardContent>
-            </Card>
+              )}
+              <Button variant="outline" onClick={loadListings} className={`${LISTINGS_REFRESH_ACTION} gap-2`}>
+                <RefreshCw className="h-4 w-4" />
+                  Refresh
+              </Button>
+            </ListingsStatePanel>
           ) : (
             filteredListings.map((listing) => (
               <PropertyCard
@@ -857,18 +973,24 @@ export default function Listings() {
             </div>
           
           {filteredListings.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground">
-                No listings found matching your criteria.
-              </div>
+            <div className="p-5">
+              <ListingsStatePanel
+                icon={emptyStateCopy.icon}
+                eyebrow={emptyStateCopy.eyebrow}
+                title={emptyStateCopy.title}
+                description={emptyStateCopy.description}
+              >
               {hasActiveFilters && (
-                <Button variant="outline" onClick={clearAllFilters} className="mt-4 mr-2">
-                  Clear Filters
+                <Button variant="outline" onClick={clearAllFilters} className={`${LISTINGS_SECONDARY_ACTION} gap-2`}>
+                  <X className="h-4 w-4" />
+                  Clear filters
                 </Button>
               )}
-              <Button variant="outline" onClick={loadListings} className="mt-4">
-                Refresh Data
+              <Button variant="outline" onClick={loadListings} className={`${LISTINGS_REFRESH_ACTION} gap-2`}>
+                <RefreshCw className="h-4 w-4" />
+                Refresh data
               </Button>
+              </ListingsStatePanel>
             </div>
           )}
           </CardContent>
