@@ -86,14 +86,15 @@ const chartGridProps = {
 };
 
 const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
-const SECTION_SURFACE = 'min-w-0 rounded-[1.35rem] border border-border/60 bg-card/55 p-3 shadow-sm shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-card/45 sm:rounded-[1.75rem] sm:p-4 md:p-6 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30';
-const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-sm shadow-black/5 transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
+const SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25';
+const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
 const EXECUTIVE_KPI_CARD = 'group relative min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
 const EXECUTIVE_KPI_WARNING_CARD = 'border-amber-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-amber-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-amber-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-amber-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-amber-300/15 [&_.dashboard-kpi-title]:text-amber-900/80 dark:[&_.dashboard-kpi-title]:text-amber-100/80 [&_.dashboard-kpi-title+div]:border-amber-400/35 [&_.dashboard-kpi-title+div]:bg-amber-500/15 [&_.dashboard-kpi-title+div]:text-amber-600 dark:[&_.dashboard-kpi-title+div]:text-amber-300';
+const EXECUTIVE_KPI_DATA_CARD = 'border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,rgba(245,158,11,0.06)_48%,hsl(var(--card))_100%)] after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_36%)] hover:border-primary/35 dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.94)_0%,rgba(30,41,59,0.76)_54%,rgba(15,23,42,0.94)_100%)]';
 const CHART_CARD = `${PREMIUM_CARD} group min-w-0 overflow-hidden bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
-const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-primary/8 via-transparent to-transparent px-4 py-3 md:px-5 md:py-4';
+const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-primary/8 via-transparent to-transparent px-4 py-4 md:px-5';
 const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-primary before:shadow-[0_0_14px_rgba(245,158,11,0.55)]';
-const CHART_CONTENT = 'px-2 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5';
+const CHART_CONTENT = 'px-3 pb-5 pt-5 md:px-5';
 const OVERVIEW_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
 
 function OverviewSection({
@@ -114,10 +115,10 @@ function OverviewSection({
   className?: string;
 }) {
   return (
-    <section className={`${SECTION_SURFACE} ${accent ? 'border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-card/70 to-card dark:from-amber-400/10 dark:via-slate-950/40 dark:to-slate-950/70' : ''} ${className}`}>
+    <section className={`${SECTION_SURFACE} ${accent ? 'border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-card/75 to-card dark:from-amber-400/10 dark:via-slate-950/45 dark:to-slate-950/75' : ''} ${className}`}>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-5">
         <div className="max-w-3xl">
-          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
             <span className={`h-1.5 w-1.5 rounded-full ${accent ? 'bg-amber-500 shadow-[0_0_14px_rgba(245,158,11,0.65)]' : 'bg-primary'}`} />
             {eyebrow}
           </div>
@@ -129,7 +130,7 @@ function OverviewSection({
             )}
             <div className="min-w-0">
               <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">{title}</h2>
-              {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
+              {description && <p className="mt-1 text-sm leading-6 text-muted-foreground/90">{description}</p>}
             </div>
           </div>
         </div>
@@ -416,26 +417,33 @@ export default function Overview() {
   // ─── Error state ───
   if (error) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="text-muted-foreground">Property intake dashboard overview and key metrics</p>
+      <div className={`${OVERVIEW_SHELL} space-y-6`}>
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 sm:rounded-[2rem] md:p-7">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+            <RadioTower className="h-3.5 w-3.5" />
+            Command Centre
+          </div>
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
         </div>
-        <Card className="border-destructive/50 bg-destructive/10">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-destructive mb-2">
-              <AlertTriangle className="h-5 w-5" />
-              <h3 className="font-semibold">Configuration Required</h3>
+        <Card className="overflow-hidden rounded-[1.5rem] border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-card to-card shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:border-amber-400/25 dark:from-amber-400/10 dark:via-slate-950/80 dark:to-slate-950">
+          <CardContent className="p-5 md:p-6">
+            <div className="mb-3 flex items-center gap-3 text-amber-700 dark:text-amber-300">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-500/10">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold tracking-tight">Configuration Required</h3>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="mb-4 text-sm leading-6 text-muted-foreground/90">
               Unable to load dashboard data. This usually means the Airtable integration needs to be configured.
             </p>
-            <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded">
+            <div className="rounded-2xl border border-border/60 bg-background/70 p-4 text-xs text-muted-foreground/90 shadow-inner">
               <strong>Error:</strong> {error}
             </div>
-            <div className="mt-4 flex gap-2">
-              <Button variant="outline" onClick={() => window.location.href = '/settings'}>Go to Settings</Button>
-              <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Button variant="outline" className={OVERVIEW_SECONDARY_ACTION} onClick={() => window.location.href = '/settings'}>Go to Settings</Button>
+              <Button variant="outline" className={OVERVIEW_SECONDARY_ACTION} onClick={() => window.location.reload()}>Retry</Button>
             </div>
           </CardContent>
         </Card>
@@ -446,30 +454,32 @@ export default function Overview() {
   // ─── Loading state ───
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="text-muted-foreground">Property intake dashboard overview and key metrics</p>
+      <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 sm:rounded-[2rem] md:p-7">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+          <div className="mb-3 h-7 w-40 rounded-full bg-amber-500/10" />
+          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 min-[520px]:grid-cols-2 md:gap-5 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card key={i} className={EXECUTIVE_KPI_CARD}>
+              <CardHeader className="relative z-10 flex flex-row items-center justify-between space-y-0 pb-2">
                 <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-11 w-11 rounded-2xl" />
               </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16 mb-1" />
+              <CardContent className="relative z-10">
+                <Skeleton className="mb-2 h-9 w-20" />
                 <Skeleton className="h-3 w-24" />
               </CardContent>
             </Card>
           ))}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
-              <CardContent><Skeleton className="h-64 w-full" /></CardContent>
+            <Card key={i} className={CHART_CARD}>
+              <CardHeader className={CHART_HEADER}><Skeleton className="h-5 w-40" /></CardHeader>
+              <CardContent className={CHART_CONTENT}><Skeleton className="h-64 w-full rounded-2xl" /></CardContent>
             </Card>
           ))}
         </div>
@@ -533,11 +543,11 @@ export default function Overview() {
 
         {/* Content Statistics */}
         <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 border-t border-border/60 pt-4 min-[520px]:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 xl:grid-cols-5">
-          <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
-          <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
-          <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
-          <KPICard title="With Key Entities" value={contentStats.withKeyEntities} icon={<Tag className="h-4 w-4" />} description="Properties with extracted entities" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
-          <KPICard title="Email Sources" value={contentStats.emailSources} icon={<Ruler className="h-4 w-4" />} description="Properties from email sources" className={EXECUTIVE_KPI_CARD} />
+          <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
+          <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
+          <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
+          <KPICard title="With Key Entities" value={contentStats.withKeyEntities} icon={<Tag className="h-4 w-4" />} description="Properties with extracted entities" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
+          <KPICard title="Email Sources" value={contentStats.emailSources} icon={<Ruler className="h-4 w-4" />} description="Properties from email sources" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_DATA_CARD}`} />
         </div>
       </OverviewSection>
 
@@ -792,9 +802,11 @@ export default function Overview() {
           </Card>
         </div>
 
-        <div className="pt-2 md:pt-4">
-          <div className="mb-4 flex items-center gap-2 border-t border-border/60 pt-5 text-sm font-semibold text-foreground">
-            <Database className="h-4 w-4 text-primary" />
+        <div className="pt-1 md:pt-2">
+          <div className="mb-4 flex items-center gap-2 border-t border-border/60 pt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+              <Database className="h-4 w-4" />
+            </span>
             Source intelligence
           </div>
         </div>
@@ -869,8 +881,8 @@ export default function Overview() {
       {/* Recent Activity */}
       <OverviewSection eyebrow="Recent activity" title="Latest property records" description="Newest listing records stay visible without competing with the analytics sections." icon={<FileText className="h-4 w-4" />} className="mb-4">
       <Card className={CHART_CARD}>
-        <CardHeader className="flex flex-col gap-3 pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-xl">Recent Activity</CardTitle>
+        <CardHeader className={`${CHART_HEADER} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
+          <CardTitle className={CHART_TITLE}>Recent Activity</CardTitle>
           <Button
             variant="outline"
             size="sm"
@@ -880,8 +892,19 @@ export default function Overview() {
             View All Listings
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 md:p-5">
           <div className="space-y-3 md:space-y-4">
+            {recentListings.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 p-8 text-center">
+                <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <h4 className="text-sm font-semibold text-foreground">No recent listing activity</h4>
+                <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground/90">
+                  New property records will appear here once listings match the current overview filters.
+                </p>
+              </div>
+            )}
             {recentListings.map((listing, index) => {
               const confidence = listing.confidence;
               const isHighConfidence = confidence !== undefined && confidence !== null && confidence >= 0.7;
