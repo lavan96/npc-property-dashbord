@@ -31,6 +31,8 @@ import type {
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 20 * 60_000; // Wave F8: bumped from 10→20m to absorb Cloud Run cold-start + hybrid raster runs.
+const FINALIZATION_POLL_INTERVAL_MS = 2500;
+const FINALIZATION_POLL_TIMEOUT_MS = 20 * 60_000;
 const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 
@@ -95,6 +97,63 @@ async function downloadUrl(path: string): Promise<string | null> {
   );
   if (error) return null;
   return (data as { signed_url?: string } | null)?.signed_url ?? null;
+}
+
+
+interface TemplateImportStatusRow {
+  id: string;
+  status: string;
+  page_count: number | null;
+  created_template_id: string | null;
+  error: string | null;
+  source_filename?: string | null;
+  meta?: Record<string, any> | null;
+}
+
+async function waitForTemplateFinalization(
+  importId: string,
+  onProgress: (progress: ImportProgress) => void,
+): Promise<TemplateImportStatusRow> {
+  const started = Date.now();
+
+  while (Date.now() - started < FINALIZATION_POLL_TIMEOUT_MS) {
+    const statusRes = await invokeImport({
+      operation: 'get_status',
+      import_id: importId,
+    });
+
+    const record = statusRes?.record as TemplateImportStatusRow | undefined;
+    if (!record) {
+      throw new Error('Template finalization status response was empty.');
+    }
+
+    const meta = record.meta ?? {};
+    const finalizationStatus = typeof meta.finalization_status === 'string'
+      ? meta.finalization_status
+      : record.status;
+
+    onProgress({
+      phase: 'finalizing',
+      totalPages: record.page_count ?? undefined,
+      message: `Finalizing template… (${finalizationStatus})`,
+    });
+
+    if (record.status === 'completed' && record.created_template_id) {
+      return record;
+    }
+
+    if (record.status === 'failed' || record.status === 'cancelled') {
+      const detail = record.error
+        ?? meta.finalization_error
+        ?? meta.finalization_last_error
+        ?? 'unknown finalization error';
+      throw new Error(`Template finalization failed: ${detail}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, FINALIZATION_POLL_INTERVAL_MS));
+  }
+
+  throw new Error('Template finalization timed out while waiting for the async worker.');
 }
 
 interface JobRow {
@@ -405,30 +464,54 @@ export async function extractPdfViaDocling(
     const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
     const totalPages = job.page_count ?? template.pages.length;
 
-    const finRes = options.targetTemplateId
-      ? await invokeImport({
-          operation: 'resync',
+    await invokeImport({
+      operation: 'stage_artifacts',
+      import_id: importId,
+      schema: template,
+      page_count: totalPages,
+      source_filename: file.name,
+      source_checksum: sourceChecksum,
+      cdir,
+      cdir_fidelity: cdirFidelity,
+      import_manifests: {
+        pdf_import_job: {
+          job_id: jobId,
+          engine_version: job.engine_version ?? 'docling',
+          diagnostics_path: doclingPath,
+          rasters_manifest_path: job.result_payload?.rasters_manifest_path ?? null,
+          page_raster_paths: job.result_payload?.page_raster_paths ?? [],
+          mode: effectiveMode,
+          page_count: totalPages,
+        },
+      },
+    });
+
+    onProgress({
+      phase: 'finalizing',
+      totalPages,
+      message: 'Template artifacts staged. Starting async finalization…',
+    });
+
+    await invokeImport(options.targetTemplateId
+      ? {
+          operation: 'start_finalize',
           import_id: importId,
+          mode: 'resync',
           template_id: options.targetTemplateId,
-          schema: template,
           page_count: totalPages,
           source_filename: file.name,
-          source_checksum: sourceChecksum,
-          cdir,
-          cdir_fidelity: cdirFidelity,
           note: `Re-synced from ${file.name} (docling)`,
-        })
-      : await invokeImport({
-          operation: 'finalize',
+        }
+      : {
+          operation: 'start_finalize',
           import_id: importId,
+          mode: 'finalize',
           name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
-          schema: template,
           page_count: totalPages,
           source_filename: file.name,
-          source_checksum: sourceChecksum,
-          cdir,
-          cdir_fidelity: cdirFidelity,
         });
+
+    const finalRecord = await waitForTemplateFinalization(importId, onProgress);
 
     onProgress({ phase: 'done', totalPages });
     const textBlocks = plan.pages.reduce(
@@ -437,7 +520,10 @@ export async function extractPdfViaDocling(
       (acc, p) => acc + p.overlays.filter((o) => o.type === 'image').length, 0);
 
     return {
-      template: { id: finRes.template.id, name: finRes.template.name ?? options.templateName ?? file.name },
+      template: {
+        id: finalRecord.created_template_id ?? options.targetTemplateId ?? importId,
+        name: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
+      },
       importId,
       pageCount: totalPages,
       cdir,
@@ -453,11 +539,17 @@ export async function extractPdfViaDocling(
       },
     };
   } catch (err) {
-    await invokeImport({
-      operation: 'fail',
-      import_id: importId,
-      error: (err as Error).message,
-    }).catch(() => {});
+    const message = (err as Error).message ?? String(err);
+    const asyncFinalizationError =
+      message.startsWith('Template finalization failed:') ||
+      message.startsWith('Template finalization timed out');
+    if (!asyncFinalizationError) {
+      await invokeImport({
+        operation: 'fail',
+        import_id: importId,
+        error: message,
+      }).catch(() => {});
+    }
     throw err;
   }
 }

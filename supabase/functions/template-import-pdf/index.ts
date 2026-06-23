@@ -1,5 +1,5 @@
 // Template PDF importer.
-// Operations: create_import | upload_asset | finalize | resync | get_artifacts | record_review_decision | fail
+// Operations: create_import | upload_asset | stage_artifacts | start_finalize | retry_finalize | get_status | finalize | resync | get_artifacts | record_review_decision | fail
 //
 // upload_asset accepts base64 PNG/JPG, stores in `template-import-assets`
 // (creates the bucket on first use) and returns the public URL. finalize
@@ -14,6 +14,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ASSET_BUCKET = 'template-import-assets';
 const ARTIFACT_BUCKET = 'template-import-artifacts';
+const TEMPLATE_FINALIZATION_ARTIFACT_CONTRACT = 'template-finalization-artifacts-v1';
+const TEMPLATE_IMPORT_WORKER_TOKEN = Deno.env.get('TEMPLATE_IMPORT_WORKER_TOKEN') ?? SERVICE_ROLE;
 
 function logDbError(operation: string, error: { message?: string; details?: string | null; hint?: string | null; code?: string | null } | null) {
   if (!error) return;
@@ -125,6 +127,37 @@ function fidelitySummary(report: any) {
   };
 }
 
+
+async function buildStagedImportArtifactMeta(
+  admin: ReturnType<typeof createClient>,
+  importId: string,
+  body: any,
+  existingMeta: Record<string, unknown> = {},
+) {
+  const schemaPath = await uploadJsonArtifact(admin, importId, 'template-schema', body.schema);
+  const cdirPath = await uploadJsonArtifact(admin, importId, 'cdir', body.cdir);
+  const fidelityPath = await uploadJsonArtifact(admin, importId, 'cdir-fidelity', body.cdir_fidelity);
+  const importAssetPath = await uploadJsonArtifact(admin, importId, 'import-asset', body.import_asset);
+  const importManifestsPath = await uploadJsonArtifact(admin, importId, 'import-manifests', body.import_manifests);
+
+  return {
+    ...(existingMeta && typeof existingMeta === 'object' ? existingMeta : {}),
+    ...(body.meta && typeof body.meta === 'object' ? body.meta : {}),
+    source_checksum: body.source_checksum ?? body.cdir?.source?.checksum ?? null,
+    schema_artifact_path: schemaPath,
+    cdir_artifact_path: cdirPath,
+    cdir_fidelity_artifact_path: fidelityPath,
+    import_asset_artifact_path: importAssetPath,
+    import_manifests_artifact_path: importManifestsPath,
+    import_asset_summary: importAssetSummary(body.import_asset),
+    cdir_fidelity_summary: fidelitySummary(body.cdir_fidelity),
+    artifact_contract_version: TEMPLATE_FINALIZATION_ARTIFACT_CONTRACT,
+    artifact_stage: 'staged',
+    artifact_staged_at: new Date().toISOString(),
+    finalization_status: 'artifacts_staged',
+  };
+}
+
 async function buildImportArtifactMeta(admin: ReturnType<typeof createClient>, importId: string, body: any) {
   const cdirPath = await uploadJsonArtifact(admin, importId, 'cdir', body.cdir);
   const fidelityPath = await uploadJsonArtifact(admin, importId, 'cdir-fidelity', body.cdir_fidelity);
@@ -197,6 +230,32 @@ async function readJsonArtifact(admin: ReturnType<typeof createClient>, path: st
   }
 }
 
+
+async function triggerFinalizeWorker(importId: string): Promise<{ ok: boolean; status?: number; error?: string }> {
+  const url = `${SUPABASE_URL}/functions/v1/template-import-finalize-worker`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TEMPLATE_IMPORT_WORKER_TOKEN}`,
+      },
+      body: JSON.stringify({ import_id: importId }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return { ok: false, status: res.status, error: text.slice(0, 500) };
+    }
+    return { ok: true, status: res.status };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 500) };
+  }
+}
+
+function normalizeFinalizeMode(raw: unknown): 'finalize' | 'resync' {
+  return raw === 'resync' ? 'resync' : 'finalize';
+}
+
 Deno.serve(async (req) => {
   const cors = createTokenAuthCorsHeaders();
   const json = (body: unknown, status = 200) =>
@@ -252,6 +311,236 @@ Deno.serve(async (req) => {
       if (upErr) return json({ error: upErr.message }, 400);
       const { data: pub } = admin.storage.from(ASSET_BUCKET).getPublicUrl(path);
       return json({ url: pub.publicUrl, path });
+    }
+
+
+    if (operation === 'stage_artifacts') {
+      const importId = body.import_id as string;
+      if (!importId) return json({ error: 'import_id required' }, 400);
+
+      const validationError = schemaValidationErrorResponse(json, body.schema);
+      if (validationError) return validationError;
+
+      const { data: existing, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .maybeSingle();
+
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (!existing) return json({ error: 'Import record not found' }, 404);
+      if ((existing as any)?.user_id && authedUserId && (existing as any).user_id !== authedUserId) {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const existingMeta = ((existing as any)?.meta && typeof (existing as any).meta === 'object')
+        ? ((existing as any).meta as Record<string, unknown>)
+        : {};
+      const artifactMeta = await buildStagedImportArtifactMeta(admin, importId, body, existingMeta);
+
+      if (!artifactMeta.schema_artifact_path) {
+        return json({ error: 'schema_artifact_upload_failed' }, 500);
+      }
+
+      const pageCount = body.page_count ?? artifactMeta.cdir_fidelity_summary?.pageCount ?? null;
+      const { data: updated, error: updateErr } = await admin
+        .from('template_imports')
+        .update({
+          status: 'processing',
+          page_count: pageCount,
+          meta: artifactMeta,
+          error: null,
+        })
+        .eq('id', importId)
+        .select('id,status,page_count,meta,created_template_id,error')
+        .single();
+
+      if (updateErr) return json({ error: updateErr.message }, 400);
+
+      return json({
+        ok: true,
+        record: updated,
+        artifactPaths: {
+          schema: artifactMeta.schema_artifact_path ?? null,
+          cdir: artifactMeta.cdir_artifact_path ?? null,
+          cdirFidelity: artifactMeta.cdir_fidelity_artifact_path ?? null,
+          importAsset: artifactMeta.import_asset_artifact_path ?? null,
+          importManifests: artifactMeta.import_manifests_artifact_path ?? null,
+        },
+      });
+    }
+
+
+    if (operation === 'start_finalize') {
+      const importId = body.import_id as string;
+      if (!importId) return json({ error: 'import_id required' }, 400);
+
+      const { data: existing, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,status,page_count,source_filename,created_template_id,meta,error')
+        .eq('id', importId)
+        .maybeSingle();
+
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (!existing) return json({ error: 'Import record not found' }, 404);
+      if ((existing as any)?.user_id && authedUserId && (existing as any).user_id !== authedUserId) {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const currentMeta = ((existing as any)?.meta && typeof (existing as any).meta === 'object')
+        ? ((existing as any).meta as Record<string, unknown>)
+        : {};
+
+      if (currentMeta.artifact_contract_version !== TEMPLATE_FINALIZATION_ARTIFACT_CONTRACT || !currentMeta.schema_artifact_path) {
+        return json({
+          error: 'artifacts_not_staged',
+          message: 'Call stage_artifacts before start_finalize.',
+        }, 409);
+      }
+
+      const mode = normalizeFinalizeMode(body.mode);
+      const templateId = typeof body.template_id === 'string' ? body.template_id : null;
+      if (mode === 'resync' && !templateId) {
+        return json({ error: 'template_id required for resync finalization' }, 400);
+      }
+
+      const finalizationRequest = {
+        mode,
+        template_id: templateId,
+        name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : 'Imported template',
+        note: typeof body.note === 'string' && body.note.trim() ? body.note.trim() : 'Re-synced from PDF',
+        source_filename: body.source_filename ?? (existing as any).source_filename ?? null,
+        page_count: body.page_count ?? (existing as any).page_count ?? null,
+        requested_by: authedUserId ?? 'service_role',
+        requested_at: new Date().toISOString(),
+      };
+
+      const nextMeta = {
+        ...currentMeta,
+        finalization_status: 'queued',
+        finalization_request: finalizationRequest,
+        finalization_queued_at: new Date().toISOString(),
+        finalization_error: null,
+      };
+
+      const { data: updated, error: updateErr } = await admin
+        .from('template_imports')
+        .update({
+          status: 'processing',
+          page_count: finalizationRequest.page_count,
+          meta: nextMeta,
+          error: null,
+        })
+        .eq('id', importId)
+        .select('id,status,page_count,created_template_id,meta,error')
+        .single();
+
+      if (updateErr) return json({ error: updateErr.message }, 400);
+
+      const trigger = await triggerFinalizeWorker(importId);
+      if (!trigger.ok) {
+        const failedMeta = {
+          ...nextMeta,
+          finalization_status: 'worker_trigger_failed',
+          finalization_error: trigger.error ?? `worker_http_${trigger.status}`,
+          recoverable: true,
+        };
+        await admin.from('template_imports').update({
+          status: 'failed',
+          meta: failedMeta,
+          error: trigger.error ?? `worker trigger failed with status ${trigger.status}`,
+        }).eq('id', importId);
+
+        return json({
+          error: 'worker_trigger_failed',
+          details: trigger.error,
+          status: trigger.status,
+          recoverable: true,
+        }, 502);
+      }
+
+      return json({ ok: true, accepted: true, record: updated }, 202);
+    }
+
+    if (operation === 'retry_finalize') {
+      const importId = body.import_id as string;
+      if (!importId) return json({ error: 'import_id required' }, 400);
+
+      const { data: existing, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,status,page_count,created_template_id,meta,error')
+        .eq('id', importId)
+        .maybeSingle();
+
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (!existing) return json({ error: 'Import record not found' }, 404);
+      if ((existing as any)?.user_id && authedUserId && (existing as any).user_id !== authedUserId) {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const currentMeta = ((existing as any)?.meta && typeof (existing as any).meta === 'object')
+        ? ((existing as any).meta as Record<string, unknown>)
+        : {};
+
+      if (currentMeta.artifact_contract_version !== TEMPLATE_FINALIZATION_ARTIFACT_CONTRACT || !currentMeta.schema_artifact_path) {
+        return json({ error: 'artifacts_not_staged' }, 409);
+      }
+      if (!currentMeta.finalization_request || typeof currentMeta.finalization_request !== 'object') {
+        return json({ error: 'finalization_request_missing' }, 409);
+      }
+
+      const nextMeta = {
+        ...currentMeta,
+        finalization_status: 'queued',
+        finalization_queued_at: new Date().toISOString(),
+        finalization_retried_at: new Date().toISOString(),
+        finalization_error: null,
+        recoverable: null,
+      };
+
+      const { data: updated, error: updateErr } = await admin
+        .from('template_imports')
+        .update({
+          status: 'processing',
+          meta: nextMeta,
+          error: null,
+        })
+        .eq('id', importId)
+        .select('id,status,page_count,created_template_id,meta,error')
+        .single();
+
+      if (updateErr) return json({ error: updateErr.message }, 400);
+
+      const trigger = await triggerFinalizeWorker(importId);
+      if (!trigger.ok) {
+        return json({
+          error: 'worker_trigger_failed',
+          details: trigger.error,
+          status: trigger.status,
+          recoverable: true,
+        }, 502);
+      }
+
+      return json({ ok: true, accepted: true, record: updated }, 202);
+    }
+
+    if (operation === 'get_status') {
+      const importId = body.import_id as string;
+      if (!importId) return json({ error: 'import_id required' }, 400);
+
+      const { data: record, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,status,fidelity_mode,source_filename,page_count,created_template_id,error,meta,created_at,updated_at')
+        .eq('id', importId)
+        .maybeSingle();
+
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (!record) return json({ error: 'Import record not found' }, 404);
+      if ((record as any)?.user_id && authedUserId && (record as any).user_id !== authedUserId) {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      return json({ record });
     }
 
     if (operation === 'finalize') {
