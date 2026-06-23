@@ -15,13 +15,14 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Building2, ArrowRight, AlertTriangle, BadgeCheck, Gauge, ShieldCheck } from 'lucide-react';
 import {
   commercialApi,
   type CommercialProperty,
   type CommercialLease,
 } from '@/hooks/useCommercialProperties';
 import { calculateNoi, calculateWale } from '@/utils/commercial';
+import { cn } from '@/lib/utils';
 
 const fmtAud = (n: number) =>
   new Intl.NumberFormat('en-AU', {
@@ -79,28 +80,42 @@ export function CommercialPortfolioWidget() {
   }, []);
 
   const tiles = useMemo(() => ([
-    { label: 'Assets', value: metrics.count.toString() },
-    { label: 'Total Value', value: fmtAud(metrics.totalValuation) },
-    { label: 'Passing Rent', value: `${fmtAud(metrics.totalRent)} pa` },
-    { label: 'NOI (est.)', value: `${fmtAud(metrics.totalNoi)} pa` },
-    { label: 'Weighted Yield', value: `${metrics.weightedYieldPct.toFixed(2)}%` },
-    { label: 'WALE (income)', value: `${metrics.waleYears.toFixed(1)} yrs` },
-    { label: 'Occupancy', value: `${metrics.occupancyPct.toFixed(1)}%` },
-    { label: 'Expiries < 12m', value: metrics.upcomingExpiries12m.toString() },
+    { label: 'Assets', value: metrics.count.toString(), raw: metrics.count, cue: metrics.count === 1 ? 'asset on book' : 'assets on book' },
+    { label: 'Total Value', value: fmtAud(metrics.totalValuation), raw: metrics.totalValuation, cue: 'portfolio valuation' },
+    { label: 'Passing Rent', value: `${fmtAud(metrics.totalRent)} pa`, raw: metrics.totalRent, cue: 'contracted income' },
+    { label: 'NOI (est.)', value: `${fmtAud(metrics.totalNoi)} pa`, raw: metrics.totalNoi, cue: 'after standard allowances' },
+    { label: 'Weighted Yield', value: `${metrics.weightedYieldPct.toFixed(2)}%`, raw: metrics.weightedYieldPct, cue: metrics.weightedYieldPct === 0 ? 'yield visible at zero' : 'income weighted' },
+    { label: 'WALE (income)', value: `${metrics.waleYears.toFixed(1)} yrs`, raw: metrics.waleYears, cue: metrics.waleYears === 0 ? 'no income-weighted term' : 'income-weighted term' },
+    { label: 'Occupancy', value: `${metrics.occupancyPct.toFixed(1)}%`, raw: metrics.occupancyPct, cue: metrics.occupancyPct === 0 ? 'vacancy visible at zero' : 'by leased area' },
+    { label: 'Expiries < 12m', value: metrics.upcomingExpiries12m.toString(), raw: metrics.upcomingExpiries12m, cue: metrics.upcomingExpiries12m === 0 ? 'no near-term expiries' : 'renewal review' },
   ]), [metrics]);
 
   return (
-    <Card className="hover-scale">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 md:pb-4">
-        <CardTitle className="text-base md:text-lg flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-primary" />
-          Commercial Portfolio
-        </CardTitle>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/commercial')}>
-          View <ArrowRight className="h-3.5 w-3.5 ml-1" />
+    <Card className="hover-scale overflow-hidden border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm">
+      <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border/60 bg-muted/15 pb-4">
+        <div className="min-w-0">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Executive asset summary
+          </div>
+          <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <Building2 className="h-5 w-5 text-primary" />
+            </span>
+            Commercial Portfolio
+          </CardTitle>
+          <p className="mt-1 text-sm text-muted-foreground">Core valuation, income, lease and occupancy indicators for owned commercial assets.</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 rounded-full border-primary/25 bg-background/80 px-3 font-semibold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground"
+          onClick={() => navigate('/commercial')}
+        >
+          View <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
         </Button>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 md:p-5">
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -119,18 +134,48 @@ export function CommercialPortfolioWidget() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {tiles.map(t => (
-                <div key={t.label} className="rounded-md bg-muted/30 border p-2.5">
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {t.label}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {tiles.map(t => {
+                const isZero = t.raw === 0;
+                const isNegative = t.raw < 0;
+                return (
+                  <div
+                    key={t.label}
+                    className={cn(
+                      'group rounded-2xl border bg-background/70 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-background',
+                      isZero && 'border-dashed bg-muted/20',
+                      isNegative && 'border-destructive/30 bg-destructive/5'
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        {t.label}
+                      </div>
+                      {isNegative ? (
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+                      ) : (
+                        <Gauge className="h-4 w-4 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
+                      )}
+                    </div>
+                    <div
+                      className={cn(
+                        'mt-3 break-words text-2xl font-bold leading-none tracking-tight text-foreground tabular-nums md:text-[1.65rem]',
+                        isZero && 'text-muted-foreground',
+                        isNegative && 'text-destructive'
+                      )}
+                    >
+                      {t.value}
+                    </div>
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {isZero ? <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" /> : <BadgeCheck className="h-3.5 w-3.5 text-primary/70" />}
+                      <span>{isNegative ? 'negative value shown' : t.cue}</span>
+                    </div>
                   </div>
-                  <div className="text-base md:text-lg font-bold mt-0.5">{t.value}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {metrics.upcomingExpiries12m > 0 && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-warning-foreground bg-warning/10 border border-warning/30 rounded-md px-3 py-2">
+              <div className="mt-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning-foreground">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 {metrics.upcomingExpiries12m} lease{metrics.upcomingExpiries12m === 1 ? '' : 's'} expiring in the next 12 months — review renewal strategy.
               </div>
