@@ -103,16 +103,16 @@ export function DataIntegrityPanel({
               variant="outline"
               size="sm"
               onClick={() => setShowDetails(!showDetails)}
-              className="order-2 border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:bg-muted hover:text-foreground sm:order-1"
+              className="order-2 min-h-10 rounded-full border-border/70 bg-background/70 px-4 font-semibold text-muted-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0 sm:order-1"
             >
               {showDetails ? 'Hide Details' : 'Show Details'}
-              <ChevronDown className={cn('h-4 w-4 transition-transform', showDetails && 'rotate-180')} />
+              <ChevronDown className={cn('ml-1 h-4 w-4 transition-transform duration-200', showDetails && 'rotate-180')} />
             </Button>
             <Button
               size="sm"
               onClick={runValidation}
               disabled={isValidating}
-              className="order-1 gap-2 bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-lg shadow-sky-500/20 transition-all hover:from-sky-700 hover:to-cyan-700 disabled:opacity-70 sm:order-2"
+              className="order-1 min-h-10 gap-2 rounded-full bg-gradient-to-r from-sky-600 to-cyan-600 px-4 font-semibold text-white shadow-lg shadow-sky-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-sky-700 hover:to-cyan-700 hover:shadow-sky-500/30 focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 sm:order-2"
             >
               {isValidating ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
