@@ -3,10 +3,10 @@ import type { ElementType, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Search, Download, Bed, Bath, Car, X, FileText, RefreshCw, Loader2, Building2, CalendarCheck, AlertTriangle, EyeOff, List, Table2 } from 'lucide-react';
+import { Search, Download, Bed, Bath, Car, X, FileText, RefreshCw, Loader2, Building2, CalendarCheck, AlertTriangle, EyeOff, List, Table2, FilterX, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,6 +52,8 @@ const LISTINGS_VIEW_CONTROL = 'h-9 rounded-full px-3 text-xs font-bold tracking-
 const LISTINGS_VIEW_CONTROL_ACTIVE = 'border-primary/45 bg-background text-foreground shadow-[0_8px_22px_rgba(15,23,42,0.10)] ring-1 ring-primary/20 dark:bg-slate-900 dark:shadow-black/30';
 const LISTINGS_VIEW_CONTROL_INACTIVE = 'border-transparent bg-transparent text-muted-foreground/75 hover:bg-background/70 hover:text-foreground dark:hover:bg-white/[0.06]';
 const LISTINGS_REFRESH_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 data-[refreshing=true]:border-primary/35 data-[refreshing=true]:bg-primary/10 data-[refreshing=true]:text-primary';
+const LISTINGS_STATE_CARD = 'relative overflow-hidden rounded-[1.5rem] border border-border/60 bg-gradient-to-br from-card/95 via-card/85 to-primary/[0.04] p-8 text-center shadow-[0_18px_48px_rgba(15,23,42,0.08)] sm:rounded-[1.85rem] sm:p-10 dark:border-white/10 dark:from-slate-950/85 dark:via-slate-950/65 dark:to-primary/10 dark:shadow-black/30';
+const LISTINGS_STATE_ICON = 'mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary shadow-[0_14px_34px_rgba(245,158,11,0.14)]';
 const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full border border-dashed border-border/70 bg-muted/30 px-2.5 text-sm font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]';
 const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
 const LISTINGS_TABLE_CARD = 'overflow-hidden';
@@ -180,6 +182,7 @@ export default function Listings() {
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<'list' | 'table'>(isMobile ? 'list' : 'table');
   
   const [selectedTable, setSelectedTable] = useState<string | null>(() => getSelectedAirtableTable());
 
@@ -225,6 +228,10 @@ export default function Listings() {
   // Per-row pending scope/tier choice in the picker (controlled)
   const [rowPicker, setRowPicker] = useState<Record<string, { scope: ReportScope; tier: ReportTier }>>({});
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    setViewMode(isMobile ? 'list' : 'table');
+  }, [isMobile]);
 
   // Sync global search with local search when component mounts or global search changes
   useEffect(() => {
@@ -499,6 +506,7 @@ export default function Listings() {
     return value !== '';
   });
   const hasSearchQuery = searchQuery.trim().length > 0;
+  const showListView = viewMode === 'list';
   const emptyStateCopy = hasSearchQuery
     ? {
         icon: Search,
@@ -529,7 +537,7 @@ export default function Listings() {
 
     return (
       <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`}>
-        <div className={LISTINGS_SECTION_SURFACE}>
+        <div className={`${LISTINGS_SECTION_SURFACE} flex items-center justify-between gap-4`}>
           <div>
             <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
               <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_14px_rgba(245,158,11,0.55)]" />
@@ -538,34 +546,19 @@ export default function Listings() {
             <h1 className="text-3xl font-semibold tracking-[-0.045em] text-foreground md:text-4xl">Listings</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground/90 md:text-base">Manage and review property listings</p>
           </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-9 w-20" />
-          </div>
+          <Button onClick={loadListings} variant="outline" className={`${LISTINGS_REFRESH_ACTION} gap-2`}>
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </Button>
         </div>
 
-        {isMobile ? (
-          <div className="space-y-3 sm:space-y-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : (
-          <Card className={LISTINGS_CARD_SURFACE}>
-            <CardHeader>
-              <div className="flex items-center gap-4">
-                <Skeleton className="h-10 w-64" />
-                <Skeleton className="h-10 w-24" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <ListingsStatePanel
+          icon={AlertTriangle}
+          eyebrow="Listings unavailable"
+          title="Unable to load listings"
+          description={errorMessage}
+          tone="error"
+        />
       </div>
     );
   }
@@ -608,8 +601,9 @@ export default function Listings() {
                 type="button"
                 size="sm"
                 variant="outline"
-                aria-pressed={isMobile}
-                className={cn(LISTINGS_VIEW_CONTROL, 'min-h-10 gap-1.5', isMobile ? LISTINGS_VIEW_CONTROL_ACTIVE : LISTINGS_VIEW_CONTROL_INACTIVE)}
+                aria-pressed={showListView}
+                onClick={() => setViewMode('list')}
+                className={cn(LISTINGS_VIEW_CONTROL, 'min-h-10 gap-1.5', showListView ? LISTINGS_VIEW_CONTROL_ACTIVE : LISTINGS_VIEW_CONTROL_INACTIVE)}
               >
                 <List className="h-4 w-4" />
                 List
@@ -618,8 +612,9 @@ export default function Listings() {
                 type="button"
                 size="sm"
                 variant="outline"
-                aria-pressed={!isMobile}
-                className={cn(LISTINGS_VIEW_CONTROL, 'min-h-10 gap-1.5', !isMobile ? LISTINGS_VIEW_CONTROL_ACTIVE : LISTINGS_VIEW_CONTROL_INACTIVE)}
+                aria-pressed={!showListView}
+                onClick={() => setViewMode('table')}
+                className={cn(LISTINGS_VIEW_CONTROL, 'min-h-10 gap-1.5', !showListView ? LISTINGS_VIEW_CONTROL_ACTIVE : LISTINGS_VIEW_CONTROL_INACTIVE)}
               >
                 <Table2 className="h-4 w-4" />
                 Table
@@ -757,7 +752,7 @@ export default function Listings() {
       </section>
 
       {/* Content: Cards on Mobile, Table on Desktop */}
-      {isMobile ? (
+      {showListView ? (
         <div className="space-y-3">
           {filteredListings.length === 0 ? (
             <ListingsStatePanel
