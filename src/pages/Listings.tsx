@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw, Loader2, Building2 } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw, Loader2, Building2, CalendarCheck, AlertTriangle, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -516,21 +516,22 @@ export default function Listings() {
       </section>
 
       {/* Search and Filters */}
-      <section className={`${LISTINGS_SECTION_SURFACE} space-y-5 bg-gradient-to-br from-card/90 via-card/70 to-amber-50/30 dark:from-slate-950/65 dark:via-slate-950/45 dark:to-amber-950/10`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+      <section className={`${LISTINGS_SECTION_SURFACE} space-y-6 bg-gradient-to-br from-card/95 via-card/80 to-amber-50/40 ring-1 ring-amber-400/10 dark:from-slate-950/70 dark:via-slate-950/50 dark:to-amber-950/10`}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
           <div className="group relative flex-1">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex w-12 items-center justify-center">
-              <Search className="h-[18px] w-[18px] text-muted-foreground transition-colors duration-200 group-focus-within:text-amber-600 dark:group-focus-within:text-amber-300" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex w-14 items-center justify-center">
+              <Search className="h-5 w-5 text-muted-foreground transition-colors duration-200 group-focus-within:text-amber-600 dark:group-focus-within:text-amber-300" />
             </div>
             <Input
               placeholder="Search properties..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-14 rounded-full border-border/70 bg-background/90 pl-12 pr-4 text-[15px] shadow-[0_12px_32px_rgba(15,23,42,0.08)] transition-all duration-200 placeholder:text-muted-foreground/65 hover:border-amber-300/70 hover:bg-background focus-visible:border-amber-400 focus-visible:ring-4 focus-visible:ring-amber-400/20 dark:border-white/10 dark:bg-slate-950/60 dark:hover:border-amber-300/35"
+              aria-label="Search properties"
+              className="h-14 rounded-full border-border/70 bg-background/95 pl-14 pr-5 text-[15px] font-medium shadow-[0_14px_36px_rgba(15,23,42,0.10)] transition-all duration-200 placeholder:text-muted-foreground/65 hover:border-amber-300/70 hover:bg-background focus-visible:border-amber-400 focus-visible:ring-4 focus-visible:ring-amber-400/20 dark:border-white/10 dark:bg-slate-950/70 dark:hover:border-amber-300/35 sm:h-16 sm:text-base"
             />
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
+          <div className="flex flex-wrap items-center gap-2.5 md:flex-nowrap">
           {/* Mobile uses sheet, desktop uses popover */}
           {isMobile ? (
             <MobileFilterSheet 
@@ -556,13 +557,14 @@ export default function Listings() {
         </div>
 
         {/* Quick Filters */}
-        <div className="flex flex-wrap gap-2.5 pt-1 sm:gap-3">
+        <div className="flex flex-wrap gap-2.5 border-t border-border/50 pt-4 sm:gap-3 dark:border-white/10">
           <Button
             variant={filters.hasInspection ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, hasInspection: !prev.hasInspection }))}
-            className={cn(LISTINGS_CHIP_ACTION, filters.hasInspection ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.hasInspection && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
+            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.hasInspection ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.hasInspection && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
           >
+            <CalendarCheck className="h-4 w-4" />
             Has Inspection
           </Button>
           <Button
@@ -571,15 +573,16 @@ export default function Listings() {
             onClick={() => setFilters(prev => ({ ...prev, lowConfidence: !prev.lowConfidence }))}
             className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.lowConfidence ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.lowConfidence && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
           >
-            <span className={cn("inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] leading-none", filters.lowConfidence ? "border-white/70 bg-white/15 text-white" : "border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-200")}>!</span>
+            <AlertTriangle className={cn("h-4 w-4", filters.lowConfidence ? "text-white" : "text-amber-600 dark:text-amber-300")} />
             Low Confidence
           </Button>
           <Button
             variant={filters.offMarket ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, offMarket: !prev.offMarket }))}
-            className={cn(LISTINGS_CHIP_ACTION, filters.offMarket ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.offMarket && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
+            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.offMarket ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.offMarket && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
           >
+            <EyeOff className="h-4 w-4" />
             Off-Market
           </Button>
           {hasActiveFilters && isMobile && (
@@ -626,7 +629,7 @@ export default function Listings() {
           )}
         </div>
       ) : (
-        <Card className={`${LISTINGS_CARD_SURFACE} overflow-hidden`}>
+        <Card className={cn(LISTINGS_CARD_SURFACE, LISTINGS_TABLE_CARD)}>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
             <Table className="min-w-[1180px] border-separate border-spacing-0">
