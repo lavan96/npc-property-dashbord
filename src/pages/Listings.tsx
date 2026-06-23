@@ -41,13 +41,16 @@ import { useNavigate } from 'react-router-dom';
 import { ListingRowContextMenu } from '@/components/listings/ListingRowContextMenu';
 import { ReportCommandPalette } from '@/components/reports/ReportCommandPalette';
 import { Command as CommandIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 
 const LISTINGS_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
 const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25';
 const LISTINGS_CARD_SURFACE = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
 const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
-const LISTINGS_CHIP_ACTION = 'h-8 rounded-full border-border/70 px-3 text-xs font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary dark:border-white/10';
+const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60';
+const LISTINGS_CHIP_INACTIVE = 'border-border/70 bg-background/80 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-50/70 hover:text-amber-700 dark:border-white/10 dark:bg-slate-950/45 dark:hover:bg-amber-400/10 dark:hover:text-amber-200';
+const LISTINGS_CHIP_ACTIVE = 'border-amber-400/70 bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-[0_10px_24px_rgba(245,158,11,0.28)] hover:-translate-y-0.5 hover:from-amber-500 hover:to-amber-400 hover:text-white dark:border-amber-300/60';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -504,18 +507,21 @@ export default function Listings() {
       </section>
 
       {/* Search and Filters */}
-      <section className={`${LISTINGS_SECTION_SURFACE} space-y-4`}>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <section className={`${LISTINGS_SECTION_SURFACE} space-y-5 bg-gradient-to-br from-card/90 via-card/70 to-amber-50/30 dark:from-slate-950/65 dark:via-slate-950/45 dark:to-amber-950/10`}>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="group relative flex-1">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex w-12 items-center justify-center">
+              <Search className="h-[18px] w-[18px] text-muted-foreground transition-colors duration-200 group-focus-within:text-amber-600 dark:group-focus-within:text-amber-300" />
+            </div>
             <Input
               placeholder="Search properties..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-11 rounded-full border-border/70 bg-background/70 pl-10 shadow-inner transition-colors focus-visible:ring-primary/35 dark:border-white/10 dark:bg-slate-950/45"
+              className="h-14 rounded-full border-border/70 bg-background/90 pl-12 pr-4 text-[15px] shadow-[0_12px_32px_rgba(15,23,42,0.08)] transition-all duration-200 placeholder:text-muted-foreground/65 hover:border-amber-300/70 hover:bg-background focus-visible:border-amber-400 focus-visible:ring-4 focus-visible:ring-amber-400/20 dark:border-white/10 dark:bg-slate-950/60 dark:hover:border-amber-300/35"
             />
           </div>
           
+          <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
           {/* Mobile uses sheet, desktop uses popover */}
           {isMobile ? (
             <MobileFilterSheet 
@@ -532,20 +538,21 @@ export default function Listings() {
           )}
           
           {hasActiveFilters && !isMobile && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="rounded-full text-muted-foreground hover:text-destructive">
+            <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-10 rounded-full px-3 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/25">
               <X className="h-4 w-4 mr-1" />
               Clear
             </Button>
           )}
+          </div>
         </div>
 
         {/* Quick Filters */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5 pt-1 sm:gap-3">
           <Button
             variant={filters.hasInspection ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, hasInspection: !prev.hasInspection }))}
-            className={LISTINGS_CHIP_ACTION}
+            className={cn(LISTINGS_CHIP_ACTION, filters.hasInspection ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.hasInspection && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
           >
             Has Inspection
           </Button>
@@ -553,15 +560,16 @@ export default function Listings() {
             variant={filters.lowConfidence ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, lowConfidence: !prev.lowConfidence }))}
-            className={LISTINGS_CHIP_ACTION}
+            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.lowConfidence ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.lowConfidence && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
           >
+            <span className={cn("inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] leading-none", filters.lowConfidence ? "border-white/70 bg-white/15 text-white" : "border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-200")}>!</span>
             Low Confidence
           </Button>
           <Button
             variant={filters.offMarket ? "default" : "outline"}
             size="sm"
             onClick={() => setFilters(prev => ({ ...prev, offMarket: !prev.offMarket }))}
-            className={LISTINGS_CHIP_ACTION}
+            className={cn(LISTINGS_CHIP_ACTION, filters.offMarket ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.offMarket && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
           >
             Off-Market
           </Button>
