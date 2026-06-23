@@ -48,22 +48,22 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="relative">
+        <Button variant="outline" size="sm" className="relative border-border/70 bg-card/85 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 active:translate-y-0">
           <Filter className="h-4 w-4 mr-2" />
           Filters
           {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+            <Badge variant="secondary" className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground p-0">
               {activeFilterCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="start">
+      <PopoverContent className="w-80 rounded-2xl border-border/70 bg-card/95 p-4 shadow-xl shadow-black/10 backdrop-blur" align="end">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium">Filter Overview Data</h4>
+            <h4 className="text-sm font-semibold tracking-tight">Filter Overview Data</h4>
             {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                 <X className="h-4 w-4 mr-1" />
                 Clear all
               </Button>

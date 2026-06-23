@@ -434,7 +434,7 @@ export default function Overview() {
 
   return (
     <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
-      <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/40 p-5 shadow-sm shadow-black/5 dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 md:p-7">
+      <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-sm shadow-black/5 dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 md:p-7">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
         <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -443,13 +443,13 @@ export default function Overview() {
               <RadioTower className="h-3.5 w-3.5" />
               Command Centre
             </div>
-            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Overview</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-base">
+            <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
               Property intake dashboard overview and key metrics
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className="bg-background/70 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/50 bg-background/55 p-2 shadow-sm shadow-black/5 backdrop-blur lg:justify-end dark:border-white/10 dark:bg-slate-950/40">
+            <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className="border-border/70 bg-card/85 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 active:translate-y-0">
               {isExporting ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -466,6 +466,7 @@ export default function Overview() {
               getPdfBlob={async () => generateOverviewSnapshotPDF(buildSnapshotData())}
               filename={`Overview_Snapshot_${new Date().toISOString().split('T')[0]}.pdf`}
               disabled={isExporting || isLoading}
+              className="border-border/70 bg-card/85 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 active:translate-y-0"
             />
             <OverviewFilters
               filters={filters}
