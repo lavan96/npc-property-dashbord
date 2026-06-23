@@ -676,6 +676,8 @@ export default function Listings() {
                   <Checkbox
                     checked={selectedListings.size === filteredListings.length && filteredListings.length > 0}
                     onCheckedChange={handleSelectAll}
+                    className={LISTING_SELECTION_CHECKBOX}
+                    aria-label="Select all listings"
                   />
                 </TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[320px]")}>Property</TableHead>
@@ -706,8 +708,8 @@ export default function Listings() {
                 >
                   <TableRow
                     className={cn(
-                      "group border-b border-border/55 bg-card/80 transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/[0.075] hover:via-primary/[0.035] hover:to-transparent dark:border-white/10 dark:bg-slate-950/55 dark:hover:from-primary/10 dark:hover:via-white/[0.035]",
-                      selectedListings.has(listing.id) && "bg-primary/[0.085] shadow-[inset_4px_0_0_hsl(var(--primary))] hover:from-primary/[0.12] dark:bg-primary/10"
+                      "group relative border-b border-border/55 bg-card/80 transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/[0.085] hover:via-primary/[0.04] hover:to-transparent hover:shadow-[inset_0_1px_0_hsl(var(--primary)/0.10),inset_0_-1px_0_hsl(var(--primary)/0.08)] focus-within:bg-primary/[0.055] dark:border-white/10 dark:bg-slate-950/55 dark:hover:from-primary/10 dark:hover:via-white/[0.035]",
+                      selectedListings.has(listing.id) && "bg-gradient-to-r from-primary/[0.13] via-primary/[0.075] to-card shadow-[inset_5px_0_0_hsl(var(--primary)),inset_0_1px_0_hsl(var(--primary)/0.18),0_10px_28px_rgba(245,158,11,0.10)] hover:from-primary/[0.16] hover:via-primary/[0.09] dark:from-primary/15 dark:via-primary/10 dark:to-slate-950/55"
                     )}
                   >
                     {/* preserve original cells */}
@@ -733,7 +735,7 @@ export default function Listings() {
                           {(listing.zipCode || extractPostcode(listing.address || '')) && ` ${listing.zipCode || extractPostcode(listing.address || '')}`}
                         </span>
                         {listing.propertyType && (
-                          <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary shadow-sm dark:border-primary/30 dark:bg-primary/10">
+                          <Badge variant="outline" className={cn(LISTING_BADGE_BASE, LISTING_PROPERTY_TYPE_BADGE)}>
                             {listing.propertyType}
                           </Badge>
                         )}
@@ -781,7 +783,7 @@ export default function Listings() {
                   <TableCell className="py-3 align-middle">
                     {listing.confidence !== undefined && listing.confidence !== null ? (
                       <div className="inline-flex rounded-full bg-background/70 p-0.5 shadow-sm ring-1 ring-border/55">
-                        <ConfidenceBadge confidence={listing.confidence} />
+                        <ConfidenceBadge confidence={listing.confidence} className={cn(LISTING_CONFIDENCE_BADGE, getListingConfidenceBadgeTone(listing.confidence))} />
                       </div>
                     ) : (
                       <span className={LISTING_MISSING_VALUE}>-</span>
@@ -813,6 +815,7 @@ export default function Listings() {
                               : undefined,
                           }}
                           permissions={{ canGenerate: canEditListings }}
+                          triggerClassName="h-9 w-9 rounded-full border border-border/70 bg-background/85 text-muted-foreground opacity-80 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:opacity-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 group-hover:opacity-100 data-[state=open]:border-primary/50 data-[state=open]:bg-primary/12 data-[state=open]:text-primary data-[state=open]:opacity-100"
                           generatePicker={
                             canEditListings
                               ? {

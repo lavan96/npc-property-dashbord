@@ -191,6 +191,12 @@ export function ReportActionMenu({
   const showListingExtras =
     surface === 'listing-row' &&
     (callbacks.onOpenDetails || callbacks.onOpenSource || callbacks.onCopyAddress);
+  const listingMenuItemClass = surface === 'listing-row'
+    ? 'min-h-9 rounded-lg text-sm font-medium transition-colors focus:bg-primary/10 focus:text-primary data-[highlighted]:bg-primary/10 data-[highlighted]:text-primary'
+    : undefined;
+  const listingMenuContentClass = surface === 'listing-row'
+    ? 'w-64 rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-[0_18px_50px_rgba(15,23,42,0.18)] backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-white/10 dark:shadow-black/40'
+    : 'w-60';
 
   const triggerEl = trigger ?? (
     <Button variant="ghost" size="icon" className={cn('h-8 w-8', triggerClassName)} aria-label={label ? `Open actions for ${label}` : 'Open report actions'}>
@@ -202,7 +208,7 @@ export function ReportActionMenu({
     <TooltipProvider delayDuration={200}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>{triggerEl}</DropdownMenuTrigger>
-        <DropdownMenuContent align={align} className="w-60">
+        <DropdownMenuContent align={align} className={listingMenuContentClass}>
           {label && (
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground truncate">
               {label}
@@ -221,13 +227,13 @@ export function ReportActionMenu({
           {hasReport && (
             <DropdownMenuGroup>
               {callbacks.onView && (
-                <DropdownMenuItem onClick={callbacks.onView}>
+                <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onView}>
                   <Eye className="h-4 w-4 mr-2" />
                   View report
                 </DropdownMenuItem>
               )}
               {callbacks.onDownload && (
-                <DropdownMenuItem onClick={callbacks.onDownload}>
+                <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onDownload}>
                   <Download className="h-4 w-4 mr-2" />
                   Download
                 </DropdownMenuItem>
@@ -241,7 +247,7 @@ export function ReportActionMenu({
           {showGenerateGroup && (
             <DropdownMenuGroup>
               {!hasReport && callbacks.onOpenGenerateModal && (
-                <DropdownMenuItem onClick={callbacks.onOpenGenerateModal}>
+                <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onOpenGenerateModal}>
                   <BarChart3 className="h-4 w-4 mr-2" />
                   Generate investment report
                 </DropdownMenuItem>
@@ -250,6 +256,7 @@ export function ReportActionMenu({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <DropdownMenuItem
+                      className={listingMenuItemClass}
                       onClick={callbacks.onRegenerate}
                       disabled={isRegenerating || isProcessing}
                     >
@@ -269,7 +276,7 @@ export function ReportActionMenu({
                 </Tooltip>
               )}
               {hasReport && callbacks.onOpenGenerateModal && (
-                <DropdownMenuItem onClick={callbacks.onOpenGenerateModal}>
+                <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onOpenGenerateModal}>
                   <Sparkles className="h-4 w-4 mr-2" />
                   Generate new report…
                 </DropdownMenuItem>
@@ -278,7 +285,7 @@ export function ReportActionMenu({
               {/* Phase B: scope + tier picker submenu */}
               {generatePicker && callbacks.onGenerateWithScope && (
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
+                  <DropdownMenuSubTrigger className={listingMenuItemClass}>
                     <Sparkles className="h-4 w-4 mr-2 text-primary" />
                     Generate with options…
                   </DropdownMenuSubTrigger>
@@ -344,13 +351,13 @@ export function ReportActionMenu({
           {/* === History / archive === */}
           {(showHistory || showArchive) && <DropdownMenuSeparator />}
           {showHistory && (
-            <DropdownMenuItem onClick={callbacks.onViewHistory}>
+            <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onViewHistory}>
               <History className="h-4 w-4 mr-2" />
               Version history
             </DropdownMenuItem>
           )}
           {showArchive && (
-            <DropdownMenuItem onClick={callbacks.onToggleArchive}>
+            <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onToggleArchive}>
               {report?.isArchived ? (
                 <>
                   <ArchiveRestore className="h-4 w-4 mr-2 text-success" />
@@ -371,19 +378,19 @@ export function ReportActionMenu({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 {callbacks.onOpenDetails && (
-                  <DropdownMenuItem onClick={callbacks.onOpenDetails}>
+                  <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onOpenDetails}>
                     <Map className="h-4 w-4 mr-2" />
                     Open details
                   </DropdownMenuItem>
                 )}
                 {callbacks.onOpenSource && (
-                  <DropdownMenuItem onClick={callbacks.onOpenSource}>
+                  <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onOpenSource}>
                     <ExternalLink className="h-4 w-4 mr-2" />
                     Open source
                   </DropdownMenuItem>
                 )}
                 {callbacks.onCopyAddress && (
-                  <DropdownMenuItem onClick={callbacks.onCopyAddress}>
+                  <DropdownMenuItem className={listingMenuItemClass} onClick={callbacks.onCopyAddress}>
                     <Copy className="h-4 w-4 mr-2" />
                     Copy address
                   </DropdownMenuItem>
