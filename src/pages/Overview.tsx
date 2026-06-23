@@ -23,6 +23,7 @@ import { propertyDataService } from '@/services/propertyDataService';
 import { chartDataService } from '@/services/chartDataService';
 import { toast } from 'sonner';
 import { generateOverviewSnapshotPDF } from '@/components/overview/OverviewSnapshotPDF';
+import { cn } from '@/lib/utils';
 import {
   BarChart,
   Bar,
@@ -872,7 +873,7 @@ export default function Overview() {
           <Button
             variant="outline"
             size="sm"
-            className="hover-scale"
+            className="rounded-full border-primary/20 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
             onClick={() => navigate('/listings')}
           >
             View All Listings
@@ -880,64 +881,101 @@ export default function Overview() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3 md:space-y-4">
-            {recentListings.map((listing, index) => (
-              <div
-                key={listing.id}
-                className="flex flex-col md:flex-row md:items-center justify-between p-3 md:p-4 border rounded-lg hover:bg-muted/50 transition-all duration-200 hover-scale gap-2"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start md:items-center gap-2 mb-1.5 md:mb-2 flex-wrap">
-                    <h4 className="font-medium text-sm md:text-base truncate">{listing.address || 'Unknown Address'}</h4>
-                    <Badge variant="outline" className="text-[10px] md:text-xs shrink-0">{listing.propertyType || 'Unknown'}</Badge>
-                    {listing.status && listing.status !== 'Available' && (
-                      <Badge variant="secondary" className="text-[10px] md:text-xs shrink-0">{listing.status}</Badge>
+            {recentListings.map((listing, index) => {
+              const confidence = listing.confidence;
+              const isHighConfidence = confidence !== undefined && confidence !== null && confidence >= 0.7;
+              const isLowConfidence = confidence !== undefined && confidence !== null && confidence < 0.5;
+
+              return (
+                <div
+                  key={listing.id}
+                  className={cn(
+                    "group relative overflow-hidden rounded-2xl border bg-card/80 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md md:p-5",
+                    isHighConfidence && "border-emerald-500/25 bg-gradient-to-br from-emerald-500/8 via-card to-card",
+                    isLowConfidence && "border-amber-500/35 bg-gradient-to-br from-amber-500/10 via-card to-card"
+                  )}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div
+                    className={cn(
+                      "absolute inset-y-0 left-0 w-1 bg-border transition-colors duration-200 group-hover:bg-primary/70",
+                      isHighConfidence && "bg-emerald-500/70",
+                      isLowConfidence && "bg-amber-500/80"
                     )}
-                    {listing.confidence !== undefined && listing.confidence !== null && (
-                      <ConfidenceBadge confidence={listing.confidence} />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm text-muted-foreground flex-wrap">
-                    {/* Suburb + Postcode */}
-                    <span className="font-medium flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {listing.suburb || 'Unknown Suburb'}
-                      {(listing.zipCode || extractPostcode(listing.address || '')) && (
-                        <span className="text-muted-foreground/70">
-                          {listing.zipCode || extractPostcode(listing.address || '')}
-                        </span>
-                      )}
-                    </span>
-                    {listing.price && listing.price > 0 && (
-                      <span className="font-semibold text-primary">{formatCurrency(listing.price)}</span>
-                    )}
-                    {listing.beds && listing.beds > 0 && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
-                    {listing.baths && listing.baths > 0 && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
-                    {listing.carSpaces && listing.carSpaces > 0 && <span>{listing.carSpaces} car</span>}
-                    {!isMobile && listing.images && listing.images.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <Image className="h-3 w-3" />
-                        <span>{listing.images.length} image{listing.images.length !== 1 ? 's' : ''}</span>
+                  />
+                  <div className="flex flex-col gap-4 pl-1 md:flex-row md:items-center md:justify-between">
+                    <div className="min-w-0 flex-1 space-y-3">
+                      <div className="flex flex-wrap items-start gap-2">
+                        <div className="min-w-0 flex-1 basis-full md:basis-auto">
+                          <h4 className="truncate text-base font-semibold leading-tight tracking-tight text-foreground md:text-lg">
+                            {listing.address || 'Unknown Address'}
+                          </h4>
+                        </div>
+                        <Badge variant="outline" className="shrink-0 rounded-full border-primary/20 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary md:text-xs">
+                          {listing.propertyType || 'Unknown'}
+                        </Badge>
+                        {listing.status && listing.status !== 'Available' && (
+                          <Badge variant="secondary" className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold md:text-xs">{listing.status}</Badge>
+                        )}
+                        {confidence !== undefined && confidence !== null && (
+                          <ConfidenceBadge
+                            confidence={confidence}
+                            className={cn(
+                              "shrink-0 rounded-full px-2.5 py-1 shadow-sm",
+                              isHighConfidence && "ring-1 ring-emerald-500/30",
+                              isLowConfidence && "ring-1 ring-amber-500/40"
+                            )}
+                          />
+                        )}
                       </div>
-                    )}
-                    {!isMobile && listing.floorplans && listing.floorplans.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        <span>{listing.floorplans.length} floorplan{listing.floorplans.length !== 1 ? 's' : ''}</span>
+
+                      <div className="grid gap-3 text-xs text-muted-foreground md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:text-sm">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <span className="inline-flex items-center gap-1.5 font-medium text-foreground/80">
+                            <MapPin className="h-3.5 w-3.5 text-primary/70" />
+                            {listing.suburb || 'Unknown Suburb'}
+                            {(listing.zipCode || extractPostcode(listing.address || '')) && (
+                              <span className="text-muted-foreground/70">
+                                {listing.zipCode || extractPostcode(listing.address || '')}
+                              </span>
+                            )}
+                          </span>
+                          {listing.beds && listing.beds > 0 && <span>{listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>}
+                          {listing.baths && listing.baths > 0 && <span>{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>}
+                          {listing.carSpaces && listing.carSpaces > 0 && <span>{listing.carSpaces} car</span>}
+                          {!isMobile && listing.images && listing.images.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Image className="h-3 w-3" />
+                              <span>{listing.images.length} image{listing.images.length !== 1 ? 's' : ''}</span>
+                            </div>
+                          )}
+                          {!isMobile && listing.floorplans && listing.floorplans.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <FileText className="h-3 w-3" />
+                              <span>{listing.floorplans.length} floorplan{listing.floorplans.length !== 1 ? 's' : ''}</span>
+                            </div>
+                          )}
+                        </div>
+                        {listing.price && listing.price > 0 && (
+                          <span className="justify-self-start rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-sm font-bold text-primary md:justify-self-end">
+                            {formatCurrency(listing.price)}
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3 text-left md:min-w-[220px] md:flex-col md:items-end md:justify-center md:border-t-0 md:border-l md:py-1 md:pl-5 md:text-right">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground md:text-[11px]">
+                        {formatDate(listing.createdAt || listing.createdTime || listing.receivedAt)}
+                      </div>
+                      <div className="max-w-[220px] truncate text-xs font-medium text-foreground/80 md:text-sm">
+                        From: {listing.source || listing.sourceHost || 'Unknown Sender'}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="text-left md:text-right flex md:flex-col items-center md:items-end gap-2 md:gap-0">
-                  <div className="text-xs md:text-sm font-medium text-foreground">
-                    {formatDate(listing.createdAt || listing.createdTime || listing.receivedAt)}
-                  </div>
-                  <div className="text-[10px] md:text-xs text-muted-foreground truncate max-w-[200px]">
-                    From: {listing.source || listing.sourceHost || 'Unknown Sender'}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
