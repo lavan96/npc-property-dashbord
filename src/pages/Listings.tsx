@@ -55,14 +55,8 @@ const LISTINGS_HEADER_ICON_ACTION = 'min-h-10 rounded-full border-border/70 bg-c
 const LISTINGS_REFRESH_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 data-[refreshing=true]:border-primary/35 data-[refreshing=true]:bg-primary/10 data-[refreshing=true]:text-primary';
 const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full border border-dashed border-border/70 bg-muted/30 px-2.5 text-sm font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]';
 const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
-const LISTINGS_TABLE_CARD = 'overflow-hidden';
-const LISTING_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-[0.02em] shadow-sm';
-const LISTING_PROPERTY_TYPE_BADGE = 'border-slate-200/80 bg-slate-50/90 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200';
-const LISTING_CONFIDENCE_BADGE = 'rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
-const getListingConfidenceBadgeTone = (confidence: number) =>
-  confidence >= 0.7
-    ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-400/30 dark:bg-teal-400/10 dark:text-teal-200'
-    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200';
+const LISTINGS_TABLE_CARD = 'overflow-hidden ring-1 ring-border/40 dark:ring-white/10';
+const LISTING_SELECTION_CHECKBOX = 'rounded-md border-border/70 bg-background/85 shadow-sm transition-all duration-200 hover:border-primary/60 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(var(--primary)/0.14),0_8px_20px_rgba(245,158,11,0.24)]';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -647,6 +641,8 @@ export default function Listings() {
                   <Checkbox
                     checked={selectedListings.size === filteredListings.length && filteredListings.length > 0}
                     onCheckedChange={handleSelectAll}
+                    className={LISTING_SELECTION_CHECKBOX}
+                    aria-label="Select all listings"
                   />
                 </TableHead>
                 <TableHead className={cn(LISTING_TABLE_HEAD, "min-w-[320px]")}>Property</TableHead>
@@ -677,16 +673,27 @@ export default function Listings() {
                 >
                   <TableRow
                     className={cn(
-                      "group border-b border-border/55 bg-card/80 transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/[0.075] hover:via-primary/[0.035] hover:to-transparent dark:border-white/10 dark:bg-slate-950/55 dark:hover:from-primary/10 dark:hover:via-white/[0.035]",
-                      selectedListings.has(listing.id) && "bg-primary/[0.085] shadow-[inset_4px_0_0_hsl(var(--primary))] hover:from-primary/[0.12] dark:bg-primary/10"
+                      "group relative border-b border-border/55 bg-card/80 transition-all duration-200 hover:bg-gradient-to-r hover:from-primary/[0.085] hover:via-primary/[0.04] hover:to-transparent hover:shadow-[inset_0_1px_0_hsl(var(--primary)/0.10),inset_0_-1px_0_hsl(var(--primary)/0.08)] focus-within:bg-primary/[0.055] dark:border-white/10 dark:bg-slate-950/55 dark:hover:from-primary/10 dark:hover:via-white/[0.035]",
+                      selectedListings.has(listing.id) && "bg-gradient-to-r from-primary/[0.13] via-primary/[0.075] to-card shadow-[inset_5px_0_0_hsl(var(--primary)),inset_0_1px_0_hsl(var(--primary)/0.18),0_10px_28px_rgba(245,158,11,0.10)] hover:from-primary/[0.16] hover:via-primary/[0.09] dark:from-primary/15 dark:via-primary/10 dark:to-slate-950/55"
                     )}
                   >
                     {/* preserve original cells */}
                   <TableCell className="py-4 pl-5 align-middle">
-                    <Checkbox
-                      checked={selectedListings.has(listing.id)}
-                      onCheckedChange={(checked) => handleSelectListing(listing.id, !!checked)}
-                    />
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "h-8 w-1 rounded-full bg-transparent transition-all duration-200 group-hover:bg-primary/35",
+                          selectedListings.has(listing.id) && "bg-primary shadow-[0_0_16px_hsl(var(--primary)/0.45)] group-hover:bg-primary"
+                        )}
+                        aria-hidden="true"
+                      />
+                      <Checkbox
+                        checked={selectedListings.has(listing.id)}
+                        onCheckedChange={(checked) => handleSelectListing(listing.id, !!checked)}
+                        className={LISTING_SELECTION_CHECKBOX}
+                        aria-label={`Select ${listing.address || listing.location || 'listing'}`}
+                      />
+                    </div>
                   </TableCell>
                   
                   <TableCell className="py-4 align-middle">
@@ -784,6 +791,7 @@ export default function Listings() {
                               : undefined,
                           }}
                           permissions={{ canGenerate: canEditListings }}
+                          triggerClassName="h-9 w-9 rounded-full border border-border/70 bg-background/85 text-muted-foreground opacity-80 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:opacity-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 group-hover:opacity-100 data-[state=open]:border-primary/50 data-[state=open]:bg-primary/12 data-[state=open]:text-primary data-[state=open]:opacity-100"
                           generatePicker={
                             canEditListings
                               ? {
