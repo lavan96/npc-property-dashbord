@@ -462,7 +462,12 @@ export async function extractPdfViaDocling(
     // source Docling document instead of empty arrays.
     const doclingExpectations = buildDoclingExpectations(doclingDoc);
     const cdirFidelity = buildCdirFidelityReport(cdir, doclingExpectations);
-    const totalPages = job.page_count ?? template.pages.length;
+    const rasterPageCount = job.result_payload?.page_raster_paths?.length ?? 0;
+    const totalPages = Math.max(
+      job.page_count ?? 0,
+      template.pages.length,
+      rasterPageCount,
+    );
 
     await invokeImport({
       operation: 'stage_artifacts',

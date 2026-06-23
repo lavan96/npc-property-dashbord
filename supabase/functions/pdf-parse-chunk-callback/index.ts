@@ -21,6 +21,7 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const CALLBACK_TOKEN = Deno.env.get('PDF_PARSE_SERVICE_TOKEN') ?? '';
 const PARSE_URL = (Deno.env.get('PDF_PARSE_SERVICE_URL') ?? '').replace(/\/$/, '');
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
+const DOCLING_PAGE_REBASE_VERSION = 'chunk-page-rebase-v1';
 
 // deno-lint-ignore no-explicit-any
 type Admin = ReturnType<typeof createClient>;
@@ -315,8 +316,10 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   let totalTables = 0;
   let totalTexts = 0;
   let pageCount = 0;
+  let maxChunkPageEnd = 0;
 
   for (const c of chunkRows as any[]) {
+    maxChunkPageEnd = Math.max(maxChunkPageEnd, Number(c.page_end ?? 0));
     const offset = c.page_start - 1;
     const ap = (c.artifact_paths ?? {}) as Record<string, string>;
     if (ap.docling_path) {
@@ -338,7 +341,10 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         for (const [k, v] of Object.entries(pages)) {
           const localNo = Number(k);
           const globalNo = localNo + offset;
-          (mergedDoc.pages as any)[String(globalNo)] = v;
+          const pageValue = v && typeof v === 'object'
+            ? { ...(v as Record<string, unknown>), page_no: globalNo }
+            : v;
+          (mergedDoc.pages as any)[String(globalNo)] = pageValue;
           if (globalNo > pageCount) pageCount = globalNo;
         }
       }
@@ -446,11 +452,22 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     : null;
 
   parentRasterManifestPages.sort((a, b) => Number(a.page_no ?? 0) - Number(b.page_no ?? 0));
+  const rasterManifestMaxPage = parentRasterManifestPages.reduce((max, page) => {
+    const pageNo = Number(page?.page_no ?? 0);
+    return Number.isFinite(pageNo) ? Math.max(max, pageNo) : max;
+  }, 0);
+  const finalPageCount = Math.max(
+    pageCount,
+    maxChunkPageEnd,
+    rasterManifestMaxPage,
+    pageRasterPaths.length,
+  );
+
   const rastersManifestPath = parentRasterManifestPages.length
     ? await uploadJson(admin, `${jobId}/rasters-manifest.json`, {
         version: 'phase3-raster-manifest-v1',
         source: 'chunk-merge',
-        page_count: parentRasterManifestPages.length,
+        page_count: finalPageCount,
         pages: parentRasterManifestPages,
         chunk_raster_manifest_paths: chunkRasterManifestPaths,
       })
@@ -479,9 +496,9 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   await admin.from('pdf_import_jobs').update({
     status: 'succeeded',
     stage: 'parsed',
-    page_count: pageCount,
-    pages_total: pageCount,
-    pages_completed: pageCount,
+    page_count: finalPageCount,
+    pages_total: finalPageCount,
+    pages_completed: finalPageCount,
     diagnostics_path: doclingPath,
     callback_received_at: new Date(finished).toISOString(),
     finished_at: new Date(finished).toISOString(),
@@ -499,11 +516,17 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       chunk_raster_manifest_paths: chunkRasterManifestPaths,
       page_raster_paths: pageRasterPaths,
       artifact_contract_version: 'raster-manifest-v1',
-      page_count: pageCount,
-      summary,
+      docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
+      page_count: finalPageCount,
+      summary: {
+        ...summary,
+        page_count: finalPageCount,
+        docling_page_count: pageCount,
+        raster_page_count: pageRasterPaths.length,
+      },
     },
   }).eq('id', jobId);
-  console.log('[chunk-callback] finalized', { jobId, pageCount, chunks: chunkRows.length });
+  console.log('[chunk-callback] finalized', { jobId, pageCount: finalPageCount, doclingPageCount: pageCount, rasterPageCount: pageRasterPaths.length, chunks: chunkRows.length });
 }
 
 Deno.serve(async (req) => {
