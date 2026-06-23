@@ -632,7 +632,8 @@ export default function Overview() {
                     dataKey="count"
                     stroke="hsl(var(--card))"
                     strokeWidth={2}
-                    activeShape={{ outerRadius: isMobile ? 76 : 108 }}
+                    activeShape={{ outerRadius: isMobile ? 76 : 108 } as any}
+
                   >
                     {propertyTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
