@@ -51,6 +51,14 @@ const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-car
 const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60';
 const LISTINGS_CHIP_INACTIVE = 'border-border/70 bg-background/80 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-50/70 hover:text-amber-700 dark:border-white/10 dark:bg-slate-950/45 dark:hover:bg-amber-400/10 dark:hover:text-amber-200';
 const LISTINGS_CHIP_ACTIVE = 'border-amber-400/70 bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-[0_10px_24px_rgba(245,158,11,0.28)] hover:-translate-y-0.5 hover:from-amber-500 hover:to-amber-400 hover:text-white dark:border-amber-300/60';
+const LISTINGS_HEADER_ICON_ACTION = LISTINGS_SECONDARY_ACTION;
+const LISTINGS_REFRESH_ACTION = LISTINGS_SECONDARY_ACTION;
+const LISTINGS_TABLE_CARD = 'overflow-hidden rounded-[1.65rem] border-border/70 bg-gradient-to-br from-card/95 via-card/90 to-muted/20 shadow-[0_20px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/[0.03] dark:border-white/10 dark:from-slate-950/90 dark:via-slate-950/80 dark:to-slate-900/40 dark:ring-white/[0.04]';
+const LISTINGS_TABLE_SCROLL = 'overflow-x-auto bg-gradient-to-b from-background/70 to-card/80';
+const LISTINGS_TABLE = 'min-w-[1180px] border-separate border-spacing-0';
+const LISTINGS_TABLE_HEADER = 'sticky top-0 z-10 bg-gradient-to-r from-slate-100/95 via-muted/95 to-slate-100/95 shadow-[inset_0_-1px_0_hsl(var(--border)),0_8px_20px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-muted/85 dark:from-slate-900/95 dark:via-slate-900/90 dark:to-slate-900/95 dark:shadow-[inset_0_-1px_0_rgba(255,255,255,0.10),0_10px_24px_rgba(0,0,0,0.24)]';
+const LISTINGS_TABLE_HEAD = 'h-14 whitespace-nowrap px-5 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300';
+const LISTINGS_TABLE_CELL = 'px-5 py-4';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -622,26 +630,26 @@ export default function Listings() {
           )}
         </div>
       ) : (
-        <Card className={`${LISTINGS_CARD_SURFACE} overflow-hidden`}>
+        <Card className={cn(LISTINGS_CARD_SURFACE, LISTINGS_TABLE_CARD)}>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-            <Table>
-            <TableHeader className="bg-muted/35 dark:bg-white/[0.03]">
-              <TableRow className="border-border/70 hover:bg-transparent">
-                <TableHead className="w-12">
+            <div className={LISTINGS_TABLE_SCROLL}>
+            <Table className={LISTINGS_TABLE}>
+            <TableHeader className={LISTINGS_TABLE_HEADER}>
+              <TableRow className="border-b border-border/80 hover:bg-transparent dark:border-white/10">
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "w-14 pl-6 pr-3")}>
                   <Checkbox
                     checked={selectedListings.size === filteredListings.length && filteredListings.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Beds/Baths/Cars</TableHead>
-                <TableHead>Inspection</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Confidence</TableHead>
-                <TableHead>Received</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[320px]")}>Property</TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[140px]")}>Price</TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[170px]")}>Beds/Baths/Cars</TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[190px]")}>Inspection</TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[180px]")}>Source</TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[145px]")}>Confidence</TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "min-w-[190px]")}>Received</TableHead>
+                <TableHead className={cn(LISTINGS_TABLE_HEAD, "w-16 pr-6 text-right")}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -660,18 +668,18 @@ export default function Listings() {
                   onCopyAddress={() => copyToClipboard(buildFullAddress(listing), 'Full address')}
                   onOpenSource={listing.url ? () => openSourceUrl(listing.url!) : undefined}
                 >
-                  <TableRow className="border-border/60 transition-colors hover:bg-primary/[0.045] dark:border-white/10 dark:hover:bg-white/[0.04]">
+                  <TableRow className="border-border/55 bg-card/40 transition-colors hover:bg-primary/[0.045] dark:border-white/10 dark:bg-slate-950/30 dark:hover:bg-white/[0.04]">
                     {/* preserve original cells */}
-                  <TableCell>
+                  <TableCell className="pl-6 pr-3">
                     <Checkbox
                       checked={selectedListings.has(listing.id)}
                       onCheckedChange={(checked) => handleSelectListing(listing.id, !!checked)}
                     />
                   </TableCell>
                   
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{listing.address || 'Unknown Address'}</div>
+                  <TableCell className={cn(LISTINGS_TABLE_CELL, "min-w-[320px]")}>
+                    <div className="space-y-1">
+                      <div className="font-semibold leading-5 text-foreground">{listing.address || 'Unknown Address'}</div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>
                           {listing.suburb || 'Unknown Suburb'}
@@ -687,12 +695,12 @@ export default function Listings() {
                     </div>
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className={cn(LISTINGS_TABLE_CELL, "font-semibold tabular-nums text-foreground")}>
                     {listing.price && listing.price > 0 ? formatCurrency(listing.price) : '-'}
                   </TableCell>
                   
-                  <TableCell>
-                    <div className="flex items-center gap-3 text-sm">
+                  <TableCell className={LISTINGS_TABLE_CELL}>
+                    <div className="flex items-center gap-3 text-sm tabular-nums">
                       <div className="flex items-center gap-1">
                         <Bed className="h-3 w-3 text-muted-foreground" />
                         <span>{listing.beds && listing.beds > 0 ? listing.beds : '-'}</span>
@@ -708,7 +716,7 @@ export default function Listings() {
                     </div>
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className={LISTINGS_TABLE_CELL}>
                     {listing.inspectionStart ? (
                       <div className="text-sm">{formatDate(listing.inspectionStart)}</div>
                     ) : (
@@ -716,11 +724,11 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell>
-                    <div className="text-sm">{listing.agencyName || 'Unknown Agency'}</div>
+                  <TableCell className={LISTINGS_TABLE_CELL}>
+                    <div className="text-sm font-medium text-foreground/90">{listing.agencyName || 'Unknown Agency'}</div>
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className={LISTINGS_TABLE_CELL}>
                     {listing.confidence !== undefined && listing.confidence !== null ? (
                       <ConfidenceBadge confidence={listing.confidence} />
                     ) : (
@@ -728,7 +736,7 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className={cn(LISTINGS_TABLE_CELL, "tabular-nums")}>
                     {listing.receivedAt ? (
                       <div className="text-sm">{formatDate(listing.receivedAt)}</div>
                     ) : (
@@ -736,7 +744,7 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className="pl-3 pr-6 text-right">
                     {(() => {
                       const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
                       return (
