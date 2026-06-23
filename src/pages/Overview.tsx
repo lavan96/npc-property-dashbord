@@ -49,6 +49,8 @@ const COLORS = [
 const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] px-3 pb-8 pt-2 sm:px-5 lg:px-8';
 const SECTION_SURFACE = 'rounded-[1.75rem] border border-border/60 bg-card/55 p-4 shadow-sm shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-card/45 md:p-6 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30';
 const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-sm shadow-black/5 transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
+const EXECUTIVE_KPI_CARD = 'group relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:text-3xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-10 [&_.dashboard-kpi-title+div]:w-10 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
+const EXECUTIVE_KPI_WARNING_CARD = 'border-amber-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-amber-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-amber-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-amber-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-amber-300/15 [&_.dashboard-kpi-title]:text-amber-900/80 dark:[&_.dashboard-kpi-title]:text-amber-100/80 [&_.dashboard-kpi-title+div]:border-amber-400/35 [&_.dashboard-kpi-title+div]:bg-amber-500/15 [&_.dashboard-kpi-title+div]:text-amber-600 dark:[&_.dashboard-kpi-title+div]:text-amber-300';
 const CHART_CARD = `${PREMIUM_CARD} hover-scale overflow-hidden`;
 
 function OverviewSection({
@@ -479,20 +481,20 @@ export default function Overview() {
 
       <OverviewSection eyebrow="Executive snapshot" title="Intake performance" description="Headline operating metrics for the filtered property pipeline." icon={<Activity className="h-4 w-4" />} accent>
         {/* KPI Cards */}
-        <div className="grid gap-3 md:gap-5 grid-cols-2 lg:grid-cols-4 animate-fade-in">
-          <KPICard title="New This Week" value={kpis.newThisWeek} icon={<TrendingUp className="h-4 w-4" />} description="Properties received in last 7 days" className={PREMIUM_CARD} />
-          <KPICard title="With Inspections" value={kpis.withInspections} icon={<Calendar className="h-4 w-4" />} description="Properties with scheduled inspections" className={PREMIUM_CARD} />
-          <KPICard title="Needs Review" value={kpis.needsReview} icon={<AlertTriangle className="h-4 w-4" />} description="Low confidence (<0.7) properties" className={PREMIUM_CARD} />
-          <KPICard title="Average Price" value={formatCurrency(kpis.averagePrice)} icon={<DollarSign className="h-4 w-4" />} description="Last 30 days" className={PREMIUM_CARD} />
+        <div className="grid grid-cols-1 gap-3 animate-fade-in sm:grid-cols-2 md:gap-5 xl:grid-cols-4">
+          <KPICard title="New This Week" value={kpis.newThisWeek} icon={<TrendingUp className="h-4 w-4" />} description="Properties received in last 7 days" className={EXECUTIVE_KPI_CARD} />
+          <KPICard title="With Inspections" value={kpis.withInspections} icon={<Calendar className="h-4 w-4" />} description="Properties with scheduled inspections" className={EXECUTIVE_KPI_CARD} />
+          <KPICard title="Needs Review" value={kpis.needsReview} icon={<AlertTriangle className="h-4 w-4" />} description="Low confidence (<0.7) properties" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
+          <KPICard title="Average Price" value={formatCurrency(kpis.averagePrice)} icon={<DollarSign className="h-4 w-4" />} description="Last 30 days" className={EXECUTIVE_KPI_CARD} />
         </div>
 
         {/* Content Statistics */}
-        <div className="mt-4 grid gap-3 border-t border-border/60 pt-4 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 lg:grid-cols-5">
-          <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={PREMIUM_CARD} />
-          <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={PREMIUM_CARD} />
-          <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={PREMIUM_CARD} />
-          <KPICard title="With Key Entities" value={contentStats.withKeyEntities} icon={<Tag className="h-4 w-4" />} description="Properties with extracted entities" className={PREMIUM_CARD} />
-          <KPICard title="Email Sources" value={contentStats.emailSources} icon={<Ruler className="h-4 w-4" />} description="Properties from email sources" className={PREMIUM_CARD} />
+        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-border/60 pt-4 sm:grid-cols-2 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 2xl:grid-cols-5">
+          <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
+          <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
+          <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
+          <KPICard title="With Key Entities" value={contentStats.withKeyEntities} icon={<Tag className="h-4 w-4" />} description="Properties with extracted entities" className={`${EXECUTIVE_KPI_CARD} ${EXECUTIVE_KPI_WARNING_CARD}`} />
+          <KPICard title="Email Sources" value={contentStats.emailSources} icon={<Ruler className="h-4 w-4" />} description="Properties from email sources" className={EXECUTIVE_KPI_CARD} />
         </div>
       </OverviewSection>
 
