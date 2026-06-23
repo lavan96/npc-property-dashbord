@@ -1059,3 +1059,102 @@ html {
 :root.finance-density-compact .finance-portal-shell [data-card-content] {
   padding: 0.75rem 1rem;
 }
+
+@layer components {
+  .dashboard-sidebar-content {
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+  }
+
+  .dashboard-sidebar-content::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .dashboard-sidebar-content::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: hsl(var(--sidebar-foreground) / 0.16);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .dashboard-sidebar-nav {
+    @apply flex min-h-0 flex-1 flex-col gap-2 pb-4;
+  }
+
+  .dashboard-sidebar-group {
+    @apply px-1.5 py-1;
+  }
+
+  .dashboard-sidebar-group-collapsed {
+    @apply px-0.5 py-1.5;
+  }
+
+  .dashboard-sidebar-group-trigger {
+    @apply flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.16em] transition-all duration-200;
+    color: hsl(var(--sidebar-foreground) / 0.62);
+  }
+
+  .dashboard-sidebar-group-trigger:hover {
+    background-color: hsl(var(--dashboard-primary-soft) / 0.42);
+    color: hsl(var(--sidebar-foreground));
+  }
+
+  .dashboard-sidebar-group-trigger-active {
+    color: hsl(var(--primary));
+  }
+
+  .dashboard-sidebar-menu-button {
+    @apply min-w-0;
+  }
+
+  .dashboard-sidebar-menu-button:hover {
+    background-color: hsl(var(--dashboard-primary-soft) / 0.62);
+  }
+
+  .dashboard-sidebar-menu-button-active {
+    position: relative;
+    border-color: hsl(var(--primary) / 0.34);
+    background: linear-gradient(90deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary) / 0.86));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 16px 32px -22px hsl(var(--primary) / 0.95);
+  }
+
+  .dashboard-sidebar-menu-button-active::before {
+    content: "";
+    @apply absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full;
+    background-color: hsl(var(--primary-foreground) / 0.92);
+  }
+
+  .dashboard-sidebar-menu-button-active svg {
+    color: hsl(var(--primary-foreground));
+  }
+
+  .dashboard-sidebar-admin-divider {
+    @apply mt-2 pt-3;
+    border-top: 1px solid hsl(var(--sidebar-border) / 0.9);
+  }
+
+  .dashboard-sidebar-admin-group {
+    @apply rounded-2xl border px-1.5 py-2;
+    border-color: hsl(var(--warning, var(--primary)) / 0.2);
+    background: linear-gradient(180deg, hsl(var(--warning-light, var(--dashboard-primary-soft)) / 0.36), transparent 72%);
+  }
+
+  .dashboard-sidebar-admin-group-collapsed {
+    @apply rounded-2xl border px-0.5 py-2;
+    border-color: hsl(var(--warning, var(--primary)) / 0.18);
+    background-color: hsl(var(--warning-light, var(--dashboard-primary-soft)) / 0.24);
+  }
+
+  .dashboard-sidebar-admin-trigger {
+    color: hsl(var(--warning, var(--primary)) / 0.96);
+  }
+
+  .dashboard-sidebar-menu-button-admin:hover {
+    background-color: hsl(var(--warning-light, var(--dashboard-primary-soft)) / 0.58);
+  }
+
+  .dashboard-sidebar-menu-button-admin.dashboard-sidebar-menu-button-active {
+    background: linear-gradient(90deg, hsl(var(--warning, var(--primary)) / 0.95), hsl(var(--primary) / 0.82));
+  }
+}
