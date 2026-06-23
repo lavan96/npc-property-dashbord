@@ -57,7 +57,7 @@ export function PropertyCard({
   return (
     <Card 
       className={cn(
-        "transition-all duration-200 active:scale-[0.98]",
+        "transition-all duration-200 active:scale-[0.98] focus-within:ring-2 focus-within:ring-primary/35",
         isSelected && "ring-2 ring-primary"
       )}
     >
@@ -67,10 +67,11 @@ export function PropertyCard({
           <Checkbox
             checked={isSelected}
             onCheckedChange={onSelect}
-            className="mt-1"
+            className="mt-1 h-5 w-5 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+            aria-label={`Select ${listing.address || listing.location || 'listing'}`}
           />
           
-          <div className="flex-1 min-w-0" onClick={onOpenDetails}>
+          <button type="button" className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2" onClick={onOpenDetails}>
             <h3 className="font-medium text-sm leading-tight truncate">
               {listing.address || 'Unknown Address'}
             </h3>
@@ -87,31 +88,32 @@ export function PropertyCard({
                 </Badge>
               )}
             </div>
-          </div>
+          </button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+              <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+                aria-label={`Open actions for ${listing.address || listing.location || 'listing'}`}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onOpenDetails}>
+              <DropdownMenuItem onClick={onOpenDetails} className="min-h-10 focus:bg-accent focus:text-accent-foreground">
                 Open Details
               </DropdownMenuItem>
               {listing.url && onOpenSource && (
-                <DropdownMenuItem onClick={onOpenSource}>
+                <DropdownMenuItem onClick={onOpenSource} className="min-h-10 focus:bg-accent focus:text-accent-foreground">
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Open Source
                 </DropdownMenuItem>
               )}
               {listing.address && (
-                <DropdownMenuItem onClick={onCopyAddress}>
+                <DropdownMenuItem onClick={onCopyAddress} className="min-h-10 focus:bg-accent focus:text-accent-foreground">
                   <Copy className="h-4 w-4 mr-2" />
                   Copy Address
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={onOpenInvestmentReport}>
+              <DropdownMenuItem onClick={onOpenInvestmentReport} className="min-h-10 focus:bg-accent focus:text-accent-foreground">
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Investment Report
               </DropdownMenuItem>
@@ -130,7 +132,7 @@ export function PropertyCard({
         </div>
 
         {/* Property Details Row */}
-        <div className="flex items-center gap-4 mt-3 text-sm">
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm sm:gap-4">
           <div className="flex items-center gap-1.5">
             <Bed className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{listing.beds || '-'}</span>
@@ -153,8 +155,8 @@ export function PropertyCard({
         </div>
 
         {/* Footer: Agency + Inspection */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-          <span className="text-xs text-muted-foreground truncate max-w-[50%]">
+        <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-xs text-muted-foreground max-w-full truncate sm:max-w-[50%]">
             {listing.agencyName || 'Unknown Agency'}
           </span>
           
