@@ -100,6 +100,7 @@ async function redispatchChunk(admin: Admin, chunk: ChunkRow): Promise<{ ok: boo
   const rp = ((job as any)?.request_payload ?? {}) as Record<string, unknown>;
   const plan = ((job as any)?.plan_payload ?? {}) as Record<string, unknown>;
   const mode = String(plan.dispatch_effective_mode ?? (job as any)?.mode ?? 'semantic');
+  const selectedLane = String(plan.selected_lane ?? plan.recommended_lane ?? 'unplanned');
   const nextAttempts = Number(chunk.attempts ?? 0) + 1;
 
   await admin
@@ -123,6 +124,7 @@ async function redispatchChunk(admin: Admin, chunk: ChunkRow): Promise<{ ok: boo
     page_end: chunk.page_end,
     url: signedUrl,
     mode,
+    extractor_lane: selectedLane,
     callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-chunk-callback`,
     callback_token: PARSE_TOKEN,
     enable_picture_description: rp.description_tier !== 'off' && plan.requires_picture_description === true,

@@ -523,6 +523,7 @@ async function dispatchChunkToSidecar(
   chunk: { id: string; chunk_index: number; page_start: number; page_end: number; attempts: number },
   signedUrl: string,
   mode: string,
+  extractorLane: string,
   requestPayload: Record<string, unknown>,
 ): Promise<boolean> {
   await admin.from('pdf_import_chunks').update({
@@ -538,6 +539,7 @@ async function dispatchChunkToSidecar(
     page_end: chunk.page_end,
     url: signedUrl,
     mode,
+    extractor_lane: extractorLane,
     callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-chunk-callback`,
     callback_token: PARSE_TOKEN,
     enable_picture_description: requestPayload?.description_tier !== 'off',
@@ -584,6 +586,7 @@ async function runChunkedDispatch(
   jobId: string,
   signedUrl: string,
   mode: string,
+  extractorLane: string,
   pageCount: number,
   ocrHint: boolean,
   requestPayload: Record<string, unknown>,
@@ -615,7 +618,7 @@ async function runChunkedDispatch(
   }
   // Dispatch in chunk_index order. Sidecar runs concurrently; Cloud Run scales.
   for (const c of chunkRows as any[]) {
-    await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, requestPayload);
+    await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, extractorLane, requestPayload);
   }
 }
 
@@ -706,7 +709,7 @@ async function runJob(
         requires_ocr: plan.requires_ocr,
         requires_picture_description: plan.requires_picture_description,
       });
-      await runChunkedDispatch(admin, jobId, signedUrl, effectiveMode, plan.page_count, plan.ocr_hint, requestPayload, selectedChunkSize);
+      await runChunkedDispatch(admin, jobId, signedUrl, effectiveMode, selectedLane, plan.page_count, plan.ocr_hint, requestPayload, selectedChunkSize);
       await updateJob(admin, jobId, { bytes_in: bytesIn });
       chunkedRan = true;
       return;
@@ -728,6 +731,7 @@ async function runJob(
       callback_token: PARSE_TOKEN,
       job_id: jobId,
       mode: effectiveMode,
+      extractor_lane: selectedLane,
       raster_dpi: rasterDpi,
       raster_format: 'png',
       allow_mode_override: allowModeOverride,
@@ -877,7 +881,7 @@ async function recoverStuckJobs(admin: Admin): Promise<{ requeued: number; faile
         results.push({ job_id: jobId, action: 'fatal_max_attempts' });
         continue;
       }
-      const ok = await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, requestPayload);
+      const ok = await dispatchChunkToSidecar(admin, jobId, c, signedUrl, mode, 'unplanned', requestPayload);
       results.push({ job_id: jobId, action: ok ? 'redispatched' : 'redispatch_failed' });
       if (ok) requeued++;
       else failed++;
