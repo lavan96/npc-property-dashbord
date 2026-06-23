@@ -491,15 +491,20 @@ async function callSidecarPlan(signedUrl: string, jobId: string): Promise<PlanRe
   }
 }
 
-function planChunks(pageCount: number, ocrHint: boolean): Array<{ page_start: number; page_end: number }> {
+function planChunks(pageCount: number, ocrHint: boolean, preferredChunkSize?: number | null): Array<{ page_start: number; page_end: number }> {
   if (pageCount <= 0) return [];
-  let size = pageCount <= CHUNK_MONOLITHIC_MAX
-    ? pageCount
-    : pageCount <= 60
-      ? CHUNK_SIZE_MEDIUM
-      : CHUNK_SIZE_LARGE;
-  // OCR-heavy PDFs: halve the chunk size to keep memory + runtime per request safe.
-  if (ocrHint && size > 2) size = Math.max(2, Math.floor(size / 2));
+
+  let size = preferredChunkSize && Number.isFinite(preferredChunkSize)
+    ? Math.max(1, Math.min(50, Math.floor(preferredChunkSize)))
+    : pageCount <= CHUNK_MONOLITHIC_MAX
+      ? pageCount
+      : pageCount <= 60
+        ? CHUNK_SIZE_MEDIUM
+        : CHUNK_SIZE_LARGE;
+
+  // OCR-heavy PDFs: halve only when /plan did not already provide a chunk size.
+  if (!preferredChunkSize && ocrHint && size > 2) size = Math.max(2, Math.floor(size / 2));
+
   const ranges: Array<{ page_start: number; page_end: number }> = [];
   for (let s = 1; s <= pageCount; s += size) {
     ranges.push({ page_start: s, page_end: Math.min(pageCount, s + size - 1) });
@@ -577,8 +582,9 @@ async function runChunkedDispatch(
   pageCount: number,
   ocrHint: boolean,
   requestPayload: Record<string, unknown>,
+  preferredChunkSize?: number | null,
 ): Promise<void> {
-  const ranges = planChunks(pageCount, ocrHint);
+  const ranges = planChunks(pageCount, ocrHint, preferredChunkSize);
   if (!ranges.length) {
     throw new Error(`chunk plan produced no ranges (pageCount=${pageCount})`);
   }
@@ -647,15 +653,35 @@ async function runJob(
       .eq('id', jobId)
       .maybeSingle()).data?.request_payload ?? {}) as Record<string, unknown>;
 
-    // ---- Wave G: planning (page count + OCR hint) --------------------------
+    // ---- Phase 2B: planning lane contract ---------------------------------
     await setStage(admin, jobId, 'planning');
-    const plan = await callSidecarPlan(signedUrl, jobId);
-    const planRecord: Record<string, unknown> = plan ?? {};
-    if (source) planRecord.source = source;
+    const plan = await callSidecarPlan(signedUrl, jobId, mode, requestPayload);
+
+    const allowModeOverride = requestPayload?.allow_mode_override !== false;
+    const plannedModeRaw = typeof plan?.recommended_mode === 'string' ? plan.recommended_mode : null;
+    const plannedMode = plannedModeRaw === 'pixel-perfect' ? 'pixel_perfect' : plannedModeRaw;
+    const effectiveMode = allowModeOverride && plannedMode ? plannedMode : mode;
+
+    const selectedLane = typeof plan?.recommended_lane === 'string' ? plan.recommended_lane : 'unplanned';
+    const chunkSizeRaw = Number(plan?.recommended_chunk_size ?? 0);
+    const selectedChunkSize = Number.isFinite(chunkSizeRaw) && chunkSizeRaw > 0
+      ? Math.max(1, Math.min(50, Math.floor(chunkSizeRaw)))
+      : null;
+
+    const planRecord: Record<string, unknown> = {
+      ...(plan ?? {}),
+      source,
+      selected_lane: selectedLane,
+      requested_mode: mode,
+      dispatch_effective_mode: effectiveMode,
+      dispatch_selected_chunk_size: selectedChunkSize,
+      dispatch_allow_mode_override: allowModeOverride,
+    };
     await updateJob(admin, jobId, { plan_payload: planRecord });
 
     const forceChunked = requestPayload?.force_chunked === true;
-    const useChunked = forceChunked || (plan && plan.page_count > CHUNK_MONOLITHIC_MAX);
+    const planRequestsChunking = Boolean(plan && selectedChunkSize && selectedChunkSize < plan.page_count);
+    const useChunked = Boolean(plan && (forceChunked || plan.page_count > CHUNK_MONOLITHIC_MAX || planRequestsChunking));
 
     if (useChunked && plan) {
       // ---- Chunked path -----------------------------------------------------
@@ -665,8 +691,17 @@ async function runJob(
         kind: 'chunked_plan',
         page_count: plan.page_count,
         ocr_hint: plan.ocr_hint,
+        selected_lane: selectedLane,
+        requested_mode: mode,
+        effective_mode: effectiveMode,
+        recommended_mode: plan.recommended_mode,
+        recommended_chunk_size: plan.recommended_chunk_size,
+        selected_chunk_size: selectedChunkSize,
+        requires_raster: plan.requires_raster,
+        requires_ocr: plan.requires_ocr,
+        requires_picture_description: plan.requires_picture_description,
       });
-      await runChunkedDispatch(admin, jobId, signedUrl, mode, plan.page_count, plan.ocr_hint, requestPayload);
+      await runChunkedDispatch(admin, jobId, signedUrl, effectiveMode, plan.page_count, plan.ocr_hint, requestPayload, selectedChunkSize);
       await updateJob(admin, jobId, { bytes_in: bytesIn });
       chunkedRan = true;
       return;
@@ -676,8 +711,8 @@ async function runJob(
     await setStage(admin, jobId, 'parsing');
     const descriptionTier = (requestPayload?.description_tier as string) ?? 'on';
     const includeMarkdown = requestPayload?.include_markdown === false ? false : true;
-    const allowModeOverride = requestPayload?.allow_mode_override !== false;
-    const rasterDpi = (mode === 'pixel_perfect' || mode === 'pixel-perfect') ? 200 : 144;
+    const enablePictureDescription = descriptionTier !== 'off' && (!plan || plan.requires_picture_description === true);
+    const rasterDpi = (effectiveMode === 'pixel_perfect' || effectiveMode === 'pixel-perfect') ? 200 : 144;
 
     const parseBody: Record<string, unknown> = {
       url: signedUrl,
@@ -687,12 +722,12 @@ async function runJob(
       callback_url: `${SUPABASE_URL}/functions/v1/pdf-parse-callback`,
       callback_token: PARSE_TOKEN,
       job_id: jobId,
-      mode,
+      mode: effectiveMode,
       raster_dpi: rasterDpi,
       raster_format: 'png',
       allow_mode_override: allowModeOverride,
     };
-    if (descriptionTier !== 'off') parseBody.enable_picture_description = true;
+    if (enablePictureDescription) parseBody.enable_picture_description = true;
 
     const TRANSIENT = new Set([408, 429, 500, 502, 503, 504, 522, 524]);
     let dispatched = false;
@@ -711,7 +746,7 @@ async function runJob(
         });
         const text = await parseRes.text().catch(() => '');
         if (parseRes.status === 202) {
-          await appendAttempt(admin, jobId, { endpoint: '/parse', attempt, status: 202, ok: true, duration_ms: Date.now() - attemptStarted, mode: 'callback' });
+          await appendAttempt(admin, jobId, { endpoint: '/parse', attempt, status: 202, ok: true, duration_ms: Date.now() - attemptStarted, mode: 'callback', selected_lane: selectedLane, requested_mode: mode, effective_mode: effectiveMode });
           dispatched = true;
           break;
         }
