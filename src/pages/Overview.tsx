@@ -839,7 +839,7 @@ export default function Overview() {
                     labelFormatter={(value) => `Source: ${value}`}
                     contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.teal} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] }} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.teal} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] } as any} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
