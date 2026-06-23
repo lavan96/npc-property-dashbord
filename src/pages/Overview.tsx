@@ -595,7 +595,7 @@ export default function Overview() {
                   <Tooltip
                     contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.brand} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.positive, radius: [8, 8, 0, 0] }} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.brand} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.positive, radius: [8, 8, 0, 0] } as any} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -632,7 +632,8 @@ export default function Overview() {
                     dataKey="count"
                     stroke="hsl(var(--card))"
                     strokeWidth={2}
-                    activeShape={{ outerRadius: isMobile ? 76 : 108 }}
+                    activeShape={{ outerRadius: isMobile ? 76 : 108 } as any}
+
                   >
                     {propertyTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -754,7 +755,7 @@ export default function Overview() {
                     dataKey="count"
                     stroke="hsl(var(--card))"
                     strokeWidth={2}
-                    activeShape={{ outerRadius: isMobile ? 76 : 108 }}
+                    activeShape={{ outerRadius: isMobile ? 76 : 108 } as any}
                   >
                     {categoryData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -838,7 +839,7 @@ export default function Overview() {
                     labelFormatter={(value) => `Source: ${value}`}
                     contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.teal} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] }} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.teal} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] } as any} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -869,7 +870,7 @@ export default function Overview() {
                     labelFormatter={(value) => `Agency: ${value}`}
                     contentStyle={premiumTooltipStyle}
                   />
-                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.neutral} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] }} />
+                  <Bar dataKey="count" fill={OVERVIEW_CHART_COLORS.neutral} radius={[8, 8, 0, 0]} activeBar={{ fill: OVERVIEW_CHART_COLORS.brand, radius: [8, 8, 0, 0] } as any} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
