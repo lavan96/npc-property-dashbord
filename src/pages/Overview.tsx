@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { ReactNode, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler, Download, MapPin, RefreshCw } from 'lucide-react';
+import { Building2, Calendar, AlertTriangle, DollarSign, TrendingUp, Image, FileText, Tag, Ruler, Download, MapPin, RefreshCw, ShieldCheck, Activity, Database, BarChart3, RadioTower } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +45,54 @@ const COLORS = [
   'hsl(var(--chart-7))', 'hsl(var(--chart-8))', 'hsl(var(--chart-9))', 
   'hsl(var(--chart-10))'
 ];
+
+const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] px-3 pb-8 pt-2 sm:px-5 lg:px-8';
+const SECTION_SURFACE = 'rounded-[1.75rem] border border-border/60 bg-card/55 p-4 shadow-sm shadow-black/5 backdrop-blur supports-[backdrop-filter]:bg-card/45 md:p-6 dark:border-white/10 dark:bg-slate-950/30 dark:shadow-black/30';
+const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-sm shadow-black/5 transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
+const CHART_CARD = `${PREMIUM_CARD} hover-scale overflow-hidden`;
+
+function OverviewSection({
+  eyebrow,
+  title,
+  description,
+  icon,
+  accent = false,
+  children,
+  className = '',
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  icon?: ReactNode;
+  accent?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`${SECTION_SURFACE} ${accent ? 'border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-card/70 to-card dark:from-amber-400/10 dark:via-slate-950/40 dark:to-slate-950/70' : ''} ${className}`}>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-5">
+        <div className="max-w-3xl">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            <span className={`h-1.5 w-1.5 rounded-full ${accent ? 'bg-amber-500 shadow-[0_0_14px_rgba(245,158,11,0.65)]' : 'bg-primary'}`} />
+            {eyebrow}
+          </div>
+          <div className="flex items-center gap-3">
+            {icon && (
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${accent ? 'border-amber-400/30 bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'border-primary/20 bg-primary/10 text-primary'}`}>
+                {icon}
+              </div>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">{title}</h2>
+              {description && <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>}
+            </div>
+          </div>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function Overview() {
   const { canEdit: canEditOverview } = useModulePermissions('overview');
@@ -385,123 +433,90 @@ export default function Overview() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            Property intake dashboard overview and key metrics
-          </p>
+    <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
+      <div className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/40 p-5 shadow-sm shadow-black/5 dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 md:p-7">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+              <RadioTower className="h-3.5 w-3.5" />
+              Command Centre
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Overview</h1>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-base">
+              Property intake dashboard overview and key metrics
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className="bg-background/70 backdrop-blur">
+              {isExporting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Snapshot
+                </>
+              )}
+            </Button>
+            <FlattenPdfIconButton
+              getPdfBlob={async () => generateOverviewSnapshotPDF(buildSnapshotData())}
+              filename={`Overview_Snapshot_${new Date().toISOString().split('T')[0]}.pdf`}
+              disabled={isExporting || isLoading}
+            />
+            <OverviewFilters
+              filters={filters}
+              setFilters={setFilters}
+              uniqueValues={uniqueValues}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading}>
-            {isExporting ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4 mr-2" />
-                Export Snapshot
-              </>
-            )}
-          </Button>
-          <FlattenPdfIconButton
-            getPdfBlob={async () => generateOverviewSnapshotPDF(buildSnapshotData())}
-            filename={`Overview_Snapshot_${new Date().toISOString().split('T')[0]}.pdf`}
-            disabled={isExporting || isLoading}
-          />
-          <OverviewFilters 
-            filters={filters}
-            setFilters={setFilters}
-            uniqueValues={uniqueValues}
-          />
+      </div>
+
+      <OverviewSection eyebrow="Executive snapshot" title="Intake performance" description="Headline operating metrics for the filtered property pipeline." icon={<Activity className="h-4 w-4" />} accent>
+        {/* KPI Cards */}
+        <div className="grid gap-3 md:gap-5 grid-cols-2 lg:grid-cols-4 animate-fade-in">
+          <KPICard title="New This Week" value={kpis.newThisWeek} icon={<TrendingUp className="h-4 w-4" />} description="Properties received in last 7 days" className={PREMIUM_CARD} />
+          <KPICard title="With Inspections" value={kpis.withInspections} icon={<Calendar className="h-4 w-4" />} description="Properties with scheduled inspections" className={PREMIUM_CARD} />
+          <KPICard title="Needs Review" value={kpis.needsReview} icon={<AlertTriangle className="h-4 w-4" />} description="Low confidence (<0.7) properties" className={PREMIUM_CARD} />
+          <KPICard title="Average Price" value={formatCurrency(kpis.averagePrice)} icon={<DollarSign className="h-4 w-4" />} description="Last 30 days" className={PREMIUM_CARD} />
         </div>
-      </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-3 md:gap-6 grid-cols-2 lg:grid-cols-4 animate-fade-in">
-        <KPICard
-          title="New This Week"
-          value={kpis.newThisWeek}
-          icon={<TrendingUp className="h-4 w-4" />}
-          description="Properties received in last 7 days"
-        />
-        <KPICard
-          title="With Inspections"
-          value={kpis.withInspections}
-          icon={<Calendar className="h-4 w-4" />}
-          description="Properties with scheduled inspections"
-        />
-        <KPICard
-          title="Needs Review"
-          value={kpis.needsReview}
-          icon={<AlertTriangle className="h-4 w-4" />}
-          description="Low confidence (<0.7) properties"
-        />
-        <KPICard
-          title="Average Price"
-          value={formatCurrency(kpis.averagePrice)}
-          icon={<DollarSign className="h-4 w-4" />}
-          description="Last 30 days"
-        />
-      </div>
+        {/* Content Statistics */}
+        <div className="mt-4 grid gap-3 border-t border-border/60 pt-4 md:mt-5 md:grid-cols-3 md:gap-5 md:pt-5 lg:grid-cols-5">
+          <KPICard title="With Prices" value={contentStats.withPrices} icon={<DollarSign className="h-4 w-4" />} description="Properties with price information" className={PREMIUM_CARD} />
+          <KPICard title="With Images" value={contentStats.withImages} icon={<Image className="h-4 w-4" />} description="Properties with image attachments" className={PREMIUM_CARD} />
+          <KPICard title="With Floorplans" value={contentStats.withFloorplans} icon={<FileText className="h-4 w-4" />} description="Properties with floorplan documents" className={PREMIUM_CARD} />
+          <KPICard title="With Key Entities" value={contentStats.withKeyEntities} icon={<Tag className="h-4 w-4" />} description="Properties with extracted entities" className={PREMIUM_CARD} />
+          <KPICard title="Email Sources" value={contentStats.emailSources} icon={<Ruler className="h-4 w-4" />} description="Properties from email sources" className={PREMIUM_CARD} />
+        </div>
+      </OverviewSection>
 
-      {/* Content Statistics */}
-      <div className="grid gap-3 md:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5 animate-fade-in">
-        <KPICard
-          title="With Prices"
-          value={contentStats.withPrices}
-          icon={<DollarSign className="h-4 w-4" />}
-          description="Properties with price information"
-        />
-        <KPICard
-          title="With Images" 
-          value={contentStats.withImages}
-          icon={<Image className="h-4 w-4" />}
-          description="Properties with image attachments"
-        />
-        <KPICard
-          title="With Floorplans"
-          value={contentStats.withFloorplans}
-          icon={<FileText className="h-4 w-4" />}
-          description="Properties with floorplan documents"
-        />
-        <KPICard
-          title="With Key Entities"
-          value={contentStats.withKeyEntities}
-          icon={<Tag className="h-4 w-4" />}
-          description="Properties with extracted entities"
-        />
-        <KPICard
-          title="Email Sources"
-          value={contentStats.emailSources}
-          icon={<Ruler className="h-4 w-4" />}
-          description="Properties from email sources"
-        />
-      </div>
+      <OverviewSection eyebrow="Operational reminders and validation" title="Workflow control" description="Current follow-ups and data consistency checks remain close to the executive metrics." icon={<ShieldCheck className="h-4 w-4" />}>
+        {/* Upcoming Reminders & Data Integrity Panel */}
+        <div className="grid gap-4 lg:grid-cols-2 animate-fade-in [&_.rounded-lg]:rounded-xl [&_.border]:border-border/70 [&_.bg-muted\/50]:bg-muted/35">
+          <UpcomingRemindersWidget />
+          <DataIntegrityPanel dashboardData={recentListings} className={PREMIUM_CARD} />
+        </div>
+      </OverviewSection>
 
-      {/* Upcoming Reminders & Data Integrity Panel */}
-      <div className="grid gap-4 lg:grid-cols-2 animate-fade-in">
-        <UpcomingRemindersWidget />
-        <DataIntegrityPanel 
-          dashboardData={recentListings} 
-        />
-      </div>
-
-      {/* Commercial Portfolio KPIs */}
-      <div className="animate-fade-in">
-        <CommercialPortfolioWidget />
-        <IndustrialPortfolioWidget />
-      </div>
-
+      <OverviewSection eyebrow="Portfolio position" title="Commercial and industrial exposure" description="Portfolio modules retain their existing actions while sitting in a clearer asset-position layer." icon={<Building2 className="h-4 w-4" />}>
+        {/* Commercial Portfolio KPIs */}
+        <div className="grid gap-4 animate-fade-in [&_.rounded-md]:rounded-xl [&_.rounded-md]:border-border/70 [&_.rounded-md]:bg-muted/25 [&>div]:rounded-2xl [&>div]:border-border/70 [&>div]:bg-card/90 [&>div]:shadow-sm dark:[&>div]:border-white/10 dark:[&>div]:bg-slate-950/80">
+          <CommercialPortfolioWidget />
+          <IndustrialPortfolioWidget />
+        </div>
+      </OverviewSection>
 
       {/* Charts Section */}
-      <div className="space-y-4 md:space-y-8">
+      <OverviewSection eyebrow="Listings intelligence" title="Market intake and classification" description="Distribution charts are grouped into a calmer analytics surface for faster scanning." icon={<BarChart3 className="h-4 w-4" />}>
+      <div className="space-y-4 md:space-y-6">
         {/* Row 1: Suburbs and Property Types */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
-          <Card className="hover-scale">
+          <Card className={CHART_CARD}>
             <CardHeader className="pb-2 md:pb-4">
               <CardTitle className="text-base md:text-lg">Listings by Suburb (Top 10)</CardTitle>
             </CardHeader>
@@ -531,7 +546,7 @@ export default function Overview() {
             </CardContent>
           </Card>
 
-          <Card className="hover-scale">
+          <Card className={CHART_CARD}>
             <CardHeader className="pb-2 md:pb-4">
               <CardTitle className="text-base md:text-lg">Property Types</CardTitle>
             </CardHeader>
@@ -613,7 +628,7 @@ export default function Overview() {
 
         {/* Row 2: Daily Listings and Property Status */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
-          <Card className="hover-scale">
+          <Card className={CHART_CARD}>
             <CardHeader className="pb-2 md:pb-4">
               <CardTitle className="text-base md:text-lg">Daily Listings (Last 30 Days)</CardTitle>
             </CardHeader>
@@ -656,7 +671,7 @@ export default function Overview() {
             </CardContent>
           </Card>
 
-          <Card className="hover-scale">
+          <Card className={CHART_CARD}>
             <CardHeader className="pb-2 md:pb-4">
               <CardTitle className="text-base md:text-lg">Property Status</CardTitle>
             </CardHeader>
@@ -736,9 +751,16 @@ export default function Overview() {
           </Card>
         </div>
 
+        <div className="pt-2 md:pt-4">
+          <div className="mb-4 flex items-center gap-2 border-t border-border/60 pt-5 text-sm font-semibold text-foreground">
+            <Database className="h-4 w-4 text-primary" />
+            Source intelligence
+          </div>
+        </div>
+
         {/* Row 3: Source and Agency Distribution */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2 animate-fade-in">
-          <Card className="hover-scale">
+          <Card className={CHART_CARD}>
             <CardHeader className="pb-2 md:pb-4">
               <CardTitle className="text-base md:text-lg">Top Sender Emails</CardTitle>
             </CardHeader>
@@ -770,7 +792,7 @@ export default function Overview() {
             </CardContent>
           </Card>
 
-          <Card className="hover-scale">
+          <Card className={CHART_CARD}>
             <CardHeader className="pb-2 md:pb-4">
               <CardTitle className="text-base md:text-lg">Top Agencies</CardTitle>
             </CardHeader>
@@ -803,9 +825,11 @@ export default function Overview() {
           </Card>
         </div>
       </div>
+      </OverviewSection>
 
       {/* Recent Activity */}
-      <Card className="animate-fade-in hover-scale">
+      <OverviewSection eyebrow="Recent activity" title="Latest property records" description="Newest listing records stay visible without competing with the analytics sections." icon={<FileText className="h-4 w-4" />} className="mb-4">
+      <Card className={CHART_CARD}>
         <CardHeader className="flex flex-row items-center justify-between pb-6">
           <CardTitle className="text-xl">Recent Activity</CardTitle>
           <Button 
@@ -880,6 +904,7 @@ export default function Overview() {
           </div>
         </CardContent>
       </Card>
+      </OverviewSection>
     </div>
   );
 }
