@@ -109,7 +109,7 @@ export function CommercialPortfolioWidget() {
         <Button
           variant="outline"
           size="sm"
-          className="shrink-0 rounded-full border-primary/25 bg-background/80 px-3 font-semibold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground"
+          className="min-h-10 shrink-0 rounded-full border-primary/25 bg-background/80 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_28px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0"
           onClick={() => navigate('/commercial')}
         >
           View <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -127,7 +127,7 @@ export function CommercialPortfolioWidget() {
             <Building2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
             No commercial assets yet.
             <div className="mt-3">
-              <Button size="sm" variant="outline" onClick={() => navigate('/commercial')}>
+              <Button size="sm" variant="outline" className="min-h-10 rounded-full border-primary/25 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:shadow-[0_10px_28px_rgba(245,158,11,0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0" onClick={() => navigate('/commercial')}>
                 Add your first commercial property
               </Button>
             </div>
@@ -142,7 +142,7 @@ export function CommercialPortfolioWidget() {
                   <div
                     key={t.label}
                     className={cn(
-                      'group rounded-2xl border bg-background/70 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-background',
+                      'group rounded-2xl border bg-background/70 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-background hover:shadow-md',
                       isZero && 'border-dashed bg-muted/20',
                       isNegative && 'border-destructive/30 bg-destructive/5'
                     )}

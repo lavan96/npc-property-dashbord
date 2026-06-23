@@ -95,7 +95,7 @@ export function IndustrialPortfolioWidget() {
         <Button
           variant="outline"
           size="sm"
-          className="shrink-0 rounded-full border-primary/25 bg-background/80 px-3 font-semibold text-primary shadow-sm hover:bg-primary hover:text-primary-foreground"
+          className="min-h-10 shrink-0 rounded-full border-primary/25 bg-background/80 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_28px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0"
           onClick={() => navigate('/industrial')}
         >
           View <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -121,7 +121,7 @@ export function IndustrialPortfolioWidget() {
             <div className="mt-5">
               <Button
                 size="sm"
-                className="rounded-full px-4 font-semibold shadow-sm"
+                className="min-h-10 rounded-full bg-primary px-4 font-semibold shadow-sm shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(245,158,11,0.22)] focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0"
                 onClick={() => navigate('/industrial')}
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -139,7 +139,7 @@ export function IndustrialPortfolioWidget() {
                   <div
                     key={t.label}
                     className={cn(
-                      'group rounded-2xl border bg-background/70 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-background',
+                      'group rounded-2xl border bg-background/70 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-background hover:shadow-md',
                       isZero && 'border-dashed bg-muted/20',
                       isNegative && 'border-destructive/30 bg-destructive/5'
                     )}

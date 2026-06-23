@@ -94,6 +94,7 @@ const CHART_CARD = `${PREMIUM_CARD} group overflow-hidden bg-[linear-gradient(14
 const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-primary/8 via-transparent to-transparent px-4 py-3 md:px-5 md:py-4';
 const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-primary before:shadow-[0_0_14px_rgba(245,158,11,0.55)]';
 const CHART_CONTENT = 'px-2 pb-4 pt-4 md:px-5 md:pb-5 md:pt-5';
+const OVERVIEW_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
 
 function OverviewSection({
   eyebrow,
@@ -493,7 +494,7 @@ export default function Overview() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/50 bg-background/55 p-2 shadow-sm shadow-black/5 backdrop-blur lg:justify-end dark:border-white/10 dark:bg-slate-950/40">
-            <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className="border-border/70 bg-card/85 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 active:translate-y-0">
+            <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className={OVERVIEW_SECONDARY_ACTION}>
               {isExporting ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -510,7 +511,7 @@ export default function Overview() {
               getPdfBlob={async () => generateOverviewSnapshotPDF(buildSnapshotData())}
               filename={`Overview_Snapshot_${new Date().toISOString().split('T')[0]}.pdf`}
               disabled={isExporting || isLoading}
-              className="border-border/70 bg-card/85 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 active:translate-y-0"
+              className={OVERVIEW_SECONDARY_ACTION}
             />
             <OverviewFilters
               filters={filters}
@@ -873,7 +874,7 @@ export default function Overview() {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-full border-primary/20 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
+            className="min-h-10 rounded-full border-primary/25 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0"
             onClick={() => navigate('/listings')}
           >
             View All Listings
