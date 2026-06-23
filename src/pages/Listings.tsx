@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@/contexts/SearchContext';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
-import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw, Loader2, Building2, CalendarCheck, AlertTriangle, EyeOff } from 'lucide-react';
+import { Search, Download, ExternalLink, Copy, MoreHorizontal, Bed, Bath, Car, BarChart3, X, FileText, RefreshCw, Loader2, Building2, CalendarCheck, AlertTriangle, EyeOff, List, Table2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,11 +52,13 @@ const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shad
 const LISTINGS_CHIP_INACTIVE = 'border-border/70 bg-background/80 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-50/70 hover:text-amber-700 dark:border-white/10 dark:bg-slate-950/45 dark:hover:bg-amber-400/10 dark:hover:text-amber-200';
 const LISTINGS_CHIP_ACTIVE = 'border-amber-400/70 bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-[0_10px_24px_rgba(245,158,11,0.28)] hover:-translate-y-0.5 hover:from-amber-500 hover:to-amber-400 hover:text-white dark:border-amber-300/60';
 const LISTINGS_HEADER_ICON_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-3 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+const LISTINGS_VIEW_SWITCHER = 'inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/45 p-1 shadow-inner dark:border-white/10 dark:bg-white/[0.04]';
+const LISTINGS_VIEW_CONTROL = 'h-9 rounded-full px-3 text-xs font-bold tracking-[0.01em] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 disabled:cursor-default';
+const LISTINGS_VIEW_CONTROL_ACTIVE = 'border-primary/45 bg-background text-foreground shadow-[0_8px_22px_rgba(15,23,42,0.10)] ring-1 ring-primary/20 dark:bg-slate-900 dark:shadow-black/30';
+const LISTINGS_VIEW_CONTROL_INACTIVE = 'border-transparent bg-transparent text-muted-foreground/75 hover:bg-background/70 hover:text-foreground dark:hover:bg-white/[0.06]';
 const LISTINGS_REFRESH_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 data-[refreshing=true]:border-primary/35 data-[refreshing=true]:bg-primary/10 data-[refreshing=true]:text-primary';
 const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full border border-dashed border-border/70 bg-muted/30 px-2.5 text-sm font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]';
-const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
-const LISTINGS_TABLE_CARD = 'overflow-hidden ring-1 ring-border/40 dark:ring-white/10';
-const LISTING_SELECTION_CHECKBOX = 'rounded-md border-border/70 bg-background/85 shadow-sm transition-all duration-200 hover:border-primary/60 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(var(--primary)/0.14),0_8px_20px_rgba(245,158,11,0.24)]';
+const LISTING_TABLE_HEAD = 'h-10 whitespace-nowrap px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/85';
 
 // Lazy load heavy modal components
 const ListingDetailsModal = lazy(() => import('@/components/listings/ListingDetailsModal').then(m => ({ default: m.ListingDetailsModal })));
@@ -478,14 +480,47 @@ export default function Listings() {
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center justify-start gap-2 rounded-[1.35rem] border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/40 dark:shadow-black/20 lg:justify-end">
-            <AirtableTableSelector
-              value={selectedTable}
-              onChange={(next) => {
-                setSelectedTable(next);
-                propertyDataService.clearCache();
-              }}
-            />
+          <div className="flex flex-wrap items-center justify-start gap-3 rounded-[1.35rem] border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/40 dark:shadow-black/20 lg:justify-end">
+            <div className="flex min-w-0 items-center gap-2 rounded-full border border-border/50 bg-card/70 p-1.5 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+              <span className="hidden pl-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70 sm:inline">Dataset</span>
+              <AirtableTableSelector
+                value={selectedTable}
+                onChange={(next) => {
+                  setSelectedTable(next);
+                  propertyDataService.clearCache();
+                }}
+              />
+            </div>
+
+            <div className={LISTINGS_VIEW_SWITCHER} role="group" aria-label="Listing view mode">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-pressed={isMobile}
+                className={cn(LISTINGS_VIEW_CONTROL, 'gap-1.5', isMobile ? LISTINGS_VIEW_CONTROL_ACTIVE : LISTINGS_VIEW_CONTROL_INACTIVE)}
+              >
+                <List className="h-4 w-4" />
+                List
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-pressed={!isMobile}
+                className={cn(LISTINGS_VIEW_CONTROL, 'gap-1.5', !isMobile ? LISTINGS_VIEW_CONTROL_ACTIVE : LISTINGS_VIEW_CONTROL_INACTIVE)}
+              >
+                <Table2 className="h-4 w-4" />
+                Table
+              </Button>
+            </div>
+
+            {isFetching && (
+              <div className="hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary shadow-sm md:inline-flex" role="status">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                Refreshing data
+              </div>
+            )}
 
             {selectedListings.size > 0 && !isMobile && (
               <Button variant="outline" size="sm" className={`${LISTINGS_SECONDARY_ACTION} gap-2`}>
@@ -678,33 +713,22 @@ export default function Listings() {
                     )}
                   >
                     {/* preserve original cells */}
-                  <TableCell className="py-4 pl-5 align-middle">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "h-8 w-1 rounded-full bg-transparent transition-all duration-200 group-hover:bg-primary/35",
-                          selectedListings.has(listing.id) && "bg-primary shadow-[0_0_16px_hsl(var(--primary)/0.45)] group-hover:bg-primary"
-                        )}
-                        aria-hidden="true"
-                      />
-                      <Checkbox
-                        checked={selectedListings.has(listing.id)}
-                        onCheckedChange={(checked) => handleSelectListing(listing.id, !!checked)}
-                        className={LISTING_SELECTION_CHECKBOX}
-                        aria-label={`Select ${listing.address || listing.location || 'listing'}`}
-                      />
-                    </div>
+                  <TableCell className="py-3 pl-5 align-middle">
+                    <Checkbox
+                      checked={selectedListings.has(listing.id)}
+                      onCheckedChange={(checked) => handleSelectListing(listing.id, !!checked)}
+                    />
                   </TableCell>
                   
-                  <TableCell className="py-4 align-middle">
-                    <div className="min-w-0 space-y-2">
+                  <TableCell className="py-3 align-middle">
+                    <div className="min-w-0 space-y-1.5">
                       <div className={cn(
                         "max-w-[360px] truncate text-[15px] font-semibold leading-5 tracking-[-0.01em] text-foreground",
                         !listing.address && "text-muted-foreground"
                       )}>
                         {listing.address || 'Unknown Address'}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                         <span className="min-w-0 truncate leading-5">
                           {listing.suburb || 'Unknown Suburb'}
                           {(listing.state || extractAUState(listing.address || '')) && `, ${listing.state || extractAUState(listing.address || '')}`}
@@ -719,7 +743,7 @@ export default function Listings() {
                     </div>
                   </TableCell>
                   
-                  <TableCell className="py-4 text-right align-middle">
+                  <TableCell className="py-3 text-right align-middle">
                     {listing.price && listing.price > 0 ? (
                       <span className="font-semibold tabular-nums text-foreground">{formatCurrency(listing.price)}</span>
                     ) : (
@@ -727,8 +751,8 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell className="py-4 align-middle">
-                    <div className="flex items-center gap-2.5 text-sm">
+                  <TableCell className="py-3 align-middle">
+                    <div className="flex items-center gap-2 text-sm">
                       <div className="inline-flex min-w-10 items-center justify-center gap-1.5 rounded-full bg-muted/45 px-2.5 py-1.5">
                         <Bed className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className={cn("font-semibold tabular-nums", !(listing.beds && listing.beds > 0) && "text-muted-foreground")}>{listing.beds && listing.beds > 0 ? listing.beds : '-'}</span>
@@ -744,7 +768,7 @@ export default function Listings() {
                     </div>
                   </TableCell>
                   
-                  <TableCell className="py-4 align-middle">
+                  <TableCell className="py-3 align-middle">
                     {listing.inspectionStart ? (
                       <div className="inline-flex rounded-xl border border-border/60 bg-background/65 px-3 py-1.5 text-sm font-medium tabular-nums shadow-sm">{formatDate(listing.inspectionStart)}</div>
                     ) : (
@@ -752,11 +776,11 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell className="py-4 align-middle">
+                  <TableCell className="py-3 align-middle">
                     <div className={cn("max-w-[180px] truncate text-sm font-medium leading-5", !listing.agencyName && "text-muted-foreground")}>{listing.agencyName || 'Unknown Agency'}</div>
                   </TableCell>
                   
-                  <TableCell className="py-4 align-middle">
+                  <TableCell className="py-3 align-middle">
                     {listing.confidence !== undefined && listing.confidence !== null ? (
                       <div className="inline-flex rounded-full bg-background/70 p-0.5 shadow-sm ring-1 ring-border/55">
                         <ConfidenceBadge confidence={listing.confidence} className={cn(LISTING_CONFIDENCE_BADGE, getListingConfidenceBadgeTone(listing.confidence))} />
@@ -766,7 +790,7 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell className="py-4 text-right align-middle">
+                  <TableCell className="py-3 text-right align-middle">
                     {listing.receivedAt ? (
                       <div className="text-sm font-medium tabular-nums text-muted-foreground">{formatDate(listing.receivedAt)}</div>
                     ) : (
@@ -774,7 +798,7 @@ export default function Listings() {
                     )}
                   </TableCell>
                   
-                  <TableCell className="py-4 pr-5 text-right align-middle">
+                  <TableCell className="py-3 pr-5 text-right align-middle">
                     {(() => {
                       const current = rowPicker[listing.id] ?? { scope: effectiveScope, tier: effectiveTier };
                       return (
