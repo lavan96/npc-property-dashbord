@@ -114,9 +114,9 @@ export default function CommercialProperties() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="ci-foundation ci-landing-shell">
       <div className="space-y-8">
-        <div className="rounded-3xl border border-border/70 bg-gradient-to-br from-background via-background to-muted/35 p-6 shadow-sm sm:p-8">
+        <div className="ci-landing-hero">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
               <div className="mb-4 inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-amber-700 dark:text-amber-300">
@@ -132,23 +132,23 @@ export default function CommercialProperties() {
                 One pipeline for manual entry, URL scrape and PDF/image parsing across office, retail, mixed-use, warehouse and logistics assets.
               </p>
             </div>
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap xl:w-auto xl:justify-end">
+            <div className="ci-action-cluster">
               <Button
                 variant="outline"
-                className="justify-center border-border/80 bg-background/80 shadow-sm sm:min-w-36"
+                className="ci-action-button border-primary/25 bg-background/85 hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
                 onClick={() => navigate('/calculators?domain=commercial')}
               >
                 <Calculator className="mr-2 h-4 w-4" /> Calculators
               </Button>
               <Button
                 variant="secondary"
-                className="justify-center border border-border/70 bg-muted text-foreground shadow-sm sm:min-w-40"
+                className="ci-action-button border border-border/70 bg-background/85 text-foreground hover:border-primary/35 hover:bg-primary/10"
                 onClick={() => openNew('industrial')}
               >
                 <Factory className="mr-2 h-4 w-4" /> New Industrial
               </Button>
               <Button
-                className="justify-center bg-amber-600 text-white shadow-sm hover:bg-amber-700 sm:min-w-44"
+                className="ci-action-button bg-primary text-primary-foreground shadow-primary/25 hover:bg-primary/90"
                 onClick={() => openNew('commercial')}
               >
                 <Plus className="mr-2 h-4 w-4" /> New Commercial
@@ -157,30 +157,30 @@ export default function CommercialProperties() {
           </div>
         </div>
 
-        <Tabs value={activeKind} onValueChange={(value) => setActiveKind(value as typeof activeKind)} aria-label="Filter commercial and industrial properties">
-          <TabsList className="h-auto w-full justify-start rounded-2xl border border-border/70 bg-muted/40 p-1.5 shadow-sm sm:w-auto" aria-label="Property asset filters">
-            <TabsTrigger className="rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-sm" value="all">All ({commercial.properties.length + industrial.properties.length})</TabsTrigger>
-            <TabsTrigger className="rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-sm" value="commercial">Commercial ({commercial.properties.length})</TabsTrigger>
-            <TabsTrigger className="rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-sm" value="industrial">Industrial ({industrial.properties.length})</TabsTrigger>
+        <Tabs value={activeKind} onValueChange={(value) => setActiveKind(value as typeof activeKind)}>
+          <TabsList className="ci-landing-tabs">
+            <TabsTrigger className="ci-landing-tab" value="all">All ({commercial.properties.length + industrial.properties.length})</TabsTrigger>
+            <TabsTrigger className="ci-landing-tab" value="commercial">Commercial ({commercial.properties.length})</TabsTrigger>
+            <TabsTrigger className="ci-landing-tab" value="industrial">Industrial ({industrial.properties.length})</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-lg shadow-black/5">
           <CardContent className="p-0">
           {loading ? (
-            <div className="flex min-h-56 flex-col items-center justify-center bg-gradient-to-br from-card via-card to-muted/25 px-6 py-14 text-center">
+            <div className="ci-loading-state">
               <div className="mb-4 h-10 w-10 animate-pulse rounded-2xl border border-amber-500/25 bg-amber-500/10" />
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Loading asset register…</p>
               <p className="mt-2 max-w-sm text-sm text-muted-foreground">Fetching the latest commercial and industrial property records.</p>
             </div>
           ) : rows.length === 0 ? (
-            <div className="flex min-h-72 flex-col items-center justify-center bg-gradient-to-br from-card via-card to-muted/25 px-6 py-14 text-center">
+            <div className="ci-empty-state">
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/80 shadow-sm">
                 <Building2 className="h-7 w-7 text-amber-600" />
               </div>
               <p className="text-xl font-semibold tracking-tight">No commercial or industrial properties yet</p>
               <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Add an asset manually, scrape a listing URL, or parse a PDF/image in the property form.</p>
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <div className="mt-5 grid w-full max-w-md gap-2 sm:grid-cols-2">
                 <Button onClick={() => openNew('commercial')}><Plus className="h-4 w-4 mr-2" /> Add Commercial</Button>
                 <Button variant="outline" onClick={() => openNew('industrial')}><Plus className="h-4 w-4 mr-2" /> Add Industrial</Button>
               </div>
@@ -209,7 +209,7 @@ export default function CommercialProperties() {
                   const value = isIndustrial ? (p.current_valuation || p.purchase_price) : (p.valuation || p.purchase_price);
                   const statusValue = isIndustrial ? p.status?.replace('_', ' ') : p.gst_treatment?.replace('_', ' ');
                   return (
-                    <TableRow key={`${row.kind}-${row.property.id}`} className="group cursor-pointer focus-within:bg-amber-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60" onClick={() => navigateToDetail(row)} tabIndex={0} role="button" aria-label={`Open ${isIndustrial ? 'industrial' : 'commercial'} property ${address || 'details'}`} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigateToDetail(row); } }}>
+                    <TableRow key={`${row.kind}-${row.property.id}`} className="group cursor-pointer focus-within:bg-primary/5" onClick={() => navigateToDetail(row)}>
                       <TableCell className="py-5">
                         <div className="space-y-1">
                           {isIndustrial && p.property_name ? <div className="font-semibold leading-tight tracking-tight text-foreground">{p.property_name}</div> : null}
@@ -239,8 +239,8 @@ export default function CommercialProperties() {
                       </TableCell>
                       <TableCell className="py-4" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
                         <div className="flex justify-end gap-1.5 border-l border-border/70 pl-3">
-                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-amber-500/10 hover:text-amber-700" aria-label={`Edit ${address || 'property'}`} onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-destructive/80 hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete ${address || 'property'}`} onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary" onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-destructive/80 hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
