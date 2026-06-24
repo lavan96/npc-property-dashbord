@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Factory, Link2, Link2Off, Loader2 } from 'lucide-react';
+import { Building2, Database, Factory, Link2, Link2Off, Loader2 } from 'lucide-react';
 import { useCalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
 import { commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
@@ -49,48 +49,58 @@ export function CalculatorPropertyBar() {
   const Icon = domain === 'industrial' ? Factory : Building2;
 
   return (
-    <Card id="calculator-property-selector" className="border-border/60 bg-card/35 shadow-none">
-      <CardContent className="flex flex-wrap items-center gap-3 p-3">
-        <div className="flex items-center gap-2 mr-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-          <div><div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Secondary selector</div><div className="text-sm font-medium">Calculator data source</div></div>
-        </div>
-        <div className="flex-1 min-w-[260px]">
-          <Select
-            value={prefill?.propertyId ?? UNASSIGNED}
-            onValueChange={(v) => selectProperty(v === UNASSIGNED ? null : v)}
-            disabled={listLoading || loading}
-          >
-            <SelectTrigger className="h-9 bg-background/60">
-              <SelectValue placeholder={listLoading ? 'Loading properties…' : 'Manual entry (no property linked)'} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={UNASSIGNED}>Manual entry (no property linked)</SelectItem>
-              {list.map(p => (
-                <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-        {prefill ? (
-          <>
-            <Badge variant="default" className="gap-1">
-              <Link2 className="h-3 w-3" /> Linked
-            </Badge>
-            {prefill.assetSubtype && <Badge variant="secondary" className="capitalize">{String(prefill.assetSubtype).replace(/_/g, ' ')}</Badge>}
-            <Button size="sm" variant="outline" onClick={clear}>
-              <Link2Off className="h-4 w-4 mr-1" /> Unlink
-            </Button>
-          </>
-        ) : (
-          <Badge variant="outline" className="bg-background/60">Manual</Badge>
-        )}
-        {property && (
-          <div className="w-full text-xs text-muted-foreground pt-1">
-            Prefill applied from the Active Property Header context. Edits stay local unless you save back to the property.
+    <Card id="calculator-property-selector" className="border-border/60 bg-card/70 shadow-sm">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex min-w-[220px] items-center gap-3">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Icon className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Secondary selector</div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Database className="h-3.5 w-3.5 text-muted-foreground" /> Calculator data source</div>
+            </div>
           </div>
-        )}
+          <div className="min-w-[260px] flex-1">
+            <Select
+              value={prefill?.propertyId ?? UNASSIGNED}
+              onValueChange={(v) => selectProperty(v === UNASSIGNED ? null : v)}
+              disabled={listLoading || loading}
+            >
+              <SelectTrigger className="h-11 border-border/70 bg-background/80 shadow-sm transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-60">
+                <SelectValue placeholder={listLoading ? 'Loading properties…' : 'Manual entry (no property linked)'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNASSIGNED}>Manual entry (no property linked)</SelectItem>
+                {list.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            {prefill ? (
+              <>
+                <Badge variant="default" className="gap-1 px-2.5 py-1">
+                  <Link2 className="h-3 w-3" /> Linked
+                </Badge>
+                {prefill.assetSubtype && <Badge variant="secondary" className="capitalize px-2.5 py-1">{String(prefill.assetSubtype).replace(/_/g, ' ')}</Badge>}
+                <Button size="sm" variant="outline" onClick={clear}>
+                  <Link2Off className="h-4 w-4 mr-1" /> Unlink
+                </Button>
+              </>
+            ) : (
+              <Badge variant="outline" className="border-dashed bg-background/80 px-2.5 py-1 font-medium text-muted-foreground">Manual</Badge>
+            )}
+          </div>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-background/45 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          Choose a linked property to prefill calculator assumptions, or keep manual entry to work without a property connection.
+          {property && (
+            <span className="block pt-1">Prefill applied from the Active Property Header context. Edits stay local unless you save back to the property.</span>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
