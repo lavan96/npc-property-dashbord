@@ -397,7 +397,7 @@ function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean 
                 ? `PDF allowed with warning: ${reportReadiness.warningReasons.join('; ')}`
                 : 'PDF ready when report content is confirmed.'}
           </p>
-          <p className="leading-5 md:col-span-2">Report includes: {reportReadiness.requiredSections.join(', ')}.</p>
+          <p className="rounded-lg border border-primary/15 bg-background/70 px-3 py-2 font-medium leading-5 text-foreground shadow-sm md:col-span-2">Report includes: {reportReadiness.requiredSections.join(', ')}.</p>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -412,17 +412,17 @@ function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean 
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 shadow-sm">
             <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><Calculator className="h-3.5 w-3.5" /> Calculation generation</div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" className="shadow-sm" onClick={generateCalculations}>Generate Calculations</Button>
-              <Button type="button" size="sm" variant="outline" className="disabled:cursor-not-allowed disabled:opacity-50" disabled={outOfDate} onClick={generateTenYear}>Generate 10-Year Cash Flow</Button>
+              <Button type="button" size="sm" className="min-h-9 rounded-xl shadow-sm" onClick={generateCalculations}>Generate Calculations</Button>
+              <Button type="button" size="sm" variant="outline" className="min-h-9 rounded-xl bg-background/80 shadow-sm disabled:cursor-not-allowed disabled:bg-muted/40 disabled:text-muted-foreground disabled:opacity-100" disabled={outOfDate} onClick={generateTenYear}>Generate 10-Year Cash Flow</Button>
             </div>
           </div>
           <div className="rounded-xl border border-border/60 bg-background/55 p-3">
             <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><FileText className="h-3.5 w-3.5" /> Report generation</div>
-            <Button type="button" size="sm" variant={reportReadiness.allowWithWarning ? 'secondary' : 'default'} className="disabled:cursor-not-allowed disabled:opacity-50" disabled={reportReadiness.pdfDisabled} onClick={generateReport}>Generate Report</Button>
+            <Button type="button" size="sm" variant={reportReadiness.allowWithWarning ? 'secondary' : 'default'} className="min-h-10 rounded-xl shadow-sm disabled:cursor-not-allowed disabled:bg-muted/40 disabled:text-muted-foreground disabled:opacity-100" disabled={reportReadiness.pdfDisabled} onClick={generateReport}>Generate Report</Button>
           </div>
           <div className="rounded-xl border border-border/60 bg-background/55 p-3">
             <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5" /> Verification</div>
-            <Button type="button" size="sm" variant="outline" className="disabled:cursor-not-allowed disabled:opacity-50" disabled={!reportGeneratedAt} onClick={markVerified}>Mark Verified</Button>
+            <Button type="button" size="sm" variant="outline" className="min-h-10 rounded-xl bg-background/80 shadow-sm disabled:cursor-not-allowed disabled:bg-muted/40 disabled:text-muted-foreground disabled:opacity-100" disabled={!reportGeneratedAt} onClick={markVerified}>Mark Verified</Button>
           </div>
         </div>
       </div>
