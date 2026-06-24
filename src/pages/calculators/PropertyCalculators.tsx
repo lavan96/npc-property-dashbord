@@ -117,7 +117,7 @@ function GlobalAssumptionStatusDrawer({ open, onOpenChange }: { open: boolean; o
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-6xl">
+      <SheetContent className="ci-foundation w-full overflow-y-auto sm:max-w-6xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" /> Global Assumption Status</SheetTitle>
           <SheetDescription>Central validation workspace for the full commercial / industrial assessment.</SheetDescription>
@@ -127,7 +127,7 @@ function GlobalAssumptionStatusDrawer({ open, onOpenChange }: { open: boolean; o
         </div>
         <div className="mt-4 space-y-5">
           {Object.entries(grouped).map(([group, groupRows]) => (
-            <div key={group} className="rounded-xl border bg-card/70 p-3">
+            <div key={group} className="ci-card p-3">
               <div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">{group}</h3><Badge variant="outline">{groupRows.length} assumption(s)</Badge></div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1100px] text-left text-xs">
@@ -616,23 +616,23 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
   return (
       <>
       <GlobalAssumptionStatusDrawer open={assumptionDrawerOpen} onOpenChange={setAssumptionDrawerOpen} />
-      <div className="container mx-auto p-4 md:p-6 space-y-6">
+      <div className="ci-foundation ci-page-shell">
         <div className="mx-auto w-full max-w-7xl space-y-6">
-        <div className="rounded-2xl border border-primary/15 bg-card/60 p-5 md:p-6 shadow-sm">
+        <div className="ci-hero">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold flex items-center gap-2">
+            <h1 className="ci-section-title">
               <Calculator className="h-7 w-7 text-primary" />
               Commercial &amp; Industrial Calculators
             </h1>
-            <p className="text-muted-foreground mt-1 max-w-3xl">
+            <p className="ci-section-description">
               Borrowing capacity, NOI, cap rate, ICR/DSCR, GST, DCF, $/m² rent
               and site cover — one suite for both asset classes. Pick a domain,
               link a saved property to prefill every tab, then push results
               back when you&apos;re happy.
             </p>
           </div>
-          <div className="shrink-0 rounded-xl border border-border/70 bg-background/35 p-3">
+          <div className="ci-panel shrink-0">
             <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">
               Property domain
             </div>
@@ -662,7 +662,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
         <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])} className="w-full">
-          <div className="rounded-xl border border-border/70 bg-card/75 p-3 shadow-sm">
+          <div className="ci-tab-rail">
             <div className="md:hidden">
               <Select value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])}>
                 <SelectTrigger className="h-12 border-primary/30 bg-background/80">
@@ -680,7 +680,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
             </div>
             <div className="hidden gap-3 md:grid xl:grid-cols-4">
               {calculatorTabGroups.map(group => (
-                <div key={group.group} className="rounded-lg border border-border/60 bg-background/35 p-2">
+                <div key={group.group} className="ci-tab-group">
                   <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.group}</div>
                   <div className="grid gap-2">
                     {group.tabs.map(value => {
@@ -691,7 +691,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
                           key={value}
                           type="button"
                           onClick={() => setActiveTab(value)}
-                          className={`w-full rounded-lg px-3 py-2 text-left transition-colors ${selected ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/40' : 'bg-card/60 text-foreground hover:bg-primary/10'}`}
+                          className={`ci-tab-button ${selected ? 'ci-tab-button-active' : 'ci-tab-button-idle'}`}
                           aria-current={selected ? 'page' : undefined}
                         >
                           <span className="block text-sm font-semibold leading-tight">{tab.label}</span>
@@ -727,11 +727,11 @@ function ActivePropertyHeader() {
   const noPropertyMessage = 'No property linked. Add or select a commercial / industrial property to prefill the calculator suite.';
 
   return (
-    <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-card via-card/95 to-primary/5 p-4 shadow-sm md:p-5">
+    <div className="ci-card-premium p-4 md:p-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">Active Property Header</Badge>
+            <Badge variant="outline" className="ci-badge ci-badge-pending">Active Property Header</Badge>
             <Badge variant="outline" className="bg-background/60">Domain: {domain === 'industrial' ? 'Industrial' : 'Commercial'}</Badge>
             <Badge variant="outline" className="bg-background/60">Data source: {metrics.dataSource}</Badge>
           </div>
@@ -741,7 +741,7 @@ function ActivePropertyHeader() {
               {prefill ? 'Linked property context controls calculator prefill, accepted assumptions, save-back and report generation.' : noPropertyMessage}
             </p>
           </div>
-          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="ci-summary-grid">
             <HeaderMetric label="Asset type" value={metrics.assetType} />
             <HeaderMetric label="Completeness" value={`${metrics.completeness}%`} accent={metrics.completeness >= 80 ? 'good' : metrics.completeness >= 50 ? 'warn' : 'pending'} />
             <HeaderMetric label="Assumption status" value={metrics.assumptionStatus} accent={metrics.assumptionStatus === 'Report ready' ? 'good' : 'warn'} />
@@ -764,9 +764,9 @@ function ActivePropertyHeader() {
 }
 
 function HeaderMetric({ label, value, accent = 'neutral' }: { label: string; value: string; accent?: 'neutral' | 'good' | 'warn' | 'pending' }) {
-  const accentClass = accent === 'good' ? 'text-green-200' : accent === 'warn' ? 'text-amber-200' : accent === 'pending' ? 'text-muted-foreground' : 'text-foreground';
+  const accentClass = accent === 'good' ? 'text-emerald-600 dark:text-emerald-200' : accent === 'warn' ? 'text-amber-600 dark:text-amber-200' : accent === 'pending' ? 'text-muted-foreground' : 'text-foreground';
   return (
-    <div className="rounded-lg border border-border/60 bg-background/35 p-2">
+    <div className="ci-summary-metric">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={`mt-1 truncate text-sm font-semibold ${accentClass}`}>{value}</div>
     </div>

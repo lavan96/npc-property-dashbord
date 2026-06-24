@@ -171,7 +171,7 @@ export default function CommercialProperties() {
               </div>
             </div>
           ) : (
-            <Table>
+            <div className="ci-table-wrap"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Property</TableHead>
@@ -192,12 +192,12 @@ export default function CommercialProperties() {
                   const area = isIndustrial ? p.gla_sqm : (p.nla_sqm || p.gfa_sqm);
                   const value = isIndustrial ? (p.current_valuation || p.purchase_price) : (p.valuation || p.purchase_price);
                   return (
-                    <TableRow key={`${row.kind}-${row.property.id}`} className="cursor-pointer" onClick={() => navigateToDetail(row)}>
+                    <TableRow key={`${row.kind}-${row.property.id}`} className="cursor-pointer focus-within:bg-primary/5" onClick={() => navigateToDetail(row)}>
                       <TableCell className="font-medium">
                         {isIndustrial && p.property_name ? <div>{p.property_name}</div> : null}
                         <div className={isIndustrial && p.property_name ? 'text-xs text-muted-foreground' : ''}>{address || '—'}</div>
                       </TableCell>
-                      <TableCell><Badge variant={isIndustrial ? 'default' : 'secondary'}>{isIndustrial ? 'Industrial' : 'Commercial'}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={isIndustrial ? 'ci-badge ci-badge-verified' : 'ci-badge'}>{isIndustrial ? 'Industrial' : 'Commercial'}</Badge></TableCell>
                       <TableCell>{isIndustrial ? (SUBTYPE_LABEL[p.asset_subtype] || p.asset_subtype) : (ASSET_LABEL[p.asset_class] || p.asset_class)}</TableCell>
                       <TableCell className="text-right">{area?.toLocaleString() || '—'}</TableCell>
                       <TableCell className="text-right">{p.site_area_sqm?.toLocaleString() || '—'}</TableCell>
@@ -213,7 +213,7 @@ export default function CommercialProperties() {
                   );
                 })}
               </TableBody>
-            </Table>
+            </Table></div>
           )}
         </CardContent>
         </Card>
