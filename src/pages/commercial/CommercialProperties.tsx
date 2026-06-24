@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Building2, Factory } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Factory, Calculator } from 'lucide-react';
 import { useCommercialProperties, commercialApi, type CommercialProperty } from '@/hooks/useCommercialProperties';
 import { useIndustrialProperties, industrialApi, type IndustrialProperty } from '@/hooks/useIndustrialProperties';
 import { CommercialPropertyFormModal } from '@/components/commercial/CommercialPropertyFormModal';
@@ -105,38 +105,59 @@ export default function CommercialProperties() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Building2 className="h-7 w-7 text-primary" />
-            Commercial & Industrial Properties
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            One pipeline for manual entry, URL scrape and PDF/image parsing across office, retail, mixed-use, warehouse and logistics assets.
-          </p>
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="space-y-8">
+        <div className="rounded-3xl border border-border/70 bg-gradient-to-br from-background via-background to-muted/35 p-6 shadow-sm sm:p-8">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-3xl">
+              <div className="mb-4 inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-amber-700 dark:text-amber-300">
+                Commercial asset pipeline
+              </div>
+              <h1 className="flex items-start gap-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-700 shadow-sm dark:text-amber-300">
+                  <Building2 className="h-6 w-6" />
+                </span>
+                <span>Commercial & Industrial Properties</span>
+              </h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+                One pipeline for manual entry, URL scrape and PDF/image parsing across office, retail, mixed-use, warehouse and logistics assets.
+              </p>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap xl:w-auto xl:justify-end">
+              <Button
+                variant="outline"
+                className="justify-center border-border/80 bg-background/80 shadow-sm sm:min-w-36"
+                onClick={() => navigate('/calculators?domain=commercial')}
+              >
+                <Calculator className="mr-2 h-4 w-4" /> Calculators
+              </Button>
+              <Button
+                variant="secondary"
+                className="justify-center border border-border/70 bg-muted text-foreground shadow-sm sm:min-w-40"
+                onClick={() => openNew('industrial')}
+              >
+                <Factory className="mr-2 h-4 w-4" /> New Industrial
+              </Button>
+              <Button
+                className="justify-center bg-amber-600 text-white shadow-sm hover:bg-amber-700 sm:min-w-44"
+                onClick={() => openNew('commercial')}
+              >
+                <Plus className="mr-2 h-4 w-4" /> New Commercial
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => navigate('/calculators?domain=commercial')}>Calculators</Button>
-          <Button variant="outline" onClick={() => openNew('industrial')}>
-            <Factory className="h-4 w-4 mr-2" /> New Industrial
-          </Button>
-          <Button onClick={() => openNew('commercial')}>
-            <Plus className="h-4 w-4 mr-2" /> New Commercial
-          </Button>
-        </div>
-      </div>
 
-      <Tabs value={activeKind} onValueChange={(value) => setActiveKind(value as typeof activeKind)}>
-        <TabsList>
-          <TabsTrigger value="all">All ({commercial.properties.length + industrial.properties.length})</TabsTrigger>
-          <TabsTrigger value="commercial">Commercial ({commercial.properties.length})</TabsTrigger>
-          <TabsTrigger value="industrial">Industrial ({industrial.properties.length})</TabsTrigger>
-        </TabsList>
-      </Tabs>
+        <Tabs value={activeKind} onValueChange={(value) => setActiveKind(value as typeof activeKind)}>
+          <TabsList className="h-auto rounded-2xl border border-border/70 bg-muted/40 p-1.5 shadow-sm">
+            <TabsTrigger className="rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-sm" value="all">All ({commercial.properties.length + industrial.properties.length})</TabsTrigger>
+            <TabsTrigger className="rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-sm" value="commercial">Commercial ({commercial.properties.length})</TabsTrigger>
+            <TabsTrigger className="rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-sm" value="industrial">Industrial ({industrial.properties.length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-      <Card>
-        <CardContent className="p-0">
+        <Card className="overflow-hidden border-border/70 shadow-sm">
+          <CardContent className="p-0">
           {loading ? (
             <div className="text-center text-muted-foreground py-12">Loading…</div>
           ) : rows.length === 0 ? (
@@ -183,9 +204,9 @@ export default function CommercialProperties() {
                       <TableCell className="text-right">{fmtMoney(value)}</TableCell>
                       <TableCell className="capitalize text-xs text-muted-foreground">{isIndustrial ? p.status?.replace('_', ' ') : p.gst_treatment?.replace('_', ' ')}</TableCell>
                       <TableCell onClick={e => e.stopPropagation()}>
-                        <div className="flex gap-1">
+                        <div className="flex justify-end gap-1 border-l border-border/70 pl-3">
                           <Button size="icon" variant="ghost" onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -195,7 +216,8 @@ export default function CommercialProperties() {
             </Table>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      </div>
 
       {commercialOpen && (
         <CommercialPropertyFormModal open={commercialOpen} onClose={() => setCommercialOpen(false)} property={editingCommercial} onSaved={refreshAll} />
