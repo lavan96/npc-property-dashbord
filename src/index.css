@@ -220,12 +220,12 @@ Clean, modern admin dashboard with confidence-based color coding
       radial-gradient(circle at 88% 8%, hsl(165 70% 38% / 0.08), transparent 24rem);
   }
 
-  .ci-page-shell { @apply container mx-auto space-y-6 p-4 md:p-6; }
+  .ci-page-shell { @apply container mx-auto max-w-[100vw] space-y-6 overflow-x-hidden p-3 sm:p-4 md:p-6; }
   .ci-hero { @apply rounded-2xl border border-primary/20 bg-card/80 p-5 shadow-sm backdrop-blur md:p-6; }
   .ci-suite-header { @apply relative overflow-hidden border-primary/25 bg-gradient-to-br from-card via-card/95 to-primary/10 shadow-lg shadow-primary/10; }
   .ci-suite-header::before { content: ''; @apply pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent; }
   .ci-suite-header::after { content: ''; @apply pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-primary/10 blur-3xl; }
-  .ci-section-title { @apply flex items-center gap-3 text-3xl font-bold tracking-tight text-foreground md:text-4xl; }
+  .ci-section-title { @apply flex flex-col items-start gap-3 text-2xl font-bold tracking-tight text-foreground sm:flex-row sm:items-center sm:text-3xl md:text-4xl; }
   .ci-header-icon { @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary shadow-inner shadow-primary/20; }
   .ci-section-description { @apply mt-1 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base md:leading-8; }
   .ci-card { @apply rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur; }
@@ -235,18 +235,18 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-domain-toggle { @apply grid w-full grid-cols-2 gap-2 rounded-xl border border-border/70 bg-muted/30 p-1.5; }
   .ci-domain-toggle-item { @apply h-11 rounded-lg px-4 text-sm font-semibold text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground data-[state=on]:border data-[state=on]:border-primary/55 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md data-[state=on]:shadow-primary/25; }
   .ci-assumption-status-button { @apply h-10 w-full justify-center border-primary/30 bg-background/75 font-semibold text-foreground shadow-sm transition-all hover:border-primary/55 hover:bg-primary/10 hover:text-primary; }
-  .ci-tab-rail { @apply relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 p-4 shadow-lg shadow-primary/10 backdrop-blur; }
+  .ci-tab-rail { @apply relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 p-3 shadow-lg shadow-primary/10 backdrop-blur sm:p-4; }
   .ci-tab-rail::before { content: ''; @apply pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent; }
   .ci-tab-rail-header { @apply relative z-10 mb-4 flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-end sm:justify-between; }
   .ci-tab-eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.24em] text-primary; }
   .ci-tab-title { @apply mt-1 text-lg font-semibold tracking-tight text-foreground; }
-  .ci-tab-current { @apply rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm; }
+  .ci-tab-current { @apply w-full rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm sm:w-auto; }
   .ci-tab-current span { @apply text-primary; }
-  .ci-tab-group-grid { @apply relative z-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4; }
+  .ci-tab-group-grid { @apply relative z-10 grid gap-3 sm:grid-cols-2 xl:grid-cols-4; }
   .ci-tab-group { @apply rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10; }
   .ci-tab-group-heading { @apply mb-3 flex items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-foreground; }
   .ci-tab-group-index { @apply rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary; }
-  .ci-tab-button { @apply relative flex min-h-[4.25rem] w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50; }
+  .ci-tab-button { @apply relative flex min-h-16 w-full flex-col items-start justify-between gap-2 overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 sm:min-h-[4.25rem] sm:flex-row sm:items-center; }
   .ci-tab-button::before { content: ''; @apply absolute inset-y-2 left-0 w-1 rounded-r-full bg-transparent transition-colors; }
   .ci-tab-button-copy { @apply min-w-0 pr-1; }
   .ci-tab-button-active { @apply border-primary/70 bg-gradient-to-br from-primary via-primary to-amber-500 text-primary-foreground shadow-md shadow-primary/30 ring-1 ring-primary/35; }
@@ -278,6 +278,13 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-foundation label:has(+ input[required])::after,
   .ci-foundation label:has(+ textarea[required])::after,
   .ci-foundation label:has(+ button[role='combobox'][aria-required='true'])::after { content: ' *'; @apply text-destructive; }
+  .ci-foundation a:focus-visible,
+  .ci-foundation button:focus-visible,
+  .ci-foundation [role='button']:focus-visible,
+  .ci-foundation [role='tab']:focus-visible,
+  .ci-foundation [role='combobox']:focus-visible {
+    @apply outline-none ring-2 ring-primary/60 ring-offset-2 ring-offset-background;
+  }
   .ci-foundation input,
   .ci-foundation textarea,
   .ci-foundation select,
@@ -320,12 +327,14 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-foundation tbody tr { @apply bg-card/35 transition-colors hover:bg-primary/5; }
   .ci-foundation tbody tr:last-child td { @apply border-b-0; }
   .ci-foundation tfoot { @apply bg-primary/5 font-semibold; }
-  .ci-asset-table-wrap { @apply overflow-x-auto rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm; }
+  .ci-asset-table-wrap { @apply overflow-x-auto overscroll-x-contain rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2; }
   .ci-asset-table-wrap > div { @apply overflow-visible rounded-none border-0 bg-transparent; }
   .ci-asset-table-wrap table { @apply border-separate border-spacing-0; }
   .ci-asset-table-wrap thead { @apply bg-gradient-to-r from-muted/70 via-muted/50 to-muted/70 text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground; }
   .ci-asset-table-wrap th { @apply h-14 whitespace-nowrap border-b border-border/80 px-5 font-bold; }
-  .ci-asset-table-wrap td { @apply whitespace-nowrap border-b border-border/50 px-5; }
+  .ci-asset-table-wrap td { @apply whitespace-nowrap border-b border-border/50 px-4 sm:px-5; }
+  .ci-asset-table-wrap th:first-child,
+  .ci-asset-table-wrap td:first-child { @apply whitespace-normal; }
   .ci-asset-table-wrap tbody tr { @apply bg-card/40 transition-all duration-200 hover:bg-amber-500/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary))]; }
   .ci-asset-table-wrap tbody tr:last-child td { @apply border-b-0; }
   .ci-segment-badge { @apply inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm; }
@@ -360,7 +369,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-workflow-label { @apply mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground; }
   .ci-workflow-group-actions { @apply grid gap-2; }
   .ci-workflow-primary { @apply w-full justify-center shadow-md shadow-primary/20; }
-  .ci-workflow-button { @apply w-full justify-center bg-background/75 font-medium text-foreground disabled:opacity-60 disabled:saturate-50; }
+  .ci-workflow-button { @apply min-h-10 w-full justify-center whitespace-normal bg-background/75 px-3 text-center font-medium leading-tight text-foreground disabled:opacity-60 disabled:saturate-50; }
   .ci-workflow-report { @apply border-primary/25 hover:border-primary/50 hover:bg-primary/10 hover:text-primary; }
   .ci-source-badge { @apply inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-sm; }
   .ci-source-ai { @apply border-purple-500/35 bg-purple-500/10 text-purple-700 dark:text-purple-200; }
@@ -370,7 +379,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-source-calculated { @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200; }
   .ci-source-pending { @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200; }
   .ci-source-neutral { @apply border-border/70 bg-background/70 text-muted-foreground; }
-  .ci-workflow-status-strip { @apply grid gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 p-4 shadow-sm md:grid-cols-[1.2fr_1fr_1.2fr]; }
+  .ci-workflow-status-strip { @apply grid gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 p-3 shadow-sm sm:p-4 md:grid-cols-[1.2fr_1fr_1.2fr]; }
   .ci-next-action-card { @apply rounded-xl border border-primary/25 bg-primary/10 p-3 shadow-inner; }
   .ci-status-mini { @apply flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-background/65 px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm; }
   .ci-status-mini strong { @apply text-foreground; }
