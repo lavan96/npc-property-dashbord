@@ -643,6 +643,91 @@ def _ocr_ratio(summary: dict, page_count: int) -> float:
     return len(summary.get("ocr_pages") or []) / float(page_count)
 
 
+LANE_ENFORCEMENT_VERSION = "extractor-lane-policy-v1"
+
+LANE_PROFILES: dict[str, dict[str, Any]] = {
+    "unplanned": {
+        "force_mode": None,
+        "force_raster": False,
+        "raster_dpi": None,
+        "use_picture_description": ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+        "include_doctags": True,
+        "include_markdown": True,
+    },
+    "fast_native": {
+        "force_mode": None,
+        "force_raster": False,
+        "raster_dpi": None,
+        "use_picture_description": False,
+        "include_doctags": False,
+        "include_markdown": False,
+    },
+    "accurate_table": {
+        "force_mode": None,
+        "force_raster": True,
+        "raster_dpi": 144,
+        "use_picture_description": False,
+        "include_doctags": True,
+        "include_markdown": True,
+    },
+    "ocr_scanned": {
+        "force_mode": None,
+        "force_raster": True,
+        "raster_dpi": 144,
+        "use_picture_description": False,
+        "include_doctags": True,
+        "include_markdown": True,
+    },
+    "design_heavy": {
+        "force_mode": None,
+        "force_raster": True,
+        "raster_dpi": 200,
+        "use_picture_description": True,
+        "include_doctags": True,
+        "include_markdown": True,
+    },
+    "pixel_raster_only": {
+        "force_mode": "pixel_perfect",
+        "force_raster": True,
+        "raster_dpi": 200,
+        "use_picture_description": False,
+        "include_doctags": False,
+        "include_markdown": False,
+    },
+}
+
+
+def _normalize_extractor_lane(lane: Optional[str]) -> str:
+    normalized = (lane or "unplanned").strip().lower().replace("-", "_")
+    return normalized if normalized in LANE_PROFILES else "unplanned"
+
+
+def _lane_policy(lane: Optional[str], requested_mode: Optional[str] = None) -> dict[str, Any]:
+    normalized = _normalize_extractor_lane(lane)
+    base = dict(LANE_PROFILES["unplanned"])
+    base.update(LANE_PROFILES.get(normalized, {}))
+    base["lane"] = normalized
+    base["requested_mode"] = (requested_mode or "semantic").lower().replace("-", "_")
+    base["version"] = LANE_ENFORCEMENT_VERSION
+    return base
+
+
+def _resolve_picture_description(explicit: Optional[bool], policy: dict[str, Any]) -> bool:
+    if explicit is not None:
+        return bool(explicit)
+    return bool(policy.get("use_picture_description", ENABLE_PICTURE_DESCRIPTION_DEFAULT))
+
+
+def _resolve_effective_mode(requested_mode: Optional[str], policy: dict[str, Any]) -> str:
+    requested = (requested_mode or "semantic").lower().replace("-", "_")
+    forced = policy.get("force_mode")
+    if forced:
+        return str(forced).lower().replace("-", "_")
+    if policy.get("force_raster") and requested == "semantic":
+        return "hybrid"
+    return requested
+
+
 async def _storage_upload(client: httpx.AsyncClient, object_path: str, body: bytes, content_type: str) -> Optional[str]:
     """Upload a single artifact to the Supabase Storage REST API. Returns the object path on success."""
     if not (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY):
@@ -819,28 +904,27 @@ async def _run_async_job(req: ParseRequest) -> None:
         pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
         bytes_in = len(pdf_bytes)
 
-        use_description = (
-            req.enable_picture_description
-            if req.enable_picture_description is not None
-            else ENABLE_PICTURE_DESCRIPTION_DEFAULT
-        )
+        lane_policy = _lane_policy(req.extractor_lane, req.mode)
+        use_description = _resolve_picture_description(req.enable_picture_description, lane_policy)
+        include_doctags = bool(lane_policy.get("include_doctags", True) and req.include_doctags)
+        include_markdown = bool(lane_policy.get("include_markdown", True) and req.include_markdown)
 
         parse_result = _do_parse(
             pdf_bytes,
             use_description=use_description,
-            include_doctags=req.include_doctags,
-            include_markdown=req.include_markdown,
+            include_doctags=include_doctags,
+            include_markdown=include_markdown,
             redact_pii=req.redact_pii,
         )
         cloud_run_ms += int(parse_result.get("parsed_ms") or 0)
 
         page_count = int(parse_result.get("page_count") or 0)
         summary = parse_result.get("summary") or {}
-        requested_mode = (req.mode or "semantic").lower()
-        effective_mode = requested_mode
+        requested_mode = (req.mode or "semantic").lower().replace("-", "_")
+        effective_mode = _resolve_effective_mode(req.mode, lane_policy)
         # Auto-promote hybrid → pixel_perfect when OCR ratio > 0.3.
         if (
-            requested_mode == "hybrid"
+            effective_mode == "hybrid"
             and req.allow_mode_override
             and _ocr_ratio(summary, page_count) > 0.3
         ):
@@ -880,7 +964,7 @@ async def _run_async_job(req: ParseRequest) -> None:
             page_raster_paths = []
             legacy_rasters_path = None
             if effective_mode in {"hybrid", "pixel_perfect", "pixel-perfect"} and page_count > 0:
-                dpi = req.raster_dpi or RASTER_DPI or (200 if "pixel" in effective_mode else 144)
+                dpi = req.raster_dpi or int(lane_policy.get("raster_dpi") or RASTER_DPI or (200 if "pixel" in effective_mode else 144))
                 raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
                 raster_result = _do_raster(pdf_bytes, dpi=dpi, fmt=raster_fmt)
                 cloud_run_ms += int(raster_result.get("raster_ms") or 0)
@@ -937,6 +1021,9 @@ async def _run_async_job(req: ParseRequest) -> None:
                 "effective_mode": effective_mode,
                 "auto_mode_selected": effective_mode != requested_mode,
                 "ocr_page_ratio": _ocr_ratio(summary, page_count),
+                "extractor_lane": lane_policy["lane"],
+                "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
+                "lane_policy": lane_policy,
                 "result_payload": {
                     "docling_path": docling_path,
                     "rasters_path": rasters_path,
@@ -954,6 +1041,9 @@ async def _run_async_job(req: ParseRequest) -> None:
                     "requested_mode": requested_mode,
                     "auto_mode_selected": effective_mode != requested_mode,
                     "cache_hit": False,
+                    "extractor_lane": lane_policy["lane"],
+                    "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
+                    "lane_policy": lane_policy,
                 },
             })
     except SidecarError as exc:
@@ -1010,24 +1100,28 @@ async def parse(req: ParseRequest, background_tasks: BackgroundTasks):
             )
         background_tasks.add_task(_run_async_job, req)
         return JSONResponse(
-            {"accepted": True, "job_id": req.job_id, "engine_version": ENGINE_VERSION, "mode": "callback", "extractor_lane": req.extractor_lane},
+            {"accepted": True, "job_id": req.job_id, "engine_version": ENGINE_VERSION, "mode": "callback", "extractor_lane": _normalize_extractor_lane(req.extractor_lane), "lane_enforcement_version": LANE_ENFORCEMENT_VERSION},
             status_code=202,
         )
 
     # Legacy synchronous mode (backwards compatible).
     pdf_bytes = await _resolve_pdf_bytes(req.url, req.pdf_base64)
-    use_description = (
-        req.enable_picture_description
-        if req.enable_picture_description is not None
-        else ENABLE_PICTURE_DESCRIPTION_DEFAULT
-    )
-    return _do_parse(
+    lane_policy = _lane_policy(req.extractor_lane, req.mode)
+    use_description = _resolve_picture_description(req.enable_picture_description, lane_policy)
+    include_doctags = bool(lane_policy.get("include_doctags", True) and req.include_doctags)
+    include_markdown = bool(lane_policy.get("include_markdown", True) and req.include_markdown)
+
+    result = _do_parse(
         pdf_bytes,
         use_description=use_description,
-        include_doctags=req.include_doctags,
-        include_markdown=req.include_markdown,
+        include_doctags=include_doctags,
+        include_markdown=include_markdown,
         redact_pii=req.redact_pii,
     )
+    result["extractor_lane"] = lane_policy["lane"]
+    result["lane_enforcement_version"] = LANE_ENFORCEMENT_VERSION
+    result["lane_policy"] = lane_policy
+    return result
 
 
 @app.post("/raster")
@@ -1168,16 +1262,16 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
         bytes_in = len(pdf_bytes)
         chunk_pdf, actual_pages = _extract_page_range(pdf_bytes, req.page_start, req.page_end)
 
-        use_description = (
-            req.enable_picture_description
-            if req.enable_picture_description is not None
-            else ENABLE_PICTURE_DESCRIPTION_DEFAULT
-        )
+        lane_policy = _lane_policy(req.extractor_lane, req.mode)
+        use_description = _resolve_picture_description(req.enable_picture_description, lane_policy)
+        include_doctags = bool(lane_policy.get("include_doctags", True) and req.include_doctags)
+        include_markdown = bool(lane_policy.get("include_markdown", True) and req.include_markdown)
+
         parse_result = _do_parse(
             chunk_pdf,
             use_description=use_description,
-            include_doctags=req.include_doctags,
-            include_markdown=req.include_markdown,
+            include_doctags=include_doctags,
+            include_markdown=include_markdown,
             redact_pii=req.redact_pii,
         )
 
@@ -1206,10 +1300,10 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             artifacts["outline_path"] = await _storage_upload(client, f"{prefix}/outline.json", outline_body, "application/json")
             bytes_out += len(outline_body)
 
-            # Raster the chunk only when the mode demands page images.
-            mode = (req.mode or "semantic").lower()
+            # Raster the chunk when the mode or lane policy demands page images.
+            mode = _resolve_effective_mode(req.mode, lane_policy)
             if mode in {"hybrid", "pixel_perfect", "pixel-perfect"}:
-                dpi = req.raster_dpi or (200 if "pixel" in mode else 144)
+                dpi = req.raster_dpi or int(lane_policy.get("raster_dpi") or (200 if "pixel" in mode else 144))
                 try:
                     raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
                     raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=raster_fmt)
@@ -1272,7 +1366,10 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             "chunk_index": req.chunk_index,
             "status": "succeeded",
             "engine_version": ENGINE_VERSION,
-            "extractor_lane": req.extractor_lane,
+            "extractor_lane": lane_policy["lane"],
+            "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
+            "effective_mode": mode,
+            "lane_policy": lane_policy,
             "page_start": req.page_start,
             "page_end": req.page_end,
             "actual_pages": actual_pages,
