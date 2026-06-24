@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks } from 'lucide-react';
+import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks, SlidersHorizontal } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
@@ -596,7 +596,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
   const { prefill } = useCalculatorPrefill();
   const [activeTab, setActiveTab] = useState<(typeof calculatorTabs)[number]['value']>('overview');
   const [assumptionDrawerOpen, setAssumptionDrawerOpen] = useState(false);
-  const assumptionStatusAction = <Button type="button" variant="outline" size="sm" onClick={() => setAssumptionDrawerOpen(true)}><ListChecks className="mr-2 h-4 w-4" />Assumption Status</Button>;
+  const assumptionStatusAction = <Button type="button" variant="outline" size="sm" className="ci-assumption-status-button" onClick={() => setAssumptionDrawerOpen(true)}><ListChecks className="mr-2 h-4 w-4" />Assumption Status</Button>;
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -618,43 +618,59 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
       <GlobalAssumptionStatusDrawer open={assumptionDrawerOpen} onOpenChange={setAssumptionDrawerOpen} />
       <div className="ci-foundation ci-page-shell">
         <div className="mx-auto w-full max-w-7xl space-y-6">
-        <div className="ci-hero">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <h1 className="ci-section-title">
-              <Calculator className="h-7 w-7 text-primary" />
-              Commercial &amp; Industrial Calculators
-            </h1>
-            <p className="ci-section-description">
-              Borrowing capacity, NOI, cap rate, ICR/DSCR, GST, DCF, $/m² rent
-              and site cover — one suite for both asset classes. Pick a domain,
-              link a saved property to prefill every tab, then push results
-              back when you&apos;re happy.
-            </p>
-          </div>
-          <div className="ci-panel shrink-0">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">
-              Property domain
+        <div className="ci-hero ci-suite-header">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-4xl space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-primary shadow-sm shadow-primary/10">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Calculator command centre
+              </div>
+              <div className="space-y-3">
+                <h1 className="ci-section-title">
+                  <span className="ci-header-icon"><Calculator className="h-7 w-7" /></span>
+                  Commercial &amp; Industrial Calculators
+                </h1>
+                <p className="ci-section-description">
+                  Borrowing capacity, NOI, cap rate, ICR/DSCR, GST, DCF, $/m² rent
+                  and site cover — one suite for both asset classes. Pick a domain,
+                  link a saved property to prefill every tab, then push results
+                  back when you&apos;re happy.
+                </p>
+              </div>
             </div>
-            <ToggleGroup
-              type="single"
-              value={domain}
-              onValueChange={(v) => v && setDomain(v as CalculatorDomain)}
-              className="border rounded-md"
-            >
-              <ToggleGroupItem value="commercial" className="px-4">
-                Commercial
-              </ToggleGroupItem>
-              <ToggleGroupItem value="industrial" className="px-4">
-                Industrial
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <div className="mt-3">{assumptionStatusAction}</div>
-          </div>
+            <div className="ci-panel ci-domain-panel w-full shrink-0 lg:w-[22rem]">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Property domain
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-foreground">
+                    {domain === 'industrial' ? 'Industrial' : 'Commercial'} active
+                  </div>
+                </div>
+                <Badge variant="outline" className="border-primary/35 bg-primary/10 text-primary">
+                  {domain === 'industrial' ? 'Industrial' : 'Commercial'}
+                </Badge>
+              </div>
+              <ToggleGroup
+                type="single"
+                value={domain}
+                onValueChange={(v) => v && setDomain(v as CalculatorDomain)}
+                className="ci-domain-toggle"
+              >
+                <ToggleGroupItem value="commercial" className="ci-domain-toggle-item">
+                  Commercial
+                </ToggleGroupItem>
+                <ToggleGroupItem value="industrial" className="ci-domain-toggle-item">
+                  Industrial
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <div className="mt-4">{assumptionStatusAction}</div>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4 pt-1">
           <ActivePropertyHeader />
           <CalculatorPropertyBar />
         </div>
