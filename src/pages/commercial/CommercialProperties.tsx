@@ -105,18 +105,18 @@ export default function CommercialProperties() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="ci-foundation ci-page-shell">
+      <div className="ci-hero flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="ci-section-title">
             <Building2 className="h-7 w-7 text-primary" />
             Commercial & Industrial Properties
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="ci-section-description">
             One pipeline for manual entry, URL scrape and PDF/image parsing across office, retail, mixed-use, warehouse and logistics assets.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="ci-button-row">
           <Button variant="outline" onClick={() => navigate('/calculators?domain=commercial')}>Calculators</Button>
           <Button variant="outline" onClick={() => openNew('industrial')}>
             <Factory className="h-4 w-4 mr-2" /> New Industrial
@@ -128,14 +128,14 @@ export default function CommercialProperties() {
       </div>
 
       <Tabs value={activeKind} onValueChange={(value) => setActiveKind(value as typeof activeKind)}>
-        <TabsList>
+        <TabsList className="ci-tab-rail h-auto flex-wrap justify-start">
           <TabsTrigger value="all">All ({commercial.properties.length + industrial.properties.length})</TabsTrigger>
           <TabsTrigger value="commercial">Commercial ({commercial.properties.length})</TabsTrigger>
           <TabsTrigger value="industrial">Industrial ({industrial.properties.length})</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      <Card>
+      <Card className="ci-card">
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center text-muted-foreground py-12">Loading…</div>
@@ -150,7 +150,7 @@ export default function CommercialProperties() {
               </div>
             </div>
           ) : (
-            <Table>
+            <div className="ci-table-wrap"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Property</TableHead>
@@ -171,12 +171,12 @@ export default function CommercialProperties() {
                   const area = isIndustrial ? p.gla_sqm : (p.nla_sqm || p.gfa_sqm);
                   const value = isIndustrial ? (p.current_valuation || p.purchase_price) : (p.valuation || p.purchase_price);
                   return (
-                    <TableRow key={`${row.kind}-${row.property.id}`} className="cursor-pointer" onClick={() => navigateToDetail(row)}>
+                    <TableRow key={`${row.kind}-${row.property.id}`} className="cursor-pointer focus-within:bg-primary/5" onClick={() => navigateToDetail(row)}>
                       <TableCell className="font-medium">
                         {isIndustrial && p.property_name ? <div>{p.property_name}</div> : null}
                         <div className={isIndustrial && p.property_name ? 'text-xs text-muted-foreground' : ''}>{address || '—'}</div>
                       </TableCell>
-                      <TableCell><Badge variant={isIndustrial ? 'default' : 'secondary'}>{isIndustrial ? 'Industrial' : 'Commercial'}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={isIndustrial ? 'ci-badge ci-badge-verified' : 'ci-badge'}>{isIndustrial ? 'Industrial' : 'Commercial'}</Badge></TableCell>
                       <TableCell>{isIndustrial ? (SUBTYPE_LABEL[p.asset_subtype] || p.asset_subtype) : (ASSET_LABEL[p.asset_class] || p.asset_class)}</TableCell>
                       <TableCell className="text-right">{area?.toLocaleString() || '—'}</TableCell>
                       <TableCell className="text-right">{p.site_area_sqm?.toLocaleString() || '—'}</TableCell>
@@ -185,14 +185,14 @@ export default function CommercialProperties() {
                       <TableCell onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
-            </Table>
+            </Table></div>
           )}
         </CardContent>
       </Card>
