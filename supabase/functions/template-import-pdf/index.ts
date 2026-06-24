@@ -127,6 +127,33 @@ function fidelitySummary(report: any) {
   };
 }
 
+function importManifestSummary(manifests: any) {
+  if (!manifests || typeof manifests !== 'object') return null;
+  const pdf = manifests.pdf_import_job && typeof manifests.pdf_import_job === 'object'
+    ? manifests.pdf_import_job
+    : null;
+
+  if (!pdf) return { has_pdf_import_job: false };
+
+  return {
+    has_pdf_import_job: true,
+    job_id: pdf.job_id ?? null,
+    engine_version: pdf.engine_version ?? null,
+    diagnostics_path: pdf.diagnostics_path ?? null,
+    rasters_manifest_path: pdf.rasters_manifest_path ?? null,
+    page_raster_count: Array.isArray(pdf.page_raster_paths) ? pdf.page_raster_paths.length : null,
+    mode: pdf.mode ?? null,
+    page_count: pdf.page_count ?? null,
+    consumer_guardrail_version: pdf.consumer_guardrail_version ?? null,
+    parse_guardrails_ok: pdf.parse_guardrails?.ok ?? null,
+    artifact_guardrails_ok: pdf.artifact_guardrails?.ok ?? null,
+    artifact_contract_version: pdf.artifact_contract_version ?? null,
+    docling_page_rebase_version: pdf.docling_page_rebase_version ?? null,
+    chunk_merge_validation_version: pdf.chunk_merge_validation_version ?? null,
+    terminal_state_version: pdf.terminal_state_version ?? null,
+  };
+}
+
 
 async function buildStagedImportArtifactMeta(
   admin: ReturnType<typeof createClient>,
@@ -149,6 +176,8 @@ async function buildStagedImportArtifactMeta(
     cdir_fidelity_artifact_path: fidelityPath,
     import_asset_artifact_path: importAssetPath,
     import_manifests_artifact_path: importManifestsPath,
+    import_manifests: body.import_manifests ?? null,
+    import_manifests_summary: importManifestSummary(body.import_manifests),
     import_asset_summary: importAssetSummary(body.import_asset),
     cdir_fidelity_summary: fidelitySummary(body.cdir_fidelity),
     artifact_contract_version: TEMPLATE_FINALIZATION_ARTIFACT_CONTRACT,
@@ -170,6 +199,8 @@ async function buildImportArtifactMeta(admin: ReturnType<typeof createClient>, i
     cdir_fidelity_artifact_path: fidelityPath,
     import_asset_artifact_path: importAssetPath,
     import_manifests_artifact_path: importManifestsPath,
+    import_manifests: body.import_manifests ?? null,
+    import_manifests_summary: importManifestSummary(body.import_manifests),
     import_asset_summary: importAssetSummary(body.import_asset),
     cdir_fidelity_summary: fidelitySummary(body.cdir_fidelity),
   };
