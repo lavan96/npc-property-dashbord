@@ -262,6 +262,64 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-table-wrap table { @apply w-full; }
   .ci-table-wrap thead { @apply bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground; }
   .ci-table-wrap tbody tr { @apply transition-colors hover:bg-primary/5; }
+  .ci-field-surface { @apply rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all; }
+  .ci-field-surface:focus-within { @apply border-primary/45 bg-card/90 shadow-md shadow-primary/10 ring-1 ring-primary/20; }
+  .ci-field-label { @apply text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground; }
+  .ci-field-helper { @apply text-xs leading-5 text-muted-foreground; }
+  .ci-field-message { @apply mt-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium; }
+  .ci-field-message-error { @apply border-destructive/30 bg-destructive/10 text-destructive; }
+  .ci-field-message-warning { @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200; }
+  .ci-field-calculated { @apply border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-100; }
+  .ci-field-manual { @apply border-sky-500/30 bg-sky-500/5 text-sky-800 dark:text-sky-100; }
+  .ci-field-ai { @apply border-purple-500/30 bg-purple-500/5 text-purple-800 dark:text-purple-100; }
+  .ci-field-pending { @apply border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-100; }
+  .ci-field-readonly { @apply border-border/80 bg-muted/35 text-muted-foreground shadow-inner; }
+  .ci-foundation label { @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground; }
+  .ci-foundation label:has(+ input[required])::after,
+  .ci-foundation label:has(+ textarea[required])::after,
+  .ci-foundation label:has(+ button[role='combobox'][aria-required='true'])::after { content: ' *'; @apply text-destructive; }
+  .ci-foundation input,
+  .ci-foundation textarea,
+  .ci-foundation select,
+  .ci-foundation button[role='combobox'] {
+    @apply border-border/75 bg-background/75 text-foreground shadow-sm transition-all placeholder:text-muted-foreground/60 focus-visible:border-primary/60 focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:border-border/50 disabled:bg-muted/45 disabled:text-muted-foreground disabled:opacity-70;
+  }
+  .ci-foundation input[type='number'],
+  .ci-foundation input[inputmode='decimal'],
+  .ci-foundation input[inputmode='numeric'] { @apply font-mono tabular-nums; }
+  .ci-foundation textarea { @apply min-h-24 resize-y leading-6; }
+  .ci-foundation input[readonly],
+  .ci-foundation textarea[readonly],
+  .ci-foundation input[aria-readonly='true'],
+  .ci-foundation textarea[aria-readonly='true'] { @apply border-border/80 bg-muted/35 text-muted-foreground shadow-inner; }
+  .ci-foundation input[aria-invalid='true'],
+  .ci-foundation textarea[aria-invalid='true'],
+  .ci-foundation button[role='combobox'][aria-invalid='true'] { @apply border-destructive/60 bg-destructive/5 text-destructive ring-1 ring-destructive/20; }
+  .ci-foundation input[data-source='calculated'],
+  .ci-foundation textarea[data-source='calculated'],
+  .ci-foundation input[data-ci-source='calculated'],
+  .ci-foundation textarea[data-ci-source='calculated'] { @apply border-emerald-500/35 bg-emerald-500/5; }
+  .ci-foundation input[data-source='manual'],
+  .ci-foundation textarea[data-source='manual'],
+  .ci-foundation input[data-ci-source='manual'],
+  .ci-foundation textarea[data-ci-source='manual'] { @apply border-sky-500/35 bg-sky-500/5; }
+  .ci-foundation input[data-source='ai'],
+  .ci-foundation textarea[data-source='ai'],
+  .ci-foundation input[data-ci-source='ai'],
+  .ci-foundation textarea[data-ci-source='ai'] { @apply border-purple-500/35 bg-purple-500/5; }
+  .ci-foundation input[data-status='pending'],
+  .ci-foundation textarea[data-status='pending'],
+  .ci-foundation input[data-ci-status='pending'],
+  .ci-foundation textarea[data-ci-status='pending'] { @apply border-amber-500/35 bg-amber-500/10; }
+  .ci-foundation .space-y-1 > p,
+  .ci-foundation .space-y-2 > p { @apply text-xs leading-5 text-muted-foreground; }
+  .ci-foundation table { @apply border-separate border-spacing-0; }
+  .ci-foundation thead { @apply bg-gradient-to-r from-muted/70 via-muted/50 to-muted/70 text-[0.7rem] uppercase tracking-[0.16em] text-muted-foreground; }
+  .ci-foundation th { @apply border-b border-border/80 px-4 py-3 font-bold; }
+  .ci-foundation td { @apply border-b border-border/45 px-4 py-3 align-middle; }
+  .ci-foundation tbody tr { @apply bg-card/35 transition-colors hover:bg-primary/5; }
+  .ci-foundation tbody tr:last-child td { @apply border-b-0; }
+  .ci-foundation tfoot { @apply bg-primary/5 font-semibold; }
   .ci-asset-table-wrap { @apply overflow-x-auto rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm; }
   .ci-asset-table-wrap > div { @apply overflow-visible rounded-none border-0 bg-transparent; }
   .ci-asset-table-wrap table { @apply border-separate border-spacing-0; }
