@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,6 +39,15 @@ function commercialAddress(p: CommercialProperty) {
 
 function industrialAddress(p: IndustrialProperty) {
   return [p.street, [p.suburb, p.state, p.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+}
+
+function DisplayValue({ children, align = 'left' }: { children: ReactNode; align?: 'left' | 'right' }) {
+  const isMissing = children === '—' || children === undefined || children === null || children === '';
+  return (
+    <span className={isMissing ? `ci-missing-value ${align === 'right' ? 'ml-auto' : ''}` : ''}>
+      {isMissing ? '—' : children}
+    </span>
+  );
 }
 
 export default function CommercialProperties() {
@@ -156,25 +165,32 @@ export default function CommercialProperties() {
           </TabsList>
         </Tabs>
 
-        <Card className="overflow-hidden border-border/70 shadow-sm">
+        <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-lg shadow-black/5">
           <CardContent className="p-0">
           {loading ? (
-            <div className="text-center text-muted-foreground py-12">Loading…</div>
+            <div className="flex min-h-56 flex-col items-center justify-center bg-gradient-to-br from-card via-card to-muted/25 px-6 py-14 text-center">
+              <div className="mb-4 h-10 w-10 animate-pulse rounded-2xl border border-amber-500/25 bg-amber-500/10" />
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Loading asset register…</p>
+              <p className="mt-2 max-w-sm text-sm text-muted-foreground">Fetching the latest commercial and industrial property records.</p>
+            </div>
           ) : rows.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-lg font-medium">No commercial or industrial properties yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Add an asset manually, scrape a listing URL, or parse a PDF/image in the property form.</p>
+            <div className="flex min-h-72 flex-col items-center justify-center bg-gradient-to-br from-card via-card to-muted/25 px-6 py-14 text-center">
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/80 shadow-sm">
+                <Building2 className="h-7 w-7 text-amber-600" />
+              </div>
+              <p className="text-xl font-semibold tracking-tight">No commercial or industrial properties yet</p>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Add an asset manually, scrape a listing URL, or parse a PDF/image in the property form.</p>
               <div className="mt-4 flex justify-center gap-2">
                 <Button onClick={() => openNew('commercial')}><Plus className="h-4 w-4 mr-2" /> Add Commercial</Button>
                 <Button variant="outline" onClick={() => openNew('industrial')}><Plus className="h-4 w-4 mr-2" /> Add Industrial</Button>
               </div>
             </div>
           ) : (
-            <div className="ci-table-wrap"><Table>
+            <div className="ci-asset-table-wrap">
+              <Table className="min-w-[1040px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Property</TableHead>
+                  <TableHead className="min-w-[280px]">Property</TableHead>
                   <TableHead>Segment</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Area (m²)</TableHead>
@@ -191,29 +207,48 @@ export default function CommercialProperties() {
                   const address = isIndustrial ? industrialAddress(p) : commercialAddress(p);
                   const area = isIndustrial ? p.gla_sqm : (p.nla_sqm || p.gfa_sqm);
                   const value = isIndustrial ? (p.current_valuation || p.purchase_price) : (p.valuation || p.purchase_price);
+                  const statusValue = isIndustrial ? p.status?.replace('_', ' ') : p.gst_treatment?.replace('_', ' ');
                   return (
-                    <TableRow key={`${row.kind}-${row.property.id}`} className="cursor-pointer focus-within:bg-primary/5" onClick={() => navigateToDetail(row)}>
-                      <TableCell className="font-medium">
-                        {isIndustrial && p.property_name ? <div>{p.property_name}</div> : null}
-                        <div className={isIndustrial && p.property_name ? 'text-xs text-muted-foreground' : ''}>{address || '—'}</div>
+                    <TableRow key={`${row.kind}-${row.property.id}`} className="group cursor-pointer focus-within:bg-amber-500/5" onClick={() => navigateToDetail(row)}>
+                      <TableCell className="py-5">
+                        <div className="space-y-1">
+                          {isIndustrial && p.property_name ? <div className="font-semibold leading-tight tracking-tight text-foreground">{p.property_name}</div> : null}
+                          <div className={isIndustrial && p.property_name ? 'text-sm leading-5 text-muted-foreground' : 'font-semibold leading-tight tracking-tight text-foreground'}>
+                            <DisplayValue>{address || '—'}</DisplayValue>
+                          </div>
+                        </div>
                       </TableCell>
-                      <TableCell><Badge variant="outline" className={isIndustrial ? 'ci-badge ci-badge-verified' : 'ci-badge'}>{isIndustrial ? 'Industrial' : 'Commercial'}</Badge></TableCell>
-                      <TableCell>{isIndustrial ? (SUBTYPE_LABEL[p.asset_subtype] || p.asset_subtype) : (ASSET_LABEL[p.asset_class] || p.asset_class)}</TableCell>
-                      <TableCell className="text-right">{area?.toLocaleString() || '—'}</TableCell>
-                      <TableCell className="text-right">{p.site_area_sqm?.toLocaleString() || '—'}</TableCell>
-                      <TableCell className="text-right">{fmtMoney(value)}</TableCell>
-                      <TableCell className="capitalize text-xs text-muted-foreground">{isIndustrial ? p.status?.replace('_', ' ') : p.gst_treatment?.replace('_', ' ')}</TableCell>
-                      <TableCell onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-end gap-1 border-l border-border/70 pl-3">
-                          <Button size="icon" variant="ghost" onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4" /></Button>
+                      <TableCell>
+                        <Badge variant="outline" className={isIndustrial ? 'ci-segment-badge ci-segment-badge-industrial' : 'ci-segment-badge ci-segment-badge-commercial'}>
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          {isIndustrial ? 'Industrial' : 'Commercial'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-foreground/90">
+                          <DisplayValue>{isIndustrial ? (SUBTYPE_LABEL[p.asset_subtype] || p.asset_subtype) : (ASSET_LABEL[p.asset_class] || p.asset_class)}</DisplayValue>
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums"><DisplayValue align="right">{area?.toLocaleString() || '—'}</DisplayValue></TableCell>
+                      <TableCell className="text-right font-medium tabular-nums"><DisplayValue align="right">{p.site_area_sqm?.toLocaleString() || '—'}</DisplayValue></TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-foreground"><DisplayValue align="right">{fmtMoney(value)}</DisplayValue></TableCell>
+                      <TableCell className="capitalize">
+                        <span className="ci-status-pill">
+                          <DisplayValue>{statusValue || '—'}</DisplayValue>
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1.5 border-l border-border/70 pl-3">
+                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-amber-500/10 hover:text-amber-700" onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-destructive/80 hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
-            </Table></div>
+              </Table>
+            </div>
           )}
         </CardContent>
         </Card>
