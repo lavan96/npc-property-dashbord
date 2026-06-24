@@ -235,11 +235,25 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-domain-toggle { @apply grid w-full grid-cols-2 gap-2 rounded-xl border border-border/70 bg-muted/30 p-1.5; }
   .ci-domain-toggle-item { @apply h-11 rounded-lg px-4 text-sm font-semibold text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground data-[state=on]:border data-[state=on]:border-primary/55 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md data-[state=on]:shadow-primary/25; }
   .ci-assumption-status-button { @apply h-10 w-full justify-center border-primary/30 bg-background/75 font-semibold text-foreground shadow-sm transition-all hover:border-primary/55 hover:bg-primary/10 hover:text-primary; }
-  .ci-tab-rail { @apply rounded-xl border border-border/70 bg-card/80 p-3 shadow-sm backdrop-blur; }
-  .ci-tab-group { @apply rounded-xl border border-border/60 bg-background/40 p-2; }
-  .ci-tab-button { @apply w-full rounded-lg px-3 py-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50; }
-  .ci-tab-button-active { @apply border border-primary/50 bg-primary text-primary-foreground shadow-sm shadow-primary/20; }
-  .ci-tab-button-idle { @apply border border-transparent bg-card/60 text-foreground hover:border-primary/25 hover:bg-primary/10; }
+  .ci-tab-rail { @apply relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 p-4 shadow-lg shadow-primary/10 backdrop-blur; }
+  .ci-tab-rail::before { content: ''; @apply pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent; }
+  .ci-tab-rail-header { @apply relative z-10 mb-4 flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-end sm:justify-between; }
+  .ci-tab-eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.24em] text-primary; }
+  .ci-tab-title { @apply mt-1 text-lg font-semibold tracking-tight text-foreground; }
+  .ci-tab-current { @apply rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-sm; }
+  .ci-tab-current span { @apply text-primary; }
+  .ci-tab-group-grid { @apply relative z-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4; }
+  .ci-tab-group { @apply rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10; }
+  .ci-tab-group-heading { @apply mb-3 flex items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-[0.18em] text-foreground; }
+  .ci-tab-group-index { @apply rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary; }
+  .ci-tab-button { @apply relative flex min-h-[4.25rem] w-full items-center justify-between gap-3 overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50; }
+  .ci-tab-button::before { content: ''; @apply absolute inset-y-2 left-0 w-1 rounded-r-full bg-transparent transition-colors; }
+  .ci-tab-button-copy { @apply min-w-0 pr-1; }
+  .ci-tab-button-active { @apply border-primary/70 bg-gradient-to-br from-primary via-primary to-amber-500 text-primary-foreground shadow-md shadow-primary/30 ring-1 ring-primary/35; }
+  .ci-tab-button-active::before { @apply bg-primary-foreground/90; }
+  .ci-tab-button-idle { @apply border-border/70 bg-card/70 text-foreground shadow-sm hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10; }
+  .ci-tab-button-idle:hover::before { @apply bg-primary/70; }
+  .ci-tab-active-pill { @apply shrink-0 rounded-full border border-primary-foreground/35 bg-primary-foreground/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground; }
   .ci-badge { @apply rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary; }
   .ci-badge-pending { @apply border-amber-500/35 bg-amber-500/10 text-amber-600 dark:text-amber-200; }
   .ci-badge-verified { @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200; }
