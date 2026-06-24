@@ -36,6 +36,12 @@ const FINALIZATION_POLL_TIMEOUT_MS = 20 * 60_000;
 const TERMINAL_STATUS = new Set(['succeeded', 'failed', 'cancelled']);
 const DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 
+const CONSUMER_GUARDRAIL_VERSION = 'template-import-consumer-guardrails-v1';
+const REQUIRED_ARTIFACT_CONTRACT_VERSION = 'raster-manifest-v1';
+const REQUIRED_DOCLING_PAGE_REBASE_VERSION = 'chunk-page-rebase-v1';
+const REQUIRED_CHUNK_MERGE_VALIDATION_VERSION = 'chunk-merge-validation-v1';
+const REQUIRED_TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
+
 async function invokeImport(body: any) {
   const { data, error } = await invokeSecureFunction('template-import-pdf', body, { timeoutMs: 300_000 });
   if (error) throw new Error(describeAuthError(error.message) ?? error.message ?? 'template-import-pdf failed');
@@ -168,7 +174,7 @@ interface JobRow {
   diagnostics_path: string | null;
   error_code: string | null;
   error_text: string | null;
-  result_payload: { docling_path?: string; rasters_path?: string; rasters_manifest_path?: string; page_raster_paths?: string[]; legacy_rasters_path?: string; mode?: string; summary?: unknown; auto_mode_selected?: boolean } | null;
+  result_payload: Record<string, any> | null;
   attempts?: Array<{ endpoint?: string; ok?: boolean; status?: number; attempt?: number; error_code?: string; retryable?: boolean; message?: string } | unknown> | null;
 }
 
@@ -333,6 +339,198 @@ async function manifestToRastersByPage(payload: unknown): Promise<DoclingRasterB
   return Object.keys(out).length ? out : undefined;
 }
 
+
+interface ConsumerGuardrailReport {
+  version: string;
+  ok: boolean;
+  expectedPageCount: number;
+  problems: string[];
+  checks: Record<string, unknown>;
+}
+
+function pageNumberContinuity(label: string, values: number[], expectedPageCount: number) {
+  const hist = new Map<number, number>();
+  for (const raw of values) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) continue;
+    hist.set(n, (hist.get(n) ?? 0) + 1);
+  }
+
+  const unique = [...hist.keys()].sort((a, b) => a - b);
+  const duplicates = unique.filter((n) => (hist.get(n) ?? 0) > 1);
+  const missing: number[] = [];
+  for (let i = 1; i <= expectedPageCount; i += 1) {
+    if (!hist.has(i)) missing.push(i);
+  }
+  const outOfRange = unique.filter((n) => n < 1 || n > expectedPageCount);
+
+  return {
+    label,
+    ok: duplicates.length === 0
+      && missing.length === 0
+      && outOfRange.length === 0
+      && unique.length === expectedPageCount,
+    expectedPageCount,
+    observedCount: values.length,
+    uniqueCount: unique.length,
+    minPage: unique.length ? unique[0] : null,
+    maxPage: unique.length ? unique[unique.length - 1] : null,
+    duplicates,
+    missing,
+    outOfRange,
+  };
+}
+
+function expectedPageCountFromJob(job: JobRow): number {
+  const payload = job.result_payload ?? {};
+  const summary = payload.summary && typeof payload.summary === 'object'
+    ? payload.summary as Record<string, any>
+    : {};
+  return Math.max(
+    Number(job.page_count ?? 0),
+    Number(job.pages_total ?? 0),
+    Number(payload.page_count ?? 0),
+    Number(summary.page_count ?? 0),
+    Number(summary.docling_page_count ?? 0),
+    Number(summary.raster_page_count ?? 0),
+    Array.isArray(payload.page_raster_paths) ? payload.page_raster_paths.length : 0,
+  );
+}
+
+function isChunkedJob(job: JobRow): boolean {
+  const payload = job.result_payload ?? {};
+  return payload.chunked === true
+    || typeof payload.docling_page_rebase_version === 'string'
+    || typeof payload.chunk_merge_validation_version === 'string';
+}
+
+function validateParseJobConsumerGuardrails(job: JobRow): ConsumerGuardrailReport {
+  const payload = job.result_payload ?? {};
+  const expectedPageCount = expectedPageCountFromJob(job);
+  const problems: string[] = [];
+
+  if (job.status !== 'succeeded') problems.push(`job_status_not_succeeded:${job.status}`);
+  if (job.stage !== 'parsed') problems.push(`job_stage_not_parsed:${job.stage ?? 'null'}`);
+  if (expectedPageCount <= 0) problems.push('expected_page_count_not_positive');
+
+  const chunked = isChunkedJob(job);
+  if (chunked) {
+    if (payload.artifact_contract_version !== REQUIRED_ARTIFACT_CONTRACT_VERSION) {
+      problems.push(`artifact_contract_version_missing_or_stale:${String(payload.artifact_contract_version ?? 'null')}`);
+    }
+    if (payload.docling_page_rebase_version !== REQUIRED_DOCLING_PAGE_REBASE_VERSION) {
+      problems.push(`docling_page_rebase_version_missing_or_stale:${String(payload.docling_page_rebase_version ?? 'null')}`);
+    }
+    if (payload.chunk_merge_validation_version !== REQUIRED_CHUNK_MERGE_VALIDATION_VERSION) {
+      problems.push(`chunk_merge_validation_version_missing_or_stale:${String(payload.chunk_merge_validation_version ?? 'null')}`);
+    }
+    if (payload.terminal_state_version !== REQUIRED_TERMINAL_STATE_VERSION) {
+      problems.push(`terminal_state_version_missing_or_stale:${String(payload.terminal_state_version ?? 'null')}`);
+    }
+
+    const mergeValidation = payload.merge_validation && typeof payload.merge_validation === 'object'
+      ? payload.merge_validation as Record<string, any>
+      : null;
+
+    if (!mergeValidation || mergeValidation.ok !== true) {
+      problems.push('merge_validation_not_ok');
+    }
+  }
+
+  const pageRasterPaths = Array.isArray(payload.page_raster_paths) ? payload.page_raster_paths : [];
+  const hasRasterManifest = typeof payload.rasters_manifest_path === 'string' && payload.rasters_manifest_path.length > 0;
+  if (hasRasterManifest && pageRasterPaths.length !== expectedPageCount) {
+    problems.push(`page_raster_paths_count_mismatch:${pageRasterPaths.length}/${expectedPageCount}`);
+  }
+
+  return {
+    version: CONSUMER_GUARDRAIL_VERSION,
+    ok: problems.length === 0,
+    expectedPageCount,
+    problems,
+    checks: {
+      chunked,
+      jobStatus: job.status,
+      jobStage: job.stage,
+      artifactContractVersion: payload.artifact_contract_version ?? null,
+      doclingPageRebaseVersion: payload.docling_page_rebase_version ?? null,
+      chunkMergeValidationVersion: payload.chunk_merge_validation_version ?? null,
+      terminalStateVersion: payload.terminal_state_version ?? null,
+      pageRasterPathCount: pageRasterPaths.length,
+      hasRasterManifest,
+    },
+  };
+}
+
+function validateDownloadedArtifacts(
+  job: JobRow,
+  doclingDoc: DoclingDocument,
+  rasterManifestPayload: unknown,
+): ConsumerGuardrailReport {
+  const expectedPageCount = expectedPageCountFromJob(job);
+  const problems: string[] = [];
+
+  const pages = ((doclingDoc as any).pages ?? {}) as Record<string, any>;
+  const pageEntries = Object.entries(pages);
+  const pageKeys = pageEntries
+    .map(([key]) => Number(key))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  const nestedPageNos = pageEntries
+    .map(([, value]) => Number(value?.page_no ?? 0))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  const keyReport = pageNumberContinuity('docling_page_keys', pageKeys, expectedPageCount);
+  if (!keyReport.ok) problems.push('docling_page_keys_not_continuous');
+
+  const nestedReport = nestedPageNos.length
+    ? pageNumberContinuity('docling_nested_page_no', nestedPageNos, expectedPageCount)
+    : null;
+
+  if (nestedReport && !nestedReport.ok) problems.push('docling_nested_page_no_not_continuous');
+
+  const mismatchedNestedPages = pageEntries
+    .filter(([key, value]) => {
+      const keyNo = Number(key);
+      const nestedNo = Number(value?.page_no ?? keyNo);
+      return Number.isFinite(keyNo) && Number.isFinite(nestedNo) && keyNo !== nestedNo;
+    })
+    .map(([key, value]) => ({ key: Number(key), nested: Number(value?.page_no ?? 0) }));
+
+  if (mismatchedNestedPages.length > 0) {
+    problems.push(`docling_page_key_nested_mismatch:${mismatchedNestedPages.slice(0, 10).map((p) => `${p.key}->${p.nested}`).join(',')}`);
+  }
+
+  let rasterReport: ReturnType<typeof pageNumberContinuity> | null = null;
+  if (rasterManifestPayload && typeof rasterManifestPayload === 'object') {
+    const rasterPages = ((rasterManifestPayload as any).pages ?? []) as Array<Record<string, any>>;
+    const rasterPageNos = Array.isArray(rasterPages)
+      ? rasterPages.map((page) => Number(page.page_no ?? 0)).filter((n) => Number.isFinite(n) && n > 0)
+      : [];
+
+    rasterReport = pageNumberContinuity('raster_manifest_page_no', rasterPageNos, expectedPageCount);
+    if (!rasterReport.ok) problems.push('raster_manifest_page_no_not_continuous');
+
+    if (rasterPageNos.length !== expectedPageCount) {
+      problems.push(`raster_manifest_page_count_mismatch:${rasterPageNos.length}/${expectedPageCount}`);
+    }
+  }
+
+  return {
+    version: CONSUMER_GUARDRAIL_VERSION,
+    ok: problems.length === 0,
+    expectedPageCount,
+    problems,
+    checks: {
+      doclingPageKeys: keyReport,
+      doclingNestedPageNos: nestedReport,
+      mismatchedNestedPages,
+      rasterManifestPages: rasterReport,
+    },
+  };
+}
+
+
 export async function extractPdfViaDocling(
   file: File,
   options: ImportOptions,
@@ -401,6 +599,11 @@ export async function extractPdfViaDocling(
       );
     }
 
+    const parseGuardrails = validateParseJobConsumerGuardrails(job);
+    if (!parseGuardrails.ok) {
+      throw new Error(`Docling job failed consumer guardrails: ${parseGuardrails.problems.join('; ')}`);
+    }
+
     const doclingPath = job.result_payload?.docling_path ?? job.diagnostics_path;
     if (!doclingPath) throw new Error('Docling job did not produce a diagnostics path');
 
@@ -419,7 +622,12 @@ export async function extractPdfViaDocling(
         ? rastersByPage(await downloadJson<unknown>(job.result_payload.rasters_path))
         : undefined;
 
-    const effectiveMode = wireModeToDocling(job.result_payload?.mode, mode);
+    const artifactGuardrails = validateDownloadedArtifacts(job, doclingDoc, rasterManifestPayload);
+    if (!artifactGuardrails.ok) {
+      throw new Error(`Downloaded Docling artifacts failed consumer guardrails: ${artifactGuardrails.problems.join('; ')}`);
+    }
+
+    const effectiveMode = wireModeToDocling(job.result_payload?.effective_mode ?? job.result_payload?.mode, mode);
     onProgress({
       phase: 'finalizing',
       message: job.result_payload?.auto_mode_selected
@@ -445,6 +653,13 @@ export async function extractPdfViaDocling(
         diagnosticsPath: doclingPath,
         jobId,
         importedAt: new Date().toISOString(),
+        consumerGuardrailVersion: CONSUMER_GUARDRAIL_VERSION,
+        parseGuardrails,
+        artifactGuardrails,
+        parseArtifactContractVersion: job.result_payload?.artifact_contract_version ?? null,
+        doclingPageRebaseVersion: job.result_payload?.docling_page_rebase_version ?? null,
+        chunkMergeValidationVersion: job.result_payload?.chunk_merge_validation_version ?? null,
+        terminalStateVersion: job.result_payload?.terminal_state_version ?? null,
       },
     };
     const schemaValidation = validateReconstructedSchema(template);
@@ -487,6 +702,13 @@ export async function extractPdfViaDocling(
           page_raster_paths: job.result_payload?.page_raster_paths ?? [],
           mode: effectiveMode,
           page_count: totalPages,
+          consumer_guardrail_version: CONSUMER_GUARDRAIL_VERSION,
+          parse_guardrails: parseGuardrails,
+          artifact_guardrails: artifactGuardrails,
+          artifact_contract_version: job.result_payload?.artifact_contract_version ?? null,
+          docling_page_rebase_version: job.result_payload?.docling_page_rebase_version ?? null,
+          chunk_merge_validation_version: job.result_payload?.chunk_merge_validation_version ?? null,
+          terminal_state_version: job.result_payload?.terminal_state_version ?? null,
         },
       },
     });
