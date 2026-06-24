@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Info, Lock } from 'lucide-react';
+import { AlertTriangle, Info, Lock } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -139,20 +139,20 @@ export function SiteCoverCard() {
   ];
 
   return (
-    <Card className="overflow-hidden border-primary/20 bg-card/90 shadow-sm">
-      <CardHeader className="border-b border-border/60 pb-3">
+    <Card className="overflow-hidden rounded-3xl border-primary/20 bg-gradient-to-br from-card via-card/95 to-amber-500/5 shadow-lg shadow-primary/5 transition-shadow hover:shadow-xl">
+      <CardHeader className="border-b border-border/60 bg-background/30 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle>Site Cover &amp; $/m²</CardTitle>
             <CardDescription>Enter physical site details and price, then review the locked density and pricing outputs.</CardDescription>
           </div>
-          <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-200">Site metrics</Badge>
+          <Badge variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-200 shadow-sm shadow-amber-500/10">Site metrics</Badge>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-4 p-4 lg:grid-cols-2 lg:gap-6">
+      <CardContent className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.95fr)] lg:gap-6">
         <div className="space-y-3">
           <IndustrialMetricAiWorkflow actions={aiActions} />
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-background/40 p-4 shadow-inner">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-amber-200">Editable inputs</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div><CascadedInput label="GLA (m²)" value={gla.value} placeholder="Pulled from property profile or enter manually" source={gla.source} onChange={gla.setValue} onVerify={gla.markVerified} /><SourceActions field={gla} /></div>
@@ -163,12 +163,12 @@ export function SiteCoverCard() {
           </div>
           </div>
         </div>
-        <div className="space-y-3 rounded-lg border border-border/70 bg-background/35 p-4 shadow-inner">
+        <div className="space-y-3 rounded-2xl border border-primary/15 bg-gradient-to-br from-background/75 to-primary/5 p-4 shadow-inner">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Locked calculated outputs</p>
           {!canCalculateAll && <EmptyState critical={hasCriticalIssue} />}
           <OutputRow label="Site Cover %" tooltip="GLA m² ÷ site area m²." value={formatPercent(siteCover)} tone={benchmarkTone} bold />
           <div className="flex justify-between items-center gap-4">
-            <span className="flex items-center gap-1 text-muted-foreground"><Lock className="h-3 w-3" />Coverage Band<Badge variant="outline" className="ml-1 text-[10px]">Calculated</Badge></span>
+            <span className="flex items-center gap-1 text-muted-foreground"><Lock className="h-3 w-3" />Coverage Band<Badge variant="outline" className="ml-1 rounded-full border-primary/20 bg-primary/5 text-[10px]">Calculated</Badge></span>
             {coverageBand === 'Pending' ? <span className="text-muted-foreground text-sm">Pending</span> : <Badge variant="secondary" className="capitalize">{coverageBand}</Badge>}
           </div>
           <OutputRow label="Hardstand Ratio" tooltip="Hardstand m² ÷ site area m²." value={formatPercent(hardstandRatio)} tone={benchmarkTone} muted />
@@ -221,18 +221,18 @@ function CascadedInput({ label, value, placeholder, source, onChange, onVerify, 
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <Label>{label}</Label>
-        <div className="flex items-center gap-1"><SourceBadge source={source} /><button type="button" className="text-[10px] text-primary hover:underline" onClick={onVerify}>Verify</button></div>
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</Label>
+        <div className="flex items-center gap-1"><SourceBadge source={source} /><button type="button" className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary transition hover:bg-primary/10 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" onClick={onVerify}>Verify</button></div>
       </div>
-      <Input type="text" inputMode="decimal" step={step} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="border-amber-500/30 bg-background/80 shadow-inner focus-visible:ring-amber-400" />
+      <Input type="text" inputMode="decimal" step={step} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="h-11 rounded-xl border-amber-500/30 bg-background/90 shadow-inner transition-all hover:border-amber-400/60 focus-visible:ring-amber-400" />
     </div>
   );
 }
 
 function EmptyState({ critical }: { critical: boolean }) {
   return (
-    <div className={`rounded-lg border p-3 text-sm ${critical ? 'border-red-500/30 bg-red-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
-      <p className={`font-semibold ${critical ? 'text-red-200' : 'text-amber-200'}`}>{critical ? 'Check Industrial Inputs' : 'Awaiting Industrial Inputs'}</p>
+    <div className={`rounded-2xl border p-3 text-sm shadow-inner ${critical ? 'border-red-500/30 bg-red-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
+      <p className={`flex items-center gap-2 font-semibold ${critical ? 'text-red-200' : 'text-amber-200'}`}><AlertTriangle className="h-4 w-4" />{critical ? 'Check Industrial Inputs' : 'Awaiting Industrial Inputs'}</p>
       <p className="text-muted-foreground">{critical ? 'GLA and site area must be greater than zero before site benchmarks can be calculated.' : 'Import property size, rent, outgoings and price data to calculate industrial benchmarks.'}</p>
     </div>
   );
@@ -241,12 +241,12 @@ function EmptyState({ critical }: { critical: boolean }) {
 function OutputRow({ label, value, tooltip, tone, bold, muted }: { label: string; value: string; tooltip?: string; tone: Tone; bold?: boolean; muted?: boolean }) {
   const toneClass = tone === 'critical' ? 'text-red-300' : tone === 'verified' ? 'text-green-300' : 'text-amber-300';
   return (
-    <div className={`flex justify-between items-center gap-4 ${bold ? 'font-semibold' : ''} ${muted ? 'text-sm' : ''}`}>
+    <div className={`rounded-xl border border-border/50 bg-card/45 px-3 py-2 transition-colors hover:border-primary/25 hover:bg-card/70 flex justify-between items-center gap-4 ${bold ? 'font-semibold' : ''} ${muted ? 'text-sm' : ''}`}>
       <span className="flex items-center gap-1 text-muted-foreground">
         <Lock className="h-3 w-3" />
         {label}
         {tooltip && <FormulaTooltip text={tooltip} />}
-        <Badge variant="outline" className="ml-1 text-[10px]">Calculated</Badge>
+        <Badge variant="outline" className="ml-1 rounded-full border-primary/20 bg-primary/5 text-[10px]">Calculated</Badge>
       </span>
       <span className={`text-right ${value === 'Pending' ? 'text-muted-foreground' : toneClass}`}>{value}</span>
     </div>

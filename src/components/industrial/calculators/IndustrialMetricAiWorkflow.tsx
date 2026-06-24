@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -57,21 +57,21 @@ export function IndustrialMetricAiWorkflow({ title = 'AI / Research Benchmarks',
   };
 
   return (
-    <Card className="border-primary/20 bg-card/70">
+    <Card className="overflow-hidden border-purple-400/20 bg-gradient-to-br from-card/90 via-card/70 to-purple-500/5 shadow-sm transition-shadow hover:shadow-md">
       <details>
-        <summary className="cursor-pointer list-none">
+        <summary className="group cursor-pointer list-none">
           <CardHeader className="space-y-1 pb-3">
-            <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-primary" />{title}</CardTitle>
+            <CardTitle className="flex items-center justify-between gap-2 text-base"><span className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" />{title}</span><ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" /></CardTitle>
             <CardDescription>{description}</CardDescription>
           </CardHeader>
         </summary>
         <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
-          {actions.map((action) => <Button key={action.id} type="button" size="sm" variant="outline" onClick={() => runAction(action)}>{action.label}</Button>)}
+          {actions.map((action) => <Button key={action.id} type="button" size="sm" variant="outline" className="rounded-full border-purple-400/30 bg-background/70 transition-all hover:-translate-y-0.5 hover:border-purple-300 hover:bg-purple-500/10 focus-visible:ring-purple-400" onClick={() => runAction(action)}>{action.label}</Button>)}
         </div>
         {message && <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-muted-foreground">{message}</div>}
         {preview && (
-          <div className="rounded-lg border border-primary/20 bg-background/40 p-3 text-sm">
+          <div className="rounded-2xl border border-purple-400/25 bg-background/60 p-4 text-sm shadow-inner">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="font-semibold text-foreground">AI / Research Preview — {preview.label}</p>
@@ -105,13 +105,13 @@ export function IndustrialMetricAiWorkflow({ title = 'AI / Research Benchmarks',
 }
 
 function PreviewRow({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="text-sm text-foreground">{value}</p></div>;
+  return <div className="rounded-xl border border-border/60 bg-card/60 p-3"><p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold text-foreground">{value}</p></div>;
 }
 
 function PreviewList({ label, values }: { label: string; values: string[] }) {
   return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+    <div className="rounded-xl border border-border/60 bg-card/60 p-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
         {(values.length ? values : ['None identified']).map((value) => <li key={value}>{value}</li>)}
       </ul>
