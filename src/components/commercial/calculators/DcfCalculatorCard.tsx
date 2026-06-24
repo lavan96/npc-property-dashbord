@@ -709,28 +709,54 @@ export function DcfCalculatorCard() {
           </div>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.18fr)_minmax(360px,0.82fr)]">
           <div className="order-2 space-y-4 lg:order-1">
-            <section className="rounded-2xl border bg-muted/10 p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <Label className="text-sm font-semibold">Core DCF Assumptions</Label>
-                <Badge variant="outline" className="border-amber-500/30 text-amber-100">Editable sources</Badge>
-              </div>
+            <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
+              <PanelHeading
+                kicker="DCF assumptions"
+                title="Acquisition basis and hold-period inputs"
+                description="Source-aware purchase, cost, NOI and hold-period fields remain editable without changing the DCF formulas."
+                badge="Editable sources"
+              />
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <Field label="Purchase Price" v={fields.price} source={meta.price.source} pending={meta.price.pending} set={(v) => updateField('price', v)} onKeep={() => keepOverride('price')} onUseSource={() => usePendingSource('price')} placeholder={placeholders.price} />
                 <Field label="Acquisition Costs" v={fields.acqCosts} source={meta.acqCosts.source} pending={meta.acqCosts.pending} set={(v) => updateField('acqCosts', v)} onKeep={() => keepOverride('acqCosts')} onUseSource={() => usePendingSource('acqCosts')} placeholder={placeholders.acqCosts} />
                 <Field label="Base NOI" v={fields.initialNoi} source={meta.initialNoi.source} pending={meta.initialNoi.pending} set={(v) => updateField('initialNoi', v)} onKeep={() => keepOverride('initialNoi')} onUseSource={() => usePendingSource('initialNoi')} placeholder={placeholders.initialNoi} />
                 <Field label="Hold Period (yrs)" v={fields.hold} source={meta.hold.source} pending={meta.hold.pending} set={(v) => updateField('hold', v)} onKeep={() => keepOverride('hold')} onUseSource={() => usePendingSource('hold')} placeholder={placeholders.hold} />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
+              <PanelHeading
+                kicker="Growth assumptions"
+                title="Rental growth, vacancy and discount rate"
+                description="Model the recurring cashflow growth profile and required return while preserving existing discount-rate logic."
+              />
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <Field label="Rental Growth %" v={fields.growth} source={meta.growth.source} pending={meta.growth.pending} set={(v) => updateField('growth', v)} onKeep={() => keepOverride('growth')} onUseSource={() => usePendingSource('growth')} step="0.1" placeholder={placeholders.growth} />
                 <Field label="Vacancy Allowance %" v={fields.vacancy} source={meta.vacancy.source} pending={meta.vacancy.pending} set={(v) => updateField('vacancy', v)} onKeep={() => keepOverride('vacancy')} onUseSource={() => usePendingSource('vacancy')} step="0.1" placeholder={placeholders.vacancy} />
-                <Field label="Terminal Cap %" v={fields.termCap} source={meta.termCap.source} pending={meta.termCap.pending} set={(v) => updateField('termCap', v)} onKeep={() => keepOverride('termCap')} onUseSource={() => usePendingSource('termCap')} step="0.1" placeholder={placeholders.termCap} />
-                <Field label="Selling Costs %" v={fields.sellingCosts} source={meta.sellingCosts.source} pending={meta.sellingCosts.pending} set={(v) => updateField('sellingCosts', v)} onKeep={() => keepOverride('sellingCosts')} onUseSource={() => usePendingSource('sellingCosts')} step="0.1" placeholder={placeholders.sellingCosts} />
                 <Field label="Discount Rate %" v={fields.discount} source={meta.discount.source} pending={meta.discount.pending} set={(v) => updateField('discount', v)} onKeep={() => keepOverride('discount')} onUseSource={() => usePendingSource('discount')} step="0.1" placeholder={placeholders.discount} />
               </div>
             </section>
 
-            <section className="rounded-2xl border bg-muted/10 p-4">
-              <Label className="text-sm font-semibold">Debt Assumptions</Label>
+            <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
+              <PanelHeading
+                kicker="Exit assumptions"
+                title="Terminal value and sale proceeds drivers"
+                description="Exit cap rate and sale-cost assumptions feed the existing terminal value and final-year proceeds calculations."
+              />
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Terminal Cap %" v={fields.termCap} source={meta.termCap.source} pending={meta.termCap.pending} set={(v) => updateField('termCap', v)} onKeep={() => keepOverride('termCap')} onUseSource={() => usePendingSource('termCap')} step="0.1" placeholder={placeholders.termCap} />
+                <Field label="Selling Costs %" v={fields.sellingCosts} source={meta.sellingCosts.source} pending={meta.sellingCosts.pending} set={(v) => updateField('sellingCosts', v)} onKeep={() => keepOverride('sellingCosts')} onUseSource={() => usePendingSource('sellingCosts')} step="0.1" placeholder={placeholders.sellingCosts} />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
+              <PanelHeading
+                kicker="Debt assumptions"
+                title="Leverage and debt service inputs"
+                description="Optional leverage assumptions support levered annual cashflow, NPV, IRR and equity multiple outputs."
+              />
               <div className="mt-3 grid gap-3 md:grid-cols-3">
                 <Field label="Loan Amount" v={fields.loan} source={meta.loan.source} pending={meta.loan.pending} set={(v) => updateField('loan', v)} onKeep={() => keepOverride('loan')} onUseSource={() => usePendingSource('loan')} placeholder={placeholders.loan} />
                 <Field label="Interest %" v={fields.interest} source={meta.interest.source} pending={meta.interest.pending} set={(v) => updateField('interest', v)} onKeep={() => keepOverride('interest')} onUseSource={() => usePendingSource('interest')} step="0.05" placeholder={placeholders.interest} />
@@ -738,8 +764,12 @@ export function DcfCalculatorCard() {
               </div>
             </section>
 
-            <section className="rounded-2xl border bg-muted/10 p-4">
-              <Label className="text-sm font-semibold">Capex / Downtime</Label>
+            <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
+              <PanelHeading
+                kicker="Annual cashflow assumptions"
+                title="Capex, downtime and zero-cost confirmations"
+                description="Annual forecast inputs stay separate so manual overrides and zero-cost confirmations are easy to audit."
+              />
               <div className="mt-3 grid gap-3 md:grid-cols-2">
                 <Field label="Annual Capex" v={fields.annualCapex} source={meta.annualCapex.source} pending={meta.annualCapex.pending} set={(v) => updateField('annualCapex', v)} onKeep={() => keepOverride('annualCapex')} onUseSource={() => usePendingSource('annualCapex')} placeholder={placeholders.annualCapex} />
                 <Field label="Downtime Months" v={fields.downtimeMonths} source={meta.downtimeMonths.source} pending={meta.downtimeMonths.pending} set={(v) => updateField('downtimeMonths', v)} onKeep={() => keepOverride('downtimeMonths')} onUseSource={() => usePendingSource('downtimeMonths')} placeholder={placeholders.downtimeMonths} />
@@ -777,14 +807,18 @@ export function DcfCalculatorCard() {
               {!canGenerate && <p className="mt-2 text-xs text-muted-foreground">{generateTooltip}</p>}
             </section>
 
-            <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-              <Label className="text-sm font-semibold text-primary">Return Summary</Label>
+            <section className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-4 shadow-lg shadow-primary/5">
+              <PanelHeading
+                kicker="Valuation outputs"
+                title="Investment return summary"
+                description="NPV, IRR, terminal value and equity multiple are highlighted from the generated DCF result."
+              />
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Metric label="Levered IRR (%)" value={result ? safePct(result.leveredIrr) : PENDING} highlight />
+                <Metric label="Levered IRR (%)" value={result ? safePct(result.leveredIrr) : PENDING} highlight size="hero" />
+                <Metric label="Levered NPV (AUD)" value={result ? fmt0(result.leveredNpv) : PENDING} highlight size="hero" />
+                <Metric label="Terminal Value (AUD)" value={result ? fmt0(result.terminalValue) : PENDING} highlight />
+                <Metric label="Equity Multiple (x)" value={result ? `${result.equityMultiple}x` : PENDING} highlight />
                 <Metric label="Unlevered IRR (%)" value={result ? safePct(result.unleveredIrr) : PENDING} />
-                <Metric label="Levered NPV (AUD)" value={result ? fmt0(result.leveredNpv) : PENDING} highlight />
-                <Metric label="Equity Multiple (x)" value={result ? `${result.equityMultiple}x` : PENDING} />
-                <Metric label="Terminal Value (AUD)" value={result ? fmt0(result.terminalValue) : PENDING} />
                 <Metric label="Net Sale Proceeds to Equity (AUD)" value={result ? fmt0(result.netSaleProceeds) : PENDING} highlight />
               </div>
             </section>
@@ -792,9 +826,9 @@ export function DcfCalculatorCard() {
         </section>
 
         {estimatePanelOpen && (
-          <section className="rounded-2xl border border-primary/20 bg-muted/20 p-4">
+          <section className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-muted/20 to-card p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div><Label>AI / Research Estimate Preview</Label><p className="text-xs text-muted-foreground">Review suggested DCF assumptions before applying them. Estimates never auto-populate fields.</p></div>
+              <div><Label>AI / Research Estimate Preview</Label><p className="text-xs text-muted-foreground">Preview, edit, accept or reject suggested DCF assumptions before applying them. Estimates never auto-populate fields.</p></div>
               <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => applyEstimates(false)} disabled={!estimates.length}>Accept all estimates</Button><Button size="sm" onClick={() => applyEstimates(true)} disabled={!estimates.some((e) => e.selected)}>Accept selected estimates</Button><Button size="sm" variant="ghost" onClick={() => setEstimatePanelOpen(false)}>Close</Button></div>
             </div>
             {estimateMessage && <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{estimateMessage}</p>}
@@ -822,11 +856,11 @@ export function DcfCalculatorCard() {
           </div>
         </section>
 
-        <section>
+        <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <Label className="text-sm font-semibold">Yearly Cashflow</Label>
-              {result && <p className="text-xs text-muted-foreground">Cashflow preview — first 5 years</p>}
+              <Label className="text-sm font-semibold">Annual cashflow forecast</Label>
+              {result ? <p className="text-xs text-muted-foreground">Cashflow preview — first 5 years, with final-year terminal value shown when included in the preview.</p> : <p className="text-xs text-muted-foreground">Generate the DCF to unlock the annual forecast table.</p>}
             </div>
             {generatedRows.length > 5 && <Button size="sm" variant="outline" onClick={() => setScheduleDialogOpen(true)}>View full cashflow schedule</Button>}
           </div>
@@ -835,12 +869,17 @@ export function DcfCalculatorCard() {
           )}
         </section>
 
-        <section className="space-y-3">
-          <div className="rounded-2xl border p-4"><button type="button" className="flex w-full items-center justify-between text-left" onClick={() => result && setShowSensitivity((v) => !v)} disabled={!result} title={!result ? 'Generate base DCF before viewing sensitivity.' : undefined}><Label>Sensitivity / Exit Cap</Label><span className="text-xs text-primary">{!result ? 'Generate first' : showSensitivity ? 'Hide' : 'Show'}</span></button>{result && showSensitivity && <div className="mt-3 overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Exit cap rate</TableHead><TableHead className="text-right">Terminal value</TableHead><TableHead className="text-right">Net sale proceeds to equity</TableHead><TableHead className="text-right">Levered IRR impact</TableHead><TableHead className="text-right">Levered NPV impact</TableHead></TableRow></TableHeader><TableBody>{sensitivityRows.map((r) => <TableRow key={r.exitCapRatePct}><TableCell>{r.exitCapRatePct}%</TableCell><TableCell className="text-right">{fmt0(r.terminalValue)}</TableCell><TableCell className="text-right">{fmt0(r.netSaleProceedsToEquity)}</TableCell><TableCell className="text-right">{r.leveredIrrImpact == null ? PENDING : `${r.leveredIrrImpact.toFixed(2)}%`}</TableCell><TableCell className="text-right">{fmt0(r.leveredNpvImpact)}</TableCell></TableRow>)}</TableBody></Table></div>}</div>
-          <div className="rounded-2xl border p-4"><button type="button" className="flex w-full items-center justify-between text-left" onClick={() => result && setShowScenarios((v) => !v)} disabled={!result} title={!result ? 'Generate base DCF before viewing scenarios.' : undefined}><Label>DCF Scenarios</Label><span className="text-xs text-primary">{!result ? 'Generate first' : showScenarios ? 'Hide' : 'Show'}</span></button>{result && showScenarios && <div className="mt-3 grid gap-3 lg:grid-cols-2">{scenarioCards.map((s) => <div key={s.name} className="rounded-lg border bg-muted/20 p-3 text-sm"><div className="font-semibold text-foreground">{s.name} Case</div><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><div>Levered IRR: <span className="text-foreground">{safePct(s.result.leveredIrr)}</span></div><div>Unlevered IRR: <span className="text-foreground">{safePct(s.result.unleveredIrr)}</span></div><div>Levered NPV: <span className="text-foreground">{fmt0(s.result.leveredNpv)}</span></div><div>Terminal Value: <span className="text-foreground">{fmt0(s.result.terminalValue)}</span></div><div>Equity Multiple: <span className="text-foreground">{s.result.equityMultiple}x</span></div><div>Binding risk driver: <span className="text-foreground">{s.driver}</span></div></div><p className="mt-2 text-xs text-muted-foreground">{s.explanation}</p></div>)}</div>}</div>
+        <section className="space-y-3 rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
+          <PanelHeading
+            kicker="Sensitivity / risk commentary"
+            title="Exit cap sensitivity and DCF scenario risk"
+            description="Use generated outputs to review how terminal value, NPV and IRR move under exit-cap and scenario assumptions."
+          />
+          <div className="rounded-xl border bg-background/40 p-4"><button type="button" className="flex w-full items-center justify-between text-left" onClick={() => result && setShowSensitivity((v) => !v)} disabled={!result} title={!result ? 'Generate base DCF before viewing sensitivity.' : undefined}><Label>Sensitivity / Exit Cap</Label><span className="text-xs text-primary">{!result ? 'Generate first' : showSensitivity ? 'Hide' : 'Show'}</span></button>{result && showSensitivity && <div className="mt-3 overflow-x-auto rounded-lg border"><Table><TableHeader className="bg-muted/40"><TableRow><TableHead>Exit cap rate</TableHead><TableHead className="text-right">Terminal value</TableHead><TableHead className="text-right">Net sale proceeds to equity</TableHead><TableHead className="text-right">Levered IRR impact</TableHead><TableHead className="text-right">Levered NPV impact</TableHead></TableRow></TableHeader><TableBody>{sensitivityRows.map((r) => <TableRow key={r.exitCapRatePct} className="odd:bg-muted/10"><TableCell>{r.exitCapRatePct}%</TableCell><TableCell className="text-right font-medium">{fmt0(r.terminalValue)}</TableCell><TableCell className="text-right">{fmt0(r.netSaleProceedsToEquity)}</TableCell><TableCell className="text-right">{r.leveredIrrImpact == null ? PENDING : `${r.leveredIrrImpact.toFixed(2)}%`}</TableCell><TableCell className="text-right">{fmt0(r.leveredNpvImpact)}</TableCell></TableRow>)}</TableBody></Table></div>}</div>
+          <div className="rounded-xl border bg-background/40 p-4"><button type="button" className="flex w-full items-center justify-between text-left" onClick={() => result && setShowScenarios((v) => !v)} disabled={!result} title={!result ? 'Generate base DCF before viewing scenarios.' : undefined}><Label>DCF Scenarios</Label><span className="text-xs text-primary">{!result ? 'Generate first' : showScenarios ? 'Hide' : 'Show'}</span></button>{result && showScenarios && <div className="mt-3 grid gap-3 lg:grid-cols-2">{scenarioCards.map((s) => <div key={s.name} className="rounded-lg border bg-muted/20 p-3 text-sm"><div className="font-semibold text-foreground">{s.name} Case</div><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><div>Levered IRR: <span className="text-foreground">{safePct(s.result.leveredIrr)}</span></div><div>Unlevered IRR: <span className="text-foreground">{safePct(s.result.unleveredIrr)}</span></div><div>Levered NPV: <span className="text-foreground">{fmt0(s.result.leveredNpv)}</span></div><div>Terminal Value: <span className="text-foreground">{fmt0(s.result.terminalValue)}</span></div><div>Equity Multiple: <span className="text-foreground">{s.result.equityMultiple}x</span></div><div>Binding risk driver: <span className="text-foreground">{s.driver}</span></div></div><p className="mt-2 text-xs text-muted-foreground">{s.explanation}</p></div>)}</div>}</div>
         </section>
 
-        <section className="rounded-2xl border p-4">
+        <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2"><Label className="text-sm font-semibold">Commentary / Report Controls</Label><Button size="sm" variant={includeCommentary ? 'secondary' : 'outline'} onClick={() => setIncludeCommentary((v) => !v)}>Include DCF commentary in report</Button></div>
           <div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={exportBlocked} title={exportBlocked ? 'Generate current cashflow before exporting DCF outputs.' : exportWarning ?? undefined}>Include in client report</Button><Button size="sm" variant="outline" disabled={exportBlocked} title={exportBlocked ? 'Generate current cashflow before exporting DCF outputs.' : exportWarning ?? undefined}>Export cashflow schedule</Button><Button size="sm" variant="outline" disabled={!result || cashflowOutOfDate} title={!result || cashflowOutOfDate ? 'Generate current cashflow before saving a scenario.' : undefined}>Save as scenario</Button></div>
           {exportBlocked && <p className="mt-2 text-xs text-amber-200">Generate current cashflow before exporting DCF outputs.</p>}{exportWarning && <p className="mt-2 text-xs text-amber-200">{exportWarning}</p>}
@@ -897,26 +936,39 @@ export function DcfCalculatorCard() {
   );
 }
 
-function Field({ label, v, set, step, placeholder, source, pending, onKeep, onUseSource }: { label: string; v: string; set: (v: string) => void; step?: string; placeholder: string; source: DcfSourceState; pending?: Candidate; onKeep: () => void; onUseSource: () => void }) {
+function PanelHeading({ kicker, title, description, badge }: { kicker: string; title: string; description?: string; badge?: string }) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2"><Label className="text-xs">{label}</Label><Badge variant="outline" className="shrink-0 border-primary/30 bg-primary/5 text-[10px] text-primary">{sourceLabels[source]}</Badge></div>
-      <Input type="text" inputMode="decimal" step={step} value={v} placeholder={placeholder} onChange={e => set(e.target.value)} />
-      {pending && <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] leading-4 text-amber-100"><p>New source value available. This field currently uses a saved override.</p><p className="text-muted-foreground">{sourceLabels[pending.source]}: {pending.value}</p><div className="mt-1 flex gap-1"><Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onKeep}>Keep override</Button><Button type="button" size="sm" className="h-6 px-2 text-[11px]" onClick={onUseSource}>Use source value</Button></div></div>}
+    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">{kicker}</div>
+        <Label className="mt-1 block text-sm font-semibold">{title}</Label>
+        {description && <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">{description}</p>}
+      </div>
+      {badge && <Badge variant="outline" className="w-fit border-amber-500/30 bg-amber-500/10 text-amber-100">{badge}</Badge>}
     </div>
   );
 }
 
-function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return <div className={`rounded-lg p-3 border ${highlight ? 'bg-primary/10 border-primary/30' : 'bg-muted/40'}`}><div className="text-xs text-muted-foreground">{label}</div><div className={`text-lg font-bold ${highlight ? 'text-primary' : ''}`}>{value}</div></div>;
+function Field({ label, v, set, step, placeholder, source, pending, onKeep, onUseSource }: { label: string; v: string; set: (v: string) => void; step?: string; placeholder: string; source: DcfSourceState; pending?: Candidate; onKeep: () => void; onUseSource: () => void }) {
+  return (
+    <div className="space-y-1.5 rounded-xl border border-border/60 bg-background/45 p-3">
+      <div className="flex items-center justify-between gap-2"><Label className="text-xs">{label}</Label><Badge variant="outline" className="shrink-0 border-primary/30 bg-primary/5 text-[10px] text-primary">{sourceLabels[source]}</Badge></div>
+      <Input className="bg-card/80" type="text" inputMode="decimal" step={step} value={v} placeholder={placeholder} onChange={e => set(e.target.value)} />
+      {pending && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] leading-4 text-amber-100"><p className="font-medium">Manual override active — new source value available.</p><p className="text-muted-foreground">{sourceLabels[pending.source]}: {pending.value}</p><div className="mt-1 flex gap-1"><Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onKeep}>Keep override</Button><Button type="button" size="sm" className="h-6 px-2 text-[11px]" onClick={onUseSource}>Use source value</Button></div></div>}
+    </div>
+  );
+}
+
+function Metric({ label, value, highlight, size = 'standard' }: { label: string; value: string; highlight?: boolean; size?: 'standard' | 'hero' }) {
+  return <div className={`rounded-xl border p-3 ${highlight ? 'border-primary/35 bg-primary/10 shadow-sm shadow-primary/10' : 'bg-muted/40'}`}><div className="text-xs text-muted-foreground">{label}</div><div className={`${size === 'hero' ? 'text-2xl md:text-3xl' : 'text-lg'} font-bold tracking-tight ${highlight ? 'text-primary' : ''}`}>{value}</div></div>;
 }
 
 function CashflowScheduleTable({ rows }: { rows: GeneratedCashflowRow[] }) {
   return (
-    <ScrollArea className="h-[360px] w-full rounded border">
+    <ScrollArea className="h-[420px] w-full rounded-xl border bg-background/40">
       <div className="min-w-[1500px]">
         <Table>
-          <TableHeader className="sticky top-0 bg-background">
+          <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
             <TableRow>
               <TableHead>Year</TableHead>
               <TableHead className="text-right">Opening NOI</TableHead>
@@ -939,8 +991,8 @@ function CashflowScheduleTable({ rows }: { rows: GeneratedCashflowRow[] }) {
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <TableRow key={r.year}>
-                <TableCell>{r.year}</TableCell>
+              <TableRow key={r.year} className="odd:bg-muted/10 hover:bg-primary/5">
+                <TableCell className="font-semibold text-primary">{r.year}</TableCell>
                 <TableCell className="text-right">{fmt0(r.openingNoi)}</TableCell>
                 <TableCell className="text-right">{fmt0(r.vacancyAdjustment)}</TableCell>
                 <TableCell className="text-right">{fmt0(r.effectiveNoi)}</TableCell>
@@ -967,5 +1019,5 @@ function CashflowScheduleTable({ rows }: { rows: GeneratedCashflowRow[] }) {
 }
 
 function PendingPanel({ compact = false, message = PENDING }: { compact?: boolean; message?: string }) {
-  return <div className={`rounded border border-dashed bg-muted/20 text-sm text-muted-foreground ${compact ? 'mt-2 p-2' : 'p-4'}`}>{message}</div>;
+  return <div className={`rounded-xl border border-dashed border-primary/30 bg-primary/5 text-sm text-muted-foreground ${compact ? 'mt-2 p-2' : 'p-5'}`}><div className="font-medium text-foreground">Pending generated DCF output</div><div className="mt-1 text-xs leading-5">{message}</div></div>;
 }
