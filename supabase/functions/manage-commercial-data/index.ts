@@ -233,9 +233,14 @@ Deno.serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[manage-commercial-data] error:', msg);
+  } catch (err: any) {
+    const msg =
+      err instanceof Error
+        ? err.message
+        : err && typeof err === 'object'
+          ? (err.message || err.error_description || err.error || err.details || err.hint || JSON.stringify(err))
+          : String(err);
+    console.error('[manage-commercial-data] error:', msg, err);
     return new Response(JSON.stringify({ error: msg, success: false }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
