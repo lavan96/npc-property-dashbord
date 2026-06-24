@@ -543,12 +543,19 @@ Deno.serve(async (req) => {
   if (!CALLBACK_TOKEN || token !== CALLBACK_TOKEN) return json({ error: 'unauthorised' }, 401);
 
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
+  const operation = String((body as any).operation ?? '');
   const jobId = String((body as any).job_id ?? '');
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  if (operation === 'finalize_job') {
+    if (!jobId) return json({ error: 'job_id required' }, 400);
+    await finalizeJob(admin, jobId);
+    return json({ ok: true, finalized: true, job_id: jobId });
+  }
   const chunkId = String((body as any).chunk_id ?? '');
   const chunkIndex = Number((body as any).chunk_index);
   if (!jobId || !chunkId) return json({ error: 'job_id + chunk_id required' }, 400);
 
-  const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
   const { data: chunkRow } = await admin
     .from('pdf_import_chunks')
     .select('id, job_id, parent_chunk_id, chunk_index, page_start, page_end, status, attempts, max_attempts, artifact_paths')

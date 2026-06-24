@@ -176,13 +176,119 @@ async function redispatchChunk(admin: Admin, chunk: ChunkRow): Promise<{ ok: boo
   return { ok: true };
 }
 
+
+async function markParentRecoverableFailed(admin: Admin, jobId: string, code: string, message: string) {
+  await admin
+    .from('pdf_import_jobs')
+    .update({
+      status: 'recoverable_failed',
+      stage: 'failed',
+      error_code: code,
+      error_text: message.slice(0, 1000),
+      finished_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
+
+  await appendJobAttempt(admin, jobId, {
+    kind: 'job_recovery_marked_recoverable_failed',
+    error_code: code,
+    message: message.slice(0, 500),
+  });
+}
+
+async function triggerParentFinalizer(admin: Admin, jobId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!PARSE_TOKEN) return { ok: false, error: 'PDF_PARSE_SERVICE_TOKEN missing' };
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/pdf-parse-chunk-callback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${PARSE_TOKEN}`,
+    },
+    body: JSON.stringify({
+      operation: 'finalize_job',
+      job_id: jobId,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    return { ok: false, error: `finalizer_http_${res.status}: ${text.slice(0, 300)}` };
+  }
+
+  await appendJobAttempt(admin, jobId, {
+    kind: 'parent_recovery_finalize_triggered',
+  });
+
+  return { ok: true };
+}
+
+async function reconcileParentJobs(admin: Admin, thresholdIso: string, limit: number) {
+  const { data: jobs, error } = await admin
+    .from('pdf_import_jobs')
+    .select('id,status,stage,updated_at')
+    .in('status', ['queued', 'processing'])
+    .in('stage', ['parsing', 'finalizing'])
+    .lt('updated_at', thresholdIso)
+    .order('updated_at', { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+
+  const rows = (jobs ?? []) as Array<{ id: string; status: string; stage: string | null }>;
+  const results: Array<Record<string, unknown>> = [];
+
+  for (const job of rows) {
+    const { data: chunks, error: chunkErr } = await admin
+      .from('pdf_import_chunks')
+      .select('id,status')
+      .eq('job_id', job.id)
+      .neq('status', 'split');
+
+    if (chunkErr) {
+      results.push({ job_id: job.id, action: 'parent_reconcile_chunk_query_failed', error: chunkErr.message });
+      continue;
+    }
+
+    const chunkRows = chunks ?? [];
+    if (chunkRows.length === 0) continue;
+
+    const anyFatal = chunkRows.some((c: any) => c.status === 'fatal');
+    const allSucceeded = chunkRows.every((c: any) => c.status === 'succeeded');
+    const stillRunning = chunkRows.some((c: any) => ['pending', 'dispatched', 'failed'].includes(c.status));
+
+    if (anyFatal) {
+      await markParentRecoverableFailed(
+        admin,
+        job.id,
+        'chunk_recovery_fatal_chunk_present',
+        'One or more chunks are fatal; parent job marked recoverable_failed.',
+      );
+      results.push({ job_id: job.id, action: 'marked_parent_recoverable_failed' });
+      continue;
+    }
+
+    if (allSucceeded && !stillRunning) {
+      const finalizer = await triggerParentFinalizer(admin, job.id);
+      results.push({
+        job_id: job.id,
+        action: finalizer.ok ? 'finalizer_triggered' : 'finalizer_failed',
+        error: finalizer.error ?? null,
+      });
+    }
+  }
+
+  return results;
+}
+
 async function recoverStaleChunks(admin: Admin, staleMinutes: number, limit: number) {
   const thresholdIso = new Date(Date.now() - staleMinutes * 60_000).toISOString();
 
   const { data: chunks, error } = await admin
     .from('pdf_import_chunks')
     .select('id, job_id, parent_chunk_id, chunk_index, page_start, page_end, status, attempts, max_attempts, artifact_paths, dispatched_at, updated_at')
-    .eq('status', 'dispatched')
+    .in('status', ['dispatched', 'pending', 'failed'])
     .lt('updated_at', thresholdIso)
     .order('updated_at', { ascending: true })
     .limit(limit);
@@ -191,8 +297,33 @@ async function recoverStaleChunks(admin: Admin, staleMinutes: number, limit: num
 
   const rows = (chunks ?? []) as ChunkRow[];
   const results: Array<Record<string, unknown>> = [];
+  let redispatched = 0;
+  let markedFatal = 0;
+  let skippedInactive = 0;
+  let redispatchFailed = 0;
 
   for (const chunk of rows) {
+    const { data: job } = await admin
+      .from('pdf_import_jobs')
+      .select('id,status,stage')
+      .eq('id', chunk.job_id)
+      .maybeSingle();
+
+    const jobStatus = String((job as any)?.status ?? '');
+    const activeJob = job && !['succeeded', 'failed', 'recoverable_failed', 'cancelled'].includes(jobStatus);
+
+    if (!activeJob) {
+      skippedInactive++;
+      results.push({
+        chunk_id: chunk.id,
+        job_id: chunk.job_id,
+        chunk_index: chunk.chunk_index,
+        action: 'skipped_inactive_parent',
+        parent_status: jobStatus,
+      });
+      continue;
+    }
+
     const attempts = Number(chunk.attempts ?? 0);
     const maxAttempts = Number(chunk.max_attempts ?? 3);
 
@@ -202,7 +333,7 @@ async function recoverStaleChunks(admin: Admin, staleMinutes: number, limit: num
         .update({
           status: 'fatal',
           error_code: 'chunk_recovery_attempts_exhausted',
-          error_text: `Chunk remained stale after ${attempts}/${maxAttempts} attempts.`,
+          error_text: `Chunk remained stale/failed after ${attempts}/${maxAttempts} attempts.`,
           finished_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -214,16 +345,27 @@ async function recoverStaleChunks(admin: Admin, staleMinutes: number, limit: num
         chunk_index: chunk.chunk_index,
         page_start: chunk.page_start,
         page_end: chunk.page_end,
+        previous_status: chunk.status,
         attempts,
         max_attempts: maxAttempts,
       });
 
+      await markParentRecoverableFailed(
+        admin,
+        chunk.job_id,
+        'chunk_recovery_attempts_exhausted',
+        `Chunk ${chunk.chunk_index} pages ${chunk.page_start}-${chunk.page_end} exhausted recovery attempts.`,
+      );
+
+      markedFatal++;
       results.push({
         chunk_id: chunk.id,
+        job_id: chunk.job_id,
         chunk_index: chunk.chunk_index,
         page_start: chunk.page_start,
         page_end: chunk.page_end,
-        action: 'marked_fatal',
+        previous_status: chunk.status,
+        action: 'marked_fatal_and_parent_recoverable_failed',
       });
 
       continue;
@@ -231,19 +373,31 @@ async function recoverStaleChunks(admin: Admin, staleMinutes: number, limit: num
 
     const redispatch = await redispatchChunk(admin, chunk);
 
+    if (redispatch.ok) redispatched++;
+    else redispatchFailed++;
+
     results.push({
       chunk_id: chunk.id,
+      job_id: chunk.job_id,
       chunk_index: chunk.chunk_index,
       page_start: chunk.page_start,
       page_end: chunk.page_end,
+      previous_status: chunk.status,
       action: redispatch.ok ? 'redispatched' : 'redispatch_failed',
       error: redispatch.error ?? null,
     });
   }
 
+  const parentReconciliations = await reconcileParentJobs(admin, thresholdIso, limit);
+
   return {
     staleMinutes,
     found: rows.length,
+    redispatched,
+    redispatchFailed,
+    markedFatal,
+    skippedInactive,
+    parentReconciliations,
     results,
   };
 }
