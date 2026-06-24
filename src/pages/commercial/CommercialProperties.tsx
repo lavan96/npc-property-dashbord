@@ -186,7 +186,7 @@ export default function CommercialProperties() {
               </div>
             </div>
           ) : (
-            <div className="ci-asset-table-wrap">
+            <div className="ci-asset-table-wrap" role="region" aria-label="Commercial and industrial properties table" tabIndex={0}>
               <Table className="min-w-[1040px]">
               <TableHeader>
                 <TableRow>
@@ -237,7 +237,7 @@ export default function CommercialProperties() {
                           <DisplayValue>{statusValue || '—'}</DisplayValue>
                         </span>
                       </TableCell>
-                      <TableCell className="py-4" onClick={e => e.stopPropagation()}>
+                      <TableCell className="py-4" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
                         <div className="flex justify-end gap-1.5 border-l border-border/70 pl-3">
                           <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary" onClick={() => editRow(row)}><Pencil className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-destructive/80 hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(row)}><Trash2 className="h-4 w-4" /></Button>
