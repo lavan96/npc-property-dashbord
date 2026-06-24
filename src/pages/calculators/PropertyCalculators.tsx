@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks, ShieldCheck, SlidersHorizontal, Wand2 } from 'lucide-react';
+import { AlertCircle, Calculator, CheckCircle2, ChevronDown, CircleDashed, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks, ShieldCheck, SlidersHorizontal, Wand2 } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
@@ -99,6 +99,31 @@ function buildGlobalAssumptionRows(profile: any): GlobalAssumptionRow[] {
   return rows;
 }
 
+
+function getSourceBadgeClass(value: string) {
+  const normalized = value.toLowerCase();
+  if (normalized.includes('ai')) return 'ci-source-ai';
+  if (normalized.includes('manual') || normalized.includes('override')) return 'ci-source-manual';
+  if (normalized.includes('scrape') || normalized.includes('research')) return 'ci-source-scraped';
+  if (normalized.includes('verified') || normalized.includes('calculated')) return 'ci-source-calculated';
+  if (normalized.includes('linked') || normalized.includes('property profile')) return 'ci-source-linked';
+  if (normalized.includes('blank') || normalized.includes('unknown') || normalized.includes('pending')) return 'ci-source-pending';
+  return 'ci-source-neutral';
+}
+
+function SourceBadge({ value }: { value: string }) {
+  return <span className={`ci-source-badge ${getSourceBadgeClass(value)}`}>{value}</span>;
+}
+
+function MiniProgress({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground"><span>{label}</span><span>{value}%</span></div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted/60"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>
+    </div>
+  );
+}
+
 function GlobalAssumptionStatusDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const profile = useCommercialDealState(s => s.profile);
   const [filter, setFilter] = useState<AssumptionFilter>('All');
@@ -119,7 +144,7 @@ function GlobalAssumptionStatusDrawer({ open, onOpenChange }: { open: boolean; o
       <SheetContent className="ci-foundation w-full overflow-y-auto sm:max-w-6xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" /> Global Assumption Status</SheetTitle>
-          <SheetDescription>Central validation workspace for the full commercial / industrial assessment.</SheetDescription>
+          <SheetDescription>Central validation workspace for the full commercial / industrial assessment. Source badges use one visual language for manual, scraped, AI-derived, linked, overridden and calculated assumptions.</SheetDescription>
         </SheetHeader>
         <div className="mt-4 flex flex-wrap gap-2">
           {assumptionFilters.map(item => <Button key={item} size="sm" variant={filter === item ? 'default' : 'outline'} onClick={() => setFilter(item)}>{item}</Button>)}
@@ -131,7 +156,7 @@ function GlobalAssumptionStatusDrawer({ open, onOpenChange }: { open: boolean; o
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1100px] text-left text-xs">
                   <thead className="text-muted-foreground"><tr>{['Assumption','Value','Source','Confidence','Verification','AI','Override','Calc req.','Report req.','Last updated','Warning'].map(header => <th key={header} className="border-b px-2 py-2 font-medium">{header}</th>)}</tr></thead>
-                  <tbody>{groupRows.map((row, index) => <tr key={`${row.group}-${row.field}-${index}`} className="border-b last:border-0"><td className="px-2 py-2 font-medium text-foreground">{row.field}</td><td className="px-2 py-2">{formatAssumptionValue(row.value)}</td><td className="px-2 py-2">{row.source}</td><td className="px-2 py-2">{row.confidence}</td><td className="px-2 py-2">{row.verification}</td><td className="px-2 py-2">{row.aiEstimated ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.manuallyOverridden ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.requiredForCalculation ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.requiredForReportExport ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.lastUpdated}</td><td className="px-2 py-2">{row.warningStatus}</td></tr>)}</tbody>
+                  <tbody>{groupRows.map((row, index) => <tr key={`${row.group}-${row.field}-${index}`} className="border-b last:border-0 transition-colors hover:bg-primary/5"><td className="px-2 py-2 font-medium text-foreground">{row.field}</td><td className="px-2 py-2">{formatAssumptionValue(row.value)}</td><td className="px-2 py-2"><SourceBadge value={row.source} /></td><td className="px-2 py-2"><SourceBadge value={row.confidence} /></td><td className="px-2 py-2"><SourceBadge value={row.verification} /></td><td className="px-2 py-2">{row.aiEstimated ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.manuallyOverridden ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.requiredForCalculation ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.requiredForReportExport ? 'Yes' : 'No'}</td><td className="px-2 py-2">{row.lastUpdated}</td><td className="px-2 py-2"><SourceBadge value={row.warningStatus} /></td></tr>)}</tbody>
                 </table>
               </div>
             </div>
@@ -636,8 +661,16 @@ export default function PropertyCalculators() {
 
 function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomain; setDomain: (domain: CalculatorDomain) => void }) {
   const { prefill } = useCalculatorPrefill();
+  const profile = useCommercialDealState(s => s.profile);
   const [activeTab, setActiveTab] = useState<(typeof calculatorTabs)[number]['value']>('overview');
   const [assumptionDrawerOpen, setAssumptionDrawerOpen] = useState(false);
+  const assumptionRows = useMemo(() => buildGlobalAssumptionRows(profile), [profile]);
+  const missingCount = assumptionRows.filter(row => formatAssumptionValue(row.value) === 'Pending' || row.verification === 'Missing').length;
+  const aiPendingCount = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => !estimate?.accepted).length;
+  const aiAcceptedCount = Object.values(profile.aiEstimateMetadata ?? {}).filter((estimate: any) => estimate?.accepted).length;
+  const overrideCount = assumptionRows.filter(row => row.manuallyOverridden).length;
+  const readinessPercent = prefill ? Math.max(10, Math.round(((assumptionRows.length - missingCount) / Math.max(assumptionRows.length, 1)) * 100)) : 0;
+  const nextBestAction = !prefill ? 'Link a property to prefill every calculator.' : missingCount > 0 ? 'Review incomplete inputs and missing assumptions.' : aiPendingCount > 0 ? 'Accept or reject pending AI estimates.' : overrideCount > 0 ? 'Review manual overrides before reporting.' : 'Generate calculations, then prepare report output.';
   const assumptionStatusAction = <Button type="button" variant="outline" size="sm" className="ci-assumption-status-button" onClick={() => setAssumptionDrawerOpen(true)}><ListChecks className="mr-2 h-4 w-4" />Assumption Status</Button>;
 
   useEffect(() => {
@@ -719,6 +752,20 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
 
         <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
 
+        <div className="ci-workflow-status-strip" aria-label="Calculator workflow status summary">
+          <div className="ci-next-action-card">
+            <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Next best action</div>
+            <p className="mt-1 text-sm font-semibold text-foreground">{nextBestAction}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Derived only from existing linked-property, missing-input, AI estimate and override state.</p>
+          </div>
+          <MiniProgress value={readinessPercent} label={prefill ? 'Input completeness' : 'Awaiting property data'} />
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="ci-status-mini"><CircleDashed className="h-3.5 w-3.5" /> Missing inputs <strong>{missingCount}</strong></div>
+            <div className="ci-status-mini"><Sparkles className="h-3.5 w-3.5" /> AI pending <strong>{aiPendingCount}</strong></div>
+            <div className="ci-status-mini"><CheckCircle2 className="h-3.5 w-3.5" /> AI accepted <strong>{aiAcceptedCount}</strong></div>
+          </div>
+        </div>
+
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])} className="w-full">
           <div className="ci-tab-rail" aria-label="Calculator module navigation">
             <div className="ci-tab-rail-header">
@@ -752,6 +799,9 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
                           <span className="ci-tab-button-copy">
                             <span className="block text-sm font-semibold leading-tight">{tab.label}</span>
                             <span className={`mt-1 block text-[11px] font-medium leading-snug ${selected ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>{tab.subLabel}</span>
+                          </span>
+                          <span className={`ci-tab-status-badge ${!prefill ? 'ci-tab-status-pending' : missingCount > 0 ? 'ci-tab-status-warn' : 'ci-tab-status-ready'}`}>
+                            {!prefill ? 'Awaiting data' : missingCount > 0 ? 'Incomplete' : 'Ready'}
                           </span>
                           {selected && <span className="ci-tab-active-pill">Active</span>}
                         </button>
