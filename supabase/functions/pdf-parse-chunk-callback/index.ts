@@ -258,6 +258,145 @@ async function uploadText(admin: Admin, path: string, body: string, contentType:
   return path;
 }
 
+
+const MERGE_VALIDATION_VERSION = 'chunk-merge-validation-v1';
+
+function numberHistogram(values: number[]): Map<number, number> {
+  const hist = new Map<number, number>();
+  for (const raw of values) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) continue;
+    hist.set(n, (hist.get(n) ?? 0) + 1);
+  }
+  return hist;
+}
+
+function pageNumberReport(label: string, values: number[], expectedPageCount: number) {
+  const hist = numberHistogram(values);
+  const unique = [...hist.keys()].sort((a, b) => a - b);
+  const duplicates = unique.filter((n) => (hist.get(n) ?? 0) > 1);
+  const missing: number[] = [];
+  for (let i = 1; i <= expectedPageCount; i += 1) {
+    if (!hist.has(i)) missing.push(i);
+  }
+  const outOfRange = unique.filter((n) => n < 1 || n > expectedPageCount);
+
+  return {
+    label,
+    ok: duplicates.length === 0
+      && missing.length === 0
+      && outOfRange.length === 0
+      && unique.length === expectedPageCount,
+    expected_count: expectedPageCount,
+    observed_count: values.length,
+    unique_count: unique.length,
+    min_page: unique.length ? unique[0] : null,
+    max_page: unique.length ? unique[unique.length - 1] : null,
+    duplicates,
+    missing,
+    out_of_range: outOfRange,
+  };
+}
+
+function validateMergedArtifacts(
+  chunkRows: any[],
+  doclingPageNumbers: number[],
+  parentRasterManifestPages: any[],
+  pageRasterPaths: string[],
+  finalPageCount: number,
+) {
+  const problems: string[] = [];
+  const sortedChunks = [...chunkRows].sort((a, b) => Number(a.page_start ?? 0) - Number(b.page_start ?? 0));
+  const chunkRanges = sortedChunks.map((c) => ({
+    chunk_index: Number(c.chunk_index ?? 0),
+    page_start: Number(c.page_start ?? 0),
+    page_end: Number(c.page_end ?? 0),
+    status: String(c.status ?? ''),
+  }));
+
+  let expectedNextPage = 1;
+  let chunkCoverageOk = true;
+  for (const c of chunkRanges) {
+    if (c.page_start !== expectedNextPage) {
+      chunkCoverageOk = false;
+      problems.push(`chunk_range_gap_or_overlap_at_chunk_${c.chunk_index}: expected page ${expectedNextPage}, got ${c.page_start}`);
+    }
+    if (c.page_end < c.page_start) {
+      chunkCoverageOk = false;
+      problems.push(`invalid_chunk_range_at_chunk_${c.chunk_index}: ${c.page_start}-${c.page_end}`);
+    }
+    expectedNextPage = Math.max(expectedNextPage, c.page_end + 1);
+  }
+
+  const expectedFromChunks = Math.max(0, ...chunkRanges.map((c) => c.page_end));
+  if (finalPageCount <= 0) {
+    problems.push('final_page_count_not_positive');
+  }
+  if (expectedFromChunks !== finalPageCount) {
+    problems.push(`final_page_count_mismatch: chunks end at ${expectedFromChunks}, finalPageCount is ${finalPageCount}`);
+  }
+
+  const doclingReport = pageNumberReport('docling_pages', doclingPageNumbers, finalPageCount);
+  if (!doclingReport.ok) {
+    problems.push('docling_page_numbers_not_continuous_or_unique');
+  }
+
+  const rasterPageNumbers = parentRasterManifestPages
+    .map((p) => Number(p?.page_no ?? 0))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  const rasterActive = parentRasterManifestPages.length > 0 || pageRasterPaths.length > 0;
+  const rasterReport = rasterActive
+    ? pageNumberReport('raster_manifest_pages', rasterPageNumbers, finalPageCount)
+    : {
+        label: 'raster_manifest_pages',
+        ok: true,
+        expected_count: finalPageCount,
+        observed_count: 0,
+        unique_count: 0,
+        min_page: null,
+        max_page: null,
+        duplicates: [],
+        missing: [],
+        out_of_range: [],
+      };
+
+  if (rasterActive && !rasterReport.ok) {
+    problems.push('raster_manifest_page_numbers_not_continuous_or_unique');
+  }
+
+  if (rasterActive && pageRasterPaths.length !== finalPageCount) {
+    problems.push(`page_raster_paths_count_mismatch: expected ${finalPageCount}, got ${pageRasterPaths.length}`);
+  }
+
+  if (rasterActive && parentRasterManifestPages.length !== finalPageCount) {
+    problems.push(`raster_manifest_entries_count_mismatch: expected ${finalPageCount}, got ${parentRasterManifestPages.length}`);
+  }
+
+  const duplicateRasterPaths = [...numberHistogram(
+    pageRasterPaths.map((_, idx) => idx + 1),
+  ).entries()].filter(([, count]) => count > 1);
+
+  return {
+    version: MERGE_VALIDATION_VERSION,
+    ok: problems.length === 0,
+    expected_page_count: finalPageCount,
+    expected_from_chunks: expectedFromChunks,
+    chunk_count: sortedChunks.length,
+    chunk_coverage: {
+      ok: chunkCoverageOk,
+      ranges: chunkRanges,
+    },
+    docling_pages: doclingReport,
+    raster_manifest_pages: rasterReport,
+    page_raster_paths_count: pageRasterPaths.length,
+    raster_manifest_entries_count: parentRasterManifestPages.length,
+    duplicate_raster_path_index_check: duplicateRasterPaths.length === 0,
+    problems,
+  };
+}
+
+
 /** Merge per-chunk Docling outputs into final artifacts and finalize the job. */
 async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const startedAt = Date.now();
@@ -309,6 +448,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const chunkRasterManifestPaths: string[] = [];
   const pageRasterPaths: string[] = [];
   const parentRasterManifestPages: any[] = [];
+  const doclingPageNumbers: number[] = [];
   const chunkExtractorLanes: string[] = [];
   const chunkLaneVersions: string[] = [];
   const chunkEffectiveModes: string[] = [];
@@ -359,6 +499,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         for (const [k, v] of Object.entries(pages)) {
           const localNo = Number(k);
           const globalNo = localNo + offset;
+          doclingPageNumbers.push(globalNo);
           const pageValue = v && typeof v === 'object'
             ? { ...(v as Record<string, unknown>), page_no: globalNo }
             : v;
@@ -491,6 +632,59 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       })
     : null;
 
+  const mergeValidation = validateMergedArtifacts(
+    chunkRows as any[],
+    doclingPageNumbers,
+    parentRasterManifestPages,
+    pageRasterPaths,
+    finalPageCount,
+  );
+  const mergeValidationPath = await uploadJson(admin, `${jobId}/merge-validation.json`, mergeValidation);
+
+  if (!mergeValidation.ok) {
+    console.error('[chunk-callback] merge validation failed', {
+      jobId,
+      problems: mergeValidation.problems,
+    });
+
+    await admin.from('pdf_import_jobs').update({
+      status: 'recoverable_failed',
+      stage: 'failed',
+      page_count: finalPageCount,
+      pages_total: finalPageCount,
+      pages_completed: Math.min(pageRasterPaths.length, finalPageCount),
+      diagnostics_path: doclingPath,
+      error_code: 'chunk_merge_validation_failed',
+      error_text: mergeValidation.problems.join('; ').slice(0, 1000),
+      finished_at: new Date().toISOString(),
+      result_payload: {
+        chunked: true,
+        docling_path: doclingPath,
+        outline_path: outlinePath,
+        markdown_path: markdownPath,
+        doctags_path: doctagsPath,
+        rasters_path: rastersPath,
+        legacy_rasters_path: rastersPath,
+        rasters_manifest_path: rastersManifestPath,
+        chunk_raster_manifest_paths: chunkRasterManifestPaths,
+        page_raster_paths: pageRasterPaths,
+        artifact_contract_version: 'raster-manifest-v1',
+        docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
+        chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
+        merge_validation_path: mergeValidationPath,
+        merge_validation: mergeValidation,
+        page_count: finalPageCount,
+        summary: {
+          ...summary,
+          page_count: finalPageCount,
+          docling_page_count: pageCount,
+          raster_page_count: pageRasterPaths.length,
+        },
+      },
+    }).eq('id', jobId);
+    return;
+  }
+
   if (!doclingPath) {
     await admin.from('pdf_import_jobs').update({
       status: 'recoverable_failed',
@@ -566,6 +760,9 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       page_raster_paths: pageRasterPaths,
       artifact_contract_version: 'raster-manifest-v1',
       docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
+      chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
+      merge_validation_path: mergeValidationPath,
+      merge_validation: mergeValidation,
       extractor_lane: parentExtractorLane,
       lane_enforcement_version: parentLaneEnforcementVersion,
       effective_mode: parentEffectiveMode,
