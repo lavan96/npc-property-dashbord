@@ -32,7 +32,6 @@ import { CalculatorGuidancePanel, CalculatorTabShell } from '@/components/commer
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useCommercialDealState } from '@/utils/commercial/commercialDealState';
 
@@ -705,27 +704,24 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
         <GlobalGenerationControls propertyLinked={Boolean(prefill)} />
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])} className="w-full">
-          <div className="ci-tab-rail">
-            <div className="md:hidden">
-              <Select value={activeTab} onValueChange={(value) => setActiveTab(value as (typeof calculatorTabs)[number]['value'])}>
-                <SelectTrigger className="h-12 border-primary/30 bg-background/80">
-                  <SelectValue aria-label="Selected calculator tab" />
-                </SelectTrigger>
-                <SelectContent>
-                  {calculatorTabGroups.map(group => (
-                    <div key={group.group} className="px-1 py-1">
-                      <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.group}</div>
-                      {group.tabs.map(value => <SelectItem key={value} value={value}>{tabByValue[value].label} {tabByValue[value].subLabel}</SelectItem>)}
-                    </div>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="ci-tab-rail" aria-label="Calculator module navigation">
+            <div className="ci-tab-rail-header">
+              <div>
+                <div className="ci-tab-eyebrow">Guided calculator suite</div>
+                <h2 className="ci-tab-title">Choose your next module</h2>
+              </div>
+              <div className="ci-tab-current" aria-live="polite">
+                Current: <span>{tabByValue[activeTab].label}</span>
+              </div>
             </div>
-            <div className="hidden gap-3 md:grid xl:grid-cols-4">
-              {calculatorTabGroups.map(group => (
+            <div className="ci-tab-group-grid">
+              {calculatorTabGroups.map((group, groupIndex) => (
                 <div key={group.group} className="ci-tab-group">
-                  <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.group}</div>
-                  <div className="grid gap-2">
+                  <div className="ci-tab-group-heading">
+                    <span className="ci-tab-group-index">{String(groupIndex + 1).padStart(2, '0')}</span>
+                    <span>{group.group}</span>
+                  </div>
+                  <div className="grid gap-2.5">
                     {group.tabs.map(value => {
                       const tab = tabByValue[value];
                       const selected = activeTab === value;
@@ -737,8 +733,11 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
                           className={`ci-tab-button ${selected ? 'ci-tab-button-active' : 'ci-tab-button-idle'}`}
                           aria-current={selected ? 'page' : undefined}
                         >
-                          <span className="block text-sm font-semibold leading-tight">{tab.label}</span>
-                          <span className={`mt-0.5 block text-[11px] leading-tight ${selected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{tab.subLabel}</span>
+                          <span className="ci-tab-button-copy">
+                            <span className="block text-sm font-semibold leading-tight">{tab.label}</span>
+                            <span className={`mt-1 block text-[11px] font-medium leading-snug ${selected ? 'text-primary-foreground/90' : 'text-muted-foreground'}`}>{tab.subLabel}</span>
+                          </span>
+                          {selected && <span className="ci-tab-active-pill">Active</span>}
                         </button>
                       );
                     })}
