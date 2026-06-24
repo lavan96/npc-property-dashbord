@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Loader2, Save, Sparkles } from 'lucide-react';
+import { AlertTriangle, Calculator, CheckCircle2, Info, Loader2, PencilLine, Save, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -290,13 +290,16 @@ export function NoiCalculatorCard() {
     } finally { setSaving(false); }
   };
 
+  const sourceTone = (source: SourceState) => source === 'User Override' ? 'border-amber-400/50 bg-amber-500/10 text-amber-200' : source === 'AI Estimate' ? 'border-violet-400/50 bg-violet-500/10 text-violet-200' : source === 'Scraped' ? 'border-sky-400/50 bg-sky-500/10 text-sky-200' : verifiedSources.includes(source) ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200' : 'border-muted-foreground/30 bg-muted/30 text-muted-foreground';
+  const fieldTone = (field: NoiFieldKey) => { const source = sources[field] ?? 'Blank'; return source === 'User Override' ? 'border-amber-400/40 bg-amber-500/5 focus-visible:ring-amber-400/50' : source === 'AI Estimate' ? 'border-violet-400/40 bg-violet-500/5 focus-visible:ring-violet-400/50' : 'bg-background/80'; };
   const SourceBadge = ({ field }: { field: NoiFieldKey }) => {
     const source = sources[field] ?? 'Blank';
-    if (source === 'Blank') return null;
-    return <Badge variant="outline" className="mt-1 w-fit text-[10px] border-primary/30 text-primary">Source: {badgeLabel[source]}</Badge>;
+    if (source === 'Blank') return <Badge variant="outline" className="w-fit border-muted-foreground/20 bg-muted/20 text-[10px] text-muted-foreground">No source yet</Badge>;
+    return <Badge variant="outline" className={`w-fit text-[10px] ${sourceTone(source)}`}>Source · {badgeLabel[source]}</Badge>;
   };
-  const FieldShell = ({ field, children }: { field: NoiFieldKey; children: React.ReactNode }) => <div><Label>{fieldLabels[field]}</Label>{children}<SourceBadge field={field} />{scrapeConflicts[field] && <div className="mt-1 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200"><div>New source value available. This field currently uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={() => keepOverride(field)}>Keep override</Button><Button size="sm" variant="outline" onClick={() => useScrapedValue(field)}>Use source value</Button><Button size="sm" variant="ghost" onClick={() => window.alert(`Current override: ${currentRawValue(field)}\nNew source (Scraped): ${scrapeConflicts[field]}`)}>Compare values</Button></div></div>}</div>;
-  const MoneyField = ({ field, value }: { field: NoiFieldKey; value: string }) => <FieldShell field={field}><Input type="number" value={value} placeholder={placeholderMap[field]} onChange={e => setField(field, e.target.value)} /></FieldShell>;
+  const FieldShell = ({ field, children, help }: { field: NoiFieldKey; children: React.ReactNode; help?: string }) => <div className={`rounded-lg border p-3 transition ${sources[field] === 'User Override' ? 'border-amber-400/30 bg-amber-500/[0.03]' : sources[field] === 'AI Estimate' ? 'border-violet-400/30 bg-violet-500/[0.03]' : 'border-border/60 bg-background/30'}`}><div className="mb-1.5 flex items-center justify-between gap-2"><Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{fieldLabels[field]}</Label>{help && <span title={help} className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 text-muted-foreground"><Info className="h-3 w-3" /></span>}</div>{children}<div className="mt-2 flex flex-wrap items-center gap-2"><SourceBadge field={field} />{sources[field] === 'User Override' && <Badge variant="outline" className="border-amber-400/40 bg-amber-500/10 text-[10px] text-amber-200"><PencilLine className="mr-1 h-3 w-3" />Manual override</Badge>}{sources[field] === 'AI Estimate' && <Badge variant="outline" className="border-violet-400/40 bg-violet-500/10 text-[10px] text-violet-200"><Sparkles className="mr-1 h-3 w-3" />AI applied</Badge>}</div>{scrapeConflicts[field] && <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100 shadow-sm"><div className="font-medium">New source value available while a saved override is active.</div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => keepOverride(field)}>Keep override</Button><Button size="sm" variant="outline" onClick={() => useScrapedValue(field)}>Use source value</Button><Button size="sm" variant="ghost" onClick={() => window.alert(`Current override: ${currentRawValue(field)}\nNew source (Scraped): ${scrapeConflicts[field]}`)}>Compare values</Button></div></div>}</div>;
+  const MoneyField = ({ field, value, help }: { field: NoiFieldKey; value: string; help?: string }) => <FieldShell field={field} help={help}><Input className={`h-11 text-right font-medium ${fieldTone(field)}`} type="number" value={value} placeholder={placeholderMap[field]} onChange={e => setField(field, e.target.value)} /></FieldShell>;
+    const warningTone = (severity: NoiWarningSeverity) => severity === 'Critical' ? 'border-red-500/40 bg-red-500/10 text-red-100' : severity === 'Required' ? 'border-amber-500/40 bg-amber-500/10 text-amber-100' : 'border-sky-500/40 bg-sky-500/10 text-sky-100';
   const statusTone = readiness.status === 'Verified NOI' ? 'border-emerald-500/40 text-emerald-400' : readiness.status === 'Specialist Review Recommended' ? 'border-amber-500/40 text-amber-300' : readiness.status === 'NOI Assessment Ready' ? 'border-primary/40 text-primary' : 'border-muted-foreground/30 text-muted-foreground';
   const assumptionRows = (Object.keys(fieldLabels) as NoiFieldKey[]).map(field => ({ field, label: fieldLabels[field], value: currentRawValue(field) || 'Pending', source: sources[field] ?? 'Blank' }));
 
@@ -325,8 +328,8 @@ export function NoiCalculatorCard() {
           </TooltipProvider>
         </div>
         {readiness.compactWarnings.length > 0 && (
-          <div className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-1">
-            {readiness.compactWarnings.map(w => <div key={`${w.category}-${w.message}`}>• {w.message}</div>)}
+          <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-100 shadow-sm space-y-2">
+            {readiness.compactWarnings.map(w => <div key={`${w.category}-${w.message}`} className="flex gap-2"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{w.message}</span></div>)}
             {readiness.warnings.length > 3 && <button className="text-primary underline" onClick={() => setReviewOpen(true)}>View {readiness.warnings.length - 3} more in Assumption Status</button>}
           </div>
         )}
@@ -346,7 +349,7 @@ export function NoiCalculatorCard() {
             </div>
             <div>
               <div className="font-medium text-foreground mb-1">Warnings and review items</div>
-              {readiness.warnings.length ? readiness.warnings.map(w => <div key={`${w.category}-${w.severity}-${w.message}`} className="rounded border border-border/60 p-2 mb-1"><div className="font-medium text-foreground">{w.severity} · {w.category}</div><div>{w.message}</div><div>{w.detail}</div></div>) : <div>No current readiness warnings.</div>}
+              {readiness.warnings.length ? readiness.warnings.map(w => <div key={`${w.category}-${w.severity}-${w.message}`} className={`mb-2 rounded-lg border p-3 ${warningTone(w.severity)}`}><div className="flex items-center gap-2 font-medium"><AlertTriangle className="h-3.5 w-3.5" />{w.severity} · {w.category}</div><div className="mt-1">{w.message}</div><div className="mt-1 opacity-80">{w.detail}</div></div>) : <div className="flex items-center gap-2 text-emerald-300"><CheckCircle2 className="h-4 w-4" />No current readiness warnings.</div>}
             </div>
             <div>
               <div className="font-medium text-foreground mb-1">Assumption sources</div>
@@ -354,7 +357,7 @@ export function NoiCalculatorCard() {
                 {assumptionRows.map(row => <div key={row.field} className="flex justify-between gap-2 rounded border border-border/50 px-2 py-1"><span>{row.label}</span><span className="text-right"><span className="text-foreground">{String(row.value)}</span> · {badgeLabel[row.source]}</span></div>)}
               </div>
             </div>
-            {aiEstimate ? <div className="space-y-2"><div className="font-medium text-foreground">AI estimate preview</div><p>{aiEstimate.summary}</p>{aiEstimate.warnings.map(w => <div key={w} className="text-amber-300">• {w}</div>)}{aiEstimate.estimatedFields.map((f, idx) => <div key={`${f.field}-${idx}`} className="grid grid-cols-1 md:grid-cols-6 gap-2 rounded border border-border/60 p-2"><div><b>Suggested {fieldLabels[f.field]}</b><div>{badgeLabel[f.sourceStatusBefore]} → AI Estimate</div></div><div>Current: {String(f.currentValue ?? '—')}</div><div><Input className="h-8" value={String(f.estimatedValue ?? '')} onChange={e => updateProposal(idx, { estimatedValue: e.target.value })} /></div><div>Confidence: {f.confidence}</div><div>{f.reasoningSummary}{f.requiredDocument ? <div>Required: {f.requiredDocument}</div> : null}{protectedSources.includes(f.sourceStatusBefore) ? <div className="text-amber-300">Protected source — tick overwrite to apply.</div> : null}</div><div className="flex gap-2"><label className="flex items-center gap-1"><input type="checkbox" checked={!!f.accepted} onChange={e => updateProposal(idx, { accepted: e.target.checked })} />Accept</label>{protectedSources.includes(f.sourceStatusBefore) && <label className="flex items-center gap-1"><input type="checkbox" checked={!!f.shouldOverwrite} onChange={e => updateProposal(idx, { shouldOverwrite: e.target.checked })} />Overwrite</label>}</div></div>)}</div> : null}
+            {aiEstimate ? <div className="space-y-3 rounded-xl border border-violet-400/30 bg-violet-500/10 p-3"><div className="flex items-center gap-2 font-medium text-violet-100"><Sparkles className="h-4 w-4" />AI estimate preview / apply / edit / reject</div><p>{aiEstimate.summary}</p>{aiEstimate.warnings.map(w => <div key={w} className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-200">• {w}</div>)}{aiEstimate.estimatedFields.map((f, idx) => <div key={`${f.field}-${idx}`} className={`grid grid-cols-1 gap-2 rounded-lg border p-3 md:grid-cols-6 ${f.accepted ? 'border-violet-400/50 bg-violet-500/10' : 'border-border/60 bg-background/40'}`}><div><b>Suggested {fieldLabels[f.field]}</b><div className="mt-1"><Badge variant="outline" className={sourceTone(f.sourceStatusBefore)}>{badgeLabel[f.sourceStatusBefore]}</Badge> <span className="mx-1">→</span> <Badge variant="outline" className="border-violet-400/50 bg-violet-500/10 text-violet-200">AI Estimate</Badge></div></div><div>Current: <span className="text-foreground">{String(f.currentValue ?? '—')}</span></div><div><Input className="h-9 border-violet-400/30 bg-background/80" value={String(f.estimatedValue ?? '')} onChange={e => updateProposal(idx, { estimatedValue: e.target.value })} /></div><div>Confidence: <span className="text-foreground">{f.confidence}</span></div><div>{f.reasoningSummary}{f.requiredDocument ? <div>Required: {f.requiredDocument}</div> : null}{protectedSources.includes(f.sourceStatusBefore) ? <div className="text-amber-300">Protected source — tick overwrite to apply.</div> : null}</div><div className="flex flex-wrap gap-2"><label className="flex items-center gap-1 rounded border border-violet-400/30 px-2 py-1"><input type="checkbox" checked={!!f.accepted} onChange={e => updateProposal(idx, { accepted: e.target.checked })} />Apply</label>{protectedSources.includes(f.sourceStatusBefore) && <label className="flex items-center gap-1 rounded border border-amber-400/30 px-2 py-1"><input type="checkbox" checked={!!f.shouldOverwrite} onChange={e => updateProposal(idx, { shouldOverwrite: e.target.checked })} />Override protected</label>}</div></div>)}</div> : null}
           </div>
         )}
         <AlertDialog open={saveConfirmOpen} onOpenChange={setSaveConfirmOpen}>
@@ -393,17 +396,22 @@ export function NoiCalculatorCard() {
             </div>
           </Section>
 
-          <Section title="Core Income" helper="Enter passing rent, other income, recoveries and market rent assumptions.">
+          <Section title="Income inputs" helper="Gross passing income, market income and ancillary income assumptions. Editable inputs use bordered fields; calculated outputs are shown separately.">
             <div className="grid gap-3 sm:grid-cols-2">
-              <MoneyField field="grossRent" value={grossRent} />
-              <MoneyField field="marketRent" value={marketRent} />
-              <MoneyField field="other" value={other} />
-              <MoneyField field="recovered" value={recovered} />
-              <MoneyField field="vacancy" value={vacancy} />
+              <MoneyField field="grossRent" value={grossRent} help="Gross passing income currently payable under existing leases." />
+              <MoneyField field="marketRent" value={marketRent} help="Market income used for stabilised NOI comparison." />
+              <MoneyField field="other" value={other} help="Non-rental income included in effective gross income." />
+              <MoneyField field="vacancy" value={vacancy} help="Vacancy allowance percentage deducted from potential gross income." />
             </div>
           </Section>
 
-          <Section title="Lease & Lender Adjustment" helper="Confirm lease treatment and lender adjustments used for borrowing assessment.">
+          <Section title="Recoveries" helper="Recoverable outgoings are shown apart from non-recoverable expenses so the tenant recovery assumption is easy to audit.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MoneyField field="recovered" value={recovered} help="Recoverable outgoings charged back to tenants." />
+            </div>
+          </Section>
+
+          <Section title="Vacancy and leasing assumptions" helper="Lease structure and selected NOI basis drive recoveries, stabilisation and lender presentation.">
             <div className="grid gap-3 sm:grid-cols-2">
               <FieldShell field="leaseType"><select className="w-full rounded-md border bg-background p-2" value={leaseType} onChange={e => setField('leaseType', e.target.value)}><option value="unknown">Unknown</option><option value="gross">Gross</option><option value="net">Net</option><option value="semiGross">Semi-gross</option><option value="tripleNet">Triple net</option></select></FieldShell>
               <FieldShell field="noiBasis"><select className="w-full rounded-md border bg-background p-2" value={noiBasis} onChange={e => setField('noiBasis', e.target.value)}><option value="actual">Actual NOI</option><option value="stabilised">Stabilised NOI</option><option value="lenderAdjusted">Lender-adjusted NOI</option></select></FieldShell>
@@ -412,7 +420,7 @@ export function NoiCalculatorCard() {
             </div>
           </Section>
 
-          <Section title="Operating Expenses" helper="Enter total or itemised owner-borne operating expenses.">
+          <Section title="Expense assumptions" helper="Non-recoverable expenses, management fees, repairs and maintenance can be entered as a simple total or itemised breakdown.">
             <div className="space-y-3">
               <MoneyField field="totalOperatingExpenses" value={totalOperatingExpenses} />
               <Collapsible open={expensesOpen} onOpenChange={setExpensesOpen}>
@@ -424,14 +432,14 @@ export function NoiCalculatorCard() {
             </div>
           </Section>
 
-          <Section title="Assumptions / Warnings" helper="Review missing assumptions, source quality and verification requirements.">
+          <Section title="Warnings and assumptions" helper="Validation warnings, missing evidence and source quality remain visible before save-back.">
             {readiness.compactWarnings.length ? <div className="space-y-2">{readiness.compactWarnings.map(w => <div key={`${w.category}-${w.message}`} className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100"><div className="font-medium">{w.category} · {w.severity}</div><div>{w.message}</div></div>)}</div> : <div className="text-sm text-muted-foreground">No warnings to show yet. Start with core income and expense assumptions.</div>}
             <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setReviewOpen(true)}>Open Assumption Status</Button>
           </Section>
         </div>
 
         <div className="order-1 lg:order-2">
-          <Section title="NOI Output Summary" helper="Review the NOI figures that flow into borrowing capacity and investment reporting." prominent>
+          <Section title="NOI outputs" helper="Calculated outputs are read-only and visually separated from editable assumptions." prominent>
             <div className="grid gap-3">
               <MetricCard label="Selected NOI used for borrowing" value={readiness.preliminaryReady ? fmt(assessment.selectedNoi) : pending} accent />
               <div className="grid gap-3 sm:grid-cols-3">
@@ -440,11 +448,20 @@ export function NoiCalculatorCard() {
                 <MetricCard label="Lender-Adjusted NOI" value={readiness.preliminaryReady ? fmt(assessment.lenderAdjustedNoi) : pending} />
               </div>
               <div className="rounded-lg border border-border/60 bg-background/40 p-3 space-y-2 text-sm">
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><Calculator className="h-3.5 w-3.5" />Calculated NOI bridge</div>
                 <Row label="Potential Gross Income" value={readiness.preliminaryReady ? fmt(assessment.potentialGrossIncome) : pending} />
                 <Row label="Vacancy Loss" value={readiness.preliminaryReady ? `- ${fmt(assessment.vacancyLoss)}` : pending} />
                 <Row label="Recovered Outgoings" value={readiness.preliminaryReady ? `+ ${fmt(assessment.recoveredOutgoings)}` : pending} />
                 <Row label="Effective Gross Income" value={readiness.preliminaryReady ? fmt(assessment.effectiveGrossIncome) : pending} />
                 <Row label="Total Operating Expenses" value={readiness.preliminaryReady ? `- ${fmt(assessment.totalOperatingExpenses)}` : pending} />
+              </div>
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">Lender-adjusted summary</div>
+                <Row label="Actual NOI" value={readiness.preliminaryReady ? fmt(assessment.actualNoi) : pending} />
+                <Row label="Stabilised NOI" value={readiness.preliminaryReady ? fmt(assessment.stabilisedNoi) : pending} />
+                <Separator className="my-2" />
+                <Row label="Lender-Adjusted NOI" value={readiness.preliminaryReady ? fmt(assessment.lenderAdjustedNoi) : pending} bold />
+                <Row label="Selected basis" value={assessment.selectedBasis === 'actual' ? 'Actual NOI' : assessment.selectedBasis === 'stabilised' ? 'Stabilised NOI' : 'Lender-adjusted NOI'} muted />
               </div>
               <Collapsible open={bridgeOpen} onOpenChange={setBridgeOpen}>
                 <CollapsibleTrigger asChild><Button type="button" variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">{bridgeOpen ? 'Hide' : 'Show'} NOI Bridge</Button></CollapsibleTrigger>
