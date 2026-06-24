@@ -6,7 +6,7 @@
  * page that exposes every calculator and lets the user pick the asset
  * domain (commercial or industrial) for property prefill.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks, SlidersHorizontal } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -741,50 +741,80 @@ function ActivePropertyHeader() {
   const { domain, prefill, property, loading } = useCalculatorPrefill();
   const metrics = buildActivePropertyMetrics(domain, prefill, property);
   const noPropertyMessage = 'No property linked. Add or select a commercial / industrial property to prefill the calculator suite.';
+  const profileStatus = prefill ? 'Linked' : 'Not linked';
+  const completenessAccent = metrics.completeness >= 80 ? 'good' : metrics.completeness >= 50 ? 'warn' : 'pending';
+  const assumptionAccent = metrics.assumptionStatus === 'Report ready' ? 'good' : 'warn';
+  const sourceAccent = metrics.dataSource === 'Manual' ? 'manual' : metrics.dataSource === 'Mixed' ? 'mixed' : 'neutral';
 
   return (
-    <div className="ci-card-premium p-4 md:p-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0 space-y-3">
+    <div className="ci-active-property-card p-4 md:p-5">
+      <div className="flex flex-col gap-5 2xl:flex-row 2xl:items-stretch 2xl:justify-between">
+        <div className="min-w-0 flex-1 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="ci-badge ci-badge-pending">Active Property Header</Badge>
-            <Badge variant="outline" className="bg-background/60">Domain: {domain === 'industrial' ? 'Industrial' : 'Commercial'}</Badge>
-            <Badge variant="outline" className="bg-background/60">Data source: {metrics.dataSource}</Badge>
+            <Badge variant="outline" className="ci-badge ci-badge-workflow">Active Property Header</Badge>
+            <Badge variant="outline" className="ci-badge-soft">Domain: {domain === 'industrial' ? 'Industrial' : 'Commercial'}</Badge>
+            <Badge variant="outline" className={`ci-badge-soft ${sourceAccent === 'manual' ? 'ci-badge-manual' : sourceAccent === 'mixed' ? 'ci-badge-mixed' : ''}`}>Data source: {metrics.dataSource}</Badge>
           </div>
-          <div>
-            <h2 className="truncate text-xl font-semibold text-foreground md:text-2xl">{prefill?.address || noPropertyMessage}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {prefill ? 'Linked property context controls calculator prefill, accepted assumptions, save-back and report generation.' : noPropertyMessage}
-            </p>
+
+          <div className={`ci-linked-state ${prefill ? 'ci-linked-state-linked' : 'ci-linked-state-empty'}`}>
+            <div className="min-w-0">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className={prefill ? 'ci-badge ci-badge-verified' : 'ci-badge ci-badge-pending'}>{profileStatus}</Badge>
+                <span className="text-xs font-medium text-muted-foreground">Calculator context</span>
+              </div>
+              <h2 className="truncate text-xl font-semibold tracking-tight text-foreground md:text-2xl">{prefill?.address || noPropertyMessage}</h2>
+              <p className="mt-1 max-w-4xl text-sm leading-6 text-muted-foreground">
+                {prefill ? 'Linked property context controls calculator prefill, accepted assumptions, save-back and report generation.' : noPropertyMessage}
+              </p>
+            </div>
           </div>
-          <div className="ci-summary-grid">
+
+          <div className="ci-summary-grid ci-active-property-metrics">
             <HeaderMetric label="Asset type" value={metrics.assetType} />
-            <HeaderMetric label="Completeness" value={`${metrics.completeness}%`} accent={metrics.completeness >= 80 ? 'good' : metrics.completeness >= 50 ? 'warn' : 'pending'} />
-            <HeaderMetric label="Assumption status" value={metrics.assumptionStatus} accent={metrics.assumptionStatus === 'Report ready' ? 'good' : 'warn'} />
-            <HeaderMetric label="Last updated" value={metrics.lastUpdated} />
-            <HeaderMetric label="Profile status" value={prefill ? 'Linked' : 'Not linked'} accent={prefill ? 'good' : 'pending'} />
-            <HeaderMetric label="Source mix" value={metrics.dataSource} />
+            <HeaderMetric label="Completeness" value={`${metrics.completeness}%`} accent={completenessAccent} />
+            <HeaderMetric label="Assumption status" value={metrics.assumptionStatus} accent={assumptionAccent} />
+            <HeaderMetric label="Last updated" value={metrics.lastUpdated} accent={metrics.lastUpdated === 'Pending' ? 'warn' : 'neutral'} />
+            <HeaderMetric label="Profile status" value={profileStatus} accent={prefill ? 'good' : 'pending'} />
+            <HeaderMetric label="Source mix" value={metrics.dataSource} accent={sourceAccent} />
           </div>
         </div>
-        <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 xl:max-w-md">
-          <Button size="sm" variant="default" title="Use the selector below to add or link an active property." onClick={() => document.getElementById('calculator-property-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}><Link2 className="mr-1 h-4 w-4" />Add / link property</Button>
-          <span title={!prefill ? 'Link a property before re-running extraction.' : 'Re-run extraction for the linked property.'}><Button size="sm" variant="outline" disabled={!prefill || loading} className="w-full disabled:pointer-events-none"><RefreshCw className="mr-1 h-4 w-4" />Re-run extraction</Button></span>
-          <span title={!prefill ? 'Link a property before running AI estimates.' : 'Run AI estimates using the linked property context.'}><Button size="sm" variant="outline" disabled={!prefill || loading} className="w-full disabled:pointer-events-none"><Sparkles className="mr-1 h-4 w-4" />Run AI estimates</Button></span>
-          <span title={!prefill ? 'Link a property before reviewing assumption status.' : metrics.assumptionStatus}><Button size="sm" variant="outline" disabled={!prefill} className="w-full disabled:pointer-events-none"><AlertCircle className="mr-1 h-4 w-4" />Assumption status</Button></span>
-          <span title={!prefill ? 'Link a property before saving accepted assumptions.' : 'Save all accepted assumptions to the linked property profile.'}><Button size="sm" variant="outline" disabled={!prefill} className="w-full disabled:pointer-events-none"><Save className="mr-1 h-4 w-4" />Save all accepted</Button></span>
-          <span title={!prefill ? 'Link a property before generating a report.' : 'Generate the report from linked property assumptions.'}><Button size="sm" variant="outline" disabled={!prefill} className="w-full disabled:pointer-events-none"><FileText className="mr-1 h-4 w-4" />Generate report</Button></span>
+
+        <div className="ci-workflow-actions shrink-0">
+          <WorkflowActionGroup title="Property linking">
+            <Button size="sm" variant="default" title="Use the selector below to add or link an active property." className="ci-workflow-primary" onClick={() => document.getElementById('calculator-property-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}><Link2 className="mr-1 h-4 w-4" />Add / link property</Button>
+          </WorkflowActionGroup>
+          <WorkflowActionGroup title="Extraction / AI estimates">
+            <span title={!prefill ? 'Link a property before re-running extraction.' : 'Re-run extraction for the linked property.'}><Button size="sm" variant="outline" disabled={!prefill || loading} className="ci-workflow-button disabled:pointer-events-none"><RefreshCw className="mr-1 h-4 w-4" />Re-run extraction</Button></span>
+            <span title={!prefill ? 'Link a property before running AI estimates.' : 'Run AI estimates using the linked property context.'}><Button size="sm" variant="outline" disabled={!prefill || loading} className="ci-workflow-button disabled:pointer-events-none"><Sparkles className="mr-1 h-4 w-4" />Run AI estimates</Button></span>
+          </WorkflowActionGroup>
+          <WorkflowActionGroup title="Assumption management">
+            <span title={!prefill ? 'Link a property before reviewing assumption status.' : metrics.assumptionStatus}><Button size="sm" variant="outline" disabled={!prefill} className="ci-workflow-button disabled:pointer-events-none"><AlertCircle className="mr-1 h-4 w-4" />Assumption status</Button></span>
+            <span title={!prefill ? 'Link a property before saving accepted assumptions.' : 'Save all accepted assumptions to the linked property profile.'}><Button size="sm" variant="outline" disabled={!prefill} className="ci-workflow-button disabled:pointer-events-none"><Save className="mr-1 h-4 w-4" />Save all accepted</Button></span>
+          </WorkflowActionGroup>
+          <WorkflowActionGroup title="Save / report actions">
+            <span title={!prefill ? 'Link a property before generating a report.' : 'Generate the report from linked property assumptions.'}><Button size="sm" variant="outline" disabled={!prefill} className="ci-workflow-button ci-workflow-report disabled:pointer-events-none"><FileText className="mr-1 h-4 w-4" />Generate report</Button></span>
+          </WorkflowActionGroup>
         </div>
       </div>
     </div>
   );
 }
 
-function HeaderMetric({ label, value, accent = 'neutral' }: { label: string; value: string; accent?: 'neutral' | 'good' | 'warn' | 'pending' }) {
-  const accentClass = accent === 'good' ? 'text-emerald-600 dark:text-emerald-200' : accent === 'warn' ? 'text-amber-600 dark:text-amber-200' : accent === 'pending' ? 'text-muted-foreground' : 'text-foreground';
+function WorkflowActionGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="ci-summary-metric">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className={`mt-1 truncate text-sm font-semibold ${accentClass}`}>{value}</div>
+    <div className="ci-workflow-group">
+      <div className="ci-workflow-label">{title}</div>
+      <div className="ci-workflow-group-actions">{children}</div>
+    </div>
+  );
+}
+
+function HeaderMetric({ label, value, accent = 'neutral' }: { label: string; value: string; accent?: 'neutral' | 'good' | 'warn' | 'pending' | 'manual' | 'mixed' }) {
+  const accentClass = accent === 'good' ? 'ci-metric-good' : accent === 'warn' ? 'ci-metric-warn' : accent === 'pending' ? 'ci-metric-pending' : accent === 'manual' ? 'ci-metric-manual' : accent === 'mixed' ? 'ci-metric-mixed' : 'ci-metric-neutral';
+  return (
+    <div className={`ci-summary-metric ${accentClass}`}>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-foreground">{value}</div>
     </div>
   );
 }
