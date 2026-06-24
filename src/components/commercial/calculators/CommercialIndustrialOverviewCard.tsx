@@ -16,6 +16,12 @@ const fmt = (n?: number) => n == null ? 'Pending' : new Intl.NumberFormat('en-AU
 const pct = (n?: number) => n == null ? 'Pending' : `${(n * 100).toFixed(1)}%`;
 const title = (v?: string) => (v || 'Pending').replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 const badgeVariant = (r?: string) => !r ? 'outline' : (r === 'green' || r === 'supportable' ? 'default' : r === 'amber' || r === 'supportableSubjectToVerification' ? 'secondary' : 'destructive');
+const actionBase = 'min-h-10 justify-start gap-2 rounded-xl text-left shadow-sm transition-all disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted/40 disabled:text-muted-foreground disabled:opacity-100';
+const primaryAction = `${actionBase} bg-gradient-to-r from-primary to-primary/85 text-primary-foreground shadow-primary/20 hover:shadow-md`;
+const secondaryAction = `${actionBase} border-border/70 bg-background/80 hover:border-primary/40 hover:bg-primary/5`;
+const reviewAction = `${actionBase} border-amber-500/40 bg-amber-500/10 text-amber-900 hover:bg-amber-500/15 dark:text-amber-100`;
+const clientAction = `${actionBase} border-primary/30 bg-gradient-to-r from-primary/10 to-background text-primary hover:border-primary/50 hover:bg-primary/10`;
+const actionIcon = 'h-4 w-4 shrink-0';
 
 function Row({ label, value }: { label: string; value: string | number | undefined }) {
   const displayValue = typeof value === 'number' ? fmt(value) : value || 'Pending';
@@ -174,27 +180,32 @@ export function CommercialIndustrialOverviewCard() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4 p-4">
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          <Button size="sm" className="justify-start shadow-sm" onClick={handleGenerateReport} disabled={busy === 'report'}>
-            {busy === 'report' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileText className="h-4 w-4 mr-1" />}
-            Generate Client Report
-          </Button>
-          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowMissing(true)}>
-            <FileWarning className="h-4 w-4 mr-1" /> Review Missing Data ({unknowns.length})
-          </Button>
-          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowAi(true)}>
-            <Sparkles className="h-4 w-4 mr-1" /> Review AI Estimates ({aiFields.length})
-          </Button>
-          <Button size="sm" variant="outline" className="justify-start bg-background/70 disabled:opacity-60" onClick={handleSaveBack} disabled={!property || busy === 'save'}>
-            {busy === 'save' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
-            Save Back to Property
-          </Button>
-          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={handleExportSummary} disabled={busy === 'export'}>
-            <Download className="h-4 w-4 mr-1" /> Export Summary
-          </Button>
-          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={handlePushToPortal} disabled={busy === 'push'}>
-            <UploadCloud className="h-4 w-4 mr-1" /> Push to Client Portal
-          </Button>
+        <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+          <div className="rounded-2xl border border-primary/25 bg-primary/5 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary">Client-ready output</p>
+            <Button size="sm" className={primaryAction} onClick={handleGenerateReport} disabled={busy === 'report'}>
+              {busy === 'report' ? <Loader2 className={`${actionIcon} animate-spin`} /> : <FileText className={actionIcon} />}
+              Generate Client Report
+            </Button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button size="sm" variant="outline" className={reviewAction} onClick={() => setShowMissing(true)}>
+              <FileWarning className={actionIcon} /> Review Missing Data ({unknowns.length})
+            </Button>
+            <Button size="sm" variant="outline" className={reviewAction} onClick={() => setShowAi(true)}>
+              <Sparkles className={actionIcon} /> Review AI Estimates ({aiFields.length})
+            </Button>
+            <Button size="sm" variant="outline" className={secondaryAction} onClick={handleSaveBack} disabled={!property || busy === 'save'}>
+              {busy === 'save' ? <Loader2 className={`${actionIcon} animate-spin`} /> : <Save className={actionIcon} />}
+              Save Back to Property
+            </Button>
+            <Button size="sm" variant="outline" className={secondaryAction} onClick={handleExportSummary} disabled={busy === 'export'}>
+              {busy === 'export' ? <Loader2 className={`${actionIcon} animate-spin`} /> : <Download className={actionIcon} />} Export Summary
+            </Button>
+            <Button size="sm" variant="outline" className={`${clientAction} sm:col-span-2`} onClick={handlePushToPortal} disabled={busy === 'push'}>
+              {busy === 'push' ? <Loader2 className={`${actionIcon} animate-spin`} /> : <UploadCloud className={actionIcon} />} Push to Client Portal
+            </Button>
+          </div>
         </div>
         <Separator />
         <p className="text-xs text-muted-foreground">
@@ -216,10 +227,10 @@ export function CommercialIndustrialOverviewCard() {
             <p className="text-xs text-amber-800/80 dark:text-amber-100/80">Add or import property details before relying on this calculation.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowMissing(true)}>
+            <Button size="sm" variant="outline" className={reviewAction} onClick={() => setShowMissing(true)}>
               Review Missing Data ({unknowns.length})
             </Button>
-            <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowAi(true)}>
+            <Button size="sm" variant="outline" className={reviewAction} onClick={() => setShowAi(true)}>
               Review AI Estimates ({aiFields.length})
             </Button>
           </div>
