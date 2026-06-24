@@ -309,6 +309,10 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const chunkRasterManifestPaths: string[] = [];
   const pageRasterPaths: string[] = [];
   const parentRasterManifestPages: any[] = [];
+  const chunkExtractorLanes: string[] = [];
+  const chunkLaneVersions: string[] = [];
+  const chunkEffectiveModes: string[] = [];
+  const chunkLanePolicies: any[] = [];
   let totalTextChars = 0;
   let totalOcrChars = 0;
   let totalTableCells = 0;
@@ -321,7 +325,21 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   for (const c of chunkRows as any[]) {
     maxChunkPageEnd = Math.max(maxChunkPageEnd, Number(c.page_end ?? 0));
     const offset = c.page_start - 1;
-    const ap = (c.artifact_paths ?? {}) as Record<string, string>;
+    const ap = (c.artifact_paths ?? {}) as Record<string, any>;
+
+    if (typeof ap.extractor_lane === 'string' && ap.extractor_lane.trim()) {
+      chunkExtractorLanes.push(ap.extractor_lane.trim());
+    }
+    if (typeof ap.lane_enforcement_version === 'string' && ap.lane_enforcement_version.trim()) {
+      chunkLaneVersions.push(ap.lane_enforcement_version.trim());
+    }
+    if (typeof ap.effective_mode === 'string' && ap.effective_mode.trim()) {
+      chunkEffectiveModes.push(ap.effective_mode.trim());
+    }
+    if (ap.lane_policy && typeof ap.lane_policy === 'object') {
+      chunkLanePolicies.push(ap.lane_policy);
+    }
+
     if (ap.docling_path) {
       const dd = await downloadJson(admin, ap.docling_path);
       if (dd && typeof dd === 'object') {
@@ -486,12 +504,43 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
 
   const { data: existing } = await admin
     .from('pdf_import_jobs')
-    .select('started_at, result_payload, mode')
+    .select('started_at, result_payload, mode, plan_payload')
     .eq('id', jobId)
     .maybeSingle();
   const startedJob = (existing as any)?.started_at ? new Date((existing as any).started_at).getTime() : startedAt;
   const finished = Date.now();
   const prior = ((existing as any)?.result_payload ?? {}) as Record<string, unknown>;
+  const planPayload = ((existing as any)?.plan_payload ?? {}) as Record<string, unknown>;
+
+  const parentExtractorLane = String(
+    chunkExtractorLanes[0]
+      ?? prior.extractor_lane
+      ?? planPayload.selected_lane
+      ?? planPayload.recommended_lane
+      ?? 'unplanned'
+  );
+
+  const parentLaneEnforcementVersion = String(
+    chunkLaneVersions[0]
+      ?? prior.lane_enforcement_version
+      ?? 'extractor-lane-policy-v1'
+  );
+
+  const parentEffectiveMode = String(
+    chunkEffectiveModes[0]
+      ?? prior.effective_mode
+      ?? planPayload.dispatch_effective_mode
+      ?? (existing as any)?.mode
+      ?? 'semantic'
+  );
+
+  const parentLanePolicy = chunkLanePolicies[0]
+    ?? prior.lane_policy
+    ?? {
+      lane: parentExtractorLane,
+      version: parentLaneEnforcementVersion,
+      requested_mode: String(planPayload.requested_mode ?? (existing as any)?.mode ?? 'semantic'),
+    };
 
   await admin.from('pdf_import_jobs').update({
     status: 'succeeded',
@@ -517,6 +566,10 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       page_raster_paths: pageRasterPaths,
       artifact_contract_version: 'raster-manifest-v1',
       docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
+      extractor_lane: parentExtractorLane,
+      lane_enforcement_version: parentLaneEnforcementVersion,
+      effective_mode: parentEffectiveMode,
+      lane_policy: parentLanePolicy,
       page_count: finalPageCount,
       summary: {
         ...summary,
@@ -568,8 +621,19 @@ Deno.serve(async (req) => {
   const now = new Date().toISOString();
 
   if (status === 'succeeded') {
-    const artifacts = ((body as any).artifact_paths ?? {}) as Record<string, unknown>;
+    const artifacts = { ...(((body as any).artifact_paths ?? {}) as Record<string, unknown>) };
     const summary = ((body as any).summary ?? {}) as Record<string, unknown>;
+
+    const extractorLane = String((body as any).extractor_lane ?? artifacts.extractor_lane ?? '').trim();
+    const laneVersion = String((body as any).lane_enforcement_version ?? artifacts.lane_enforcement_version ?? '').trim();
+    const effectiveMode = String((body as any).effective_mode ?? artifacts.effective_mode ?? '').trim();
+    const lanePolicy = (body as any).lane_policy ?? artifacts.lane_policy ?? null;
+
+    if (extractorLane) artifacts.extractor_lane = extractorLane;
+    if (laneVersion) artifacts.lane_enforcement_version = laneVersion;
+    if (effectiveMode) artifacts.effective_mode = effectiveMode;
+    if (lanePolicy && typeof lanePolicy === 'object') artifacts.lane_policy = lanePolicy;
+
     await admin.from('pdf_import_chunks').update({
       status: 'succeeded',
       artifact_paths: artifacts,
