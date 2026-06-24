@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles } from 'lucide-react';
+import { AlertTriangle, BarChart3, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculateYields, calculateCapRateEngine, parseCapRateNumber } from '@/utils/commercial';
 import { useCalculatorPrefill, type CalculatorPrefill } from '@/contexts/CalculatorPrefillContext';
@@ -303,6 +303,9 @@ export function CapRateCalculatorCard() {
   const benchmarkToneClass = fields.targetCap.source === 'Verified' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : fields.targetCap.source === 'AI Benchmark' || benchmarkStatus === 'Valuer confirmation required' ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : benchmarkStatus === 'Benchmark pending' ? 'border-muted-foreground/20 bg-muted/20 text-muted-foreground' : 'border-primary/25 bg-primary/10 text-primary';
   const saveBackTooltip = !prefill ? 'Select or link a property before saving cap rate assumptions.' : !hasSaveableCapRateValue ? 'Enter at least one cap rate assumption before saving.' : 'Save cap rate assumptions back to the linked property profile.';
 
+  const confidenceLabel = readinessStatus === 'Verified Benchmark' ? 'High' : readinessStatus === 'Cap Rate Assessment Ready' ? 'Medium' : readinessStatus === 'Preliminary Yield Estimate' ? 'Indicative' : readinessStatus === 'Specialist Review Recommended' ? 'Review required' : 'Pending';
+  const confidenceToneClass = readinessStatus === 'Verified Benchmark' ? 'from-emerald-500/25 to-emerald-500/5 border-emerald-500/30 text-emerald-200' : readinessStatus === 'Specialist Review Recommended' ? 'from-amber-500/25 to-amber-500/5 border-amber-500/30 text-amber-100' : readinessStatus === 'Awaiting Cap Rate Inputs' ? 'from-muted/40 to-muted/10 border-muted-foreground/20 text-muted-foreground' : 'from-primary/20 to-primary/5 border-primary/25 text-primary';
+
   const sourceCounts = useMemo(() => ({
     userOverrides: Object.values(fields).filter(f => f.source === 'User Override').length,
     aiBenchmarks: Object.values(fields).filter(f => f.source === 'AI Benchmark').length,
@@ -431,131 +434,100 @@ export function CapRateCalculatorCard() {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
-        <div className="flex flex-col gap-5">
-          <div className="order-1 grid gap-5 lg:order-2 lg:grid-cols-2">
-            <section className="rounded-xl border border-primary/10 bg-muted/15 p-4">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Yield Summary</h3>
-                <p className="text-xs text-muted-foreground">Compare passing, reversionary and blended yield based on current property assumptions.</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                <PremiumMetric label="Passing Yield" value={displayPct(yields.passingYield, hasPassingNoi && hasPrice)} />
-                <PremiumMetric label="Reversionary Yield" value={displayPct(yields.reversionaryYield, hasMarketNoi && hasPrice)} />
-                <PremiumMetric label="Blended Yield" value={displayPct(yields.blendedYield, hasPassingNoi && hasMarketNoi && hasPrice)} accent />
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-foreground">Valuation Summary</h3>
-                <p className="text-xs text-muted-foreground">Estimate implied value using selected NOI and target cap rate.</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <HighlightMetric label="Implied Value" value={displayMoney(capAssessment.impliedValue, hasImpliedValueInputs)} />
-                <MetricTile label="Current Price / Value" value={displayMoney(num(price), hasPrice)} />
-                <HighlightMetric label="Valuation Gap" value={displayMoney(capAssessment.valuationGap, hasValuationGapInputs)} tone={capAssessment.valuationGap !== null && capAssessment.valuationGap < 0 ? 'negative' : 'primary'} />
-                <MetricTile label="Valuation Gap %" value={hasValuationGapInputs ? pctRatio(capAssessment.valuationGapPct) : PENDING} />
-              </div>
-            </section>
-          </div>
-
-          <section className="order-2 rounded-xl border border-primary/10 bg-muted/15 p-4 lg:order-1">
+      <CardContent className="space-y-6">
+        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background p-5 shadow-sm">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Cap Rate Inputs</h3>
-                <p className="text-xs text-muted-foreground">Review NOI and value assumptions used to calculate yield and implied value.</p>
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"><BarChart3 className="h-4 w-4" /> Cap rate outputs</div>
+                <h3 className="mt-1 text-lg font-semibold text-foreground">Valuation and yield dashboard</h3>
+                <p className="text-xs text-muted-foreground">Key outputs remain calculated from the same NOI, value and target cap-rate inputs.</p>
               </div>
-              <Button size="sm" variant="outline" className="border-primary/40 text-primary disabled:text-muted-foreground" onClick={() => prefill && applyCascade(prefill, true)} disabled={!prefill}>Global Input Sync: On</Button>
+              <Badge variant="outline" className={statusToneClass}>{readinessStatus}</Badge>
             </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <InputBlock label="Passing NOI" state={fields.passingNoi} onChange={v => setManual('passingNoi', v)} onKeepOverride={() => keepOverride('passingNoi')} onUseSource={() => useSourceValue('passingNoi')} placeholder="Pulled from NOI tab or enter manually" />
-              <InputBlock label="Market / Stabilised NOI" state={fields.marketNoi} onChange={v => setManual('marketNoi', v)} onKeepOverride={() => keepOverride('marketNoi')} onUseSource={() => useSourceValue('marketNoi')} placeholder="Pulled from stabilised NOI or enter manually" />
-              <InputBlock label="Price / Value" state={fields.price} onChange={v => setManual('price', v)} onKeepOverride={() => keepOverride('price')} onUseSource={() => useSourceValue('price')} placeholder="Pulled from property profile or enter manually" />
-              <InputBlock label="Target Cap Rate %" state={fields.targetCap} onChange={v => setManual('targetCap', v)} onKeepOverride={() => keepOverride('targetCap')} onUseSource={() => useSourceValue('targetCap')} step="0.1" placeholder="Enter target cap rate" />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <HighlightMetric label="Market Cap Rate" value={displayPct(yields.reversionaryYield, hasMarketNoi && hasPrice)} />
+              <HighlightMetric label="Implied Cap Rate" value={displayPct(yields.passingYield, hasPassingNoi && hasPrice)} />
+              <HighlightMetric label="Implied Value" value={displayMoney(capAssessment.impliedValue, hasImpliedValueInputs)} />
+              <HighlightMetric label="Valuation Gap" value={displayMoney(capAssessment.valuationGap, hasValuationGapInputs)} tone={capAssessment.valuationGap !== null && capAssessment.valuationGap < 0 ? 'negative' : 'primary'} />
             </div>
-          </section>
-
-          <section className="order-3 rounded-xl border border-primary/10 bg-muted/15 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Benchmark Status</h3>
-                <p className="text-xs text-muted-foreground">Confirm whether the target cap rate is manual, AI-estimated or verified.</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={benchmarkToneClass}>{benchmarkStatus}</Badge>
-                <Badge variant="outline" className={statusToneClass}>{readinessStatus}</Badge>
-                <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !canEstimateCapRate} className="disabled:cursor-not-allowed disabled:opacity-50">{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate cap rate range</Button>
-              </div>
-            </div>
-            {aiEstimate && <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><span className="font-medium text-amber-200">AI benchmark preview:</span> {pct(aiEstimate.capRateRange.low)} – {pct(aiEstimate.capRateRange.high)} · midpoint <span className="font-semibold text-amber-100">{pct(aiEstimate.capRateRange.mid ?? aiEstimate.recommendedTargetCapRate)}</span></div><Badge variant="outline" className="border-amber-500/30 text-amber-200">{aiEstimate.confidence} confidence</Badge></div><div className="grid gap-2 md:grid-cols-2"><PreviewItem label="Benchmark basis" value={aiEstimate.benchmarkBasis} /><PreviewItem label="Valuer confirmation" value={aiEstimate.requiresValuerConfirmation ? 'Benchmark only — valuer confirmation required.' : 'Not flagged by benchmark response'} /><PreviewItem label="Suggested valuation range" value={`${displayMoney(aiEstimate.suggestedValuationRange.low, aiEstimate.suggestedValuationRange.low !== null)} – ${displayMoney(aiEstimate.suggestedValuationRange.high, aiEstimate.suggestedValuationRange.high !== null)}`} /><PreviewItem label="Suggested valuation midpoint" value={displayMoney(aiEstimate.suggestedValuationRange.midpoint, aiEstimate.suggestedValuationRange.midpoint !== null)} /></div><div className="grid gap-2 sm:grid-cols-2"><div><div className="font-medium text-foreground">Key assumptions used</div><div>{aiEstimate.supportingInputsUsed.join(', ') || 'No supporting inputs returned.'}</div></div><div><div className="font-medium text-foreground">Missing information affecting reliability</div><div>{aiEstimate.missingInputs.join(', ') || 'None flagged.'}</div></div></div><p className="text-amber-200">Benchmark only — valuer confirmation required.</p><div className="grid grid-cols-2 gap-2 md:grid-cols-6 md:items-end"><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.mid ?? aiEstimate.recommendedTargetCapRate)}>Accept midpoint</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.low)}>Accept low end</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.high)}>Accept high end</Button><div><Label>Custom rate %</Label><Input type="number" step="0.05" value={proposedCap} onChange={e => setProposedCap(e.target.value)} /></div><Button size="sm" disabled={!canEstimateCapRate} onClick={() => acceptEstimate()}>Apply custom</Button><Button size="sm" variant="secondary" onClick={rejectEstimate}>Reject estimate</Button></div></div>}
-          </section>
-
-          <Collapsible open={showSensitivity} onOpenChange={setShowSensitivity} className="order-4 rounded-xl border border-primary/10 bg-muted/15 p-4">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Sensitivity</h3>
-              <p className="text-xs text-muted-foreground">Review how value changes across different cap rate assumptions.</p>
-            </div>
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="outline" className="w-full justify-between">View value sensitivity <span>{showSensitivity ? '−' : '+'}</span></Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              {hasSensitivity ? <div className="overflow-x-auto rounded-lg border border-primary/10"><div className="min-w-[420px]"><div className="grid grid-cols-2 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground"><span>Sensitivity Cap Rate</span><span className="text-right">Sensitivity Value</span></div>{capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="grid grid-cols-2 px-3 py-2 text-sm odd:bg-background/30"><span>{pct(row.capRatePct)}</span><span className="text-right font-medium">{displayMoney(row.impliedValue, true)}</span></div>)}</div></div> : <p className="text-xs text-muted-foreground">Sensitivity analysis appears once selected NOI and cap-rate sensitivity values are available.</p>}
-            </CollapsibleContent>
-          </Collapsible>
-
-          <section className="order-5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Compact Warnings</h3>
-                <p className="text-xs text-muted-foreground">Plain-English assumptions and verification prompts.</p>
-              </div>
-              <Button size="sm" variant="secondary" onClick={() => setShowAssumptions(v => !v)}>Assumption Status</Button>
-            </div>
-            <div className="mt-3 space-y-1">
-              {priorityWarnings.length ? priorityWarnings.map(w => <p key={warningKey(w)} className={`text-xs ${w.severity === 'Critical' ? 'text-red-300' : 'text-amber-200'}`}>• {w.message}</p>) : <p className="text-xs text-muted-foreground">No priority warnings.</p>}
-            </div>
-            {showAssumptions && <div className="mt-3 rounded border border-amber-500/20 bg-background/40 p-3 text-xs text-muted-foreground"><div className="mb-2 font-medium text-foreground">Detailed warning status</div>{capWarnings.length ? capWarnings.map(w => <div key={warningKey(w)}><Badge variant="outline" className={`mr-2 text-[10px] ${w.severity === 'Critical' ? 'border-red-500/30 text-red-300' : 'border-amber-500/30 text-amber-200'}`}>{w.severity}</Badge><span className="text-muted-foreground">{w.category}</span> — {w.message}</div>) : <div>No detailed warnings.</div>}</div>}
-          </section>
-        </div>
-
-        <section className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-xl border border-primary/10 bg-muted/20 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">Benchmark Status</h3>
-                <p className="text-xs text-muted-foreground">{benchmarkStatus}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-primary/30 text-primary">{benchmarkStatus}</Badge>
-                <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !canEstimateCapRate}>{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate cap rate range</Button>
-              </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <MetricTile label="Purchase Price / Valuation" value={displayMoney(num(price), hasPrice)} />
+              <MetricTile label="Blended Yield" value={displayPct(yields.blendedYield, hasPassingNoi && hasMarketNoi && hasPrice)} />
+              <MetricTile label="Valuation Gap %" value={hasValuationGapInputs ? pctRatio(capAssessment.valuationGapPct) : PENDING} />
             </div>
           </div>
 
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className={`rounded-2xl border bg-gradient-to-br p-5 shadow-sm ${confidenceToneClass}`}>
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Assumptions & Warnings</h3>
-                <p className="text-xs text-muted-foreground">Showing top {priorityWarnings.length || 0} priority warnings.</p>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em]">Valuation confidence</div>
+                <div className="mt-2 text-3xl font-bold">{confidenceLabel}</div>
+                <p className="mt-2 text-xs opacity-90">Confidence display mirrors the existing readiness and warning state without changing confidence calculations.</p>
               </div>
-              <Button size="sm" variant="secondary" onClick={() => setShowAssumptions(v => !v)}>Assumption Status</Button>
+              {readinessStatus === 'Verified Benchmark' ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
             </div>
-            <div className="mt-3 space-y-1">
-              {priorityWarnings.length ? priorityWarnings.map(w => <p key={warningKey(w)} className="text-xs text-amber-200">• {w.message}</p>) : <p className="text-xs text-muted-foreground">No priority warnings.</p>}
+            <div className="mt-4 space-y-2 text-sm">
+              <MetricRow label="Benchmark source" value={benchmarkStatus} emphasis />
+              <MetricRow label="Warning count" value={String(capWarnings.length)} />
+              <MetricRow label="AI / manual state" value={fields.targetCap.source} />
             </div>
-            {showAssumptions && <div className="mt-3 rounded border border-amber-500/20 bg-background/40 p-3 text-xs text-muted-foreground"><div className="mb-2 font-medium text-foreground">Detailed warning status</div>{capWarnings.length ? capWarnings.map(w => <div key={warningKey(w)}><Badge variant="outline" className="mr-2 text-[10px]">{w.severity}</Badge><span className="text-muted-foreground">{w.category}</span> — {w.message}</div>) : <div>No detailed warnings.</div>}</div>}
           </div>
         </section>
 
-        <Collapsible open={showSensitivity} onOpenChange={setShowSensitivity} className="rounded-xl border border-primary/10 bg-muted/20 p-4">
-          <CollapsibleTrigger asChild>
-            <Button type="button" variant="outline" className="w-full justify-between">View value sensitivity <span>{showSensitivity ? '−' : '+'}</span></Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            {hasSensitivity ? <div className="overflow-hidden rounded-lg border border-primary/10"><div className="grid grid-cols-2 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground"><span>Sensitivity Cap Rate</span><span className="text-right">Sensitivity Value</span></div>{capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="grid grid-cols-2 px-3 py-2 text-sm odd:bg-background/30"><span>{pct(row.capRatePct)}</span><span className="text-right font-medium">{displayMoney(row.impliedValue, true)}</span></div>)}</div> : <p className="text-xs text-muted-foreground">Sensitivity analysis appears once selected NOI and cap-rate sensitivity values are available.</p>}
-          </CollapsibleContent>
+        <section className="rounded-2xl border border-primary/10 bg-muted/10 p-5">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Valuation inputs</h3>
+              <p className="text-xs text-muted-foreground">Market value, purchase price / valuation and target cap-rate assumptions used by the existing formulas.</p>
+            </div>
+            <Button size="sm" variant="outline" className="border-primary/40 text-primary disabled:text-muted-foreground" onClick={() => prefill && applyCascade(prefill, true)} disabled={!prefill}>Global Input Sync: On</Button>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+            <InputBlock label="Actual NOI" state={fields.passingNoi} onChange={v => setManual('passingNoi', v)} onKeepOverride={() => keepOverride('passingNoi')} onUseSource={() => useSourceValue('passingNoi')} placeholder="Pulled from NOI tab or enter manually" />
+            <InputBlock label="Stabilised NOI" state={fields.marketNoi} onChange={v => setManual('marketNoi', v)} onKeepOverride={() => keepOverride('marketNoi')} onUseSource={() => useSourceValue('marketNoi')} placeholder="Pulled from stabilised NOI or enter manually" />
+            <InputBlock label="Market Value / Purchase Price" state={fields.price} onChange={v => setManual('price', v)} onKeepOverride={() => keepOverride('price')} onUseSource={() => useSourceValue('price')} placeholder="Pulled from property profile or enter manually" />
+            <InputBlock label="Market Cap Rate %" state={fields.targetCap} onChange={v => setManual('targetCap', v)} onKeepOverride={() => keepOverride('targetCap')} onUseSource={() => useSourceValue('targetCap')} step="0.1" placeholder="Enter target cap rate" />
+          </div>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-2xl border border-primary/10 bg-muted/10 p-5">
+            <h3 className="text-sm font-semibold text-foreground">NOI source selection</h3>
+            <p className="mb-3 text-xs text-muted-foreground">Source badges identify whether each NOI input is synced, manual, AI-estimated or overridden.</p>
+            <div className="space-y-2">
+              <MetricRow label="Selected NOI for valuation" value={displayMoney(capAssessment.selectedNoi, capAssessment.selectedNoi !== null)} emphasis />
+              <MetricRow label="Actual NOI source" value={sourceBadge(fields.passingNoi.source)} />
+              <MetricRow label="Stabilised NOI source" value={sourceBadge(fields.marketNoi.source)} />
+              <MetricRow label="Reversionary spread" value={reversionarySpread !== null ? pct(reversionarySpread) : PENDING} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-primary/10 bg-muted/10 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">Market evidence / benchmark assumptions</h3>
+                <p className="text-xs text-muted-foreground">Comparable evidence, AI estimates and valuer-confirmation status.</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={requestEstimate} disabled={estimating || !canEstimateCapRate} className="disabled:cursor-not-allowed disabled:opacity-50">{estimating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}Estimate cap rate range</Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2"><Badge variant="outline" className={benchmarkToneClass}>{benchmarkStatus}</Badge><Badge variant="outline" className={statusToneClass}>{readinessStatus}</Badge></div>
+            {!canEstimateCapRate && <p className="mt-3 rounded-lg border border-dashed border-muted-foreground/25 bg-background/40 p-3 text-xs text-muted-foreground">Benchmark estimate pending: add required property, location, NOI and valuation context to unlock comparable evidence.</p>}
+            {aiEstimate && <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-muted-foreground space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><span className="font-medium text-amber-200">AI benchmark preview:</span> {pct(aiEstimate.capRateRange.low)} – {pct(aiEstimate.capRateRange.high)} · midpoint <span className="font-semibold text-amber-100">{pct(aiEstimate.capRateRange.mid ?? aiEstimate.recommendedTargetCapRate)}</span></div><Badge variant="outline" className="border-amber-500/30 text-amber-200">{aiEstimate.confidence} confidence</Badge></div><div className="grid gap-2 md:grid-cols-2"><PreviewItem label="Comparable evidence basis" value={aiEstimate.benchmarkBasis} /><PreviewItem label="Valuer confirmation" value={aiEstimate.requiresValuerConfirmation ? 'Benchmark only — valuer confirmation required.' : 'Not flagged by benchmark response'} /><PreviewItem label="Suggested valuation range" value={`${displayMoney(aiEstimate.suggestedValuationRange.low, aiEstimate.suggestedValuationRange.low !== null)} – ${displayMoney(aiEstimate.suggestedValuationRange.high, aiEstimate.suggestedValuationRange.high !== null)}`} /><PreviewItem label="Risk notes / missing evidence" value={aiEstimate.missingInputs.join(', ') || 'None flagged.'} /></div><div className="grid grid-cols-2 gap-2 md:grid-cols-6 md:items-end"><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.mid ?? aiEstimate.recommendedTargetCapRate)}>Accept midpoint</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.low)}>Accept low end</Button><Button size="sm" variant="outline" disabled={!canEstimateCapRate} onClick={() => acceptEstimate(aiEstimate.capRateRange.high)}>Accept high end</Button><div><Label>Custom rate %</Label><Input type="number" step="0.05" value={proposedCap} onChange={e => setProposedCap(e.target.value)} /></div><Button size="sm" disabled={!canEstimateCapRate} onClick={() => acceptEstimate()}>Apply custom</Button><Button size="sm" variant="secondary" onClick={rejectEstimate}>Reject estimate</Button></div></div>}
+          </div>
+        </section>
+
+        <Collapsible open={showSensitivity} onOpenChange={setShowSensitivity} className="rounded-2xl border border-primary/10 bg-muted/10 p-5">
+          <div className="mb-3"><h3 className="text-sm font-semibold text-foreground">Sensitivity or confidence summary</h3><p className="text-xs text-muted-foreground">Existing valuation sensitivity / benchmark section with clearer comparison rows.</p></div>
+          <CollapsibleTrigger asChild><Button type="button" variant="outline" className="w-full justify-between">View value sensitivity <span>{showSensitivity ? '−' : '+'}</span></Button></CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">{hasSensitivity ? <div className="overflow-x-auto rounded-xl border border-primary/10"><div className="min-w-[460px]"><div className="grid grid-cols-3 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground"><span>Sensitivity Cap Rate</span><span className="text-right">Sensitivity Value</span><span className="text-right">Versus target</span></div>{capAssessment.valueSensitivity.map(row => <div key={row.capRatePct} className="grid grid-cols-3 px-3 py-2 text-sm odd:bg-background/40"><span>{pct(row.capRatePct)}</span><span className="text-right font-medium">{displayMoney(row.impliedValue, true)}</span><span className="text-right text-muted-foreground">{hasTargetCap ? `${(row.capRatePct - (num(targetCap) ?? row.capRatePct)).toFixed(2)}%` : PENDING}</span></div>)}</div></div> : <p className="rounded-lg border border-dashed border-muted-foreground/25 bg-background/40 p-3 text-xs text-muted-foreground">Sensitivity analysis appears once selected NOI and cap-rate sensitivity values are available.</p>}</CollapsibleContent>
         </Collapsible>
+
+        <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-sm font-semibold text-foreground">Warnings and report notes</h3><p className="text-xs text-muted-foreground">Risk notes and report warnings are displayed without changing warning logic or report output.</p></div><Button size="sm" variant="secondary" onClick={() => setShowAssumptions(v => !v)}>Assumption Status</Button></div>
+          <div className="mt-3 grid gap-2 md:grid-cols-3">{priorityWarnings.length ? priorityWarnings.map(w => <div key={warningKey(w)} className={`rounded-lg border p-3 text-xs ${w.severity === 'Critical' ? 'border-red-500/30 bg-red-500/5 text-red-200' : 'border-amber-500/30 bg-amber-500/5 text-amber-100'}`}><Badge variant="outline" className="mb-2 text-[10px]">{w.severity}</Badge><p>{w.message}</p></div>) : <p className="rounded-lg border border-muted-foreground/20 bg-background/40 p-3 text-xs text-muted-foreground">No priority warnings.</p>}</div>
+          {showAssumptions && <div className="mt-3 rounded-xl border border-amber-500/20 bg-background/40 p-3 text-xs text-muted-foreground"><div className="mb-2 font-medium text-foreground">Detailed warning status</div>{capWarnings.length ? capWarnings.map(w => <div key={warningKey(w)} className="py-1"><Badge variant="outline" className={`mr-2 text-[10px] ${w.severity === 'Critical' ? 'border-red-500/30 text-red-300' : 'border-amber-500/30 text-amber-200'}`}>{w.severity}</Badge><span className="text-muted-foreground">{w.category}</span> — {w.message}</div>) : <div>No detailed warnings.</div>}</div>}
+        </section>
       </CardContent>
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -591,7 +563,16 @@ export function CapRateCalculatorCard() {
 }
 
 function InputBlock({ label, state, onChange, onKeepOverride, onUseSource, step, placeholder }: { label: string; state: FieldState; onChange: (v: string) => void; onKeepOverride: () => void; onUseSource: () => void; step?: string; placeholder?: string }) {
-  return <div className="space-y-1"><div className="flex items-center justify-between gap-2"><Label>{label}</Label><Badge variant="outline" className="text-[10px]" title={state.sourceDetail}>{sourceBadge(state.source)}</Badge></div><Input type="text" inputMode="decimal" step={step} value={state.value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />{state.pendingSource && <div className="rounded border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-2"><p>New source value available. This field currently uses a saved override.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="secondary" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" variant="outline" onClick={onUseSource}>Use source value</Button><Button type="button" size="sm" variant="ghost" onClick={() => window.alert(`Current override: ${state.value}\nNew source (${state.pendingSource?.source}): ${state.pendingSource?.value}`)}>Compare values</Button></div></div>}</div>;
+  const sourceTone = state.source === 'Verified'
+    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+    : state.source === 'AI Benchmark'
+      ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+      : state.source === 'Manual' || state.source === 'User Override'
+        ? 'border-blue-500/30 bg-blue-500/10 text-blue-200'
+        : state.source === 'Blank'
+          ? 'border-muted-foreground/20 bg-muted/20 text-muted-foreground'
+          : 'border-primary/25 bg-primary/10 text-primary';
+  return <div className="rounded-xl border border-primary/10 bg-background/50 p-3 shadow-sm space-y-2"><div className="flex items-center justify-between gap-2"><Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</Label><Badge variant="outline" className={`rounded-full px-2 py-0.5 text-[10px] ${sourceTone}`} title={state.sourceDetail}>{sourceBadge(state.source)}</Badge></div><Input className="bg-background/80" type="text" inputMode="decimal" step={step} value={state.value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />{!state.value && <p className="text-[11px] text-muted-foreground">Pending source value or manual input.</p>}{state.pendingSource && <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100 space-y-2"><p>New source value available. This field currently uses a saved override.</p><div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="secondary" onClick={onKeepOverride}>Keep override</Button><Button type="button" size="sm" variant="outline" onClick={onUseSource}>Use source value</Button><Button type="button" size="sm" variant="ghost" onClick={() => window.alert(`Current override: ${state.value}\nNew source (${state.pendingSource?.source}): ${state.pendingSource?.value}`)}>Compare values</Button></div></div>}</div>;
 }
 
 function SaveSummaryRow({ label, value }: { label: string; value: string }) {
@@ -604,10 +585,6 @@ function PreviewItem({ label, value }: { label: string; value: string }) {
 
 function StatusPill({ label, value }: { label: string; value: string }) {
   return <div className="rounded-md border border-primary/10 bg-background/40 px-3 py-2"><div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1 truncate font-medium text-foreground" title={value}>{value}</div></div>;
-}
-
-function PremiumMetric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return <div className={`rounded-lg border bg-background/50 p-3 ${accent ? 'border-primary/25' : 'border-primary/10'}`}><div className="text-xs text-muted-foreground">{label}</div><div className={`mt-1 text-2xl font-semibold ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</div></div>;
 }
 
 function MetricRow({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
