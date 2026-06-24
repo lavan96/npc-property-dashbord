@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks, SlidersHorizontal } from 'lucide-react';
+import { AlertCircle, Calculator, ChevronDown, FileText, Link2, RefreshCw, Save, Sparkles, ListChecks, ShieldCheck, SlidersHorizontal, Wand2 } from 'lucide-react';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { NoiCalculatorCard } from '@/components/commercial/calculators/NoiCalculatorCard';
@@ -344,35 +344,62 @@ function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean 
   };
 
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm ${outOfDate ? 'border-amber-500/40 bg-amber-500/10' : 'border-primary/20 bg-card/80'}`}>
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-semibold text-foreground">Global Generation Controls</h2>
-            <Badge variant={reportReadiness.pdfDisabled ? 'secondary' : 'default'}>{reportReadiness.status}</Badge>
-            <Badge variant={outOfDate ? 'secondary' : 'outline'}>{status}</Badge>
-            {lastRunAt && <Badge variant="outline">Last calculated {new Date(lastRunAt).toLocaleString()}</Badge>}
-            {reportGeneratedAt && <Badge variant="outline">Report generated {new Date(reportGeneratedAt).toLocaleString()}</Badge>}
+    <div className={`rounded-2xl border p-4 shadow-sm transition-colors ${outOfDate ? 'border-amber-500/40 bg-amber-500/10' : 'border-primary/20 bg-card/90'}`}>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <SlidersHorizontal className="h-4 w-4" />
+              </span>
+              <h2 className="text-base font-semibold text-foreground">Global Generation Controls</h2>
+            </div>
+            <p className="max-w-4xl text-sm leading-6 text-muted-foreground">Run AI estimates as previews, apply accepted assumptions into the Master Property Context, refresh linked tabs, regenerate calculations, then explicitly generate cash flow and report outputs.</p>
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">Run AI estimates as previews, apply accepted assumptions into the Master Property Context, refresh linked tabs, regenerate calculations, then explicitly generate cash flow and report outputs.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Accepted AI estimates: {acceptedEstimates.length} · Pending estimate previews: {pendingEstimateCount} · {outOfDate ? 'Assumptions changed after calculation — regenerate before PDF/report output.' : 'Report outputs will not update without confirmation.'}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <Badge variant={reportReadiness.pdfDisabled ? 'secondary' : 'default'} className="px-2.5 py-1">{reportReadiness.status}</Badge>
+            <Badge variant={outOfDate ? 'secondary' : 'outline'} className="px-2.5 py-1">{status}</Badge>
+            {lastRunAt && <Badge variant="outline" className="px-2.5 py-1">Last calculated {new Date(lastRunAt).toLocaleString()}</Badge>}
+            {reportGeneratedAt && <Badge variant="outline" className="px-2.5 py-1">Report generated {new Date(reportGeneratedAt).toLocaleString()}</Badge>}
+          </div>
+        </div>
+
+        <div className="grid gap-2 rounded-xl border border-border/60 bg-background/45 p-3 text-xs text-muted-foreground md:grid-cols-2">
+          <p className="leading-5">Accepted AI estimates: <span className="font-medium text-foreground">{acceptedEstimates.length}</span> · Pending estimate previews: <span className="font-medium text-foreground">{pendingEstimateCount}</span> · {outOfDate ? 'Assumptions changed after calculation — regenerate before PDF/report output.' : 'Report outputs will not update without confirmation.'}</p>
+          <p className={`leading-5 ${reportReadiness.pdfDisabled || reportReadiness.allowWithWarning ? 'text-amber-700 dark:text-amber-200' : ''}`}>
             {reportReadiness.pdfDisabled
               ? `PDF disabled: ${reportReadiness.blockingReasons.join('; ')}`
               : reportReadiness.allowWithWarning
                 ? `PDF allowed with warning: ${reportReadiness.warningReasons.join('; ')}`
                 : 'PDF ready when report content is confirmed.'}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">Report includes: {reportReadiness.requiredSections.join(', ')}.</p>
+          <p className="leading-5 md:col-span-2">Report includes: {reportReadiness.requiredSections.join(', ')}.</p>
         </div>
-        <div className="flex flex-wrap gap-2 xl:justify-end">
-          <Button type="button" size="sm" variant="outline" onClick={runAiEstimates}>Run AI Estimates</Button>
-          <Button type="button" size="sm" variant="outline" onClick={applyAccepted}>Apply Accepted Assumptions</Button>
-          <Button type="button" size="sm" variant="outline" onClick={refreshLinkedTabs}>Refresh All Linked Tabs</Button>
-          <Button type="button" size="sm" onClick={generateCalculations}>Generate Calculations</Button>
-          <Button type="button" size="sm" variant="outline" disabled={outOfDate} onClick={generateTenYear}>Generate 10-Year Cash Flow</Button>
-          <Button type="button" size="sm" variant={reportReadiness.allowWithWarning ? 'secondary' : 'default'} disabled={reportReadiness.pdfDisabled} onClick={generateReport}>Generate Report</Button>
-          <Button type="button" size="sm" variant="outline" disabled={!reportGeneratedAt} onClick={markVerified}>Mark Verified</Button>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-border/60 bg-background/55 p-3">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><Wand2 className="h-3.5 w-3.5" /> AI / assumption preparation</div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="outline" onClick={runAiEstimates}>Run AI Estimates</Button>
+              <Button type="button" size="sm" variant="outline" onClick={applyAccepted}>Apply Accepted Assumptions</Button>
+              <Button type="button" size="sm" variant="outline" onClick={refreshLinkedTabs}>Refresh All Linked Tabs</Button>
+            </div>
+          </div>
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"><Calculator className="h-3.5 w-3.5" /> Calculation generation</div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" className="shadow-sm" onClick={generateCalculations}>Generate Calculations</Button>
+              <Button type="button" size="sm" variant="outline" className="disabled:cursor-not-allowed disabled:opacity-50" disabled={outOfDate} onClick={generateTenYear}>Generate 10-Year Cash Flow</Button>
+            </div>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-background/55 p-3">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><FileText className="h-3.5 w-3.5" /> Report generation</div>
+            <Button type="button" size="sm" variant={reportReadiness.allowWithWarning ? 'secondary' : 'default'} className="disabled:cursor-not-allowed disabled:opacity-50" disabled={reportReadiness.pdfDisabled} onClick={generateReport}>Generate Report</Button>
+          </div>
+          <div className="rounded-xl border border-border/60 bg-background/55 p-3">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5" /> Verification</div>
+            <Button type="button" size="sm" variant="outline" className="disabled:cursor-not-allowed disabled:opacity-50" disabled={!reportGeneratedAt} onClick={markVerified}>Mark Verified</Button>
+          </div>
         </div>
       </div>
     </div>
