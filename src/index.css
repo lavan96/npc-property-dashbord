@@ -304,6 +304,22 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-workflow-primary { @apply w-full justify-center shadow-md shadow-primary/20; }
   .ci-workflow-button { @apply w-full justify-center bg-background/75 font-medium text-foreground disabled:opacity-60 disabled:saturate-50; }
   .ci-workflow-report { @apply border-primary/25 hover:border-primary/50 hover:bg-primary/10 hover:text-primary; }
+  .ci-source-badge { @apply inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-sm; }
+  .ci-source-ai { @apply border-purple-500/35 bg-purple-500/10 text-purple-700 dark:text-purple-200; }
+  .ci-source-manual { @apply border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-200; }
+  .ci-source-scraped { @apply border-orange-500/35 bg-orange-500/10 text-orange-700 dark:text-orange-200; }
+  .ci-source-linked { @apply border-primary/35 bg-primary/10 text-primary; }
+  .ci-source-calculated { @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200; }
+  .ci-source-pending { @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200; }
+  .ci-source-neutral { @apply border-border/70 bg-background/70 text-muted-foreground; }
+  .ci-workflow-status-strip { @apply grid gap-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 p-4 shadow-sm md:grid-cols-[1.2fr_1fr_1.2fr]; }
+  .ci-next-action-card { @apply rounded-xl border border-primary/25 bg-primary/10 p-3 shadow-inner; }
+  .ci-status-mini { @apply flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-background/65 px-3 py-2 text-xs font-medium text-muted-foreground shadow-sm; }
+  .ci-status-mini strong { @apply text-foreground; }
+  .ci-tab-status-badge { @apply shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide; }
+  .ci-tab-status-pending { @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200; }
+  .ci-tab-status-warn { @apply border-orange-500/35 bg-orange-500/10 text-orange-700 dark:text-orange-200; }
+  .ci-tab-status-ready { @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200; }
 
   .ci-foundation [data-ci-surface='card'] { @apply rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur; }
   .ci-foundation [data-ci-status='pending'] { @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200; }
