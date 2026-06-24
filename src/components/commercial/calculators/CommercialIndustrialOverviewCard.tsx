@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { FileText, FileWarning, Sparkles, UploadCloud, Save, Download, Loader2 } from 'lucide-react';
+import { CheckCircle2, FileText, FileWarning, Sparkles, UploadCloud, Save, Download, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,11 +18,26 @@ const title = (v?: string) => (v || 'Pending').replace(/([A-Z])/g, ' $1').replac
 const badgeVariant = (r?: string) => !r ? 'outline' : (r === 'green' || r === 'supportable' ? 'default' : r === 'amber' || r === 'supportableSubjectToVerification' ? 'secondary' : 'destructive');
 
 function Row({ label, value }: { label: string; value: string | number | undefined }) {
-  return <div className="flex justify-between gap-3 rounded-md border bg-muted/10 px-3 py-2 text-sm"><span className="text-muted-foreground">{label}</span><span className="font-medium text-right">{typeof value === 'number' ? fmt(value) : value || 'Pending'}</span></div>;
+  const displayValue = typeof value === 'number' ? fmt(value) : value || 'Pending';
+  const isPending = displayValue === 'Pending';
+
+  return (
+    <div className="group flex min-h-[3.25rem] justify-between gap-4 rounded-xl border border-border/70 bg-background/70 px-3.5 py-2.5 text-sm shadow-sm transition-colors hover:border-primary/20 hover:bg-muted/20">
+      <span className="max-w-[55%] text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={`text-right text-sm font-semibold leading-snug ${isPending ? 'rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-200' : 'text-foreground'}`}>{displayValue}</span>
+    </div>
+  );
 }
 
 function Section({ title: heading, children }: { title: string; children: ReactNode }) {
-  return <Card className="bg-card/95"><CardHeader className="pb-2"><CardTitle className="text-base">{heading}</CardTitle></CardHeader><CardContent className="space-y-2">{children}</CardContent></Card>;
+  return (
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-sm">
+      <CardHeader className="border-b border-border/60 bg-muted/20 pb-3">
+        <CardTitle className="text-base font-semibold tracking-tight">{heading}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2.5 p-4">{children}</CardContent>
+    </Card>
+  );
 }
 
 function downloadFile(name: string, content: string, mime = 'application/json') {
@@ -148,31 +163,36 @@ export function CommercialIndustrialOverviewCard() {
   };
 
   const ReportActions = (
-    <Card className="border-primary/40 bg-card/95 shadow-sm">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Report Actions</CardTitle>
-        <CardDescription>Generate, review and distribute the commercial / industrial deal report.</CardDescription>
+    <Card className="overflow-hidden border-primary/35 bg-gradient-to-br from-card via-card to-primary/5 shadow-md">
+      <CardHeader className="border-b border-border/60 bg-muted/20 pb-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Report Actions</CardTitle>
+            <CardDescription>Controlled workflow for generating, reviewing and distributing the commercial / industrial deal report.</CardDescription>
+          </div>
+          <Badge variant="outline" className="w-fit bg-background/70">Operator controlled</Badge>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={handleGenerateReport} disabled={busy === 'report'}>
+      <CardContent className="space-y-4 p-4">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <Button size="sm" className="justify-start shadow-sm" onClick={handleGenerateReport} disabled={busy === 'report'}>
             {busy === 'report' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <FileText className="h-4 w-4 mr-1" />}
             Generate Client Report
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setShowMissing(true)}>
+          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowMissing(true)}>
             <FileWarning className="h-4 w-4 mr-1" /> Review Missing Data ({unknowns.length})
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setShowAi(true)}>
+          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowAi(true)}>
             <Sparkles className="h-4 w-4 mr-1" /> Review AI Estimates ({aiFields.length})
           </Button>
-          <Button size="sm" variant="outline" onClick={handleSaveBack} disabled={!property || busy === 'save'}>
+          <Button size="sm" variant="outline" className="justify-start bg-background/70 disabled:opacity-60" onClick={handleSaveBack} disabled={!property || busy === 'save'}>
             {busy === 'save' ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
             Save Back to Property
           </Button>
-          <Button size="sm" variant="outline" onClick={handleExportSummary} disabled={busy === 'export'}>
+          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={handleExportSummary} disabled={busy === 'export'}>
             <Download className="h-4 w-4 mr-1" /> Export Summary
           </Button>
-          <Button size="sm" variant="outline" onClick={handlePushToPortal} disabled={busy === 'push'}>
+          <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={handlePushToPortal} disabled={busy === 'push'}>
             <UploadCloud className="h-4 w-4 mr-1" /> Push to Client Portal
           </Button>
         </div>
@@ -189,17 +209,17 @@ export function CommercialIndustrialOverviewCard() {
     {ReportActions}
 
     {hasIncompletePropertyInfo && (
-      <Card className="border-amber-500/30 bg-amber-500/10">
-        <CardContent className="flex flex-col gap-2 p-4 md:flex-row md:items-center md:justify-between">
+      <Card className="border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-card shadow-sm">
+        <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-sm font-semibold text-amber-100">Property-level information is incomplete.</div>
-            <p className="text-xs text-amber-100/80">Add or import property details before relying on this calculation.</p>
+            <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">Property-level information is incomplete.</div>
+            <p className="text-xs text-amber-800/80 dark:text-amber-100/80">Add or import property details before relying on this calculation.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setShowMissing(true)}>
+            <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowMissing(true)}>
               Review Missing Data ({unknowns.length})
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowAi(true)}>
+            <Button size="sm" variant="outline" className="justify-start bg-background/70" onClick={() => setShowAi(true)}>
               Review AI Estimates ({aiFields.length})
             </Button>
           </div>
@@ -207,14 +227,14 @@ export function CommercialIndustrialOverviewCard() {
       </Card>
     )}
 
-    <Card className="border-primary/30 bg-primary/5">
-      <CardHeader className="pb-3">
+    <Card className="overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card shadow-md">
+      <CardHeader className="border-b border-primary/10 pb-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Commercial / Industrial Assessment Overview</CardTitle><CardDescription>Read-only client-facing summary generated from the shared global deal state. Deterministic calculator outputs remain the source of truth.</CardDescription></div>
+          <div><CardTitle className="flex items-center gap-2 text-xl"><FileText className="h-5 w-5 text-primary" /> Commercial / Industrial Assessment Overview</CardTitle><CardDescription className="mt-1 max-w-3xl">Executive deal summary generated from the shared global deal state. Deterministic calculator outputs remain the source of truth for client-ready report decisions.</CardDescription></div>
           <div className="flex flex-wrap gap-2"><Badge variant={badgeVariant(borrowing?.creditAssessmentStatus) as any}>{borrowing?.creditAssessmentStatusLabel ?? 'Credit status pending'}</Badge><Badge variant={badgeVariant(borrowing?.overallStatus) as any}>{borrowing?.purchaseAbilityStatusLabel ?? 'Purchase ability pending'}</Badge></div>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <CardContent className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
         <Row label="Asset domain" value={title(profile.dealProfile.assetCategory)} />
         <Row label="Asset subtype" value={profile.dealProfile.assetSubtype} />
         <Row label="Acquisition purpose" value={title(profile.dealProfile.acquisitionPurpose)} />
@@ -232,7 +252,7 @@ export function CommercialIndustrialOverviewCard() {
       </CardContent>
     </Card>
 
-    <div className="grid lg:grid-cols-2 gap-4">
+    <div className="grid gap-4 lg:grid-cols-2 xl:gap-5">
       <Section title="Transaction Snapshot"><Row label="State / territory" value={profile.dealProfile.state} /><Row label="Lease status" value={title(profile.dealProfile.leaseStatus)} /><Row label="Data source mode" value="Global Sync On" /></Section>
       <Section title="Borrowing Outcome"><Row label="Maximum loan" value={borrowing?.finalRiskAdjustedLoan} /><Row label="LVR cap" value={borrowing?.componentCaps.lvrCap} /><Row label="ICR cap" value={borrowing?.componentCaps.icrCap} /><Row label="Debt-yield cap" value={borrowing?.componentCaps.debtYieldCap} /></Section>
       <Section title="Purchase Ability"><Row label="Total acquisition costs" value={borrowing?.fundsToComplete.totalAcquisitionCosts} /><Row label="Total cost base" value={borrowing?.fundsToComplete.totalCostBase} /><Row label="Liquidity months" value={borrowing?.fundsToComplete.monthsDebtServiceCovered == null ? 'Pending' : `${borrowing.fundsToComplete.monthsDebtServiceCovered.toFixed(1)} months`} /></Section>
@@ -244,9 +264,9 @@ export function CommercialIndustrialOverviewCard() {
       <Section title="Client Scenario Summary"><Row label="Selected client" value={clientScenario?.clientId} /><Row label="Scenario name" value={clientScenario?.scenarioName} /><Row label="Scenario type" value={clientScenario?.scenarioType} /><Row label="Scenario status" value={clientScenario?.status} /><Row label="Borrowing capacity movement" value={clientScenario ? clientScenario.resultingPosition.borrowingCapacity - clientScenario.currentPositionSnapshot.borrowingCapacity : undefined} /><Row label="Purchase ability" value={borrowing?.purchaseAbilityStatusLabel} /><Row label="Key constraint" value={clientScenario?.resultingPosition.keyConstraint} /><Row label="Risk rating" value={clientScenario?.resultingPosition.riskRating} /><Row label="Recommended next action" value={borrowing?.requiredNextAction} /><div className="flex flex-wrap gap-2 pt-2"><Button size="sm" variant="outline" onClick={() => handleSaveScenarioStatus('Draft')}>Save Scenario</Button><Button size="sm" variant="outline" onClick={() => handleSaveScenarioStatus('Recommended')}>Mark as Recommended</Button><Button size="sm" variant="outline" onClick={() => handleSaveScenarioStatus('Committed')}>Commit to Client Profile</Button><Button size="sm" variant="outline" onClick={handleExportScenarioReport}>Export Scenario Report</Button><Button size="sm" variant="outline" onClick={handleClientFacingSummary}>Generate Client-Facing Summary</Button></div></Section>
       <Section title="10-Year Cash Flow Summary"><Row label="Cash flow mode" value={title(tenYear?.summary.mode)} /><Row label="Year 1 pre-tax cashflow" value={tenYear?.summary.year1PreTaxCashflow} /><Row label="Year 1 after-tax cashflow" value={tenYear?.summary.year1AfterTaxCashflow} /><Row label="Year 10 property value" value={tenYear?.summary.year10PropertyValue} /><Row label="Year 10 loan balance" value={tenYear?.summary.year10LoanBalance} /><Row label="Year 10 equity" value={tenYear?.summary.year10Equity} /><Row label="Cumulative cashflow" value={tenYear?.summary.cumulativeAfterTaxCashflow} /><Row label="Levered IRR" value={tenYear?.summary.leveredIrr == null ? 'Pending' : `${(tenYear.summary.leveredIrr * 100).toFixed(1)}%`} /><Row label="Equity multiple" value={tenYear?.summary.equityMultiple == null ? 'Pending' : `${tenYear.summary.equityMultiple.toFixed(2)}x`} /><Row label="Business DSCR" value={tenYear?.summary.businessDscr == null ? 'Pending' : `${tenYear.summary.businessDscr.toFixed(2)}x`} /><Row label="Occupancy cost ratio" value={tenYear?.summary.occupancyCostRatio == null ? 'Pending' : `${(tenYear.summary.occupancyCostRatio * 100).toFixed(1)}%`} />{tenYear?.warnings.slice(0, 4).map((w, i) => <div key={i} className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{w}</div>)}</Section>
       {isIndustrial && <Section title="Industrial Metrics Summary"><Row label="GLA" value={profile.propertyValuation.lettableArea ? `${profile.propertyValuation.lettableArea} m²` : 'Pending'} /><Row label="Site area" value={profile.propertyValuation.landArea ? `${profile.propertyValuation.landArea} m²` : 'Pending'} /><Row label="Site cover" value={profile.propertyValuation.siteCoverageRatio ? pct(profile.propertyValuation.siteCoverageRatio) : 'Pending'} /><Row label="Industrial usability" value={title(borrowing?.riskRating)} /></Section>}
-      <Section title="Risk Summary"><p className="text-sm text-muted-foreground">{borrowing?.primaryReason ?? 'Run borrowing capacity to generate risk commentary.'}</p>{borrowing?.warnings.slice(0, 5).map((w, i) => <div key={i} className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{w}</div>)}</Section>
-      <Section title="Fix the Deal"><p className="text-sm text-muted-foreground">{borrowing?.commentarySections.fixTheDealSummary ?? 'No fix-the-deal strategy generated yet.'}</p><Row label="Required NOI" value={borrowing?.reverseCalculators.requiredNoiForProposedLoan} /><Row label="Required rent increase" value={borrowing?.reverseCalculators.requiredRentIncrease} /></Section>
-      <Section title="Required Documents"><div className="grid sm:grid-cols-2 gap-2">{(docs?.slice(0, 10) ?? borrowing?.documentChecklist?.slice(0, 10) ?? []).map((d: any, i: number) => <div key={i} className="rounded border bg-muted/20 px-2 py-1 text-xs text-muted-foreground">{typeof d === 'string' ? d : d.documentName ?? d.name}</div>)}</div></Section>
+      <Section title="Risk Summary"><div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">{borrowing?.primaryReason ?? 'Run borrowing capacity to generate risk commentary. Until then, use missing-data and AI-estimate reviews to identify readiness risks before client delivery.'}</div>{borrowing?.warnings.slice(0, 5).map((w, i) => <div key={i} className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-100">{w}</div>)}</Section>
+      <Section title="Fix the Deal"><div className="rounded-xl border border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">{borrowing?.commentarySections.fixTheDealSummary ?? 'No fix-the-deal strategy generated yet. Complete the borrowing inputs to surface the constraint and quantify required NOI or rent movement.'}</div><Row label="Required NOI" value={borrowing?.reverseCalculators.requiredNoiForProposedLoan} /><Row label="Required rent increase" value={borrowing?.reverseCalculators.requiredRentIncrease} /></Section>
+      <Section title="Required Documents"><div className="grid gap-2 sm:grid-cols-2">{(docs?.slice(0, 10) ?? borrowing?.documentChecklist?.slice(0, 10) ?? []).map((d: any, i: number) => <div key={i} className="flex items-start gap-2 rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-xs text-muted-foreground shadow-sm"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /><span>{typeof d === 'string' ? d : d.documentName ?? d.name}</span></div>)}</div></Section>
     </div>
 
     <Dialog open={showMissing} onOpenChange={setShowMissing}>
