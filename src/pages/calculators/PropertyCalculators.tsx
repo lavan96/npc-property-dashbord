@@ -423,7 +423,6 @@ function GstTreatmentOverviewPanel() {
           <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">Verification</Badge>
         </div>
       </div>
-
       <Collapsible open={open} onOpenChange={setOpen} className="mt-3 border-t border-border/60 pt-2">
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 px-0 text-primary hover:bg-transparent hover:text-primary/80">
@@ -477,7 +476,7 @@ function DcfOverviewPanel() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 border-t border-border/60 pt-3 lg:grid-cols-[1fr_1.1fr]">
+      <div className="mt-4 grid gap-3 border-t border-border/60 pt-4 lg:grid-cols-[1fr_1.1fr]">
         <div className="text-sm leading-6 text-muted-foreground">
           <p className="font-medium text-foreground">This calculator separates:</p>
           <ol className="mt-1 grid list-decimal gap-1 pl-5 text-xs leading-5 sm:grid-cols-2">
@@ -495,7 +494,6 @@ function DcfOverviewPanel() {
           The output is a forecast only and should be reviewed against lease assumptions, market rent growth, vacancy expectations, capex requirements, funding costs and exit yield evidence before being relied upon in a client report.
         </p>
       </div>
-
       <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 px-0 text-primary hover:bg-transparent hover:text-primary/80">
@@ -514,11 +512,21 @@ function DcfOverviewPanel() {
 function IndustrialMetricsOverviewPanel() {
   const [open, setOpen] = useState(false);
 
+  const premiumSections = [
+    'Asset profile',
+    'Physical metrics',
+    'Rent and value benchmarks',
+    'Site efficiency',
+    'Industrial capability indicators',
+    'Warnings / missing data',
+    'Outputs / report-ready summary',
+  ];
+
   return (
-    <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+    <div className="overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card/90 to-primary/5 p-4 shadow-lg shadow-primary/5 sm:p-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-5xl space-y-2">
-          <h2 className="text-lg font-semibold text-foreground">Industrial Metrics Overview</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Industrial Metrics Overview</h2>
           <div className="space-y-2 text-sm leading-6 text-muted-foreground">
             <p>
               This section reviews the physical efficiency and industrial usability of the asset. It converts rent, building area, site area, hardstand, office component and purchase price into practical industrial benchmarks.
@@ -535,7 +543,7 @@ function IndustrialMetricsOverviewPanel() {
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 border-t border-border/60 pt-3 lg:grid-cols-[1fr_1.1fr]">
+      <div className="mt-4 grid gap-3 border-t border-border/60 pt-4 lg:grid-cols-[1fr_1.1fr]">
         <div className="text-sm leading-6 text-muted-foreground">
           <p className="font-medium text-foreground">This tab separates:</p>
           <ol className="mt-1 grid list-decimal gap-1 pl-5 text-xs leading-5 sm:grid-cols-2">
@@ -551,6 +559,14 @@ function IndustrialMetricsOverviewPanel() {
         <p className="text-xs leading-5 text-muted-foreground">
           These outputs are physical and market benchmarks only. They should be reviewed against zoning, access, loading, clearance height, power, hardstand quality, lease structure and comparable industrial evidence before being relied upon.
         </p>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {premiumSections.map((section) => (
+          <div key={section} className="rounded-2xl border border-border/60 bg-background/45 px-3 py-2 text-xs font-semibold text-foreground shadow-inner">
+            {section}
+          </div>
+        ))}
       </div>
 
       <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
@@ -755,7 +771,7 @@ function CalculatorSuiteContent({ domain, setDomain }: { domain: CalculatorDomai
           <TabsContent value="gst" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Goods & Services Tax" subtitle="Transaction treatment and GST assumptions sit before payable, claimable and specialist review warnings." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><GstTreatmentOverviewPanel /><GstCalculatorCard /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="dcf" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Discounted Cash Flow" subtitle="Forecast assumptions are separated from cash-flow summary, NPV, IRR and terminal value outputs." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><DcfOverviewPanel /><DcfCalculatorCard /></CalculatorTabShell>}</TabsContent>
           <TabsContent value="ten-year" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="10-Year Cash Flow Report" subtitle="Projection assumptions, annual rows and export-ready report outputs are grouped for readability." chips={["Inputs", "Outputs", "Warnings / assumptions"]}><TenYearCashFlowCard /></CalculatorTabShell>}</TabsContent>
-          <TabsContent value="rent" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Industrial Metrics $/m² + Site Cover" subtitle="Review the overview, import or enter physical inputs, validate rent and site outputs, then save report-ready metrics." chips={["Physical inputs", "$/m² metrics", "Site cover"]}><IndustrialMetricsOverviewPanel /><IndustrialMetricsReadinessProvider><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Import property areas, rent, outgoings and price first; missing values remain Pending until a source or manual entry is added.' }, { title: 'Benchmark notes', body: 'Benchmark notes are collapsed by default. Expand them only when you need the plain-English interpretation and verification context.' }, { title: 'Save-back', body: 'Use the bottom save action after warnings are validated so downstream report sync remains explicit.' }]} /><div className="grid gap-4 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></IndustrialMetricsReadinessProvider></CalculatorTabShell>}</TabsContent>
+          <TabsContent value="rent" className="mt-4">{<CalculatorTabShell actions={assumptionStatusAction} title="Industrial Metrics $/m² + Site Cover" subtitle="Review the overview, import or enter physical inputs, validate rent and site outputs, then save report-ready metrics." chips={["Asset profile", "Physical metrics", "Rent + value benchmarks", "Site efficiency"]}><IndustrialMetricsOverviewPanel /><IndustrialMetricsReadinessProvider><CalculatorGuidancePanel items={[{ title: 'Missing physical data', body: 'Import property areas, rent, outgoings and price first; missing values remain Pending until a source or manual entry is added.' }, { title: 'Benchmark notes', body: 'Benchmark notes are collapsed by default. Expand them only when you need the plain-English interpretation and verification context.' }, { title: 'Save-back', body: 'Use the bottom save action after warnings are validated so downstream report sync remains explicit.' }]} /><div className="grid gap-5 xl:grid-cols-2"><RentPerSqmCard /><SiteCoverCard /></div></IndustrialMetricsReadinessProvider></CalculatorTabShell>}</TabsContent>
         </Tabs>
         </div>
       </div>

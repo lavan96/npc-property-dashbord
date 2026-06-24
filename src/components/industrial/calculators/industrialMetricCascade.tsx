@@ -174,15 +174,25 @@ export function useCascadedIndustrialField(
 
 export function SourceBadge({ source }: { source: IndustrialMetricSource }) {
   const variant = source === 'User Override' ? 'secondary' : source === 'Verified' ? 'default' : 'outline';
-  return <Badge variant={variant} className="whitespace-nowrap border-primary/30 bg-background/60 px-1.5 py-0 text-[10px] leading-5 text-foreground">Source: {sourceLabels[source]}</Badge>;
+  const toneClass = source === 'Verified'
+    ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100 shadow-emerald-500/10'
+    : source === 'User Override' || source === 'Manual'
+      ? 'border-sky-400/40 bg-sky-500/15 text-sky-100 shadow-sky-500/10'
+      : source === 'AI Estimate' || source === 'Research Engine'
+        ? 'border-purple-400/40 bg-purple-500/15 text-purple-100 shadow-purple-500/10'
+        : source === 'Blank'
+          ? 'border-amber-400/40 bg-amber-500/15 text-amber-100 shadow-amber-500/10'
+          : 'border-primary/30 bg-primary/10 text-primary shadow-primary/10';
+  return <Badge variant={variant} className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold leading-5 shadow-sm ${toneClass}`}>Source: {sourceLabels[source]}</Badge>;
 }
 
 export function SourceActions({ field }: { field: ReturnType<typeof useCascadedIndustrialField> }) {
   return (
     <div className="space-y-1 text-xs text-muted-foreground">
       {field.pendingSource && (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
-          <p>New source value available. This field currently uses a saved override.</p>
+        <div className="rounded-xl border border-sky-400/30 bg-sky-500/10 p-3 shadow-inner">
+          <p className="font-medium text-sky-100">Manual override active — new source value available.</p>
+          <p className="mt-0.5">This field currently uses a saved override; compare before replacing it.</p>
           <div className="mt-1 flex flex-wrap gap-2">
             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={field.keepOverride}>Keep override</Button>
             <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={field.useSourceValue}>Use source value</Button><Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => window.alert(`Current override: ${field.value}\nNew source (${field.pendingSource?.source}): ${field.pendingSource?.value}`)}>Compare values</Button>
@@ -190,8 +200,8 @@ export function SourceActions({ field }: { field: ReturnType<typeof useCascadedI
         </div>
       )}
       {field.history.length > 0 && (
-        <details>
-          <summary className="cursor-pointer">Assumption history</summary>
+        <details className="rounded-lg border border-border/60 bg-background/35 px-3 py-2">
+          <summary className="cursor-pointer font-medium text-foreground hover:text-primary">Assumption history</summary>
           <ul className="mt-1 list-disc space-y-1 pl-4">
             {field.history.map((entry, index) => (
               <li key={`${entry.changedAt}-${index}`}>{entry.source} value {entry.value} replaced by {entry.replacedBy}</li>
