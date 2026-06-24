@@ -222,11 +222,19 @@ Clean, modern admin dashboard with confidence-based color coding
 
   .ci-page-shell { @apply container mx-auto space-y-6 p-4 md:p-6; }
   .ci-hero { @apply rounded-2xl border border-primary/20 bg-card/80 p-5 shadow-sm backdrop-blur md:p-6; }
-  .ci-section-title { @apply flex items-center gap-2 text-3xl font-bold tracking-tight; }
-  .ci-section-description { @apply mt-1 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base; }
+  .ci-suite-header { @apply relative overflow-hidden border-primary/25 bg-gradient-to-br from-card via-card/95 to-primary/10 shadow-lg shadow-primary/10; }
+  .ci-suite-header::before { content: ''; @apply pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent; }
+  .ci-suite-header::after { content: ''; @apply pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-primary/10 blur-3xl; }
+  .ci-section-title { @apply flex items-center gap-3 text-3xl font-bold tracking-tight text-foreground md:text-4xl; }
+  .ci-header-icon { @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary shadow-inner shadow-primary/20; }
+  .ci-section-description { @apply mt-1 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base md:leading-8; }
   .ci-card { @apply rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur; }
   .ci-card-premium { @apply rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 shadow-sm backdrop-blur; }
   .ci-panel { @apply rounded-xl border border-border/70 bg-background/40 p-3; }
+  .ci-domain-panel { @apply border-primary/20 bg-background/70 p-4 shadow-sm backdrop-blur; }
+  .ci-domain-toggle { @apply grid w-full grid-cols-2 gap-2 rounded-xl border border-border/70 bg-muted/30 p-1.5; }
+  .ci-domain-toggle-item { @apply h-11 rounded-lg px-4 text-sm font-semibold text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground data-[state=on]:border data-[state=on]:border-primary/55 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-md data-[state=on]:shadow-primary/25; }
+  .ci-assumption-status-button { @apply h-10 w-full justify-center border-primary/30 bg-background/75 font-semibold text-foreground shadow-sm transition-all hover:border-primary/55 hover:bg-primary/10 hover:text-primary; }
   .ci-tab-rail { @apply rounded-xl border border-border/70 bg-card/80 p-3 shadow-sm backdrop-blur; }
   .ci-tab-group { @apply rounded-xl border border-border/60 bg-background/40 p-2; }
   .ci-tab-button { @apply w-full rounded-lg px-3 py-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50; }
