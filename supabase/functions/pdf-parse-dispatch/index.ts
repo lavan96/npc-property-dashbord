@@ -30,6 +30,9 @@ const ENGINE = 'docling';
 const ENGINE_VERSION_FAMILY = 'docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest';
 const ARTIFACT_CONTRACT_VERSION = 'raster-manifest-v1';
 const DOCLING_PAGE_REBASE_VERSION = 'chunk-page-rebase-v1';
+const CHUNK_MERGE_VALIDATION_VERSION = 'chunk-merge-validation-v1';
+const TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
+const CACHE_SAFETY_VERSION = 'parse-cache-safety-v1';
 const PHASE3_ENGINE_MARKER = 'phase3-raster-manifest';
 const MAX_SIDECAR_ATTEMPTS = 3;
 
@@ -61,7 +64,15 @@ function isCurrentArtifactContract(row: any, mode: string): boolean {
 
   const artifactResult = ((row as any)?.result_payload ?? {}) as Record<string, unknown>;
   const isChunkedResult = artifactResult.chunked === true || Array.isArray((artifactResult as any).chunk_raster_manifest_paths);
-  if (isChunkedResult && artifactResult.docling_page_rebase_version !== DOCLING_PAGE_REBASE_VERSION) return false;
+
+  if (isChunkedResult) {
+    if (artifactResult.docling_page_rebase_version !== DOCLING_PAGE_REBASE_VERSION) return false;
+    if (artifactResult.chunk_merge_validation_version !== CHUNK_MERGE_VALIDATION_VERSION) return false;
+    if (artifactResult.terminal_state_version !== TERMINAL_STATE_VERSION) return false;
+
+    const mergeValidation = artifactResult.merge_validation as Record<string, unknown> | undefined;
+    if (!mergeValidation || mergeValidation.ok !== true) return false;
+  }
 
   return true;
 }
@@ -449,6 +460,16 @@ async function serveFromCache(
       rasters_manifest_path: manifestPath,
       page_raster_paths: pageRasterPaths,
       artifact_contract_version: ARTIFACT_CONTRACT_VERSION,
+      docling_page_rebase_version: result.docling_page_rebase_version ?? null,
+      chunk_merge_validation_version: result.chunk_merge_validation_version ?? null,
+      merge_validation_path: result.merge_validation_path ?? null,
+      merge_validation: result.merge_validation ?? null,
+      terminal_state_version: result.terminal_state_version ?? null,
+      lane_enforcement_version: result.lane_enforcement_version ?? null,
+      extractor_lane: result.extractor_lane ?? null,
+      effective_mode: result.effective_mode ?? mode,
+      lane_policy: result.lane_policy ?? null,
+      cache_safety_version: CACHE_SAFETY_VERSION,
       page_count: pageCount,
       mode,
       cache_hit: true,
