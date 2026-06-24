@@ -1076,13 +1076,18 @@ def healthz() -> dict:
     return {
         "ok": True,
         "engine_version": ENGINE_VERSION,
+        "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
         "callback_upload_configured": bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY),
     }
 
 
 @app.get("/")
 def root() -> dict:
-    return {"service": "pdf-parse-service", "engine_version": ENGINE_VERSION}
+    return {
+        "service": "pdf-parse-service",
+        "engine_version": ENGINE_VERSION,
+        "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
+    }
 
 
 @app.post("/parse")
