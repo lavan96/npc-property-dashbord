@@ -205,6 +205,50 @@ Clean, modern admin dashboard with confidence-based color coding
 
 /* ChatGPT-grade Markdown Styling for Report Q&A */
 @layer components {
+  .ci-foundation {
+    --ci-radius: 1rem;
+    --ci-surface: hsl(var(--card) / 0.88);
+    --ci-surface-strong: hsl(var(--card));
+    --ci-surface-muted: hsl(var(--muted) / 0.32);
+    --ci-border: hsl(var(--border) / 0.72);
+    --ci-gold: hsl(var(--primary));
+    --ci-amber: hsl(38 92% 50%);
+    --ci-verified: hsl(165 70% 38%);
+    --ci-error: hsl(var(--destructive));
+    background-image:
+      radial-gradient(circle at 12% 0%, hsl(var(--primary) / 0.13), transparent 26rem),
+      radial-gradient(circle at 88% 8%, hsl(165 70% 38% / 0.08), transparent 24rem);
+  }
+
+  .ci-page-shell { @apply container mx-auto space-y-6 p-4 md:p-6; }
+  .ci-hero { @apply rounded-2xl border border-primary/20 bg-card/80 p-5 shadow-sm backdrop-blur md:p-6; }
+  .ci-section-title { @apply flex items-center gap-2 text-3xl font-bold tracking-tight; }
+  .ci-section-description { @apply mt-1 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base; }
+  .ci-card { @apply rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur; }
+  .ci-card-premium { @apply rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 shadow-sm backdrop-blur; }
+  .ci-panel { @apply rounded-xl border border-border/70 bg-background/40 p-3; }
+  .ci-tab-rail { @apply rounded-xl border border-border/70 bg-card/80 p-3 shadow-sm backdrop-blur; }
+  .ci-tab-group { @apply rounded-xl border border-border/60 bg-background/40 p-2; }
+  .ci-tab-button { @apply w-full rounded-lg px-3 py-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50; }
+  .ci-tab-button-active { @apply border border-primary/50 bg-primary text-primary-foreground shadow-sm shadow-primary/20; }
+  .ci-tab-button-idle { @apply border border-transparent bg-card/60 text-foreground hover:border-primary/25 hover:bg-primary/10; }
+  .ci-badge { @apply rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary; }
+  .ci-badge-pending { @apply border-amber-500/35 bg-amber-500/10 text-amber-600 dark:text-amber-200; }
+  .ci-badge-verified { @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200; }
+  .ci-badge-error { @apply border-destructive/35 bg-destructive/10 text-destructive; }
+  .ci-table-wrap { @apply overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm; }
+  .ci-table-wrap table { @apply w-full; }
+  .ci-table-wrap thead { @apply bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground; }
+  .ci-table-wrap tbody tr { @apply transition-colors hover:bg-primary/5; }
+  .ci-summary-grid { @apply grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6; }
+  .ci-summary-metric { @apply rounded-xl border border-border/70 bg-background/55 p-3 shadow-inner; }
+  .ci-button-row { @apply flex flex-wrap gap-2; }
+
+  .ci-foundation [data-ci-surface='card'] { @apply rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur; }
+  .ci-foundation [data-ci-status='pending'] { @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200; }
+  .ci-foundation [data-ci-status='verified'] { @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200; }
+  .ci-foundation [data-ci-status='error'] { @apply border-destructive/35 bg-destructive/10 text-destructive; }
+
   .client-portal-theme {
     @apply relative min-h-screen bg-background text-foreground;
     background-image:
@@ -226,7 +270,7 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .client-portal-topbar {
-    @apply border-border/70 bg-card/85 backdrop-blur-xl shadow-sm shadow-primary/5;
+    @apply border-border/70 bg-card/90 backdrop-blur-xl shadow-sm shadow-primary/5;
   }
 
   .client-portal-main {
