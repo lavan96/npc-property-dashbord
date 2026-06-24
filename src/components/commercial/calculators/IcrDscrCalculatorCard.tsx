@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -535,10 +535,10 @@ export function IcrDscrCalculatorCard() {
             <CardTitle>ICR / DSCR</CardTitle>
             <CardDescription>Focused lender coverage and debt-serviceability testing for ICR, DSCR and debt yield.</CardDescription>
           </div>
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-muted/30 p-3 text-xs">
-            <Badge variant="outline" className="border-primary/40 text-primary">{dataSourceLabel}</Badge>
-            <Badge variant="outline" className="border-primary/40 text-primary">Global Input Sync: On</Badge>
-            <Badge variant={readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified' ? 'default' : readinessStatus === 'Not Supportable' ? 'destructive' : 'outline'}>{assumptionStatus}</Badge>
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-muted/30 to-background p-3 text-xs shadow-sm">
+            <LinkedSourceBadge label={dataSourceLabel} />
+            <LinkedSourceBadge label="Global Input Sync: On" />
+            <StatusBadge status={assumptionStatus} />
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
@@ -550,12 +550,25 @@ export function IcrDscrCalculatorCard() {
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          <section className="order-2 rounded-xl border border-border/60 bg-background/40 p-4 shadow-sm lg:order-1">
-            <div className="mb-4">
-              <h3 className="text-base font-semibold">Coverage Test Inputs</h3>
-              <p className="text-sm text-muted-foreground">Review NOI, debt amount and lender assumptions used to test commercial serviceability.</p>
-            </div>
-            <div className="grid gap-4 lg:grid-cols-2">
+          <section className="order-1 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+            <Panel title="Debt assumptions" description="Editable loan, rate and principal-and-interest assumptions used for coverage testing." accent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <InputBlock label="Loan Amount" state={fields.loan} onChange={v => setManual('loan', v)} onKeepOverride={() => keepOverride('loan')} onUseSource={() => useSourceValue('loan')} placeholder="Pulled from borrowing profile or enter manually" />
+                <InputBlock label="Proposed Loan Amount (optional)" state={fields.proposedLoan} onChange={v => setManual('proposedLoan', v)} onKeepOverride={() => keepOverride('proposedLoan')} onUseSource={() => useSourceValue('proposedLoan')} placeholder="Optional target loan amount" />
+                <InputBlock label="Contract Rate %" state={fields.rate} onChange={v => setManual('rate', v)} onKeepOverride={() => keepOverride('rate')} onUseSource={() => useSourceValue('rate')} placeholder="Enter contract rate" step="0.05" />
+                <InputBlock label="Term" state={fields.term} onChange={v => setManual('term', v)} onKeepOverride={() => keepOverride('term')} onUseSource={() => useSourceValue('term')} placeholder="Enter loan term" />
+                <InputBlock label="Assessment Buffer %" state={fields.buffer} onChange={v => setManual('buffer', v)} onKeepOverride={() => keepOverride('buffer')} onUseSource={() => useSourceValue('buffer')} placeholder="Enter assessment buffer" step="0.05" />
+                <InputBlock label="Floor Rate %" state={fields.floorRate} onChange={v => setManual('floorRate', v)} onKeepOverride={() => keepOverride('floorRate')} onUseSource={() => useSourceValue('floorRate')} placeholder="Enter floor rate" step="0.05" />
+              </div>
+              <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                <Row label="Assessment Rate Used" value={activeCoverage && finiteValue(activeCoverage.assessmentRateUsedPct) != null ? `${activeCoverage.assessmentRateUsedPct.toFixed(2)}%` : PENDING} highlight />
+                <Row label="Interest Cost p.a." value={activeCoverage && finiteValue(activeCoverage.annualInterest) != null ? fmt(activeCoverage.annualInterest) : PENDING} highlight />
+                <Row label="Principal & Interest ADS" value={activeCoverage && finiteValue(activeCoverage.annualDebtService) != null ? fmt(activeCoverage.annualDebtService) : PENDING} />
+                <Row label="Repayment assumption" value="Principal & Interest" />
+              </div>
+            </Panel>
+
+            <Panel title="Income / NOI linkage" description="Linked NOI and borrowing-source controls remain available for upstream data review.">
               <div className="space-y-3">
                 <InputBlock label="NOI p.a." state={fields.noi} onChange={v => setManual('noi', v)} onKeepOverride={() => keepOverride('noi')} onUseSource={() => useSourceValue('noi')} placeholder="Pulled from NOI tab or enter manually" />
                 <div>
@@ -571,46 +584,66 @@ export function IcrDscrCalculatorCard() {
                     </SelectContent>
                   </Select>
                 </div>
-                <InputBlock label="Loan Amount" state={fields.loan} onChange={v => setManual('loan', v)} onKeepOverride={() => keepOverride('loan')} onUseSource={() => useSourceValue('loan')} placeholder="Pulled from borrowing profile or enter manually" />
-                <InputBlock label="Proposed Loan Amount (optional)" state={fields.proposedLoan} onChange={v => setManual('proposedLoan', v)} onKeepOverride={() => keepOverride('proposedLoan')} onUseSource={() => useSourceValue('proposedLoan')} placeholder="Optional target loan amount" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <InputBlock label="Contract Rate %" state={fields.rate} onChange={v => setManual('rate', v)} onKeepOverride={() => keepOverride('rate')} onUseSource={() => useSourceValue('rate')} placeholder="Enter contract rate" step="0.05" />
-                <InputBlock label="Term" state={fields.term} onChange={v => setManual('term', v)} onKeepOverride={() => keepOverride('term')} onUseSource={() => useSourceValue('term')} placeholder="Enter loan term" />
-                <InputBlock label="Assessment Buffer %" state={fields.buffer} onChange={v => setManual('buffer', v)} onKeepOverride={() => keepOverride('buffer')} onUseSource={() => useSourceValue('buffer')} placeholder="Enter assessment buffer" step="0.05" />
-                <InputBlock label="Floor Rate %" state={fields.floorRate} onChange={v => setManual('floorRate', v)} onKeepOverride={() => keepOverride('floorRate')} onUseSource={() => useSourceValue('floorRate')} placeholder="Enter floor rate" step="0.05" />
+              <div className="mt-4 grid gap-2 text-sm">
+                <Row label="NOI source" value={sourceBadge(fields.noi.source)} />
+                <Row label="Debt source" value={sourceBadge(fields.loan.source)} />
+                <Row label="Linked source values" value={String(linkedSourceCount)} />
+                <Row label="Manual / override values" value={`${manualValueCount} / ${userOverrideCount}`} />
+              </div>
+            </Panel>
+          </section>
+
+          <section className="order-2 grid gap-4 xl:grid-cols-3">
+            <Panel title="Interest coverage" description="ICR output against lender minimum interest coverage.">
+              <MetricCard label="ICR" value={activeCoverage && finiteValue(activeCoverage.icr) != null ? `${activeCoverage.icr}x` : PENDING} prominent status={icrStatus} />
+              <ThresholdRow label="Minimum ICR" actual={activeCoverage && finiteValue(activeCoverage.icr) != null ? `${activeCoverage.icr}x` : PENDING} threshold={parsedInputs.targetIcr != null ? `${parsedInputs.targetIcr.toFixed(2)}x` : PENDING} status={icrStatus} />
+              <Row label="Annual Interest" value={activeCoverage && finiteValue(activeCoverage.annualInterest) != null ? fmt(activeCoverage.annualInterest) : PENDING} />
+              <Row label="ICR Headroom" value={coverage && finiteValue(coverage.icrHeadroom) != null ? `${coverage.icrHeadroom.toFixed(2)}x` : PENDING} />
+            </Panel>
+
+            <Panel title="Debt service coverage" description="DSCR output using the existing debt-service formula and term assumptions.">
+              <MetricCard label="DSCR" value={activeCoverage && finiteValue(activeCoverage.dscr) != null ? `${activeCoverage.dscr}x` : PENDING} prominent status={dscrStatus} />
+              <ThresholdRow label="Minimum DSCR" actual={activeCoverage && finiteValue(activeCoverage.dscr) != null ? `${activeCoverage.dscr}x` : PENDING} threshold={parsedInputs.targetDscr != null ? `${parsedInputs.targetDscr.toFixed(2)}x` : PENDING} status={dscrStatus} />
+              <Row label="Annual Debt Service" value={activeCoverage && finiteValue(activeCoverage.annualDebtService) != null ? fmt(activeCoverage.annualDebtService) : PENDING} />
+              <Row label="DSCR Headroom" value={coverage && finiteValue(coverage.dscrHeadroom) != null ? `${coverage.dscrHeadroom.toFixed(2)}x` : PENDING} />
+            </Panel>
+
+            <Panel title="Debt yield" description="Debt yield output relative to lender policy minimums.">
+              <MetricCard label="Debt Yield" value={activeCoverage && finiteValue(activeCoverage.debtYield) != null ? `${(activeCoverage.debtYield * 100).toFixed(2)}%` : PENDING} prominent status={coverage ? debtYieldPass ? 'pass' : 'fail' : 'pending'} />
+              <ThresholdRow label="Minimum Debt Yield" actual={activeCoverage && finiteValue(activeCoverage.debtYield) != null ? `${(activeCoverage.debtYield * 100).toFixed(2)}%` : PENDING} threshold={parsedInputs.minDebtYieldPct != null ? `${parsedInputs.minDebtYieldPct.toFixed(2)}%` : PENDING} status={coverage ? debtYieldPass ? 'pass' : 'fail' : 'pending'} />
+              <Row label="Loan Amount" value={preliminaryLoanAmount != null ? fmt(preliminaryLoanAmount) : PENDING} />
+              <Row label="Debt Yield Headroom" value={coverage && finiteValue(coverage.debtYieldHeadroom) != null ? `${(coverage.debtYieldHeadroom * 100).toFixed(2)}%` : PENDING} />
+            </Panel>
+          </section>
+
+          <section className="order-3 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <Panel title="Coverage thresholds" description="Editable lender policy thresholds that drive the existing pass/fail logic.">
+              <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                 <InputBlock label="Minimum ICR" state={fields.targetIcr} onChange={v => setManual('targetIcr', v)} onKeepOverride={() => keepOverride('targetIcr')} onUseSource={() => useSourceValue('targetIcr')} placeholder="Enter lender ICR threshold" step="0.05" />
                 <InputBlock label="Minimum DSCR" state={fields.targetDscr} onChange={v => setManual('targetDscr', v)} onKeepOverride={() => keepOverride('targetDscr')} onUseSource={() => useSourceValue('targetDscr')} placeholder="Enter lender DSCR threshold" step="0.05" />
                 <InputBlock label="Minimum Debt Yield %" state={fields.minDebtYield} onChange={v => setManual('minDebtYield', v)} onKeepOverride={() => keepOverride('minDebtYield')} onUseSource={() => useSourceValue('minDebtYield')} placeholder="Enter minimum debt yield" step="0.1" />
               </div>
+            </Panel>
+
+            <div className="rounded-2xl border border-primary/20 bg-muted/25 p-4 shadow-sm">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold">Threshold comparison</h3>
+                  <p className="text-sm text-muted-foreground">Pass, fail and pending states shown separately for each lender coverage test.</p>
+                </div>
+                <StatusBadge status={coverageStatus} />
+              </div>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <ThresholdRow label="ICR" actual={activeCoverage && finiteValue(activeCoverage.icr) != null ? `${activeCoverage.icr}x` : PENDING} threshold={parsedInputs.targetIcr != null ? `${parsedInputs.targetIcr.toFixed(2)}x` : PENDING} status={icrStatus} />
+                <ThresholdRow label="DSCR" actual={activeCoverage && finiteValue(activeCoverage.dscr) != null ? `${activeCoverage.dscr}x` : PENDING} threshold={parsedInputs.targetDscr != null ? `${parsedInputs.targetDscr.toFixed(2)}x` : PENDING} status={dscrStatus} />
+                <ThresholdRow label="Debt Yield" actual={activeCoverage && finiteValue(activeCoverage.debtYield) != null ? `${(activeCoverage.debtYield * 100).toFixed(2)}%` : PENDING} threshold={parsedInputs.minDebtYieldPct != null ? `${parsedInputs.minDebtYieldPct.toFixed(2)}%` : PENDING} status={coverage ? debtYieldPass ? 'pass' : 'fail' : 'pending'} />
+              </div>
             </div>
           </section>
 
-          <section className="order-1 grid gap-4 xl:grid-cols-[1.2fr_0.8fr] lg:order-2">
-            <div className="rounded-xl border border-primary/20 bg-muted/25 p-4 shadow-sm">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h3 className="text-base font-semibold">Coverage Output Summary</h3>
-                  <p className="text-sm text-muted-foreground">Assess whether property income covers interest, debt service and lender debt-yield requirements.</p>
-                </div>
-                <Badge variant={readinessStatus === 'Coverage Supportable' || readinessStatus === 'Coverage Verified' ? 'default' : readinessStatus === 'Not Supportable' ? 'destructive' : 'outline'}>{coverageStatus}</Badge>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <MetricCard label="ICR" value={activeCoverage && finiteValue(activeCoverage.icr) != null ? `${activeCoverage.icr}x` : PENDING} prominent />
-                <MetricCard label="DSCR" value={activeCoverage && finiteValue(activeCoverage.dscr) != null ? `${activeCoverage.dscr}x` : PENDING} prominent />
-                <MetricCard label="Debt Yield" value={activeCoverage && finiteValue(activeCoverage.debtYield) != null ? `${(activeCoverage.debtYield * 100).toFixed(2)}%` : PENDING} prominent />
-              </div>
-              <div className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                <Row label="Assessment Rate Used" value={activeCoverage && finiteValue(activeCoverage.assessmentRateUsedPct) != null ? `${activeCoverage.assessmentRateUsedPct.toFixed(2)}%` : PENDING} />
-                <Row label="Annual Interest" value={activeCoverage && finiteValue(activeCoverage.annualInterest) != null ? fmt(activeCoverage.annualInterest) : PENDING} />
-                <Row label="Annual Debt Service" value={activeCoverage && finiteValue(activeCoverage.annualDebtService) != null ? fmt(activeCoverage.annualDebtService) : PENDING} />
-                <Row label="ICR Headroom" value={coverage && finiteValue(coverage.icrHeadroom) != null ? `${coverage.icrHeadroom.toFixed(2)}x` : PENDING} />
-                <Row label="DSCR Headroom" value={coverage && finiteValue(coverage.dscrHeadroom) != null ? `${coverage.dscrHeadroom.toFixed(2)}x` : PENDING} />
-                <Row label="Coverage Status" value={coverageStatus} />
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-sm">
+          <section className="order-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 shadow-sm">
               <h3 className="text-base font-semibold">Maximum Loan Summary</h3>
               <p className="text-sm text-muted-foreground">Compare the maximum supportable loan under ICR, DSCR and debt-yield constraints.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -629,7 +662,7 @@ export function IcrDscrCalculatorCard() {
             </div>
           </section>
 
-          <section className="order-3 rounded-xl border border-primary/25 bg-background/60 p-4 shadow-sm">
+          <section className="order-5 rounded-2xl border border-primary/25 bg-background/60 p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <h3 className="text-base font-semibold">Recommended Next Action</h3>
@@ -688,8 +721,8 @@ export function IcrDscrCalculatorCard() {
           <section className="order-6 rounded-xl border border-border/60 bg-background/40 p-4 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-base font-semibold">Compact Warnings</h3>
-                <p className="text-sm text-muted-foreground">Plain-English warnings appear here once coverage data has been entered or imported.</p>
+                <h3 className="text-base font-semibold">Warnings and commentary</h3>
+                <p className="text-sm text-muted-foreground">Plain-English lending warnings and assumption commentary appear here once coverage data has been entered or imported.</p>
               </div>
               {coverageWarnings.length > 3 && <Button variant="link" className="h-auto p-0 text-primary underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</Button>}
             </div>
@@ -759,8 +792,61 @@ function StressScenarioCard({ scenario }: { scenario: { label: string; result: R
   return <div className="rounded-lg border border-border/60 bg-background/50 p-3 text-sm"><div className="mb-2 flex items-center justify-between gap-2"><div className="font-semibold">{scenario.label}</div><Badge variant={scenario.status === 'Pass' ? 'default' : scenario.status === 'Marginal' ? 'outline' : 'destructive'}>{scenario.status}</Badge></div><div className="grid gap-x-4 gap-y-1 sm:grid-cols-2"><Row label="Assessment Rate" value={`${scenario.result.assessmentRateUsedPct.toFixed(2)}%`} /><Row label="NOI" value={fmt(scenario.noi)} /><Row label="Loan Amount" value={fmt(scenario.loanAmount)} /><Row label="Annual Interest" value={fmt(scenario.result.annualInterest)} /><Row label="Annual Debt Service" value={fmt(scenario.result.annualDebtService)} /><Row label="ICR" value={`${scenario.result.icr}x`} /><Row label="DSCR" value={`${scenario.result.dscr}x`} /><Row label="Debt Yield" value={`${(scenario.result.debtYield * 100).toFixed(2)}%`} /><Row label="Binding Constraint" value={scenario.constraint} /><div className={`flex justify-between ${statusClass}`}><span>Status</span><span>{scenario.status}</span></div></div></div>;
 }
 
-function MetricCard({ label, value, prominent }: { label: string; value: string; prominent?: boolean }) {
-  return <div className={`rounded-lg border border-primary/20 bg-background/60 p-3 ${prominent ? 'shadow-sm' : ''}`}><div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1 text-2xl font-bold text-primary">{value}</div></div>;
+function Panel({ title, description, accent, children }: { title: string; description: string; accent?: boolean; children: ReactNode }) {
+  return (
+    <div className={`rounded-2xl border p-4 shadow-sm ${accent ? 'border-primary/25 bg-primary/5' : 'border-border/60 bg-background/50'}`}>
+      <div className="mb-4">
+        <h3 className="text-base font-semibold">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const isPass = ['Coverage Supportable', 'Coverage Verified', 'Pass', 'pass'].includes(status);
+  const isFail = ['Not Supportable', 'Fail', 'fail'].includes(status);
+  const isPending = ['Awaiting Coverage Inputs', 'Preliminary Coverage Estimate', 'pending', PENDING].includes(status);
+  const displayStatus = status === 'pass' ? 'Pass' : status === 'fail' ? 'Fail' : status === 'pending' ? PENDING : status;
+  const className = isPass
+    ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+    : isFail
+      ? 'border-red-500/40 bg-red-500/15 text-red-200'
+      : isPending
+        ? 'border-sky-500/40 bg-sky-500/15 text-sky-200'
+        : 'border-amber-500/40 bg-amber-500/15 text-amber-200';
+  return <Badge variant="outline" className={`${className} rounded-full px-2.5 py-1 font-semibold`}>{isPass ? 'Pass' : isFail ? 'Fail' : isPending ? 'Pending' : 'Review'} · {displayStatus}</Badge>;
+}
+
+function LinkedSourceBadge({ label }: { label: string }) {
+  return <Badge variant="outline" className="rounded-full border-primary/40 bg-background/70 px-2.5 py-1 text-primary shadow-sm">{label}</Badge>;
+}
+
+function MetricCard({ label, value, prominent, status }: { label: string; value: string; prominent?: boolean; status?: 'pass' | 'fail' | 'pending' }) {
+  const statusClass = status === 'pass'
+    ? 'border-emerald-500/35 bg-emerald-500/10'
+    : status === 'fail'
+      ? 'border-red-500/35 bg-red-500/10'
+      : status === 'pending'
+        ? 'border-sky-500/35 bg-sky-500/10'
+        : 'border-primary/20 bg-background/60';
+  return <div className={`rounded-xl border p-4 ${statusClass} ${prominent ? 'shadow-md' : ''}`}><div className="flex items-center justify-between gap-2"><div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>{status && <StatusBadge status={status} />}</div><div className="mt-2 text-3xl font-bold text-primary sm:text-4xl">{value}</div></div>;
+}
+
+function ThresholdRow({ label, actual, threshold, status }: { label: string; actual: string; threshold: string; status: 'pass' | 'fail' | 'pending' }) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-semibold">{label}</span>
+        <StatusBadge status={status} />
+      </div>
+      <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+        <div className="rounded-lg bg-muted/30 p-2"><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Actual</div><div className="text-lg font-bold text-primary">{actual}</div></div>
+        <div className="rounded-lg bg-muted/30 p-2"><div className="text-[11px] uppercase tracking-wide text-muted-foreground">Threshold</div><div className="text-lg font-semibold">{threshold}</div></div>
+      </div>
+    </div>
+  );
 }
 
 function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
