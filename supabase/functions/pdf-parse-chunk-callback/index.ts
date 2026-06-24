@@ -260,6 +260,7 @@ async function uploadText(admin: Admin, path: string, body: string, contentType:
 
 
 const MERGE_VALIDATION_VERSION = 'chunk-merge-validation-v1';
+const TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
 
 function numberHistogram(values: number[]): Map<number, number> {
   const hist = new Map<number, number>();
@@ -657,6 +658,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       error_code: 'chunk_merge_validation_failed',
       error_text: mergeValidation.problems.join('; ').slice(0, 1000),
       finished_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       result_payload: {
         chunked: true,
         docling_path: doclingPath,
@@ -673,6 +675,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
         merge_validation_path: mergeValidationPath,
         merge_validation: mergeValidation,
+        terminal_state_version: TERMINAL_STATE_VERSION,
         page_count: finalPageCount,
         summary: {
           ...summary,
@@ -745,6 +748,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     diagnostics_path: doclingPath,
     callback_received_at: new Date(finished).toISOString(),
     finished_at: new Date(finished).toISOString(),
+    updated_at: new Date(finished).toISOString(),
     duration_ms: finished - startedJob,
     result_payload: {
       ...prior,
@@ -763,6 +767,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
       merge_validation_path: mergeValidationPath,
       merge_validation: mergeValidation,
+      terminal_state_version: TERMINAL_STATE_VERSION,
       extractor_lane: parentExtractorLane,
       lane_enforcement_version: parentLaneEnforcementVersion,
       effective_mode: parentEffectiveMode,
