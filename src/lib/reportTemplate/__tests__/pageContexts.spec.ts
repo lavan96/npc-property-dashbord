@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getPreferredPdfPageContextSource, validatePdfPageContexts } from '../ingestion/pageContexts';
+import {
+  getPreferredPdfPageContextSource,
+  shouldBlockPdfPageContextImport,
+  validatePdfPageContexts,
+} from '../ingestion/pageContexts';
 
 const makeContext = (pageNo: number) => ({
   version: 'pdf-page-context-v1',
@@ -41,11 +45,37 @@ describe('Phase 4F PDF page context consumer', () => {
 
     expect(selected.source).toBe('per_page_docling');
     expect(selected.pageContextValidation.ok).toBe(true);
+    expect(shouldBlockPdfPageContextImport(selected)).toBe(false);
     expect(selected.pageContexts.map((ctx) => ctx.page_no)).toEqual([1, 2]);
     expect(selected.pageContexts[0].artifacts.docling_path).toContain('/pages/page-001/docling.json');
   });
 
-  it('falls back to legacy Docling when required page artifacts are missing', () => {
+  it('keeps legacy imports compatible when no PageContext entrypoint exists', () => {
+    const selected = getPreferredPdfPageContextSource({
+      pageContextEntrypoint: null,
+      pageContexts: [],
+      pageContextSummary: null,
+    });
+
+    expect(selected.source).toBe('legacy_docling');
+    expect(selected.pageContexts).toEqual([]);
+    expect(selected.pageContextValidation.ok).toBe(false);
+    expect(selected.pageContextValidation.problems).toContain('page_context_entrypoint_unavailable');
+    expect(shouldBlockPdfPageContextImport(selected)).toBe(false);
+  });
+
+  it('allows explicit unavailable entrypoints to use legacy fallback', () => {
+    const selected = getPreferredPdfPageContextSource({
+      pageContextEntrypoint: { available: false, source: 'legacy_docling' },
+      pageContexts: [],
+      pageContextSummary: null,
+    });
+
+    expect(selected.source).toBe('legacy_docling');
+    expect(shouldBlockPdfPageContextImport(selected)).toBe(false);
+  });
+
+  it('blocks corrupt Phase 4 imports when an available entrypoint fails validation', () => {
     const bad = makeContext(1);
     bad.artifacts.summary_path = null;
     bad.flags.has_summary = false;
@@ -65,6 +95,7 @@ describe('Phase 4F PDF page context consumer', () => {
     expect(selected.pageContexts).toEqual([]);
     expect(selected.pageContextValidation.ok).toBe(false);
     expect(selected.pageContextValidation.problems).toContain('page_1_summary_path_missing');
+    expect(shouldBlockPdfPageContextImport(selected)).toBe(true);
   });
 
   it('fails validation when page coverage is not continuous', () => {
@@ -84,7 +115,7 @@ describe('Phase 4F PDF page context consumer', () => {
     expect(validation.problems).toContain('missing_page_contexts:2');
   });
 
-  it('requires raster paths for Phase 4F.4 context validation', () => {
+  it('requires raster paths for Phase 4F context validation', () => {
     const bad = makeContext(1);
     bad.artifacts.raster_path = null;
     bad.flags.has_raster = false;

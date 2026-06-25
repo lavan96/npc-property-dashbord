@@ -312,3 +312,20 @@ export function getPreferredPdfPageContextSource(input: {
   };
 }
 
+/**
+ * Phase 4F.5 compatibility gate.
+ *
+ * Legacy Phase 2/3 imports do not expose a PageContext entrypoint and must be
+ * allowed to continue through the existing monolithic/legacy Docling path.
+ *
+ * Phase 4 imports that explicitly expose a PageContext entrypoint are treated
+ * as authoritative. If that entrypoint is present but invalid, block the import
+ * instead of silently falling back to stale or partial artifacts.
+ */
+export function shouldBlockPdfPageContextImport(selection: PreferredPdfPageContextSource): boolean {
+  return Boolean(
+    selection.pageContextEntrypoint?.available
+    && !selection.pageContextValidation.ok
+  );
+}
+

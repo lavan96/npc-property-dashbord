@@ -13,6 +13,7 @@ import type { ReportTemplate } from '../templateSchema';
 import { importAssetToReviewArtifacts, type ImportAsset, type RawImportManifest } from './reconciliation';
 import {
   getPreferredPdfPageContextSource,
+  shouldBlockPdfPageContextImport,
   type PageContextEntrypoint,
   type PdfPageContext,
   type PdfPageContextSummary,
@@ -134,10 +135,7 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     pageContextSummary: data.pdfPageContextSummary ?? null,
   });
 
-  if (
-    pageContextSelection.pageContextEntrypoint?.available
-    && !pageContextSelection.pageContextValidation.ok
-  ) {
+  if (shouldBlockPdfPageContextImport(pageContextSelection)) {
     throw new Error(
       `PDF page context validation failed: ${pageContextSelection.pageContextValidation.problems.slice(0, 8).join('; ')}`
     );
