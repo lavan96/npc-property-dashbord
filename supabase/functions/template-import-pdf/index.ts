@@ -14,6 +14,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ASSET_BUCKET = 'template-import-assets';
 const ARTIFACT_BUCKET = 'template-import-artifacts';
+const PDF_DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
 const TEMPLATE_FINALIZATION_ARTIFACT_CONTRACT = 'template-finalization-artifacts-v1';
 const TEMPLATE_IMPORT_WORKER_TOKEN = Deno.env.get('TEMPLATE_IMPORT_WORKER_TOKEN') ?? SERVICE_ROLE;
 
@@ -142,6 +143,19 @@ function importManifestSummary(manifests: any) {
     diagnostics_path: pdf.diagnostics_path ?? null,
     rasters_manifest_path: pdf.rasters_manifest_path ?? null,
     page_raster_count: Array.isArray(pdf.page_raster_paths) ? pdf.page_raster_paths.length : null,
+    per_page_docling_artifact_version: pdf.per_page_docling_artifact_version ?? null,
+    per_page_docling_parent_manifest_version: pdf.per_page_docling_parent_manifest_version ?? null,
+    per_page_docling_global_artifact_copy_version: pdf.per_page_docling_global_artifact_copy_version ?? null,
+    per_page_docling_manifest_path: pdf.per_page_docling_manifest_path ?? null,
+    per_page_docling_page_count: pdf.per_page_docling_page_count ?? null,
+    per_page_docling_validation_ok: pdf.per_page_docling_validation?.ok ?? null,
+    per_page_docling_validation_problem_count: Array.isArray(pdf.per_page_docling_validation?.problems)
+      ? pdf.per_page_docling_validation.problems.length
+      : null,
+    page_context_manifest_available: typeof pdf.per_page_docling_manifest_path === 'string' && pdf.per_page_docling_manifest_path.length > 0,
+    page_context_source: typeof pdf.per_page_docling_manifest_path === 'string' && pdf.per_page_docling_manifest_path.length > 0
+      ? 'per_page_docling_manifest_path'
+      : 'legacy_docling_path',
     mode: pdf.mode ?? null,
     page_count: pdf.page_count ?? null,
     consumer_guardrail_version: pdf.consumer_guardrail_version ?? null,
@@ -259,6 +273,58 @@ async function readJsonArtifact(admin: ReturnType<typeof createClient>, path: st
     console.error(`[template-import-pdf] artifact parse failed`, { path, error: String((e as Error).message ?? e) });
     return null;
   }
+}
+
+
+async function readPdfDiagnosticsJsonArtifact(admin: ReturnType<typeof createClient>, path: string | null | undefined) {
+  if (!path || typeof path !== 'string') return null;
+  const objectPath = path.startsWith(`${PDF_DIAGNOSTICS_BUCKET}/`)
+    ? path.slice(PDF_DIAGNOSTICS_BUCKET.length + 1)
+    : path;
+
+  const { data, error } = await admin.storage.from(PDF_DIAGNOSTICS_BUCKET).download(objectPath);
+  if (error || !data) {
+    logDbError(`read_pdf_diagnostics_json.${objectPath}`, error);
+    return null;
+  }
+
+  try {
+    return JSON.parse(await data.text());
+  } catch (e) {
+    console.error(`[template-import-pdf] pdf diagnostics artifact parse failed`, {
+      path: objectPath,
+      error: String((e as Error).message ?? e),
+    });
+    return null;
+  }
+}
+
+function summarizePdfPageManifest(manifest: any) {
+  if (!manifest || typeof manifest !== 'object') return null;
+
+  const pages = Array.isArray(manifest.pages) ? manifest.pages : [];
+  const firstPage = pages[0] ?? null;
+  const lastPage = pages.length ? pages[pages.length - 1] : null;
+  const parentGlobalPathCount = pages.filter((page: any) =>
+    typeof page?.docling_path === 'string'
+    && typeof page?.page_no === 'number'
+    && page.docling_path.includes(`/pages/page-${String(page.page_no).padStart(3, '0')}/`)
+  ).length;
+
+  return {
+    version: manifest.version ?? null,
+    parent_manifest_version: manifest.parent_manifest_version ?? null,
+    global_artifact_copy_version: manifest.global_artifact_copy_version ?? null,
+    source: manifest.source ?? null,
+    page_count: manifest.page_count ?? pages.length,
+    pages_observed: pages.length,
+    validation_ok: manifest.validation?.ok ?? null,
+    validation_problem_count: Array.isArray(manifest.validation?.problems) ? manifest.validation.problems.length : null,
+    first_page_no: firstPage?.page_no ?? null,
+    last_page_no: lastPage?.page_no ?? null,
+    parent_global_path_count: parentGlobalPathCount,
+    parent_global_paths_ok: pages.length > 0 && parentGlobalPathCount === pages.length,
+  };
 }
 
 
@@ -673,17 +739,40 @@ Deno.serve(async (req) => {
       const cdirFidelity = await readJsonArtifact(admin, meta.cdir_fidelity_artifact_path);
       const importAsset = await readJsonArtifact(admin, meta.import_asset_artifact_path);
       const importManifests = await readJsonArtifact(admin, meta.import_manifests_artifact_path);
+
+      const pdfImportJob = importManifests?.pdf_import_job && typeof importManifests.pdf_import_job === 'object'
+        ? importManifests.pdf_import_job
+        : null;
+
+      const pdfPageManifestPath = typeof pdfImportJob?.per_page_docling_manifest_path === 'string'
+        ? pdfImportJob.per_page_docling_manifest_path
+        : null;
+
+      const pdfPageManifest = await readPdfDiagnosticsJsonArtifact(admin, pdfPageManifestPath);
+      const pdfPageManifestSummary = summarizePdfPageManifest(pdfPageManifest);
+
       return json({
         record,
         cdir,
         cdirFidelity,
         importAsset,
         importManifests,
+        pdfPageManifest,
+        pdfPageManifestSummary,
+        pageContextEntrypoint: {
+          available: Boolean(pdfPageManifestPath && pdfPageManifest),
+          source: pdfPageManifestPath ? 'per_page_docling_manifest_path' : 'legacy_docling_path',
+          manifest_path: pdfPageManifestPath,
+          page_count: pdfPageManifestSummary?.page_count ?? null,
+          validation_ok: pdfPageManifestSummary?.validation_ok ?? null,
+          parent_global_paths_ok: pdfPageManifestSummary?.parent_global_paths_ok ?? null,
+        },
         artifactPaths: {
           cdir: meta.cdir_artifact_path ?? null,
           cdirFidelity: meta.cdir_fidelity_artifact_path ?? null,
           importAsset: meta.import_asset_artifact_path ?? null,
           importManifests: meta.import_manifests_artifact_path ?? null,
+          pdfPageManifest: pdfPageManifestPath,
         },
       });
     }
