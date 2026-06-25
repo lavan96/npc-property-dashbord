@@ -11,6 +11,13 @@ import { buildImportReviewDraft, type ImportReviewArtifact, type ImportReviewDec
 import type { CdirFidelityReport } from './fidelity';
 import type { ReportTemplate } from '../templateSchema';
 import { importAssetToReviewArtifacts, type ImportAsset, type RawImportManifest } from './reconciliation';
+import {
+  getPreferredPdfPageContextSource,
+  type PageContextEntrypoint,
+  type PdfPageContext,
+  type PdfPageContextSummary,
+  type PdfPageContextSource,
+} from './pageContexts';
 
 export interface PersistedImportRecord {
   id: string;
@@ -28,7 +35,18 @@ export interface ImportArtifactsPayload {
   cdirFidelity: CdirFidelityReport | null;
   importAsset?: ImportAsset | null;
   importManifests?: RawImportManifest[] | null;
-  artifactPaths?: { cdir?: string | null; cdirFidelity?: string | null; importAsset?: string | null; importManifests?: string | null };
+  pdfPageManifest?: unknown | null;
+  pdfPageManifestSummary?: unknown | null;
+  pdfPageContexts?: unknown[] | null;
+  pdfPageContextSummary?: PdfPageContextSummary | null;
+  pageContextEntrypoint?: PageContextEntrypoint | null;
+  artifactPaths?: {
+    cdir?: string | null;
+    cdirFidelity?: string | null;
+    importAsset?: string | null;
+    importManifests?: string | null;
+    pdfPageManifest?: string | null;
+  };
 }
 
 export type ImportArtifactInvoke = (
@@ -65,7 +83,17 @@ export interface LoadImportReviewDraftResult {
   draft: ImportReviewDraft;
   importAsset: ImportAsset | null;
   importManifests: RawImportManifest[] | null;
-  artifactPaths: { cdir?: string | null; cdirFidelity?: string | null; importAsset?: string | null; importManifests?: string | null };
+  pageContextSource: PdfPageContextSource;
+  pageContexts: PdfPageContext[];
+  pageContextSummary: PdfPageContextSummary | null;
+  pageContextEntrypoint: PageContextEntrypoint | null;
+  artifactPaths: {
+    cdir?: string | null;
+    cdirFidelity?: string | null;
+    importAsset?: string | null;
+    importManifests?: string | null;
+    pdfPageManifest?: string | null;
+  };
 }
 
 // Default transport: invokeSecureFunction (attaches the custom-auth session
@@ -98,6 +126,12 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
   if (!data.cdir) throw new Error('This import does not have a persisted CDIR artifact yet.');
 
   const cdir: CdirDocument = parseCdirDocument(data.cdir);
+  const pageContextSelection = getPreferredPdfPageContextSource({
+    pageContextEntrypoint: data.pageContextEntrypoint ?? null,
+    pageContexts: data.pdfPageContexts ?? [],
+    pageContextSummary: data.pdfPageContextSummary ?? null,
+  });
+
   const draft = buildImportReviewDraft({
     id: `review_${data.record.id}`,
     cdir,
@@ -111,6 +145,10 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     draft,
     importAsset: data.importAsset ?? null,
     importManifests: data.importManifests ?? null,
+    pageContextSource: pageContextSelection.source,
+    pageContexts: pageContextSelection.pageContexts,
+    pageContextSummary: pageContextSelection.pageContextSummary,
+    pageContextEntrypoint: pageContextSelection.pageContextEntrypoint,
     artifactPaths: data.artifactPaths ?? {},
   };
 }
