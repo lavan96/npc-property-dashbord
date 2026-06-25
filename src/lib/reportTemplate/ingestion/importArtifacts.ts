@@ -17,6 +17,7 @@ import {
   type PdfPageContext,
   type PdfPageContextSummary,
   type PdfPageContextSource,
+  type PdfPageContextValidation,
 } from './pageContexts';
 
 export interface PersistedImportRecord {
@@ -87,6 +88,7 @@ export interface LoadImportReviewDraftResult {
   pageContexts: PdfPageContext[];
   pageContextSummary: PdfPageContextSummary | null;
   pageContextEntrypoint: PageContextEntrypoint | null;
+  pageContextValidation: PdfPageContextValidation;
   artifactPaths: {
     cdir?: string | null;
     cdirFidelity?: string | null;
@@ -132,6 +134,15 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     pageContextSummary: data.pdfPageContextSummary ?? null,
   });
 
+  if (
+    pageContextSelection.pageContextEntrypoint?.available
+    && !pageContextSelection.pageContextValidation.ok
+  ) {
+    throw new Error(
+      `PDF page context validation failed: ${pageContextSelection.pageContextValidation.problems.slice(0, 8).join('; ')}`
+    );
+  }
+
   const draft = buildImportReviewDraft({
     id: `review_${data.record.id}`,
     cdir,
@@ -149,6 +160,7 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     pageContexts: pageContextSelection.pageContexts,
     pageContextSummary: pageContextSelection.pageContextSummary,
     pageContextEntrypoint: pageContextSelection.pageContextEntrypoint,
+    pageContextValidation: pageContextSelection.pageContextValidation,
     artifactPaths: data.artifactPaths ?? {},
   };
 }

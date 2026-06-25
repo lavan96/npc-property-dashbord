@@ -69,11 +69,24 @@ export interface PageContextEntrypoint {
   page_context_count?: number | null;
 }
 
+export interface PdfPageContextValidation {
+  version: 'pdf-page-context-validation-v1';
+  ok: boolean;
+  expected_page_count: number | null;
+  observed_page_count: number;
+  first_page_no: number | null;
+  last_page_no: number | null;
+  missing_page_numbers: number[];
+  duplicate_page_numbers: number[];
+  problems: string[];
+}
+
 export interface PreferredPdfPageContextSource {
   source: PdfPageContextSource;
   pageContexts: PdfPageContext[];
   pageContextSummary: PdfPageContextSummary | null;
   pageContextEntrypoint: PageContextEntrypoint | null;
+  pageContextValidation: PdfPageContextValidation;
   reason: string;
 }
 
@@ -178,6 +191,87 @@ export function normalizePdfPageContextSummary(raw: unknown, pageContexts: PdfPa
   };
 }
 
+export function validatePdfPageContexts(input: {
+  pageContextEntrypoint?: PageContextEntrypoint | null;
+  pageContexts: PdfPageContext[];
+  pageContextSummary?: PdfPageContextSummary | null;
+}): PdfPageContextValidation {
+  const pageContexts = input.pageContexts;
+  const summary = input.pageContextSummary ?? null;
+  const entrypoint = input.pageContextEntrypoint ?? null;
+
+  const expectedPageCount = toNumberOrNull(summary?.expected_page_count)
+    ?? toNumberOrNull(entrypoint?.page_count)
+    ?? (pageContexts.length || null);
+
+  const pageNumbers = pageContexts
+    .map((ctx) => Number(ctx.page_no))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .sort((a, b) => a - b);
+
+  const counts = new Map<number, number>();
+  for (const n of pageNumbers) counts.set(n, (counts.get(n) ?? 0) + 1);
+
+  const unique = [...counts.keys()].sort((a, b) => a - b);
+  const duplicatePageNumbers = unique.filter((n) => (counts.get(n) ?? 0) > 1);
+
+  const missingPageNumbers: number[] = [];
+  if (expectedPageCount && expectedPageCount > 0) {
+    for (let i = 1; i <= expectedPageCount; i += 1) {
+      if (!counts.has(i)) missingPageNumbers.push(i);
+    }
+  }
+
+  const problems: string[] = [];
+
+  if (entrypoint?.available !== true) {
+    problems.push('page_context_entrypoint_unavailable');
+  }
+
+  if (summary && summary.ok !== true) {
+    problems.push('page_context_summary_not_ok');
+  }
+
+  if (!pageContexts.length) {
+    problems.push('page_contexts_empty');
+  }
+
+  if (expectedPageCount && pageContexts.length !== expectedPageCount) {
+    problems.push(`page_context_count_mismatch: expected ${expectedPageCount}, got ${pageContexts.length}`);
+  }
+
+  if (missingPageNumbers.length) {
+    problems.push(`missing_page_contexts:${missingPageNumbers.join(',')}`);
+  }
+
+  if (duplicatePageNumbers.length) {
+    problems.push(`duplicate_page_contexts:${duplicatePageNumbers.join(',')}`);
+  }
+
+  for (const ctx of pageContexts) {
+    const pageNo = Number(ctx.page_no);
+    if (!ctx.artifacts.docling_path) problems.push(`page_${pageNo}_docling_path_missing`);
+    if (!ctx.artifacts.blocks_path) problems.push(`page_${pageNo}_blocks_path_missing`);
+    if (!ctx.artifacts.summary_path) problems.push(`page_${pageNo}_summary_path_missing`);
+    if (!ctx.artifacts.raster_path) problems.push(`page_${pageNo}_raster_path_missing`);
+    if (!ctx.flags.has_parent_global_artifacts) problems.push(`page_${pageNo}_parent_global_artifacts_missing`);
+    if (ctx.width !== null && (!Number.isFinite(ctx.width) || ctx.width <= 0)) problems.push(`page_${pageNo}_invalid_width`);
+    if (ctx.height !== null && (!Number.isFinite(ctx.height) || ctx.height <= 0)) problems.push(`page_${pageNo}_invalid_height`);
+  }
+
+  return {
+    version: 'pdf-page-context-validation-v1',
+    ok: problems.length === 0,
+    expected_page_count: expectedPageCount,
+    observed_page_count: pageContexts.length,
+    first_page_no: unique[0] ?? null,
+    last_page_no: unique.length ? unique[unique.length - 1] : null,
+    missing_page_numbers: missingPageNumbers,
+    duplicate_page_numbers: duplicatePageNumbers,
+    problems,
+  };
+}
+
 export function getPreferredPdfPageContextSource(input: {
   pageContextEntrypoint?: PageContextEntrypoint | null;
   pageContexts?: unknown;
@@ -186,24 +280,23 @@ export function getPreferredPdfPageContextSource(input: {
   const pageContexts = normalizePdfPageContexts(input.pageContexts);
   const pageContextSummary = normalizePdfPageContextSummary(input.pageContextSummary, pageContexts);
   const entrypoint = input.pageContextEntrypoint ?? null;
+  const pageContextValidation = validatePdfPageContexts({
+    pageContextEntrypoint: entrypoint,
+    pageContexts,
+    pageContextSummary,
+  });
 
-  const hasRequiredArtifacts = pageContexts.length > 0 && pageContexts.every((ctx) =>
-    ctx.artifacts.docling_path
-    && ctx.artifacts.blocks_path
-    && ctx.artifacts.summary_path
-    && ctx.flags.has_parent_global_artifacts
-  );
-
-  const entrypointOk = Boolean(entrypoint?.available);
-  const summaryOk = Boolean(pageContextSummary?.ok);
-
-  if (entrypointOk && summaryOk && hasRequiredArtifacts) {
+  // Phase 4F.4 guardrail:
+  // Prefer PageContext[] only when the manifest, summary, required artifacts,
+  // parent-global paths, raster refs, and page coverage all validate.
+  if (pageContextValidation.ok) {
     return {
       source: 'per_page_docling',
       pageContexts,
       pageContextSummary,
       pageContextEntrypoint: entrypoint,
-      reason: 'parent per-page Docling manifest available',
+      pageContextValidation,
+      reason: 'parent per-page Docling manifest validated',
     };
   }
 
@@ -212,10 +305,10 @@ export function getPreferredPdfPageContextSource(input: {
     pageContexts: [],
     pageContextSummary,
     pageContextEntrypoint: entrypoint,
-    reason: !entrypointOk
-      ? 'page context entrypoint unavailable'
-      : !summaryOk
-        ? 'page context summary not ok'
-        : 'page contexts missing required artifacts',
+    pageContextValidation,
+    reason: entrypoint?.available
+      ? `page context validation failed: ${pageContextValidation.problems.slice(0, 5).join('; ')}`
+      : 'page context entrypoint unavailable',
   };
 }
+
