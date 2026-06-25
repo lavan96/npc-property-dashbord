@@ -328,6 +328,118 @@ function summarizePdfPageManifest(manifest: any) {
 }
 
 
+function buildPdfPageContexts(manifest: any) {
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.pages)) {
+    return [];
+  }
+
+  return manifest.pages
+    .map((page: any) => {
+      const pageNo = Number(page?.page_no ?? 0);
+      if (!Number.isFinite(pageNo) || pageNo <= 0) return null;
+
+      const padded = String(pageNo).padStart(3, '0');
+      const expectedPrefix = `/pages/page-${padded}/`;
+
+      const doclingPath = typeof page?.docling_path === 'string' ? page.docling_path : null;
+      const blocksPath = typeof page?.blocks_path === 'string' ? page.blocks_path : null;
+      const tablesPath = typeof page?.tables_path === 'string' ? page.tables_path : null;
+      const picturesPath = typeof page?.pictures_path === 'string' ? page.pictures_path : null;
+      const summaryPath = typeof page?.summary_path === 'string' ? page.summary_path : null;
+      const rasterPath = typeof page?.raster_path === 'string' ? page.raster_path : null;
+
+      const hasParentGlobalArtifacts = Boolean(
+        doclingPath?.includes(expectedPrefix)
+        && blocksPath?.includes(expectedPrefix)
+        && summaryPath?.includes(expectedPrefix)
+      );
+
+      return {
+        version: 'pdf-page-context-v1',
+        page_no: pageNo,
+        page_index: pageNo - 1,
+        width: Number.isFinite(Number(page?.width)) ? Number(page.width) : null,
+        height: Number.isFinite(Number(page?.height)) ? Number(page.height) : null,
+
+        artifacts: {
+          docling_path: doclingPath,
+          blocks_path: blocksPath,
+          tables_path: tablesPath,
+          pictures_path: picturesPath,
+          summary_path: summaryPath,
+          raster_path: rasterPath,
+        },
+
+        source: {
+          manifest_path: typeof page?.source_manifest_path === 'string' ? page.source_manifest_path : null,
+          source_chunk_index: Number.isFinite(Number(page?.source_chunk_index)) ? Number(page.source_chunk_index) : null,
+          source_chunk_page_no: Number.isFinite(Number(page?.source_chunk_page_no)) ? Number(page.source_chunk_page_no) : null,
+          source_chunk_artifact_paths: page?.source_chunk_artifact_paths && typeof page.source_chunk_artifact_paths === 'object'
+            ? page.source_chunk_artifact_paths
+            : null,
+        },
+
+        flags: {
+          has_docling: Boolean(doclingPath),
+          has_blocks: Boolean(blocksPath),
+          has_tables: Boolean(tablesPath),
+          has_pictures: Boolean(picturesPath),
+          has_summary: Boolean(summaryPath),
+          has_raster: Boolean(rasterPath),
+          has_parent_global_artifacts: hasParentGlobalArtifacts,
+        },
+
+        global_artifact_prefix: typeof page?.global_artifact_prefix === 'string' ? page.global_artifact_prefix : null,
+        global_artifact_copy_version: page?.global_artifact_copy_version ?? null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => Number(a.page_no ?? 0) - Number(b.page_no ?? 0));
+}
+
+function summarizePdfPageContexts(pageContexts: any[], manifest: any) {
+  const pageNumbers = pageContexts
+    .map((ctx: any) => Number(ctx?.page_no ?? 0))
+    .filter((n: number) => Number.isFinite(n) && n > 0);
+
+  const unique = [...new Set(pageNumbers)].sort((a, b) => a - b);
+  const expectedPageCount = Number(manifest?.page_count ?? pageContexts.length ?? 0);
+  const missing: number[] = [];
+  for (let i = 1; i <= expectedPageCount; i += 1) {
+    if (!unique.includes(i)) missing.push(i);
+  }
+
+  const duplicate_page_numbers = unique.filter((n) => pageNumbers.filter((p) => p === n).length > 1);
+
+  const requiredProblems: string[] = [];
+  for (const ctx of pageContexts) {
+    const pageNo = Number(ctx?.page_no ?? 0);
+    if (!ctx?.artifacts?.docling_path) requiredProblems.push(`page_${pageNo}_docling_path_missing`);
+    if (!ctx?.artifacts?.blocks_path) requiredProblems.push(`page_${pageNo}_blocks_path_missing`);
+    if (!ctx?.artifacts?.summary_path) requiredProblems.push(`page_${pageNo}_summary_path_missing`);
+    if (!ctx?.flags?.has_parent_global_artifacts) requiredProblems.push(`page_${pageNo}_parent_global_artifacts_missing`);
+  }
+
+  const parentGlobalCount = pageContexts.filter((ctx: any) => ctx?.flags?.has_parent_global_artifacts).length;
+
+  return {
+    version: 'pdf-page-context-summary-v1',
+    ok: missing.length === 0
+      && duplicate_page_numbers.length === 0
+      && requiredProblems.length === 0
+      && pageContexts.length === expectedPageCount,
+    expected_page_count: expectedPageCount,
+    observed_page_count: pageContexts.length,
+    first_page_no: unique[0] ?? null,
+    last_page_no: unique.length ? unique[unique.length - 1] : null,
+    parent_global_context_count: parentGlobalCount,
+    missing_page_numbers: missing,
+    duplicate_page_numbers,
+    problems: requiredProblems,
+  };
+}
+
+
 async function triggerFinalizeWorker(importId: string): Promise<{ ok: boolean; status?: number; error?: string }> {
   const url = `${SUPABASE_URL}/functions/v1/template-import-finalize-worker`;
   try {
@@ -750,6 +862,8 @@ Deno.serve(async (req) => {
 
       const pdfPageManifest = await readPdfDiagnosticsJsonArtifact(admin, pdfPageManifestPath);
       const pdfPageManifestSummary = summarizePdfPageManifest(pdfPageManifest);
+      const pdfPageContexts = buildPdfPageContexts(pdfPageManifest);
+      const pdfPageContextSummary = summarizePdfPageContexts(pdfPageContexts, pdfPageManifest);
 
       return json({
         record,
@@ -759,13 +873,17 @@ Deno.serve(async (req) => {
         importManifests,
         pdfPageManifest,
         pdfPageManifestSummary,
+        pdfPageContexts,
+        pdfPageContextSummary,
         pageContextEntrypoint: {
-          available: Boolean(pdfPageManifestPath && pdfPageManifest),
+          available: Boolean(pdfPageManifestPath && pdfPageManifest && pdfPageContextSummary.ok),
           source: pdfPageManifestPath ? 'per_page_docling_manifest_path' : 'legacy_docling_path',
           manifest_path: pdfPageManifestPath,
           page_count: pdfPageManifestSummary?.page_count ?? null,
           validation_ok: pdfPageManifestSummary?.validation_ok ?? null,
           parent_global_paths_ok: pdfPageManifestSummary?.parent_global_paths_ok ?? null,
+          page_contexts_ok: pdfPageContextSummary.ok,
+          page_context_count: pdfPageContexts.length,
         },
         artifactPaths: {
           cdir: meta.cdir_artifact_path ?? null,
