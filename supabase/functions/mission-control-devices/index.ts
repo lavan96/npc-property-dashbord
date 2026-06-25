@@ -67,14 +67,17 @@ Deno.serve(async (req) => {
         if (!result.ok && result.error === "device_limit_reached") {
           return json(result, 402);
         }
-        if (!result.ok) return json(result, 502);
+        if (!result.ok) {
+          console.warn("[mission-control-devices] register failed", result);
+          return json(result, 200);
+        }
         return json(result, 200);
       }
       case "heartbeat": {
         const id = String(body?.device_id ?? "");
         if (!id) return json({ error: "missing_device_id" }, 400);
         const result = await heartbeatDevice(id);
-        return json(result, result.ok ? 200 : 502);
+        return json(result, 200);
       }
       case "release": {
         const result = await releaseDevice({
@@ -83,7 +86,7 @@ Deno.serve(async (req) => {
           deviceFingerprint: body?.device_fingerprint ?? undefined,
           reason: body?.reason ?? "user_signed_out",
         });
-        return json(result, result.ok ? 200 : 502);
+        return json(result, 200);
       }
       case "list": {
         const result = await listDevices(targetUserId);
@@ -96,7 +99,7 @@ Deno.serve(async (req) => {
           deviceId: id,
           reason: body?.reason ?? "user_revoked",
         });
-        return json(result, result.ok ? 200 : 502);
+        return json(result, 200);
       }
       default:
         return json({ error: "unknown_action" }, 400);
