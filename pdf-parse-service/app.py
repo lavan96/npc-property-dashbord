@@ -1116,6 +1116,124 @@ async def _upload_raster_manifest_artifacts(
         "bytes_out": total_bytes,
     }
 
+
+async def _upload_per_page_docling_artifacts(
+    client: httpx.AsyncClient,
+    prefix: str,
+    per_page_payload: dict,
+    *,
+    source: str = "cloud-run-sidecar",
+) -> dict:
+    """Upload per-page Docling artifacts and a pages-manifest.json file."""
+    manifest_pages: list[dict] = []
+    bytes_out = 0
+
+    artifacts_by_page = per_page_payload.get("artifacts_by_page") or {}
+    pages = per_page_payload.get("pages") or []
+    validation = per_page_payload.get("validation") or {"ok": False, "problems": ["missing_validation"]}
+
+    for page in pages:
+        try:
+            page_no = int(page.get("page_no") or 0)
+            if page_no <= 0:
+                continue
+
+            page_key = page_no
+            artifacts = artifacts_by_page.get(page_key) or artifacts_by_page.get(str(page_key)) or {}
+            if not artifacts:
+                LOG.error("Missing per-page artifacts for page=%s prefix=%s", page_no, prefix)
+                continue
+
+            page_prefix = f"{prefix}/pages/page-{page_no:03d}"
+
+            docling_body = json.dumps(artifacts.get("docling") or {}).encode("utf-8")
+            blocks_body = json.dumps(artifacts.get("blocks") or {}).encode("utf-8")
+            tables_body = json.dumps(artifacts.get("tables") or {}).encode("utf-8")
+            pictures_body = json.dumps(artifacts.get("pictures") or {}).encode("utf-8")
+            summary_body = json.dumps(artifacts.get("summary") or {}).encode("utf-8")
+
+            docling_path = await _storage_upload(client, f"{page_prefix}/docling.json", docling_body, "application/json")
+            blocks_path = await _storage_upload(client, f"{page_prefix}/blocks.json", blocks_body, "application/json")
+            tables_path = await _storage_upload(client, f"{page_prefix}/tables.json", tables_body, "application/json")
+            pictures_path = await _storage_upload(client, f"{page_prefix}/pictures.json", pictures_body, "application/json")
+            summary_path = await _storage_upload(client, f"{page_prefix}/summary.json", summary_body, "application/json")
+
+            bytes_out += (
+                len(docling_body)
+                + len(blocks_body)
+                + len(tables_body)
+                + len(pictures_body)
+                + len(summary_body)
+            )
+
+            manifest_pages.append({
+                "page_no": page_no,
+                "width": page.get("width"),
+                "height": page.get("height"),
+                "docling_path": docling_path,
+                "blocks_path": blocks_path,
+                "tables_path": tables_path,
+                "pictures_path": pictures_path,
+                "summary_path": summary_path,
+                "raster_path": page.get("raster_path"),
+                "source_chunk_index": page.get("source_chunk_index"),
+                "source_chunk_page_no": page.get("source_chunk_page_no"),
+            })
+        except Exception as exc:
+            LOG.error("Failed to upload per-page Docling artifacts prefix=%s page=%s error=%s", prefix, page, exc)
+
+    manifest_pages.sort(key=lambda page: int(page.get("page_no") or 0))
+
+    manifest = {
+        "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+        "job_id": per_page_payload.get("job_id"),
+        "source": source,
+        "page_count": len(manifest_pages),
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "pages": manifest_pages,
+        "validation": validation,
+    }
+
+    manifest_body = json.dumps(manifest).encode("utf-8")
+    manifest_path = await _storage_upload(
+        client,
+        f"{prefix}/pages-manifest.json",
+        manifest_body,
+        "application/json",
+    )
+    bytes_out += len(manifest_body)
+
+    required_missing = []
+    for page in manifest_pages:
+        page_no = page.get("page_no")
+        for key in ("docling_path", "blocks_path", "summary_path"):
+            if not page.get(key):
+                required_missing.append(f"page_{page_no}_{key}")
+
+    validation_out = {
+        "version": "per-page-docling-validation-v1",
+        "ok": bool(validation.get("ok")) and not required_missing and len(manifest_pages) == int(per_page_payload.get("page_count") or len(manifest_pages)),
+        "problems": list(validation.get("problems") or []) + required_missing,
+    }
+
+    LOG.info(
+        "Uploaded per-page Docling artifacts prefix=%s manifest=%s pages=%s ok=%s",
+        prefix,
+        manifest_path,
+        len(manifest_pages),
+        validation_out["ok"],
+    )
+
+    return {
+        "per_page_docling_artifact_version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+        "per_page_docling_manifest_path": manifest_path,
+        "per_page_docling_page_count": len(manifest_pages),
+        "per_page_docling_validation": validation_out,
+        "per_page_docling_manifest": manifest,
+        "bytes_out": bytes_out,
+    }
+
+
 def _parse_data_uri(uri: str) -> Optional[tuple[str, bytes, str]]:
     m = re.match(r"^data:([^;,]+);base64,(.+)$", uri or "")
     if not m:
@@ -1237,6 +1355,10 @@ async def _run_async_job(req: ParseRequest) -> None:
             rasters_manifest_path = None
             page_raster_paths = []
             legacy_rasters_path = None
+            raster_manifest_payload = None
+            per_page_docling_manifest_path = None
+            per_page_docling_page_count = 0
+            per_page_docling_validation = {"ok": False, "problems": ["not_generated"]}
             if effective_mode in {"hybrid", "pixel_perfect", "pixel-perfect"} and page_count > 0:
                 dpi = req.raster_dpi or int(lane_policy.get("raster_dpi") or RASTER_DPI or (200 if "pixel" in effective_mode else 144))
                 raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
@@ -1267,6 +1389,7 @@ async def _run_async_job(req: ParseRequest) -> None:
                     )
                     rasters_manifest_path = raster_artifacts.get("rasters_manifest_path")
                     page_raster_paths = raster_artifacts.get("page_raster_paths") or []
+                    raster_manifest_payload = raster_artifacts.get("manifest")
                     bytes_out += int(raster_artifacts.get("bytes_out") or 0)
 
                     if WRITE_LEGACY_RASTERS_JSON:
@@ -1280,6 +1403,23 @@ async def _run_async_job(req: ParseRequest) -> None:
                     body = json.dumps(normalized).encode("utf-8")
                     rasters_path = await _storage_upload(client, f"{job_id}/rasters.json", body, "application/json")
                     bytes_out += len(body)
+
+            per_page_payload = _build_per_page_docling_artifacts(
+                doclingDoc,
+                job_id=job_id,
+                global_page_offset=0,
+                raster_manifest=raster_manifest_payload,
+            )
+            per_page_artifacts = await _upload_per_page_docling_artifacts(
+                client,
+                job_id,
+                per_page_payload,
+                source="monolithic-parse",
+            )
+            per_page_docling_manifest_path = per_page_artifacts.get("per_page_docling_manifest_path")
+            per_page_docling_page_count = int(per_page_artifacts.get("per_page_docling_page_count") or 0)
+            per_page_docling_validation = per_page_artifacts.get("per_page_docling_validation") or {"ok": False, "problems": ["missing_validation"]}
+            bytes_out += int(per_page_artifacts.get("bytes_out") or 0)
 
             duration_ms = int((time.monotonic() - started) * 1000)
             await _post_callback(client, callback_url, callback_token, job_id, {
@@ -1304,6 +1444,10 @@ async def _run_async_job(req: ParseRequest) -> None:
                     "rasters_manifest_path": rasters_manifest_path,
                     "page_raster_paths": page_raster_paths,
                     "legacy_rasters_path": legacy_rasters_path,
+                    "per_page_docling_artifact_version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+                    "per_page_docling_manifest_path": per_page_docling_manifest_path,
+                    "per_page_docling_page_count": per_page_docling_page_count,
+                    "per_page_docling_validation": per_page_docling_validation,
                     "doctags_path": doctags_path,
                     "markdown_path": markdown_path,
                     "outline_path": outline_path,
@@ -1557,6 +1701,7 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
         prefix = f"{req.job_id}/chunks/{req.chunk_index:04d}"
         async with httpx.AsyncClient(timeout=120) as client:
             doclingDoc = parse_result.get("docling_document") or {}
+            raster_manifest_payload = None
             picture_bytes = await _upload_picture_assets(client, f"{req.job_id}/chunks/{req.chunk_index:04d}", doclingDoc)
             bytes_out += picture_bytes
 
@@ -1612,6 +1757,7 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                         )
                         artifacts["rasters_manifest_path"] = raster_artifacts.get("rasters_manifest_path")
                         artifacts["page_raster_paths"] = raster_artifacts.get("page_raster_paths") or []
+                        raster_manifest_payload = raster_artifacts.get("manifest")
                         bytes_out += int(raster_artifacts.get("bytes_out") or 0)
 
                         if WRITE_LEGACY_RASTERS_JSON:
@@ -1637,6 +1783,24 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
                         bytes_out += len(raster_body)
                 except SidecarError as exc:
                     LOG.warning("chunk raster failed (continuing): %s", exc.message)
+
+            per_page_payload = _build_per_page_docling_artifacts(
+                doclingDoc,
+                job_id=req.job_id,
+                global_page_offset=req.page_start - 1,
+                raster_manifest=raster_manifest_payload,
+            )
+            per_page_artifacts = await _upload_per_page_docling_artifacts(
+                client,
+                prefix,
+                per_page_payload,
+                source="chunk-parse",
+            )
+            artifacts["per_page_docling_artifact_version"] = per_page_artifacts.get("per_page_docling_artifact_version")
+            artifacts["per_page_docling_manifest_path"] = per_page_artifacts.get("per_page_docling_manifest_path")
+            artifacts["per_page_docling_page_count"] = per_page_artifacts.get("per_page_docling_page_count")
+            artifacts["per_page_docling_validation"] = per_page_artifacts.get("per_page_docling_validation")
+            bytes_out += int(per_page_artifacts.get("bytes_out") or 0)
 
         duration_ms = int((time.monotonic() - started) * 1000)
         await _post_chunk_callback(req.callback_url, req.callback_token, req.job_id, {
