@@ -35,7 +35,7 @@ interface RequestBody {
 }
 
 const DEFAULT_SELECTS: Record<TableName, string> = {
-  investment_reports: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, manual_overrides, financial_calculations, investment_score',
+  investment_reports: 'id, property_address, property_listing_id, created_at, current_version, report_scope, report_tier, parent_report_id, status, is_archived, investment_score',
   generated_reports: '*',
   property_comparisons: 'id, property_count, property_addresses, property_states, report_title, report_ids, created_at, analysis_summary, executive_summary, rankings, recommendations, financial_comparison, location_comparison, risk_comparison, red_flags',
 };
