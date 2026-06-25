@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { fetchTokenBalance, type TokenBalance } from "@/lib/missionControl";
 import { onTokensUsed, onOutOfTokens } from "@/lib/tokenEvents";
+import { hasActiveSession } from "@/lib/secureInvoke";
 
 interface UseTokenBalanceOptions {
   /** Auto-refetch interval in ms. 0 = no polling. Default 3 minutes. */
