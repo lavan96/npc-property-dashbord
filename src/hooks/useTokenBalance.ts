@@ -27,6 +27,13 @@ export function useTokenBalance(opts: UseTokenBalanceOptions = {}) {
   const lastFetchRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    // Skip silently when no active session — avoids noisy 401s on public/auth screens.
+    if (!hasActiveSession()) {
+      setBalance(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     lastFetchRef.current = Date.now();
     try {
@@ -34,7 +41,14 @@ export function useTokenBalance(opts: UseTokenBalanceOptions = {}) {
       setBalance(b);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e : new Error(String(e)));
+      const msg = e instanceof Error ? e.message : String(e);
+      // Treat auth failures as "no balance yet" instead of a hard error to prevent UI crashes.
+      if (/401|unauthor|session/i.test(msg)) {
+        setBalance(null);
+        setError(null);
+      } else {
+        setError(e instanceof Error ? e : new Error(msg));
+      }
     } finally {
       setLoading(false);
     }
