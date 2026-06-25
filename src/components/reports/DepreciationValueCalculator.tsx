@@ -27,7 +27,7 @@ import {
   Sparkles,
   Loader2
 } from 'lucide-react';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { invokeSecureFunction, hasActiveSession, describeAuthError } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
 import {
@@ -117,14 +117,30 @@ export function DepreciationValueCalculator({
   // Handle calculation
   const handleCalculate = useCallback(async () => {
     if (!isValid || isExcluded) return;
-    
+
+    // Pre-flight: if no session token is present, the edge function will 401.
+    // Surface a clear "session expired" message instead of a misleading
+    // "Database Empty" toast.
+    if (!hasActiveSession()) {
+      console.warn('[DepreciationCalculator] No active session — aborting before edge call.');
+      toast({
+        title: "Session expired",
+        description: "Your sign-in session has expired. Please sign out and sign back in to run depreciation calcs.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCalculating(true);
     setNoMatchFound(false);
     setResult(null);
     
     try {
       console.group('🏠 Depreciation Calculator - Fetch & Calculate');
-      console.log('Fetching comps from database...');
+      console.log('Fetching comps from database...', {
+        hasSessionToken: !!(sessionStorage.getItem('session_token') || localStorage.getItem('session_token')),
+        hasAccessToken: !!(sessionStorage.getItem('supabase_access_token') || localStorage.getItem('supabase_access_token')),
+      });
 
       // IMPORTANT: Query via edge function to respect RLS
       const fetchBucket = async (typeToUse: PropertyType) => {
@@ -166,6 +182,16 @@ export function DepreciationValueCalculator({
 
       if (error) {
         console.error('❌ Query error:', error);
+        const authHint = describeAuthError(error.message);
+        if (authHint) {
+          console.groupEnd();
+          toast({
+            title: "Session expired",
+            description: authHint,
+            variant: "destructive",
+          });
+          return;
+        }
         throw new Error(error.message);
       }
       
@@ -174,8 +200,8 @@ export function DepreciationValueCalculator({
         console.groupEnd();
         setNoMatchFound(true);
         toast({
-          title: "Database Empty",
-          description: "No depreciation comparison data found in the database.",
+          title: "No comps returned",
+          description: "The depreciation comps query returned no records. This is usually a session/auth issue — try signing out and back in.",
           variant: "destructive",
         });
         return;
