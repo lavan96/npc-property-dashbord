@@ -653,6 +653,13 @@ export const ReportTemplateSchema = z.object({
       doctagsPath: z.string().nullable().optional(),
       jobId: z.string().optional(),
       importedAt: z.string().optional(),
+      consumerGuardrailVersion: z.string().optional(),
+      parseGuardrails: z.any().optional(),
+      artifactGuardrails: z.any().optional(),
+      parseArtifactContractVersion: z.any().optional(),
+      doclingPageRebaseVersion: z.any().optional(),
+      chunkMergeValidationVersion: z.any().optional(),
+      terminalStateVersion: z.any().optional(),
     }).optional(),
 
   }).optional(),
