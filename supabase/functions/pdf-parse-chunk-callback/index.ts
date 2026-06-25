@@ -261,6 +261,9 @@ async function uploadText(admin: Admin, path: string, body: string, contentType:
 
 const MERGE_VALIDATION_VERSION = 'chunk-merge-validation-v1';
 const TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
+const PER_PAGE_DOCLING_ARTIFACT_VERSION = 'per-page-docling-v1';
+const PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION = 'chunk-parent-pages-manifest-v1';
+const PER_PAGE_DOCLING_PARENT_VALIDATION_VERSION = 'per-page-docling-parent-validation-v1';
 
 function numberHistogram(values: number[]): Map<number, number> {
   const hist = new Map<number, number>();
@@ -398,6 +401,36 @@ function validateMergedArtifacts(
 }
 
 
+function validateParentPerPageDoclingManifest(
+  parentPages: any[],
+  finalPageCount: number,
+  chunkProblems: string[] = [],
+) {
+  const pageNumbers = parentPages
+    .map((p) => Number(p?.page_no ?? 0))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  const report = pageNumberReport('per_page_docling_pages', pageNumbers, finalPageCount);
+  const problems = [...chunkProblems];
+
+  if (!report.ok) {
+    problems.push('per_page_docling_page_numbers_not_continuous_or_unique');
+  }
+
+  if (parentPages.length !== finalPageCount) {
+    problems.push(`per_page_docling_entries_count_mismatch: expected ${finalPageCount}, got ${parentPages.length}`);
+  }
+
+  return {
+    version: PER_PAGE_DOCLING_PARENT_VALIDATION_VERSION,
+    ok: problems.length === 0,
+    expected_page_count: finalPageCount,
+    observed_page_count: parentPages.length,
+    page_numbers: report,
+    problems,
+  };
+}
+
 /** Merge per-chunk Docling outputs into final artifacts and finalize the job. */
 async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const startedAt = Date.now();
@@ -449,6 +482,9 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   const chunkRasterManifestPaths: string[] = [];
   const pageRasterPaths: string[] = [];
   const parentRasterManifestPages: any[] = [];
+  const chunkPerPageDoclingManifestPaths: string[] = [];
+  const parentPerPageDoclingPages: any[] = [];
+  const perPageDoclingProblems: string[] = [];
   const doclingPageNumbers: number[] = [];
   const chunkExtractorLanes: string[] = [];
   const chunkLaneVersions: string[] = [];
@@ -578,6 +614,64 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     for (const path of chunkPageRasterPaths) {
       if (!pageRasterPaths.includes(path)) pageRasterPaths.push(path);
     }
+
+    const expectedChunkPageCount = Math.max(0, Number(c.page_end ?? 0) - Number(c.page_start ?? 0) + 1);
+    const perPageVersion = typeof ap.per_page_docling_artifact_version === 'string'
+      ? ap.per_page_docling_artifact_version
+      : '';
+    const perPageManifestPath = typeof ap.per_page_docling_manifest_path === 'string'
+      ? ap.per_page_docling_manifest_path
+      : '';
+    const perPageChunkCount = Number(ap.per_page_docling_page_count ?? 0);
+    const perPageValidationOk = Boolean((ap.per_page_docling_validation as any)?.ok);
+
+    if (perPageVersion !== PER_PAGE_DOCLING_ARTIFACT_VERSION) {
+      perPageDoclingProblems.push(`chunk_${c.chunk_index}_per_page_version_missing_or_invalid`);
+    }
+    if (!perPageManifestPath) {
+      perPageDoclingProblems.push(`chunk_${c.chunk_index}_per_page_manifest_path_missing`);
+    }
+    if (perPageChunkCount !== expectedChunkPageCount) {
+      perPageDoclingProblems.push(`chunk_${c.chunk_index}_per_page_count_mismatch: expected ${expectedChunkPageCount}, got ${perPageChunkCount}`);
+    }
+    if (!perPageValidationOk) {
+      perPageDoclingProblems.push(`chunk_${c.chunk_index}_per_page_validation_not_ok`);
+    }
+
+    if (perPageManifestPath) {
+      chunkPerPageDoclingManifestPaths.push(perPageManifestPath);
+      const perPageManifest = await downloadJson(admin, perPageManifestPath);
+      const perPageManifestPages = Array.isArray(perPageManifest?.pages) ? perPageManifest.pages : [];
+
+      if (perPageManifestPages.length !== expectedChunkPageCount) {
+        perPageDoclingProblems.push(`chunk_${c.chunk_index}_per_page_manifest_entries_mismatch: expected ${expectedChunkPageCount}, got ${perPageManifestPages.length}`);
+      }
+
+      for (const rawPage of perPageManifestPages) {
+        if (!rawPage || typeof rawPage !== 'object') continue;
+
+        const sourceChunkPageNo = Number((rawPage as any).source_chunk_page_no ?? 0);
+        let globalPageNo = Number((rawPage as any).page_no ?? 0);
+
+        // Chunk sidecar should already emit global page numbers, but keep a safe fallback.
+        if (
+          (!Number.isFinite(globalPageNo) || globalPageNo < Number(c.page_start) || globalPageNo > Number(c.page_end))
+          && Number.isFinite(sourceChunkPageNo)
+          && sourceChunkPageNo > 0
+        ) {
+          globalPageNo = Number(c.page_start) + sourceChunkPageNo - 1;
+        }
+
+        parentPerPageDoclingPages.push({
+          ...(rawPage as Record<string, unknown>),
+          page_no: globalPageNo,
+          source_chunk_index: Number(c.chunk_index ?? 0),
+          source_chunk_page_no: sourceChunkPageNo || (globalPageNo - Number(c.page_start) + 1),
+          source_manifest_path: perPageManifestPath,
+        });
+      }
+    }
+
     const s = (c.summary ?? {}) as any;
     totalTextChars += Number(s.text_chars ?? 0);
     totalOcrChars += Number(s.ocr_chars ?? 0);
@@ -623,6 +717,27 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     pageRasterPaths.length,
   );
 
+  parentPerPageDoclingPages.sort((a, b) => Number(a.page_no ?? 0) - Number(b.page_no ?? 0));
+  const perPageDoclingValidation = validateParentPerPageDoclingManifest(
+    parentPerPageDoclingPages,
+    finalPageCount,
+    perPageDoclingProblems,
+  );
+
+  const perPageDoclingManifestPath = parentPerPageDoclingPages.length
+    ? await uploadJson(admin, `${jobId}/pages-manifest.json`, {
+        version: PER_PAGE_DOCLING_ARTIFACT_VERSION,
+        parent_manifest_version: PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION,
+        source: 'chunk-merge',
+        job_id: jobId,
+        page_count: finalPageCount,
+        generated_at: new Date().toISOString(),
+        pages: parentPerPageDoclingPages,
+        chunk_per_page_docling_manifest_paths: chunkPerPageDoclingManifestPaths,
+        validation: perPageDoclingValidation,
+      })
+    : null;
+
   const rastersManifestPath = parentRasterManifestPages.length
     ? await uploadJson(admin, `${jobId}/rasters-manifest.json`, {
         version: 'phase3-raster-manifest-v1',
@@ -640,6 +755,14 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     pageRasterPaths,
     finalPageCount,
   );
+  if (!perPageDoclingValidation.ok) {
+    mergeValidation.ok = false;
+    mergeValidation.problems.push('per_page_docling_parent_validation_failed');
+    for (const problem of perPageDoclingValidation.problems ?? []) {
+      mergeValidation.problems.push(String(problem));
+    }
+  }
+
   const mergeValidationPath = await uploadJson(admin, `${jobId}/merge-validation.json`, mergeValidation);
 
   if (!mergeValidation.ok) {
@@ -670,6 +793,12 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         rasters_manifest_path: rastersManifestPath,
         chunk_raster_manifest_paths: chunkRasterManifestPaths,
         page_raster_paths: pageRasterPaths,
+        per_page_docling_artifact_version: PER_PAGE_DOCLING_ARTIFACT_VERSION,
+        per_page_docling_parent_manifest_version: PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION,
+        per_page_docling_manifest_path: perPageDoclingManifestPath,
+        per_page_docling_page_count: parentPerPageDoclingPages.length,
+        per_page_docling_validation: perPageDoclingValidation,
+        chunk_per_page_docling_manifest_paths: chunkPerPageDoclingManifestPaths,
         artifact_contract_version: 'raster-manifest-v1',
         docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
         chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
@@ -742,6 +871,8 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   await admin.from('pdf_import_jobs').update({
     status: 'succeeded',
     stage: 'parsed',
+    error_code: null,
+    error_text: null,
     page_count: finalPageCount,
     pages_total: finalPageCount,
     pages_completed: finalPageCount,
