@@ -264,6 +264,7 @@ const TERMINAL_STATE_VERSION = 'terminal-state-normalizer-v1';
 const PER_PAGE_DOCLING_ARTIFACT_VERSION = 'per-page-docling-v1';
 const PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION = 'chunk-parent-pages-manifest-v1';
 const PER_PAGE_DOCLING_PARENT_VALIDATION_VERSION = 'per-page-docling-parent-validation-v1';
+const PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION = 'parent-global-page-artifact-copy-v1';
 
 function numberHistogram(values: number[]): Map<number, number> {
   const hist = new Map<number, number>();
@@ -396,6 +397,166 @@ function validateMergedArtifacts(
     page_raster_paths_count: pageRasterPaths.length,
     raster_manifest_entries_count: parentRasterManifestPages.length,
     duplicate_raster_path_index_check: duplicateRasterPaths.length === 0,
+    problems,
+  };
+}
+
+
+
+async function copyParentGlobalPerPageArtifacts(
+  admin: Admin,
+  jobId: string,
+  parentPages: any[],
+): Promise<{ pages: any[]; copied_count: number; problems: string[] }> {
+  const copiedPages: any[] = [];
+  const problems: string[] = [];
+  const copyTasks: Array<{
+    page_index: number;
+    page_no: number;
+    key: string;
+    file: string;
+    source_path: string;
+    dest_path: string;
+  }> = [];
+
+  const pathSpecs = [
+    { key: 'docling_path', file: 'docling.json', required: true },
+    { key: 'blocks_path', file: 'blocks.json', required: true },
+    { key: 'tables_path', file: 'tables.json', required: false },
+    { key: 'pictures_path', file: 'pictures.json', required: false },
+    { key: 'summary_path', file: 'summary.json', required: true },
+  ];
+
+  for (const rawPage of parentPages) {
+    const pageNo = Number(rawPage?.page_no ?? 0);
+    if (!Number.isFinite(pageNo) || pageNo <= 0) {
+      problems.push(`invalid_parent_page_no:${String(rawPage?.page_no ?? '')}`);
+      continue;
+    }
+
+    const pagePrefix = `${jobId}/pages/page-${String(pageNo).padStart(3, '0')}`;
+    const copiedPage: Record<string, unknown> = {
+      ...rawPage,
+      page_no: pageNo,
+      global_artifact_prefix: pagePrefix,
+      global_artifact_copy_version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
+      source_chunk_artifact_paths: {},
+    };
+
+    const pageIndex = copiedPages.length;
+
+    for (const spec of pathSpecs) {
+      const sourcePath = typeof rawPage?.[spec.key] === 'string' ? String(rawPage[spec.key]) : '';
+      if (!sourcePath) {
+        if (spec.required) problems.push(`page_${pageNo}_${spec.key}_missing`);
+        continue;
+      }
+
+      (copiedPage.source_chunk_artifact_paths as Record<string, string>)[spec.key] = sourcePath;
+
+      copyTasks.push({
+        page_index: pageIndex,
+        page_no: pageNo,
+        key: spec.key,
+        file: spec.file,
+        source_path: sourcePath,
+        dest_path: `${pagePrefix}/${spec.file}`,
+      });
+    }
+
+    copiedPages.push(copiedPage);
+  }
+
+  async function copyOne(task: typeof copyTasks[number]): Promise<boolean> {
+    const sourceObjectPath = task.source_path.startsWith(`${DIAGNOSTICS_BUCKET}/`)
+      ? task.source_path.slice(DIAGNOSTICS_BUCKET.length + 1)
+      : task.source_path;
+
+    // Fast path: server-side copy inside Supabase Storage.
+    try {
+      const { error: copyError } = await admin.storage
+        .from(DIAGNOSTICS_BUCKET)
+        .copy(sourceObjectPath, task.dest_path);
+
+      if (!copyError) {
+        copiedPages[task.page_index][task.key] = task.dest_path;
+        return true;
+      }
+
+      const msg = String(copyError.message ?? copyError);
+      if (
+        msg.toLowerCase().includes('already exists')
+        || msg.toLowerCase().includes('duplicate')
+      ) {
+        copiedPages[task.page_index][task.key] = task.dest_path;
+        return true;
+      }
+
+      console.warn('[chunk-callback] storage copy failed; falling back to download/upload', {
+        source: sourceObjectPath,
+        dest: task.dest_path,
+        error: msg.slice(0, 300),
+      });
+    } catch (e) {
+      console.warn('[chunk-callback] storage copy exception; falling back to download/upload', {
+        source: sourceObjectPath,
+        dest: task.dest_path,
+        error: String((e as Error)?.message ?? e).slice(0, 300),
+      });
+    }
+
+    // Fallback path: download blob and upload with upsert.
+    try {
+      const { data, error: downloadError } = await admin.storage
+        .from(DIAGNOSTICS_BUCKET)
+        .download(sourceObjectPath);
+
+      if (downloadError || !data) {
+        problems.push(`page_${task.page_no}_${task.key}_download_failed`);
+        return false;
+      }
+
+      const { error: uploadError } = await admin.storage
+        .from(DIAGNOSTICS_BUCKET)
+        .upload(task.dest_path, data, {
+          contentType: 'application/json',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        problems.push(`page_${task.page_no}_${task.key}_upload_failed`);
+        return false;
+      }
+
+      copiedPages[task.page_index][task.key] = task.dest_path;
+      return true;
+    } catch (e) {
+      problems.push(`page_${task.page_no}_${task.key}_copy_exception`);
+      console.error('[chunk-callback] artifact copy exception', {
+        page_no: task.page_no,
+        key: task.key,
+        source: sourceObjectPath,
+        dest: task.dest_path,
+        error: String((e as Error)?.message ?? e).slice(0, 500),
+      });
+      return false;
+    }
+  }
+
+  let copiedCount = 0;
+  const concurrency = 24;
+
+  for (let i = 0; i < copyTasks.length; i += concurrency) {
+    const batch = copyTasks.slice(i, i + concurrency);
+    const results = await Promise.all(batch.map(copyOne));
+    copiedCount += results.filter(Boolean).length;
+  }
+
+  copiedPages.sort((a, b) => Number(a.page_no ?? 0) - Number(b.page_no ?? 0));
+
+  return {
+    pages: copiedPages,
+    copied_count: copiedCount,
     problems,
   };
 }
@@ -718,22 +879,40 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
   );
 
   parentPerPageDoclingPages.sort((a, b) => Number(a.page_no ?? 0) - Number(b.page_no ?? 0));
-  const perPageDoclingValidation = validateParentPerPageDoclingManifest(
+
+  const parentGlobalPerPageArtifacts = await copyParentGlobalPerPageArtifacts(
+    admin,
+    jobId,
     parentPerPageDoclingPages,
-    finalPageCount,
-    perPageDoclingProblems,
   );
 
-  const perPageDoclingManifestPath = parentPerPageDoclingPages.length
+  const parentGlobalPerPagePages = parentGlobalPerPageArtifacts.pages;
+
+  const perPageDoclingValidation = validateParentPerPageDoclingManifest(
+    parentGlobalPerPagePages,
+    finalPageCount,
+    [
+      ...perPageDoclingProblems,
+      ...parentGlobalPerPageArtifacts.problems,
+    ],
+  );
+
+  const perPageDoclingManifestPath = parentGlobalPerPagePages.length
     ? await uploadJson(admin, `${jobId}/pages-manifest.json`, {
         version: PER_PAGE_DOCLING_ARTIFACT_VERSION,
         parent_manifest_version: PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION,
-        source: 'chunk-merge',
+        global_artifact_copy_version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
+        source: 'chunk-merge-global-artifacts',
         job_id: jobId,
         page_count: finalPageCount,
         generated_at: new Date().toISOString(),
-        pages: parentPerPageDoclingPages,
+        pages: parentGlobalPerPagePages,
         chunk_per_page_docling_manifest_paths: chunkPerPageDoclingManifestPaths,
+        global_per_page_artifact_copy: {
+          version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
+          copied_artifact_count: parentGlobalPerPageArtifacts.copied_count,
+          problems: parentGlobalPerPageArtifacts.problems,
+        },
         validation: perPageDoclingValidation,
       })
     : null;
@@ -795,9 +974,15 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         page_raster_paths: pageRasterPaths,
         per_page_docling_artifact_version: PER_PAGE_DOCLING_ARTIFACT_VERSION,
         per_page_docling_parent_manifest_version: PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION,
+        per_page_docling_global_artifact_copy_version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
         per_page_docling_manifest_path: perPageDoclingManifestPath,
-        per_page_docling_page_count: parentPerPageDoclingPages.length,
+        per_page_docling_page_count: parentGlobalPerPagePages.length,
         per_page_docling_validation: perPageDoclingValidation,
+        per_page_docling_global_artifact_copy: {
+          version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
+          copied_artifact_count: parentGlobalPerPageArtifacts.copied_count,
+          problems: parentGlobalPerPageArtifacts.problems,
+        },
         chunk_per_page_docling_manifest_paths: chunkPerPageDoclingManifestPaths,
         artifact_contract_version: 'raster-manifest-v1',
         docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
@@ -893,6 +1078,18 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
       rasters_manifest_path: rastersManifestPath,
       chunk_raster_manifest_paths: chunkRasterManifestPaths,
       page_raster_paths: pageRasterPaths,
+      per_page_docling_artifact_version: PER_PAGE_DOCLING_ARTIFACT_VERSION,
+      per_page_docling_parent_manifest_version: PER_PAGE_DOCLING_PARENT_MANIFEST_VERSION,
+      per_page_docling_global_artifact_copy_version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
+      per_page_docling_manifest_path: perPageDoclingManifestPath,
+      per_page_docling_page_count: parentGlobalPerPagePages.length,
+      per_page_docling_validation: perPageDoclingValidation,
+      per_page_docling_global_artifact_copy: {
+        version: PER_PAGE_DOCLING_GLOBAL_ARTIFACT_COPY_VERSION,
+        copied_artifact_count: parentGlobalPerPageArtifacts.copied_count,
+        problems: parentGlobalPerPageArtifacts.problems,
+      },
+      chunk_per_page_docling_manifest_paths: chunkPerPageDoclingManifestPaths,
       artifact_contract_version: 'raster-manifest-v1',
       docling_page_rebase_version: DOCLING_PAGE_REBASE_VERSION,
       chunk_merge_validation_version: MERGE_VALIDATION_VERSION,
