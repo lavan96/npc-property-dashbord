@@ -598,6 +598,280 @@ def _do_parse(pdf_bytes: bytes, *, use_description: bool, include_doctags: bool,
     }
 
 
+
+PER_PAGE_DOCLING_ARTIFACT_VERSION = "per-page-docling-v1"
+
+
+def _prov_page_numbers(node: Any) -> set[int]:
+    pages: set[int] = set()
+    if not isinstance(node, dict):
+        return pages
+    prov = node.get("prov")
+    if isinstance(prov, list):
+        for p in prov:
+            if isinstance(p, dict):
+                page_no = p.get("page_no")
+                try:
+                    if page_no is not None:
+                        pages.add(int(page_no))
+                except Exception:
+                    continue
+    return pages
+
+
+def _item_belongs_to_page(item: Any, page_no: int) -> bool:
+    if not isinstance(item, dict):
+        return False
+    pages = _prov_page_numbers(item)
+    if pages:
+        return page_no in pages
+    # Conservative fallback: keep unproven items out of page-local artifacts.
+    return False
+
+
+def _normalize_bbox(item: dict) -> Any:
+    for key in ("bbox", "bounds", "bounding_box"):
+        value = item.get(key)
+        if value is not None:
+            return value
+    prov = item.get("prov")
+    if isinstance(prov, list) and prov:
+        first = prov[0]
+        if isinstance(first, dict):
+            return first.get("bbox") or first.get("bounds") or first.get("bounding_box")
+    return None
+
+
+def _page_blocks_for_docling_page(page_no: int, texts: list[dict], tables: list[dict], pictures: list[dict]) -> list[dict]:
+    blocks: list[dict] = []
+
+    for idx, item in enumerate(texts, start=1):
+        blocks.append({
+            "id": f"p{page_no:03d}-text-{idx}",
+            "type": "text",
+            "label": item.get("label") or item.get("type") or "text",
+            "text": item.get("text") or item.get("orig") or "",
+            "bbox": _normalize_bbox(item),
+            "confidence": item.get("confidence"),
+            "source": "docling",
+            "page_no": page_no,
+        })
+
+    for idx, item in enumerate(tables, start=1):
+        blocks.append({
+            "id": f"p{page_no:03d}-table-{idx}",
+            "type": "table",
+            "label": item.get("label") or "table",
+            "text": item.get("text") or "",
+            "bbox": _normalize_bbox(item),
+            "confidence": item.get("confidence"),
+            "source": "docling",
+            "page_no": page_no,
+        })
+
+    for idx, item in enumerate(pictures, start=1):
+        blocks.append({
+            "id": f"p{page_no:03d}-picture-{idx}",
+            "type": "picture",
+            "label": item.get("label") or "picture",
+            "text": item.get("caption") or "",
+            "bbox": _normalize_bbox(item),
+            "confidence": item.get("confidence"),
+            "source": "docling",
+            "page_no": page_no,
+        })
+
+    return blocks
+
+
+def _summarise_page_artifact(page_no: int, texts: list[dict], tables: list[dict], pictures: list[dict], raster_path: Optional[str] = None) -> dict:
+    text_chars = sum(len(str(t.get("text") or t.get("orig") or "")) for t in texts)
+    ocr_chars = 0
+    confidence_values: list[float] = []
+
+    for t in texts:
+        origin = str(t.get("origin") or t.get("source") or "").lower()
+        text_value = str(t.get("text") or t.get("orig") or "")
+        if "ocr" in origin:
+            ocr_chars += len(text_value)
+        conf = t.get("confidence")
+        if isinstance(conf, (int, float)) and 0 <= float(conf) <= 1:
+            confidence_values.append(float(conf))
+
+    avg_conf = round(sum(confidence_values) / len(confidence_values), 4) if confidence_values else None
+
+    table_cell_count = 0
+    for tbl in tables:
+        data = tbl.get("data") if isinstance(tbl, dict) else None
+        cells = []
+        if isinstance(data, dict):
+            raw = data.get("table_cells") or data.get("cells") or []
+            if isinstance(raw, list):
+                cells = raw
+        table_cell_count += len(cells)
+
+    return {
+        "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+        "page_no": page_no,
+        "text_block_count": len(texts),
+        "table_count": len(tables),
+        "table_cell_count": table_cell_count,
+        "picture_count": len(pictures),
+        "text_chars": text_chars,
+        "ocr_chars": ocr_chars,
+        "avg_text_confidence": avg_conf,
+        "has_raster": bool(raster_path),
+        "has_tables": len(tables) > 0,
+        "has_pictures": len(pictures) > 0,
+    }
+
+
+def _build_per_page_docling_artifacts(
+    docling_doc: dict,
+    *,
+    job_id: str,
+    global_page_offset: int = 0,
+    raster_manifest: Optional[dict] = None,
+) -> dict:
+    """Build per-page Docling artifacts in memory.
+
+    For chunked parsing, `global_page_offset` rebases chunk-local page numbers
+    into parent-global page numbers using: global = local + offset.
+    """
+    if not isinstance(docling_doc, dict):
+        return {
+            "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+            "page_count": 0,
+            "pages": [],
+            "artifacts_by_page": {},
+            "validation": {"ok": False, "problems": ["docling_doc_not_object"]},
+        }
+
+    raw_pages = docling_doc.get("pages") or {}
+    texts_all = docling_doc.get("texts") if isinstance(docling_doc.get("texts"), list) else []
+    tables_all = docling_doc.get("tables") if isinstance(docling_doc.get("tables"), list) else []
+    pictures_all = docling_doc.get("pictures") if isinstance(docling_doc.get("pictures"), list) else []
+
+    raster_by_global_page: dict[int, str] = {}
+    if isinstance(raster_manifest, dict):
+        for page in raster_manifest.get("pages") or []:
+            if not isinstance(page, dict):
+                continue
+            try:
+                global_no = int(page.get("global_page_no") or page.get("page_no") or 0)
+            except Exception:
+                continue
+            path = page.get("path")
+            if global_no > 0 and isinstance(path, str):
+                raster_by_global_page[global_no] = path
+
+    manifest_pages: list[dict] = []
+    artifacts_by_page: dict[int, dict] = {}
+    problems: list[str] = []
+
+    for key, raw_page in sorted((raw_pages or {}).items(), key=lambda kv: int(kv[0]) if str(kv[0]).isdigit() else 0):
+        try:
+            local_page_no = int(key)
+        except Exception:
+            problems.append(f"invalid_page_key:{key}")
+            continue
+
+        global_page_no = global_page_offset + local_page_no
+        if global_page_no <= 0:
+            problems.append(f"invalid_global_page_no:{global_page_no}")
+            continue
+
+        page_obj = raw_page if isinstance(raw_page, dict) else {}
+        page_copy = dict(page_obj)
+        page_copy["page_no"] = global_page_no
+
+        page_texts = [dict(t) for t in texts_all if _item_belongs_to_page(t, local_page_no)]
+        page_tables = [dict(t) for t in tables_all if _item_belongs_to_page(t, local_page_no)]
+        page_pictures = [dict(pic) for pic in pictures_all if _item_belongs_to_page(pic, local_page_no)]
+
+        def rebase_item(item: dict) -> dict:
+            prov = item.get("prov")
+            if isinstance(prov, list):
+                for p in prov:
+                    if isinstance(p, dict) and p.get("page_no") is not None:
+                        try:
+                            p["page_no"] = global_page_offset + int(p["page_no"])
+                        except Exception:
+                            pass
+            return item
+
+        page_texts = [rebase_item(t) for t in page_texts]
+        page_tables = [rebase_item(t) for t in page_tables]
+        page_pictures = [rebase_item(pic) for pic in page_pictures]
+
+        raster_path = raster_by_global_page.get(global_page_no)
+        summary = _summarise_page_artifact(global_page_no, page_texts, page_tables, page_pictures, raster_path)
+        blocks = _page_blocks_for_docling_page(global_page_no, page_texts, page_tables, page_pictures)
+
+        page_docling = {
+            "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+            "job_id": job_id,
+            "page_no": global_page_no,
+            "schema_name": "DoclingDocumentPage",
+            "pages": {
+                str(global_page_no): page_copy,
+            },
+            "texts": page_texts,
+            "tables": page_tables,
+            "pictures": page_pictures,
+            "summary": summary,
+        }
+
+        artifacts = {
+            "docling": page_docling,
+            "blocks": {
+                "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+                "page_no": global_page_no,
+                "blocks": blocks,
+            },
+            "tables": {
+                "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+                "page_no": global_page_no,
+                "tables": page_tables,
+            },
+            "pictures": {
+                "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+                "page_no": global_page_no,
+                "pictures": page_pictures,
+            },
+            "summary": summary,
+        }
+
+        artifacts_by_page[global_page_no] = artifacts
+        manifest_pages.append({
+            "page_no": global_page_no,
+            "width": page_copy.get("width") or page_copy.get("size", {}).get("width") if isinstance(page_copy.get("size"), dict) else page_copy.get("width"),
+            "height": page_copy.get("height") or page_copy.get("size", {}).get("height") if isinstance(page_copy.get("size"), dict) else page_copy.get("height"),
+            "raster_path": raster_path,
+            "source_chunk_page_no": local_page_no,
+        })
+
+    manifest_pages.sort(key=lambda page: page["page_no"])
+    page_numbers = [int(page["page_no"]) for page in manifest_pages]
+    expected = list(range(min(page_numbers), max(page_numbers) + 1)) if page_numbers else []
+    if page_numbers and page_numbers != expected:
+        problems.append("page_numbers_not_continuous")
+    if len(set(page_numbers)) != len(page_numbers):
+        problems.append("duplicate_page_numbers")
+
+    return {
+        "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+        "job_id": job_id,
+        "page_count": len(manifest_pages),
+        "pages": manifest_pages,
+        "artifacts_by_page": artifacts_by_page,
+        "validation": {
+            "ok": len(problems) == 0,
+            "problems": problems,
+        },
+    }
+
+
 def _do_raster(pdf_bytes: bytes, *, dpi: int, fmt: str, pages: Optional[list[int]] = None) -> dict:
     t0 = time.monotonic()
     try:
