@@ -202,12 +202,14 @@ Deno.serve(async (req) => {
       // Apply ordering
       query = query.order(orderBy, { ascending: orderAsc });
 
-      // Apply limit / pagination
+      // Apply limit / pagination — enforce a hard ceiling to avoid statement timeouts
+      const MAX_LIMIT = 200;
+      const effectiveLimit = Math.min(limit ?? MAX_LIMIT, MAX_LIMIT);
       if (typeof offset === 'number' && offset > 0) {
-        const rangeEnd = (limit ? offset + limit : offset + 1000) - 1;
+        const rangeEnd = offset + effectiveLimit - 1;
         query = query.range(offset, rangeEnd);
-      } else if (limit) {
-        query = query.limit(limit);
+      } else {
+        query = query.limit(effectiveLimit);
       }
 
       const { data: reports, error: reportsError } = await query;
