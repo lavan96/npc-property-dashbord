@@ -168,20 +168,24 @@ export function CalendarSearchDropdown({
         <div className="absolute left-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl">
           <ScrollArea className="max-h-[calc(100vh-180px)] sm:max-h-[520px]">
             {loadingContacts && filteredResults.length === 0 ? (
-              <div className="p-3 space-y-2">
+              <div className="space-y-2 p-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <Skeleton className="h-10 w-10 rounded" />
+                    <Skeleton className="h-10 w-10 rounded-xl bg-white/10" />
                     <div className="flex-1 space-y-1.5">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="h-4 w-3/4 rounded bg-white/10" />
+                      <Skeleton className="h-3 w-1/2 rounded bg-white/10" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredResults.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No events found for "{searchQuery}"
+              <div className="p-5 text-center text-sm text-muted-foreground">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary/70">
+                  <Search className="h-4 w-4" />
+                </div>
+                <p className="font-medium text-zinc-300">No events found for "{searchQuery}"</p>
+                <p className="mt-1 text-xs text-zinc-500">Try a calendar, contact, address or note keyword.</p>
               </div>
             ) : (
               <div className="py-1">

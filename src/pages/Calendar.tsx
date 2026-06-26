@@ -646,15 +646,20 @@ export default function Calendar() {
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
           <p className="text-muted-foreground">GoHighLevel Calendar Integration</p>
         </div>
-        <Card className={cn(PREMIUM_CARD, "border-destructive/50 bg-destructive/5")}>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-destructive mb-4">{error}</p>
+        <Card className={cn(PREMIUM_CARD, "overflow-hidden rounded-2xl border-red-400/25 bg-red-500/5")}>
+          <CardContent className="flex flex-col items-center justify-center px-6 py-12 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/10 text-red-300">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <p className="mb-2 text-sm font-semibold text-red-200">Calendar sync error</p>
+            <p className="mb-5 max-w-xl text-sm text-red-100/75">{error}</p>
             <Button
               onClick={() => {
                 const { start, end } = getVisibleRange();
                 fetchCalendarData(start.toISOString(), end.toISOString());
               }}
               variant="outline"
+              className="rounded-xl border-red-400/25 bg-red-500/10 text-red-100 transition-all hover:border-red-300/40 hover:bg-red-500/15 hover:text-red-50 focus-visible:ring-2 focus-visible:ring-red-300/40"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
@@ -775,7 +780,7 @@ export default function Calendar() {
                 <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Calendar</h1>
                 <p className="mt-1 flex items-center gap-2 text-sm font-medium text-zinc-300">
                   GoHighLevel Appointments
-                  {isUpdating && <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary animate-pulse">Updating...</span>}
+                  {isUpdating && <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary shadow-sm shadow-primary/10 animate-pulse">Updating...</span>}
                 </p>
               </div>
             </div>

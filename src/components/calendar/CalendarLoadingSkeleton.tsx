@@ -14,24 +14,24 @@ export function CalendarLoadingSkeleton({ view }: CalendarLoadingSkeletonProps) 
     const cellHeight = isMobile ? 'min-h-[60px]' : 'min-h-[80px]';
     
     return (
-      <div className="space-y-1">
+      <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-2 shadow-inner shadow-black/20">
         {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1 mb-1">
+        <div className="mb-1 grid grid-cols-7 gap-1 rounded-xl border border-white/10 bg-black/30 p-1">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
             <div key={i} className="text-center py-2">
-              <Skeleton className="h-4 w-4 mx-auto" />
+              <Skeleton className="mx-auto h-4 w-4 rounded-full bg-white/10" />
             </div>
           ))}
         </div>
         {/* Calendar grid - reduced items on mobile */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-1.5">
           {Array.from({ length: daysToShow }).map((_, i) => (
-            <div 
-              key={i} 
-              className={`${cellHeight} p-1 rounded-md`}
+            <div
+              key={i}
+              className={`${cellHeight} rounded-xl border border-white/5 bg-white/[0.02] p-1.5`}
             >
-              <Skeleton className="h-4 w-4 mb-2" />
-              {!isMobile && i % 3 === 0 && <Skeleton className="h-3 w-full" />}
+              <Skeleton className="mb-2 h-5 w-5 rounded-full bg-white/10" />
+              {!isMobile && i % 3 === 0 && <Skeleton className="h-4 w-full rounded-md bg-white/10" />}
             </div>
           ))}
         </div>
@@ -43,29 +43,29 @@ export function CalendarLoadingSkeleton({ view }: CalendarLoadingSkeletonProps) 
     const hoursToShow = isMobile ? 8 : 12;
     
     return (
-      <div className="space-y-1">
+      <div className="space-y-2 rounded-2xl border border-white/10 bg-black/20 p-2 shadow-inner shadow-black/20">
         {/* Week headers - simplified on mobile */}
         <div className={`grid ${isMobile ? 'grid-cols-4' : 'grid-cols-8'} gap-1 mb-2`}>
           {!isMobile && <div className="w-16" />}
           {Array.from({ length: isMobile ? 4 : 7 }).map((_, i) => (
             <div key={i} className="text-center py-2">
-              <Skeleton className="h-4 w-6 mx-auto mb-1" />
-              <Skeleton className="h-6 w-6 rounded-full mx-auto" />
+              <Skeleton className="h-4 w-6 mx-auto mb-1 rounded bg-white/10" />
+              <Skeleton className="h-6 w-6 rounded-full mx-auto bg-white/10" />
             </div>
           ))}
         </div>
         {/* Time grid - fewer hours on mobile */}
         {Array.from({ length: hoursToShow }).map((_, hour) => (
-          <div key={hour} className={`grid ${isMobile ? 'grid-cols-4' : 'grid-cols-8'} gap-1 border-t border-border/30`}>
+          <div key={hour} className={`grid ${isMobile ? 'grid-cols-4' : 'grid-cols-8'} gap-1 border-t border-white/10`}>
             {!isMobile && (
               <div className="w-16 py-1">
-                <Skeleton className="h-3 w-10 ml-auto" />
+                <Skeleton className="h-3 w-10 ml-auto rounded bg-white/10" />
               </div>
             )}
             {Array.from({ length: isMobile ? 4 : 7 }).map((_, day) => (
-              <div key={day} className="min-h-[40px] px-1 py-1 border-l border-border/30">
+              <div key={day} className="min-h-[40px] px-1 py-1 border-l border-white/10">
                 {hour % 3 === 0 && day % 2 === 0 && (
-                  <Skeleton className="h-8 w-full rounded" />
+                  <Skeleton className="h-8 w-full rounded-lg bg-white/10" />
                 )}
               </div>
             ))}
@@ -79,14 +79,14 @@ export function CalendarLoadingSkeleton({ view }: CalendarLoadingSkeletonProps) 
   const itemsToShow = isMobile ? 5 : 8;
   
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-3 shadow-inner shadow-black/20">
       {Array.from({ length: itemsToShow }).map((_, i) => (
         <div key={i} className="flex gap-3">
           <div className={`${isMobile ? 'w-12' : 'w-16'} shrink-0`}>
-            <Skeleton className="h-4 w-10" />
+            <Skeleton className="h-4 w-10 rounded bg-white/10" />
           </div>
           <div className="flex-1">
-            <Skeleton className={`${isMobile ? 'h-12' : 'h-16'} w-full rounded-lg`} />
+            <Skeleton className={`${isMobile ? 'h-12' : 'h-16'} w-full rounded-xl bg-white/10`} />
           </div>
         </div>
       ))}
@@ -101,9 +101,9 @@ export function StatsLoadingSkeleton() {
   return (
     <div className={`grid ${isMobile ? 'grid-cols-2 gap-2' : 'grid-cols-4 gap-4'}`}>
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className={`${isMobile ? 'p-3' : 'p-4'} rounded-lg border bg-card`}>
-          <Skeleton className={`${isMobile ? 'h-6 w-12' : 'h-8 w-16'} mb-1`} />
-          <Skeleton className={`${isMobile ? 'h-3 w-16' : 'h-4 w-20'}`} />
+        <div key={i} className={`${isMobile ? 'p-3' : 'p-4'} rounded-2xl border border-white/10 bg-black/35 shadow-[0_18px_60px_hsl(0_0%_0%/0.25)]`}>
+          <Skeleton className={`${isMobile ? 'h-6 w-12' : 'h-8 w-16'} mb-2 rounded-lg bg-white/10`} />
+          <Skeleton className={`${isMobile ? 'h-3 w-16' : 'h-4 w-20'} rounded bg-white/10`} />
         </div>
       ))}
     </div>
@@ -118,13 +118,13 @@ export function SidebarLoadingSkeleton() {
   return (
     <div className="space-y-3">
       {Array.from({ length: itemsToShow }).map((_, i) => (
-        <div key={i} className={`${isMobile ? 'p-2' : 'p-3'} rounded-lg border`}>
+        <div key={i} className={`${isMobile ? 'p-2' : 'p-3'} rounded-2xl border border-white/10 bg-white/[0.03]`}>
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex-1">
-              <Skeleton className="h-4 w-3/4 mb-1" />
-              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-4 w-3/4 mb-1 rounded bg-white/10" />
+              <Skeleton className="h-3 w-1/2 rounded bg-white/10" />
             </div>
-            <Skeleton className="h-5 w-14 rounded-full" />
+            <Skeleton className="h-5 w-14 rounded-full bg-white/10" />
           </div>
           {!isMobile && (
             <div className="flex items-center gap-3">
