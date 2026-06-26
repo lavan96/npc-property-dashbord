@@ -341,7 +341,7 @@ export default function Reports() {
                   <ChartContainer ref={suburbChartRef} config={chartConfig} className="reports-suburb-chart h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={suburbChartData} margin={{ top: 12, right: 14, left: 0, bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-suburb-grid" />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-pricing-grid" />
                         <XAxis 
                           dataKey="suburb" 
                           angle={-45}
@@ -369,7 +369,7 @@ export default function Reports() {
                         <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
-                  </ChartContainer>
+                    </ChartContainer>
                   ) : (
                     <div className="reports-suburb-empty-state">No suburb listing data available.</div>
                   )}
@@ -389,7 +389,7 @@ export default function Reports() {
                       </div>
                     );
                   })()}
-                  <div className="reports-suburb-stat-grid grid grid-cols-3 gap-3 pt-2 border-t">
+                  <div className="reports-pricing-stat-grid grid grid-cols-3 gap-3 pt-2 border-t">
                     <div className="reports-suburb-stat text-center">
                       <p className="text-lg font-bold text-foreground">{suburbChartData.length}</p>
                       <p className="text-[11px] text-muted-foreground">Suburbs Tracked</p>
@@ -454,7 +454,7 @@ export default function Reports() {
                         />
                       </PieChart>
                     </ResponsiveContainer>
-                  </ChartContainer>
+                    </ChartContainer>
                   ) : (
                     <div className="reports-types-empty-state">No property type data available.</div>
                   )}
@@ -489,36 +489,40 @@ export default function Reports() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="price-range" className="space-y-4">
-              <Card className="ci-card">
-                <CardHeader>
+            <TabsContent value="price-range" className="space-y-4 reports-pricing-suite">
+              <Card className="ci-card reports-pricing-card">
+                <CardHeader className="reports-pricing-card-header">
                   <CardTitle>Price Range Distribution</CardTitle>
                   <CardDescription>Listings grouped by price brackets — identifies the dominant market segment</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
+                <CardContent className="reports-pricing-card-content space-y-4">
+                  {priceRangeChartData.length > 0 ? (
+                    <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="reports-pricing-chart h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={priceRangeChartData}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-suburb-grid" />
-                        <XAxis dataKey="range" fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                      <BarChart data={priceRangeChartData} margin={{ top: 12, right: 14, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-pricing-grid" />
+                        <XAxis dataKey="range" fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }} />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }} />
                         <ChartTooltip 
                           content={({ active, payload }) => {
                             if (!active || !payload?.length) return null;
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
+                              <div className="reports-pricing-tooltip">
                                 <p className="font-semibold text-sm text-foreground">{data.range}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
                               </div>
                             );
                           }}
                         />
-                        <Bar dataKey="count" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
-                  </ChartContainer>
+                    </ChartContainer>
+                  ) : (
+                    <div className="reports-pricing-empty-state">No pricing distribution data available.</div>
+                  )}
                   {/* Price insights row */}
                   {(() => {
                     const validPrices = allListings.filter(l => l.price && l.price > 0).map(l => l.price!).sort((a, b) => a - b);
@@ -526,24 +530,24 @@ export default function Reports() {
                     const p25 = validPrices.length > 0 ? validPrices[Math.floor(validPrices.length * 0.25)] : 0;
                     const p75 = validPrices.length > 0 ? validPrices[Math.floor(validPrices.length * 0.75)] : 0;
                     return (
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t">
-                        <div className="text-center">
+                      <div className="reports-pricing-stat-grid grid grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t">
+                        <div className="reports-pricing-stat text-center">
                           <p className="text-lg font-bold text-foreground">${medianPrice.toLocaleString()}</p>
                           <p className="text-[11px] text-muted-foreground">Median Price</p>
                         </div>
-                        <div className="text-center">
+                        <div className="reports-pricing-stat text-center">
                           <p className="text-lg font-bold text-foreground">${avgPrice.toLocaleString()}</p>
                           <p className="text-[11px] text-muted-foreground">Average Price</p>
                         </div>
-                        <div className="text-center">
+                        <div className="reports-pricing-stat text-center">
                           <p className="text-lg font-bold text-foreground">${p25.toLocaleString()}</p>
                           <p className="text-[11px] text-muted-foreground">25th Percentile</p>
                         </div>
-                        <div className="text-center">
+                        <div className="reports-pricing-stat text-center">
                           <p className="text-lg font-bold text-foreground">${p75.toLocaleString()}</p>
                           <p className="text-[11px] text-muted-foreground">75th Percentile</p>
                         </div>
-                        <div className="text-center">
+                        <div className="reports-pricing-stat text-center">
                           <p className="text-lg font-bold text-foreground">
                             {priceRangeChartData.length > 0 
                               ? priceRangeChartData.reduce((max, d) => d.count > max.count ? d : max, priceRangeChartData[0]).range 
@@ -557,38 +561,42 @@ export default function Reports() {
                 </CardContent>
               </Card>
 
-              <Card className="ci-card">
-                <CardHeader>
+              <Card className="ci-card reports-pricing-card">
+                <CardHeader className="reports-pricing-card-header">
                   <CardTitle>Bedroom Distribution</CardTitle>
                   <CardDescription>Listings by number of bedrooms — reveals the dominant property configuration</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <ChartContainer ref={bedroomChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
+                <CardContent className="reports-pricing-card-content space-y-4">
+                  {bedroomChartData.length > 0 ? (
+                    <ChartContainer ref={bedroomChartRef} config={chartConfig} className="reports-pricing-chart h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={bedroomChartData}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-suburb-grid" />
-                        <XAxis dataKey="beds" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                      <BarChart data={bedroomChartData} margin={{ top: 12, right: 14, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-pricing-grid" />
+                        <XAxis dataKey="beds" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }} />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }} />
                         <ChartTooltip 
                           content={({ active, payload }) => {
                             if (!active || !payload?.length) return null;
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
+                              <div className="reports-pricing-tooltip">
                                 <p className="font-semibold text-sm text-foreground">{data.beds} Bedroom{data.beds !== '1' ? 's' : ''}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
                               </div>
                             );
                           }}
                         />
-                        <Bar dataKey="count" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="hsl(var(--chart-4))" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
-                  </ChartContainer>
+                    </ChartContainer>
+                  ) : (
+                    <div className="reports-pricing-empty-state">No bedroom distribution data available.</div>
+                  )}
                   {/* Bedroom insights */}
-                  <div className="reports-suburb-stat-grid grid grid-cols-3 gap-3 pt-2 border-t">
-                    <div className="text-center">
+                  <div className="reports-pricing-stat-grid grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="reports-pricing-stat text-center">
                       <p className="text-lg font-bold text-foreground">
                         {bedroomChartData.length > 0 
                           ? bedroomChartData.reduce((max, d) => d.count > max.count ? d : max, bedroomChartData[0]).beds 
@@ -596,11 +604,11 @@ export default function Reports() {
                       </p>
                       <p className="text-[11px] text-muted-foreground">Most Common</p>
                     </div>
-                    <div className="text-center">
+                    <div className="reports-pricing-stat text-center">
                       <p className="text-lg font-bold text-foreground">{bedroomChartData.length}</p>
                       <p className="text-[11px] text-muted-foreground">Configurations</p>
                     </div>
-                    <div className="text-center">
+                    <div className="reports-pricing-stat text-center">
                       <p className="text-lg font-bold text-foreground">
                         {allListings.filter(l => l.beds && l.beds > 0).length}
                       </p>
