@@ -1358,18 +1358,18 @@ export default function Calendar() {
         {/* Sidebar Panel with Tabs - Hidden on mobile (accessible via Sheet) */}
         {!isMobile && (
         <Card className={cn(
-          PREMIUM_PANEL, "rounded-2xl transition-all duration-300 overflow-hidden",
+          PREMIUM_PANEL, "rounded-2xl transition-all duration-300 overflow-hidden border-primary/10",
           sidebarCollapsed ? "w-[52px] min-w-[52px]" : "min-w-0"
         )}>
           {sidebarCollapsed ? (
             // Collapsed: compact vertical icon strip
-            <div className="flex flex-col items-center py-3 gap-1">
+            <div className="flex flex-col items-center gap-2 py-3">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 mb-2"
+                    className="mb-1 h-9 w-9 rounded-xl border border-white/10 text-zinc-300 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
                     onClick={() => setSidebarCollapsed(false)}
                   >
                     <PanelLeft className="h-4 w-4" />
@@ -1394,10 +1394,10 @@ export default function Calendar() {
                             handleTogglePin(tab.id);
                           }}
                           className={cn(
-                            'h-9 w-9 flex flex-col items-center justify-center rounded-md transition-colors relative gap-0.5',
+                            'relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
                             sidebarTab === tab.id
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-muted text-muted-foreground hover:text-foreground',
+                              ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_10px_24px_hsl(var(--primary)/0.14)]'
+                              : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-primary/35 hover:bg-primary/10 hover:text-primary',
                             isPinned && 'ring-1 ring-primary/30'
                           )}
                         >
@@ -1421,11 +1421,14 @@ export default function Calendar() {
           ) : (
             // Expanded: full sidebar with header and content
             <>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">Tools</span>
+              <CardHeader className="border-b border-white/10 bg-white/[0.02] pb-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-sm font-semibold text-white">Tools</span>
+                    <p className="mt-0.5 text-[11px] text-zinc-500">Calendar command sidebar</p>
+                  </div>
                   <div className="flex items-center gap-1 ml-auto">
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setQuickAddModalOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-9 rounded-xl border-primary/30 bg-primary/15 px-3 text-xs font-semibold text-primary shadow-sm shadow-primary/10 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/20 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45" onClick={() => setQuickAddModalOpen(true)}>
                       <Plus className="h-3 w-3 mr-1" />
                       Quick Add
                     </Button>
@@ -1434,7 +1437,7 @@ export default function Calendar() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
                           onClick={() => setSidebarCollapsed(true)}
                         >
                           <PanelLeftClose className="h-4 w-4" />
@@ -1447,7 +1450,7 @@ export default function Calendar() {
 
                 <TooltipProvider delayDuration={100}>
                   <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                    <TabsList className="w-full flex flex-wrap h-auto gap-0.5 p-1">
+                    <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-black/35 p-2 shadow-inner shadow-black/20">
                       {SIDEBAR_TABS.map((tab) => {
                         const isPinned = pinnedTabs.includes(tab.id);
                         return (
@@ -1456,7 +1459,7 @@ export default function Calendar() {
                               <TabsTrigger
                                 value={tab.id}
                                 className={cn(
-                                  "text-xs px-0.5 relative",
+                                  "relative h-11 rounded-xl border border-white/10 bg-white/[0.03] p-0 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
                                   isPinned && "ring-1 ring-primary/30"
                                 )}
                                 onContextMenu={(e) => {
@@ -1488,7 +1491,7 @@ export default function Calendar() {
 
               <CardContent className="p-3">
               {/* Mini Calendar Navigator */}
-              <div className="mb-4 pb-3 border-b">
+              <div className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-3 shadow-inner shadow-black/20">
                 <MiniCalendarNavigator
                   currentMonth={currentMonth}
                   setCurrentMonth={setCurrentMonth}
@@ -1511,8 +1514,8 @@ export default function Calendar() {
                     {isLoading ? (
                       <SidebarLoadingSkeleton />
                     ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] py-8 text-center text-muted-foreground">
+                        <CalendarIcon className="h-8 w-8 mx-auto mb-2 text-primary/60" />
                         <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
                       </div>
                     ) : (
