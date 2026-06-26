@@ -1011,50 +1011,50 @@ export default function Calendar() {
       {isLoading ? (
         <StatsLoadingSkeleton />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg border border-white/10 bg-white/[0.04] shrink-0">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-black/45 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight">{calendars.length}</div>
-                <p className="text-xs text-muted-foreground">Calendars</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-white">{calendars.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Calendars</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-zinc-400 transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
+                <CalendarIcon className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
-          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg border border-white/10 bg-white/[0.04] shrink-0">
-                <LayoutList className="h-4 w-4 text-muted-foreground" />
-              </div>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-black/45 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight">{filteredEvents.length}</div>
-                <p className="text-xs text-muted-foreground">Total Events</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-white">{filteredEvents.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Total Events</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-zinc-400 transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
+                <LayoutList className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
-          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
-                <Users className="h-4 w-4 text-emerald-500" />
-              </div>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/35 hover:bg-emerald-950/10 hover:shadow-[0_22px_70px_hsl(160_84%_20%/0.16)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight text-emerald-500">
+                <div className="text-3xl font-bold leading-none tracking-tight text-emerald-400">
                   {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
                 </div>
-                <p className="text-xs text-muted-foreground">Confirmed</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/70">Confirmed</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-emerald-400 transition-all group-hover:border-emerald-300/40 group-hover:bg-emerald-400/15">
+                <Users className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
-          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
-                <Clock className="h-4 w-4 text-blue-500" />
-              </div>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_22px_70px_hsl(var(--primary)/0.16)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight text-blue-500">{upcomingEvents.length}</div>
-                <p className="text-xs text-muted-foreground">Upcoming</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-primary">{upcomingEvents.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary/75">Upcoming</p>
+              </div>
+              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3 text-primary transition-all group-hover:border-primary/40 group-hover:bg-primary/15">
+                <Clock className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
