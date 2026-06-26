@@ -90,3 +90,12 @@ export {
   type RepairPassReport,
   type RepairLoopResult,
 } from './repair';
+
+
+export {
+  PAGE_CONTEXT_RENDER_ARTIFACT_MANIFEST_VERSION,
+  buildPageContextRenderArtifactManifest,
+  pageContextRenderManifestToReviewArtifacts,
+  type PageContextRenderArtifactManifest,
+  type PageContextSourceRenderArtifact,
+} from './pageContextArtifacts';
