@@ -7,7 +7,7 @@
  * the generated template for manual refinement.
  */
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, FileCode2, Layers3, Loader2, MousePointerClick, RotateCw, Wand2 } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, FileCode2, Layers3, Loader2, MousePointerClick, RotateCw, Wand2 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
 import type { ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { CdirLayer } from '@/lib/reportTemplate/ingestion/cdir';
+import type { VisualQaReviewSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 
 interface Props {
   open: boolean;
@@ -31,6 +32,10 @@ interface Props {
   onRunReconciliation?: () => Promise<void> | void;
   reconciliationAvailable?: boolean;
   reconciliationBusy?: boolean;
+  onRunVisualQa?: () => Promise<void> | void;
+  visualQaAvailable?: boolean;
+  visualQaBusy?: boolean;
+  visualQaSummary?: VisualQaReviewSummary | null;
 }
 
 function flattenLayers(layers: CdirLayer[]): CdirLayer[] {
@@ -56,13 +61,15 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
   const totalLayers = draft?.cdir.pages.reduce((sum, page) => sum + flattenLayers(page.layers).length, 0) ?? 0;
   const fallbackLayers = draft?.cdir.pages.reduce((sum, page) => sum + flattenLayers(page.layers).filter((layer) => layer.kind === 'image' && layer.fallbackRaster).length, 0) ?? 0;
   const sourceRasterArtifacts = draft?.artifacts.filter((artifact) => artifact.kind === 'source-raster') ?? [];
+  const generatedRasterArtifacts = draft?.artifacts.filter((artifact) => artifact.kind === 'reconstructed-raster') ?? [];
+  const diffRasterArtifacts = draft?.artifacts.filter((artifact) => artifact.kind === 'diff-raster') ?? [];
 
   const recordDecision = async (value: ImportReviewDecision) => {
     if (!onRecordDecision) return;
@@ -119,6 +126,51 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
                     </p>
                   </div>
                   <Badge variant="outline">ImportAsset</Badge>
+                </div>
+              </Card>
+            )}
+
+            {visualQaSummary && (
+              <Card className="p-4 border-success/30 bg-success/5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Activity className="h-4 w-4 text-success" /> Visual QA persisted
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Render diff score {pct(visualQaSummary.overallScore)} across {visualQaSummary.pageCount} page{visualQaSummary.pageCount === 1 ? '' : 's'}.
+                      {visualQaSummary.persisted ? ' Visual-quality artifacts were saved for diagnostics.' : ' Preview-only run; artifacts were not uploaded.'}
+                    </p>
+                  </div>
+                  <Badge variant={visualQaSummary.manualReviewRequired ? 'secondary' : 'default'}>
+                    {visualQaSummary.manualReviewRequired ? 'Manual review' : 'QA passed'}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-4 text-sm">
+                  <Metric label="Visual score" value={pct(visualQaSummary.overallScore)} />
+                  <Metric label="Warnings" value={String(visualQaSummary.warningCount)} tone={visualQaSummary.warningCount > 0 ? 'warning' : 'normal'} />
+                  <Metric label="Uploaded" value={String(visualQaSummary.uploadedCount)} />
+                  <Metric label="Diff refs" value={String(diffRasterArtifacts.length)} />
+                </div>
+                {visualQaSummary.problems.length > 0 && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {visualQaSummary.problems.slice(0, 3).join(' · ')}
+                    {visualQaSummary.problems.length > 3 ? ` +${visualQaSummary.problems.length - 3} more` : ''}
+                  </p>
+                )}
+              </Card>
+            )}
+
+            {(generatedRasterArtifacts.length > 0 || diffRasterArtifacts.length > 0) && (
+              <Card className="p-4 border-primary/20 bg-primary/5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium">Visual QA render artifacts attached</div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {generatedRasterArtifacts.length} generated raster{generatedRasterArtifacts.length === 1 ? '' : 's'} and {diffRasterArtifacts.length} diff artifact{diffRasterArtifacts.length === 1 ? '' : 's'} are now linked to this review.
+                    </p>
+                  </div>
+                  <Badge variant="outline">Phase 5</Badge>
                 </div>
               </Card>
             )}
@@ -232,6 +284,12 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
           {draft?.recommendedDecision === 'retry' && onRetry && (
             <Button variant="secondary" onClick={onRetry}>
               <RotateCw className="h-4 w-4 mr-1" /> Retry import
+            </Button>
+          )}
+          {onRunVisualQa && (
+            <Button variant="secondary" onClick={onRunVisualQa} disabled={!visualQaAvailable || !!visualQaBusy}>
+              {visualQaBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Activity className="h-4 w-4 mr-1" />}
+              Run visual QA
             </Button>
           )}
           {onRunReconciliation && (

@@ -140,3 +140,12 @@ export {
   type AttachVisualQualityToImportReviewResult,
   type VisualQaReviewSummary,
 } from './importReviewVisualQuality';
+
+
+export {
+  IMPORT_REVIEW_VISUAL_QA_PIPELINE_VERSION,
+  runImportReviewVisualQualityPipeline,
+  type LoadedImportReviewForVisualQuality,
+  type RunImportReviewVisualQualityPipelineOptions,
+  type RunImportReviewVisualQualityPipelineResult,
+} from './importReviewPipeline';
