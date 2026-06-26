@@ -1557,8 +1557,9 @@ html {
     @apply text-3xl font-bold tracking-tight text-foreground;
   }
 
-  .reports-secondary-metric .text-xs.text-muted-foreground {
-    @apply leading-5 text-muted-foreground/90;
+  .reports-secondary-metric .text-xs[class~='text-muted-foreground'] {
+    line-height: 1.25rem;
+    color: hsl(var(--muted-foreground) / 0.9);
   }
 
   .reports-secondary-metric-icon {
@@ -2826,9 +2827,9 @@ html {
 
   .reports-page-premium [data-slot='card-description'],
   .reports-investment-generator [data-slot='card-description'],
-  .reports-page-premium .text-muted-foreground,
-  .reports-investment-generator .text-muted-foreground {
-    @apply text-muted-foreground/90;
+  .reports-page-premium [class~='text-muted-foreground'],
+  .reports-investment-generator [class~='text-muted-foreground'] {
+    color: hsl(var(--muted-foreground) / 0.9);
   }
 
   .reports-suburb-card,
