@@ -16,7 +16,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image, Car } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, FileText, Link, Upload, X, Image, Car, CalendarDays, ChevronRight, AlertCircle } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
@@ -1442,7 +1442,7 @@ export function InvestmentReportGenerator() {
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
                 {isPropertySpecific ? (
                   <div className="reports-investment-mode-shell overflow-x-auto -mx-1 px-1 scrollbar-hide">
-                    <TabsList className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
+                    <TabsList aria-label="Investment report input method" className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
                       <TabsTrigger value="manual" className="reports-investment-mode-tab">
                         <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Manual
@@ -1458,7 +1458,7 @@ export function InvestmentReportGenerator() {
                     </TabsList>
                   </div>
                 ) : (
-                  <TabsList className="reports-investment-mode-list reports-investment-mode-single grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
+                  <TabsList aria-label="Investment report input method" className="reports-investment-mode-list reports-investment-mode-single grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
                     <TabsTrigger value="manual" className="reports-investment-mode-tab">
                       <MapPin className="h-4 w-4" />
                       Manual Entry
@@ -1877,53 +1877,55 @@ export function InvestmentReportGenerator() {
               )}
 
               {/* Info Box */}
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-muted-foreground space-y-1">
+              <div className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-card to-card p-5 shadow-sm space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary ring-1 ring-primary/15">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-3">
                     {isPropertySpecific ? (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>Property basics and financial snapshot</li>
-                          <li>Investment & growth potential analysis</li>
-                          <li>Location & suburb profile</li>
-                          <li>10-year projection calculations</li>
-                          <li>Investment recommendation with rating</li>
-                          <li>Curated sources and citations</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Property basics and financial snapshot</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Investment & growth potential analysis</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Location & suburb profile</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />10-year projection calculations</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Investment recommendation with rating</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Curated sources and citations</li>
                         </ul>
                       </>
                     ) : queryType === 'zipcode' ? (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>Postcode market overview and median prices</li>
-                          <li>Capital growth trends and rental yields</li>
-                          <li>Demographic and economic profile</li>
-                          <li>Infrastructure and development pipeline</li>
-                          <li>Investment potential assessment</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Postcode market overview and median prices</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Capital growth trends and rental yields</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Demographic and economic profile</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Infrastructure and development pipeline</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Investment potential assessment</li>
                         </ul>
                       </>
                     ) : queryType === 'suburb' ? (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>Suburb market performance snapshot</li>
-                          <li>Property price trends and rental data</li>
-                          <li>Demographics and lifestyle factors</li>
-                          <li>Amenities and transport analysis</li>
-                          <li>Growth corridor assessment</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Suburb market performance snapshot</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Property price trends and rental data</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Demographics and lifestyle factors</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Amenities and transport analysis</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Growth corridor assessment</li>
                         </ul>
                       </>
                     ) : (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>State-wide market conditions overview</li>
-                          <li>Regional growth hotspots</li>
-                          <li>Government policy and regulatory impacts</li>
-                          <li>Population and migration trends</li>
-                          <li>Top investment corridors and recommendations</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />State-wide market conditions overview</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Regional growth hotspots</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Government policy and regulatory impacts</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Population and migration trends</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Top investment corridors and recommendations</li>
                         </ul>
                       </>
                     )}
@@ -1932,17 +1934,18 @@ export function InvestmentReportGenerator() {
               </div>
 
               {/* Token cost + balance status */}
-              <ReportGenerationStatus
-                kind="report.investment.compass"
-                estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 })}
-                className="mb-3"
-              />
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <span className="text-xs text-muted-foreground">Projected token cost (updates with inputs)</span>
-                <TokenCostEstimate
+              <div className="space-y-3 rounded-2xl border bg-card/80 p-4 shadow-sm">
+                <ReportGenerationStatus
                   kind="report.investment.compass"
-                  options={{ aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 }}
+                  estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 })}
                 />
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-3 py-2">
+                  <span className="text-xs font-medium text-muted-foreground">Projected token cost (updates with inputs)</span>
+                  <TokenCostEstimate
+                    kind="report.investment.compass"
+                    options={{ aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 }}
+                  />
+                </div>
               </div>
 
               {/* Generate Button */}
@@ -1950,7 +1953,7 @@ export function InvestmentReportGenerator() {
                 onClick={handleGenerate}
                 disabled={isGenerating || !query.trim() || (isPropertySpecific && (!propertyPrice || parseFloat(propertyPrice) <= 0))}
                 size="lg"
-                className="w-full shadow-lg shadow-primary/20"
+                className="w-full h-12 shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:border disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
               >
                 {isGenerating ? (
                   <>
@@ -1966,8 +1969,11 @@ export function InvestmentReportGenerator() {
               </Button>
 
               {isGenerating && (
-                <div className="text-center space-y-2">
-                  <p className="text-sm text-muted-foreground">
+                <div className="reports-processing-state text-center space-y-2">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
                     Analyzing market data and generating comprehensive report...
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -2042,12 +2048,14 @@ export function InvestmentReportGenerator() {
 
                   {/* Scrape Error */}
                   {scrapeError && (
-                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-destructive">Scraping Failed</p>
-                          <p className="text-sm text-destructive/80">{scrapeError}</p>
+                    <div className="reports-validation-state reports-validation-state-error">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 rounded-full bg-destructive/10 p-2 text-destructive">
+                          <AlertCircle className="h-4 w-4" />
+                        </span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-destructive">Scraping Failed</p>
+                          <p className="text-sm leading-6 text-destructive/80">{scrapeError}</p>
                         </div>
                       </div>
                     </div>
@@ -2395,12 +2403,14 @@ export function InvestmentReportGenerator() {
 
                   {/* PDF Error */}
                   {pdfError && (
-                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-destructive">Processing Failed</p>
-                          <p className="text-sm text-destructive/80">{pdfError}</p>
+                    <div className="reports-validation-state reports-validation-state-error">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 rounded-full bg-destructive/10 p-2 text-destructive">
+                          <AlertCircle className="h-4 w-4" />
+                        </span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-destructive">Processing Failed</p>
+                          <p className="text-sm leading-6 text-destructive/80">{pdfError}</p>
                         </div>
                       </div>
                     </div>
@@ -2640,54 +2650,80 @@ export function InvestmentReportGenerator() {
 
         {/* Recent Reports Sidebar */}
         <div>
-          <Card className="ci-card-premium reports-recent-panel">
-            <CardHeader className="reports-investment-panel-header border-b border-border/60">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Recent Reports
-              </CardTitle>
-              <CardDescription>
-                Your recently generated investment analyses
-              </CardDescription>
+          <Card className="ci-card-premium reports-recent-panel overflow-hidden border-primary/10 bg-gradient-to-b from-card via-card to-muted/20 shadow-xl shadow-primary/5">
+            <CardHeader className="reports-investment-panel-header border-b border-border/60 bg-muted/20 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1.5">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <span className="rounded-full bg-primary/10 p-2 text-primary ring-1 ring-primary/15">
+                      <FileText className="h-4 w-4" />
+                    </span>
+                    Recent Reports
+                  </CardTitle>
+                  <CardDescription className="leading-relaxed">
+                    Your recently generated investment analyses
+                  </CardDescription>
+                </div>
+                {recentReports.length > 0 && (
+                  <Badge variant="outline" className="rounded-full bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                    {recentReports.length}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
-            <CardContent className="reports-recent-panel-content">
+            <CardContent className="reports-recent-panel-content p-4 sm:p-5">
               {recentReports.length === 0 ? (
-                <div className="reports-recent-empty text-center py-8 space-y-2">
+                <div className="reports-recent-empty rounded-2xl border border-dashed border-border/70 bg-background/50 px-4 py-10 text-center space-y-2">
                   <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
-                  <p className="text-sm text-muted-foreground">No reports generated yet</p>
+                  <p className="text-sm font-medium text-foreground">No reports generated yet</p>
                   <p className="text-xs text-muted-foreground">Generate your first report to see it here</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {recentReports.map((report) => (
-                    <div
-                      key={report.id}
-                      className="reports-recent-item rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 cursor-pointer"
-                      onClick={() => {
-                        window.location.href = `/generated-reports?reportId=${report.id}`;
-                      }}
-                    >
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium line-clamp-2">
-                          {report.property_address}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(report.created_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </p>
-                          {(report as any).status === 'processing' && (
-                            <Badge variant="secondary" className="text-xs animate-pulse">Processing</Badge>
-                          )}
+                <div className="space-y-4">
+                  <div className="max-h-[34rem] space-y-3 overflow-y-auto pr-1">
+                    {recentReports.map((report) => (
+                      <div
+                        key={report.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open report for ${report.property_address}`}
+                        className="reports-recent-item group cursor-pointer rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/10 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        onClick={() => {
+                          window.location.href = `/generated-reports?reportId=${report.id}`;
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            window.location.href = `/generated-reports?reportId=${report.id}`;
+                          }
+                        }}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-semibold leading-5 text-foreground line-clamp-2">
+                              {report.property_address}
+                            </p>
+                            <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground opacity-50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary group-hover:opacity-100" />
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              {new Date(report.created_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                            {(report as any).status === 'processing' && (
+                              <Badge variant="secondary" className="w-fit rounded-full border border-primary/15 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary shadow-sm animate-pulse">Processing</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                   
                   <Separator />
                   <Button
                     variant="outline"
                     size="sm"
-                    className="reports-recent-all-button w-full shadow-lg shadow-primary/20"
+                    className="reports-recent-all-button w-full rounded-xl border-primary/25 bg-background/80 font-semibold text-primary shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                     onClick={() => {
                       window.location.href = '/generated-reports';
                     }}
