@@ -3925,12 +3925,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <div className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4">
+      <DialogContent className="max-w-[96vw] h-[96vh] flex flex-col gap-0 overflow-hidden border-slate-200 bg-gradient-to-b from-slate-50 to-background p-0 shadow-2xl">
+        <div className="border-b bg-background/95 px-4 pb-4 pt-4 backdrop-blur md:px-6 md:pt-6">
           <DialogHeader>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
-                <DialogTitle className="text-lg md:text-xl flex items-center gap-2 flex-wrap">
+                <DialogTitle className="flex flex-wrap items-center gap-2 text-lg font-semibold tracking-tight md:text-2xl">
                   <Calculator className="h-5 w-5 shrink-0" />
                   <span className="hidden sm:inline">10-Year Cash Flow Analysis</span>
                   <span className="sm:hidden">Cash Flow Analysis</span>
@@ -4051,10 +4051,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
         <Separator />
 
-        <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
+        <div className="flex-1 overflow-auto px-4 py-5 md:px-6">
           <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-              <Card>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 md:gap-4">
+              <Card className="border-slate-200/80 bg-background/95 shadow-sm">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Home className="h-4 w-4" />
@@ -4064,7 +4064,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <p className="text-xs text-muted-foreground">Current market value</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-slate-200/80 bg-background/95 shadow-sm">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4" />
@@ -4074,7 +4074,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <p className="text-xs text-muted-foreground">Original purchase price</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-slate-200/80 bg-background/95 shadow-sm">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <TrendingUp className="h-4 w-4" />
@@ -4086,7 +4086,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <p className="text-xs text-muted-foreground">Projected property value</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-slate-200/80 bg-background/95 shadow-sm">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4" />
@@ -4098,7 +4098,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   <p className="text-xs text-muted-foreground">After-tax annual cash flow</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="border-slate-200/80 bg-background/95 shadow-sm">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Percent className="h-4 w-4" />
