@@ -46,39 +46,39 @@ export function MiniCalendarNavigator({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-6 w-6"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
         >
-          <ChevronLeft className="h-3 w-3" />
+          <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
-        <span className="text-xs font-medium">{format(currentMonth, 'MMM yyyy')}</span>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-6 w-6"
+        <span className="text-sm font-semibold tracking-tight text-white">{format(currentMonth, 'MMM yyyy')}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
         >
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="h-3.5 w-3.5" />
         </Button>
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-1 rounded-xl border border-white/10 bg-black/30 p-1">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-          <div key={i} className="text-center text-[10px] text-muted-foreground font-medium py-0.5">
+          <div key={i} className="py-1 text-center text-[10px] font-semibold text-zinc-500">
             {day}
           </div>
         ))}
       </div>
 
       {/* Days grid */}
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-1">
         {days.map((day) => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const eventCount = eventsPerDay[dateKey] || 0;
@@ -91,18 +91,18 @@ export function MiniCalendarNavigator({
               key={dateKey}
               onClick={() => onDateSelect(day)}
               className={cn(
-                'relative h-6 w-6 text-[10px] rounded-full transition-all flex items-center justify-center',
-                isSelected && 'bg-primary text-primary-foreground',
-                !isSelected && isTodayDate && 'ring-1 ring-primary text-primary',
-                !isSelected && !isTodayDate && 'hover:bg-muted',
-                !isCurrentMonth && 'text-muted-foreground/40'
+                'relative flex h-7 w-full items-center justify-center rounded-xl border text-[10px] font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                isSelected && 'border-primary/70 bg-primary/20 text-primary shadow-[0_8px_20px_hsl(var(--primary)/0.14)]',
+                !isSelected && isTodayDate && 'border-primary/45 bg-primary/10 text-primary',
+                !isSelected && !isTodayDate && 'border-transparent text-zinc-300 hover:border-primary/25 hover:bg-primary/10 hover:text-primary',
+                !isCurrentMonth && 'text-zinc-600 hover:text-zinc-400'
               )}
             >
               {format(day, 'd')}
               {eventCount > 0 && !isSelected && (
-                <span 
+                <span
                   className={cn(
-                    'absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full',
+                    'absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full',
                     eventCount > 3 ? 'bg-destructive' : 'bg-primary'
                   )}
                 />
@@ -113,10 +113,10 @@ export function MiniCalendarNavigator({
       </div>
 
       {/* Today button */}
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="w-full h-7 text-xs"
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-9 w-full rounded-xl border-primary/35 bg-primary/15 text-xs font-semibold text-primary transition-all hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/20 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-[0.98]"
         onClick={goToToday}
       >
         Today
