@@ -128,3 +128,15 @@ export {
   type SourceRenderPageRaster,
   type VisualQualityFromRenderPairs,
 } from './renderDiffPersistence';
+
+
+export {
+  IMPORT_REVIEW_VISUAL_QA_VERSION,
+  attachVisualQualityToImportReview,
+  generatedRastersToImportReviewArtifacts,
+  summarizeVisualQualityForReview,
+  visualQualityReportToDiffReviewArtifacts,
+  type AttachVisualQualityToImportReviewOptions,
+  type AttachVisualQualityToImportReviewResult,
+  type VisualQaReviewSummary,
+} from './importReviewVisualQuality';
