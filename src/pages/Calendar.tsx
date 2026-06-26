@@ -1506,17 +1506,29 @@ export default function Calendar() {
 
               {sidebarTab === 'events' && (
                 <div>
-                  <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
-                  </h4>
+                  <div className="mb-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
+                      <Clock className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">
+                        {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
+                      </h4>
+                      <p className="text-[11px] text-zinc-500">
+                        {selectedDate ? 'Selected day agenda' : 'Next scheduled appointments'}
+                      </p>
+                    </div>
+                  </div>
                   <div>
                     {isLoading ? (
                       <SidebarLoadingSkeleton />
                     ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] py-8 text-center text-muted-foreground">
-                        <CalendarIcon className="h-8 w-8 mx-auto mb-2 text-primary/60" />
-                        <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-muted-foreground">
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                          <CalendarIcon className="h-6 w-6" />
+                        </div>
+                        <p className="text-sm font-medium text-zinc-300">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                        <p className="mt-1 text-xs text-zinc-500">Use Quick Add to schedule from this panel.</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
