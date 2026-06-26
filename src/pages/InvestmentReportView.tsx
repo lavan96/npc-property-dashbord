@@ -164,6 +164,7 @@ export default function InvestmentReportView() {
         onCashFlow={() => navigate(`/cash-flow-analysis?reportId=${report.id}`)}
         onEdit={() => setEditorOpen(true)}
         onOverride={() => setOverrideModalOpen(true)}
+        onManageHeroImages={() => setHeroDialogOpen(true)}
         onDownload={handleDownload}
       />
 
