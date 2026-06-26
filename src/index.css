@@ -1712,3 +1712,87 @@ html {
     @apply flex min-h-[250px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
   }
 }
+
+@layer components {
+  .reports-geographic-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-geographic-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-location-matrix-card {
+    @apply border-primary/20;
+  }
+
+  .reports-geographic-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-geographic-card-header [data-slot='card-title'],
+  .reports-geographic-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-geographic-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-geographic-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-location-row {
+    @apply flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .reports-location-label {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .reports-location-meta {
+    @apply mt-1 text-xs leading-5 text-muted-foreground/90;
+  }
+
+  .reports-location-badges {
+    @apply flex shrink-0 flex-wrap items-center gap-2;
+  }
+
+  .reports-location-badge {
+    @apply rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em];
+  }
+
+  .reports-activity-high {
+    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+  }
+
+  .reports-activity-medium {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-activity-low {
+    @apply border-border/70 bg-background/70 text-muted-foreground;
+  }
+
+  .reports-geographic-chart {
+    @apply w-full rounded-2xl bg-background/35 p-2;
+  }
+
+  .reports-geographic-chart .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.45);
+  }
+
+  .reports-geographic-chart .recharts-bar-rectangle path,
+  .reports-geographic-chart .recharts-scatter-symbol {
+    filter: drop-shadow(0 7px 12px hsl(0 0% 0% / 0.14));
+  }
+
+  .reports-geographic-tooltip {
+    @apply rounded-2xl border-primary/25 bg-popover/95 px-3 py-2 shadow-xl shadow-black/20 backdrop-blur;
+  }
+
+  .reports-geographic-empty-state {
+    @apply flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}

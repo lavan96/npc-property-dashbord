@@ -87,96 +87,116 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
     avgConfidence: { label: "Confidence", color: "hsl(var(--chart-4))" },
   };
 
+  const topSuburbRows = geoData.topSuburbs.slice(0, 8);
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
+    <div className="space-y-6 reports-geographic-suite">
+      <Card className="reports-geographic-card reports-location-matrix-card">
+        <CardHeader className="reports-geographic-card-header">
           <CardTitle>Suburb Performance Matrix</CardTitle>
           <CardDescription>Top suburbs by listing volume with price and quality metrics</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="reports-geographic-card-content">
           <div className="space-y-4">
-            <div className="grid gap-2">
-              {geoData.topSuburbs.slice(0, 8).map((suburb) => (
-                <div key={suburb.suburb} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">{suburb.suburb}</div>
-                    <div className="text-sm text-muted-foreground">
+            <div className="grid gap-3">
+              {topSuburbRows.length > 0 ? topSuburbRows.map((suburb) => (
+                <div key={suburb.suburb} className="reports-location-row">
+                  <div className="min-w-0 flex-1">
+                    <div className="reports-location-label">{suburb.suburb}</div>
+                    <div className="reports-location-meta">
                       {suburb.count} listings • ${suburb.avgPrice.toLocaleString()} avg
                       {suburb.state && ` • ${suburb.state}`}
                       {suburb.postcode && ` ${suburb.postcode}`}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="reports-location-badges">
                     <Badge variant={
-                      suburb.marketActivity === 'High' ? 'default' : 
+                      suburb.marketActivity === 'High' ? 'default' :
                       suburb.marketActivity === 'Medium' ? 'secondary' : 'outline'
-                    }>
+                    } className={`reports-location-badge reports-activity-${suburb.marketActivity.toLowerCase()}`}>
                       {suburb.marketActivity}
                     </Badge>
-                    <Badge 
+                    <Badge
                       variant={suburb.avgConfidence > 70 ? 'default' : suburb.avgConfidence > 50 ? 'secondary' : 'destructive'}
+                      className="reports-location-badge"
                     >
                       {suburb.avgConfidence}% conf.
                     </Badge>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="reports-geographic-empty-state">No geographic location data available.</div>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
+        <Card className="reports-geographic-card">
+          <CardHeader className="reports-geographic-card-header">
             <CardTitle>Suburb Volume Distribution</CardTitle>
             <CardDescription>Listing count by location</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
+          <CardContent className="reports-geographic-card-content">
+            {topSuburbRows.length > 0 ? (
+              <ChartContainer config={chartConfig} className="reports-geographic-chart h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={geoData.topSuburbs.slice(0, 8)}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                <BarChart data={topSuburbRows} margin={{ top: 12, right: 12, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="reports-geographic-grid" />
                   <XAxis 
                     dataKey="suburb" 
                     angle={-45}
                     textAnchor="end"
                     height={80}
                     fontSize={12}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }}
                   />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" fill="hsl(var(--chart-1))" />
+                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                  <ChartTooltip content={<ChartTooltipContent className="reports-geographic-tooltip" />} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </ChartContainer>
+              </ChartContainer>
+            ) : (
+              <div className="reports-geographic-empty-state">No suburb volume data available.</div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="reports-geographic-card">
+          <CardHeader className="reports-geographic-card-header">
             <CardTitle>Price vs Volume Analysis</CardTitle>
             <CardDescription>Relationship between average price and listing volume</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
+          <CardContent className="reports-geographic-card-content">
+            {geoData.priceVsVolume.length > 0 ? (
+              <ChartContainer config={chartConfig} className="reports-geographic-chart h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart data={geoData.priceVsVolume}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                <ScatterChart data={geoData.priceVsVolume} margin={{ top: 12, right: 18, left: 0, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="reports-geographic-grid" />
                   <XAxis 
                     dataKey="x" 
                     name="Listings"
                     type="number"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }}
                   />
                   <YAxis 
                     dataKey="y" 
                     name="Avg Price"
                     type="number"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }}
                     tickFormatter={(value) => `$${Math.round(value / 1000)}k`}
                   />
                   <ChartTooltip 
-                    content={<ChartTooltipContent 
+                    content={<ChartTooltipContent
+                      className="reports-geographic-tooltip"
                       formatter={(value: any, name: string, props: any) => {
                         if (name === 'y') return [`$${parseInt(value).toLocaleString()}`, 'Avg Price'];
                         if (name === 'x') return [value, 'Listings'];
@@ -188,14 +208,19 @@ export function GeographicAnalysis({ listings }: GeographicAnalysisProps) {
                         }
                         return label;
                       }}
-                    />} 
+                    />}
                   />
-                  <Scatter 
+                  <Scatter
                     fill="hsl(var(--chart-3))"
+                    stroke="hsl(var(--background))"
+                    strokeWidth={1.5}
                   />
                 </ScatterChart>
               </ResponsiveContainer>
-            </ChartContainer>
+              </ChartContainer>
+            ) : (
+              <div className="reports-geographic-empty-state">No price versus volume data available.</div>
+            )}
           </CardContent>
         </Card>
       </div>
