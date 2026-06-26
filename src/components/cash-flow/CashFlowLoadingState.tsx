@@ -1,5 +1,19 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export function CashFlowLoadingState() {
-  return <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{[1,2,3,4,5,6].map((i)=><Card key={i} className="animate-pulse"><CardHeader><div className="h-4 w-3/4 rounded bg-muted"/><div className="mt-2 h-3 w-1/2 rounded bg-muted"/></CardHeader><CardContent><div className="h-28 rounded bg-muted"/></CardContent></Card>)}</div>;
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <Card key={i} className="animate-pulse">
+          <CardHeader>
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-3 bg-muted rounded w-1/2 mt-2"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-20 bg-muted rounded"></div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 }

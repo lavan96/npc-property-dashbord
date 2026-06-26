@@ -194,12 +194,8 @@ export default function CashFlowAnalysis() {
   };
 
   return (
-    <div className="space-y-6 bg-gradient-to-b from-slate-50 to-background p-4 md:p-6">
-      <CashFlowPageHero
-        dateRangeLabel={dateRangeLabel}
-        totalReports={reports.length}
-        readyReports={filteredReports.length}
-      />
+    <div className="space-y-6 p-6">
+      <CashFlowPageHero dateRangeLabel={dateRangeLabel} />
 
       <CashFlowToolbar
         searchQuery={searchQuery}

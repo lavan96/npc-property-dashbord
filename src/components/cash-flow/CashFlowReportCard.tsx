@@ -23,40 +23,70 @@ export function CashFlowReportCard({ report, buildType, gradeInfo, isOpening, on
   const isLandOnly = buildType === 'land_only';
 
   return (
-    <Card className="group overflow-hidden border-slate-200/80 bg-gradient-to-b from-background to-muted/20 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+    <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-2 text-base leading-snug">{report.property_address}</CardTitle>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Badge variant={isNewBuild ? 'default' : isLandOnly ? 'outline' : 'secondary'} className="text-xs">
-              {isNewBuild ? <><Building className="mr-1 h-3 w-3" />New Build</> : isLandOnly ? <><MapPin className="mr-1 h-3 w-3" />Land Only</> : <><Home className="mr-1 h-3 w-3" />Existing</>}
+          <CardTitle className="text-base line-clamp-2">
+            {report.property_address}
+          </CardTitle>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge
+              variant={isNewBuild ? "default" : isLandOnly ? "outline" : "secondary"}
+              className="text-xs"
+            >
+              {isNewBuild ? (
+                <><Building className="h-3 w-3 mr-1" />New Build</>
+              ) : isLandOnly ? (
+                <><MapPin className="h-3 w-3 mr-1" />Land Only</>
+              ) : (
+                <><Home className="h-3 w-3 mr-1" />Existing</>
+              )}
             </Badge>
-            {gradeInfo && <Badge className={`${gradeInfo.color} text-white shadow-sm`}>{gradeInfo.grade}</Badge>}
+            {gradeInfo && (
+              <Badge className={`${gradeInfo.color} text-white`}>
+                {gradeInfo.grade}
+              </Badge>
+            )}
           </div>
         </div>
-        <CardDescription>{format(new Date(report.created_at), 'dd MMM yyyy')}</CardDescription>
+        <CardDescription>
+          {format(new Date(report.created_at), 'dd MMM yyyy')}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <ReadinessMetric label="Purchase price" value={`$${purchasePrice.toLocaleString()}`} />
-          <ReadinessMetric label="Weekly rent" value={`$${weeklyRent.toLocaleString()}`} />
+          <div>
+            <p className="text-muted-foreground">Purchase Price</p>
+            <p className="font-medium">${purchasePrice.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Weekly Rent</p>
+            <p className="font-medium">${weeklyRent.toLocaleString()}</p>
+          </div>
         </div>
-        <div className="rounded-xl border bg-background/80 p-3 text-xs text-muted-foreground">
-          Ready for 10-year projection using configured manual overrides and report financials.
-        </div>
+
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => onViewReport(report)}>
-            <FileText className="mr-1 h-4 w-4" /> View Report
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onViewReport(report)}
+          >
+            <FileText className="h-4 w-4 mr-1" />
+            View Report
           </Button>
-          <Button size="sm" className="flex-1" onClick={() => onOpenCashFlow(report)} disabled={isOpening}>
-            <Calculator className="mr-1 h-4 w-4" /> {isOpening ? 'Loading...' : 'Cash Flow'} {!isOpening && <ArrowRight className="ml-1 h-3 w-3" />}
+          <Button
+            size="sm"
+            className="flex-1"
+            onClick={() => onOpenCashFlow(report)}
+            disabled={isOpening}
+          >
+            <Calculator className="h-4 w-4 mr-1" />
+            {isOpening ? 'Loading...' : 'Cash Flow'}
+            {!isOpening && <ArrowRight className="h-3 w-3 ml-1" />}
           </Button>
         </div>
       </CardContent>
     </Card>
   );
-}
-
-function ReadinessMetric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl bg-muted/60 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold">{value}</p></div>;
 }
