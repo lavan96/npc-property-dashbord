@@ -2409,7 +2409,7 @@ html {
   }
 
   .reports-overrides-tab-content {
-    @apply outline-none data-[state=active]:animate-fade-in;
+    @apply outline-none;
   }
 
   .reports-overrides-build-shell,
