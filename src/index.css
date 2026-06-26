@@ -531,12 +531,15 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-sidebar-surface {
-    @apply dashboard-surface-panel-strong;
+    border: 1px solid hsl(var(--border-strong, var(--dashboard-border-strong)) / 0.7);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 20px 48px -30px hsl(var(--primary) / 0.34);
     background-color: hsl(var(--sidebar-surface, var(--surface-2, var(--dashboard-surface-elevated))) / 0.94);
   }
 
   .dashboard-topbar-surface {
-    @apply dashboard-surface-panel;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 18px 40px -28px hsl(var(--primary) / 0.28);
     border-color: hsl(var(--border-soft, var(--dashboard-border-soft)) / 0.82);
     background-color: hsl(var(--topbar-background, var(--surface-1, var(--dashboard-surface))) / 0.88);
   }
@@ -546,7 +549,8 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-sidebar-header {
-    @apply dashboard-divider border-b;
+    border-bottom-width: 1px;
+    border-color: hsl(var(--dashboard-border-soft) / 0.72);
     background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.42), transparent 120%);
   }
 
@@ -626,16 +630,28 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-panel {
-    @apply dashboard-surface-panel-strong rounded-2xl;
+    border: 1px solid hsl(var(--border-strong, var(--dashboard-border-strong)) / 0.7);
+    background-color: hsl(var(--surface-2, var(--dashboard-surface-elevated)) / 0.9);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 20px 48px -30px hsl(var(--primary) / 0.34);
+    border-radius: 1rem;
   }
 
   .dashboard-panel-muted {
-    @apply dashboard-surface-panel rounded-2xl;
+    border: 1px solid hsl(var(--border-soft, var(--dashboard-border-soft)) / 0.72);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 18px 40px -28px hsl(var(--primary) / 0.28);
+    border-radius: 1rem;
     background-color: hsl(var(--dashboard-surface-muted) / 0.7);
   }
 
   .dashboard-toolbar {
-    @apply dashboard-panel flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-5;
+    @apply flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between md:px-5;
+    border: 1px solid hsl(var(--border-strong, var(--dashboard-border-strong)) / 0.7);
+    background-color: hsl(var(--surface-2, var(--dashboard-surface-elevated)) / 0.9);
+    backdrop-filter: blur(22px);
+    box-shadow: 0 20px 48px -30px hsl(var(--primary) / 0.34);
+    border-radius: 1rem;
   }
 
   .dashboard-eyebrow {
@@ -643,7 +659,11 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-kpi-card {
-    @apply dashboard-panel relative overflow-hidden;
+    @apply relative overflow-hidden;
+    border: 1px solid hsl(var(--border-strong, var(--dashboard-border-strong)) / 0.7);
+    background-color: hsl(var(--surface-2, var(--dashboard-surface-elevated)) / 0.9);
+    backdrop-filter: blur(22px);
+    border-radius: 1rem;
     box-shadow: 0 22px 44px -30px hsl(var(--primary) / 0.32);
   }
 
@@ -680,7 +700,12 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-empty-state {
-    @apply dashboard-panel-muted flex flex-col items-center justify-center gap-4 px-6 py-10 text-center md:px-10 md:py-12;
+    @apply flex flex-col items-center justify-center gap-4 px-6 py-10 text-center md:px-10 md:py-12;
+    border: 1px solid hsl(var(--border-soft, var(--dashboard-border-soft)) / 0.72);
+    background-color: hsl(var(--dashboard-surface-muted) / 0.7);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 18px 40px -28px hsl(var(--primary) / 0.28);
+    border-radius: 1rem;
   }
 
   .dashboard-empty-icon {
@@ -691,11 +716,29 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-icon-button {
-    @apply dashboard-surface-control rounded-xl transition-transform duration-200 hover:scale-[1.03];
+    @apply rounded-xl transition-transform duration-200 hover:scale-[1.03];
+    border: 1px solid hsl(var(--border-soft, var(--dashboard-border-soft)) / 0.74);
+    background-color: hsl(var(--surface-2, var(--dashboard-surface-elevated)) / 0.74);
+    box-shadow: 0 10px 24px -20px hsl(var(--primary) / 0.4);
+    backdrop-filter: blur(14px);
+  }
+
+  .dashboard-icon-button:hover {
+    border-color: hsl(var(--dashboard-border-strong) / 0.8);
+    background-color: hsl(var(--dashboard-surface-elevated) / 0.88);
   }
 
   .dashboard-input-control {
-    @apply dashboard-surface-control rounded-xl;
+    @apply rounded-xl;
+    border: 1px solid hsl(var(--border-soft, var(--dashboard-border-soft)) / 0.74);
+    background-color: hsl(var(--surface-2, var(--dashboard-surface-elevated)) / 0.74);
+    box-shadow: 0 10px 24px -20px hsl(var(--primary) / 0.4);
+    backdrop-filter: blur(14px);
+  }
+
+  .dashboard-input-control:hover {
+    border-color: hsl(var(--dashboard-border-strong) / 0.8);
+    background-color: hsl(var(--dashboard-surface-elevated) / 0.88);
   }
 
   .dashboard-brand-lockup {
@@ -716,19 +759,24 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-mobile-sheet {
-    @apply dashboard-sidebar-surface;
+    backdrop-filter: blur(22px);
+    box-shadow: 0 20px 48px -30px hsl(var(--primary) / 0.34);
+    background-color: hsl(var(--sidebar-surface, var(--surface-2, var(--dashboard-surface-elevated))) / 0.94);
     border-color: hsl(var(--dashboard-border-strong) / 0.78);
   }
 
   .dashboard-mobile-nav {
-    @apply dashboard-topbar-surface;
+    backdrop-filter: blur(18px);
     border-top-color: hsl(var(--border-strong, var(--dashboard-border-strong)) / 0.72);
     background-color: hsl(var(--mobile-nav-background, var(--topbar-background, var(--surface-1, var(--dashboard-surface)))) / 0.96);
     box-shadow: 0 -12px 34px -22px hsl(var(--primary) / 0.42);
   }
 
   .dashboard-mobile-nav-toggle {
-    @apply dashboard-surface-control text-muted-foreground;
+    @apply text-muted-foreground;
+    border: 1px solid hsl(var(--border-soft, var(--dashboard-border-soft)) / 0.74);
+    background-color: hsl(var(--surface-2, var(--dashboard-surface-elevated)) / 0.74);
+    backdrop-filter: blur(14px);
     box-shadow: 0 -6px 24px -16px hsl(var(--primary) / 0.3);
   }
 
@@ -741,7 +789,7 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-page-frame {
-    @apply client-portal-soft-panel overflow-hidden;
+    @apply overflow-hidden rounded-2xl border border-border/60 bg-card/75 shadow-lg shadow-primary/5 backdrop-blur-sm;
   }
 
   .dashboard-divider {
@@ -1509,8 +1557,9 @@ html {
     @apply text-3xl font-bold tracking-tight text-foreground;
   }
 
-  .reports-secondary-metric .text-xs.text-muted-foreground {
-    @apply leading-5 text-muted-foreground/90;
+  .reports-secondary-metric .text-xs[class~='text-muted-foreground'] {
+    line-height: 1.25rem;
+    color: hsl(var(--muted-foreground) / 0.9);
   }
 
   .reports-secondary-metric-icon {
@@ -2778,9 +2827,9 @@ html {
 
   .reports-page-premium [data-slot='card-description'],
   .reports-investment-generator [data-slot='card-description'],
-  .reports-page-premium .text-muted-foreground,
-  .reports-investment-generator .text-muted-foreground {
-    @apply text-muted-foreground/90;
+  .reports-page-premium [class~='text-muted-foreground'],
+  .reports-investment-generator [class~='text-muted-foreground'] {
+    color: hsl(var(--muted-foreground) / 0.9);
   }
 
   .reports-suburb-card,
