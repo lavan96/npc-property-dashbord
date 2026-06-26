@@ -2233,7 +2233,7 @@ html {
   }
 
   .reports-investment-generator .text-muted-foreground {
-    @apply leading-6;
+    line-height: 1.5rem;
   }
 
   .reports-recent-panel {
