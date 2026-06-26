@@ -1253,15 +1253,18 @@ export default function Calendar() {
                                         handleEventClick(event);
                                       }}
                                       style={getEventStyle(event)}
-                                      className="truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium shadow-sm ring-1 ring-white/10 transition-all cursor-pointer hover:translate-x-0.5 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
+                                      className="flex min-h-[20px] items-center gap-1.5 overflow-hidden rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-none shadow-sm ring-1 ring-white/10 transition-all cursor-pointer hover:translate-x-0.5 hover:opacity-95 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
                                     >
-                                      {safeFormatISO(event.startTime, 'HH:mm')}
+                                      <span className="shrink-0 tabular-nums">{safeFormatISO(event.startTime, 'HH:mm')}</span>
+                                      {!isMobile && (
+                                        <span className="min-w-0 truncate opacity-90">{event.title || 'Event'}</span>
+                                      )}
                                     </div>
                                   </DraggableEvent>
                                 </EnhancedEventPreview>
                               ))}
                               {dayEvents.length > (isMobile ? 2 : 3) && (
-                                <div className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium text-zinc-400 md:text-[10px]">
+                                <div className="rounded-lg border border-white/5 bg-white/[0.04] px-1.5 py-1 text-[9px] font-semibold text-zinc-400 md:text-[10px]">
                                   +{dayEvents.length - (isMobile ? 2 : 3)} more
                                 </div>
                               )}
