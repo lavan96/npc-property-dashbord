@@ -1901,3 +1901,96 @@ html {
     @apply flex min-h-32 items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
   }
 }
+
+@layer components {
+  .reports-quality-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-quality-score-card,
+  .reports-quality-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-quality-score-card {
+    @apply shadow-primary/10;
+  }
+
+  .reports-quality-score-value {
+    @apply tabular-nums tracking-tight;
+  }
+
+  .reports-quality-status-badge,
+  .reports-quality-count-badge {
+    @apply rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em];
+  }
+
+  .reports-quality-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-quality-card-header [data-slot='card-title'],
+  .reports-quality-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-quality-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-quality-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-completeness-tile {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm;
+  }
+
+  .reports-quality-progress {
+    @apply overflow-hidden rounded-full bg-background/70;
+  }
+
+  .reports-quality-progress > div {
+    @apply bg-primary;
+  }
+
+  .reports-quality-issue-row {
+    @apply flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10;
+  }
+
+  .reports-quality-issue-label {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .reports-quality-severity-warning {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-quality-severity-critical {
+    @apply border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-200;
+  }
+
+  .reports-quality-severity-info {
+    @apply border-border/70 bg-background/70 text-muted-foreground;
+  }
+
+  .reports-quality-detail-panel {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-4 shadow-inner;
+  }
+
+  .reports-confidence-stack {
+    @apply border border-border/70 shadow-inner;
+  }
+
+  .reports-confidence-legend-item {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-2.5 shadow-sm;
+  }
+
+  .reports-quality-actions-card {
+    @apply border-amber-500/25 bg-gradient-to-br from-card via-card/95 to-amber-500/5;
+  }
+
+  .reports-quality-action-row {
+    @apply flex items-start gap-2 rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10;
+  }
+}
