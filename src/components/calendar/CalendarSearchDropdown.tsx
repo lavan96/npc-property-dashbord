@@ -141,6 +141,7 @@ export function CalendarSearchDropdown({
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/80" />
         <Input
+          aria-label="Search events and contacts"
           placeholder="Search events, contacts..."
           value={searchQuery}
           onChange={(e) => {
@@ -152,6 +153,7 @@ export function CalendarSearchDropdown({
         />
         {searchQuery && (
           <button
+            aria-label="Clear calendar search"
             onClick={() => {
               setSearchQuery('');
               setIsOpen(false);
@@ -198,6 +200,7 @@ export function CalendarSearchDropdown({
                   return (
                     <button
                       key={event.id}
+                      aria-label={`Open ${event.title || 'Untitled'}${startDate ? ` on ${format(startDate, 'MMM d, yyyy')} at ${format(startDate, 'h:mm a')}` : ''}`}
                       onClick={() => handleSelectEvent(event)}
                       className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none"
                     >

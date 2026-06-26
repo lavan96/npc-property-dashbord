@@ -802,7 +802,7 @@ export default function Calendar() {
               {isMobile && (
               <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" className={cn(PREMIUM_BUTTON, "h-10 w-10 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95")}>
+                  <Button aria-label="Open calendar tools" variant="outline" size="icon" className={cn(PREMIUM_BUTTON, "h-10 w-10 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95")}>
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -817,6 +817,7 @@ export default function Calendar() {
                         {SIDEBAR_TABS.map(tab => (
                           <button
                             key={tab.id}
+                            aria-pressed={sidebarTab === tab.id}
                             onClick={() => setSidebarTab(tab.id)}
                             className={cn(
                               "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md transition-colors min-h-[36px] touch-manipulation",
@@ -951,6 +952,7 @@ export default function Calendar() {
               </Sheet>
               )}
               <Button
+                aria-label="Refresh calendar"
                 variant="outline"
                 size="icon"
                 className={cn(PREMIUM_BUTTON, "h-10 w-10 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60")}
@@ -963,7 +965,7 @@ export default function Calendar() {
           </div>
 
           {/* Controls row - scrollable on mobile */}
-          <div className={cn(PREMIUM_MUTED_SURFACE, "flex flex-wrap items-center gap-2 rounded-2xl border p-2.5")}>
+          <div className={cn(PREMIUM_MUTED_SURFACE, "flex flex-wrap items-stretch gap-2 rounded-2xl border p-2.5 sm:items-center")}>
             {!isMobile && <KeyboardShortcutsHint />}
             <CalendarSearchDropdown
               events={events}
@@ -977,7 +979,7 @@ export default function Calendar() {
               setSearchQuery={setSearchQuery}
             />
             <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
-              <TabsList className="h-10 rounded-xl border border-white/10 bg-black/35 p-1 shadow-inner shadow-black/20">
+              <TabsList className="h-10 w-full rounded-xl border border-white/10 bg-black/35 p-1 shadow-inner shadow-black/20 sm:w-auto">
                 <TabsTrigger value="month" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Month</TabsTrigger>
                 <TabsTrigger value="week" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Week</TabsTrigger>
                 {!isMobile && (
@@ -989,7 +991,7 @@ export default function Calendar() {
               </TabsList>
             </Tabs>
             <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
-              <SelectTrigger className="h-10 w-full shrink-0 rounded-xl border-white/10 bg-black/35 px-3 text-sm shadow-inner shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px]">
+              <SelectTrigger className="h-10 w-full min-w-[200px] flex-1 shrink-0 rounded-xl border-white/10 bg-black/35 px-3 text-sm shadow-inner shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px] sm:flex-none">
                 <Filter className="mr-2 h-4 w-4 text-primary/80" />
                 <SelectValue placeholder="All Calendars" />
               </SelectTrigger>
@@ -1077,6 +1079,8 @@ export default function Calendar() {
                   <Tooltip key={calendar.id}>
                     <TooltipTrigger asChild>
                       <button
+                        aria-pressed={selectedCalendarId === calendar.id}
+                        title={calendar.name}
                         onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                         className={cn(
                           'group flex max-w-[190px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium shadow-sm transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.98]',
@@ -1132,6 +1136,7 @@ export default function Calendar() {
               </CardTitle>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Button
+                  aria-label={view === 'month' ? 'Previous month' : 'Previous week'}
                   variant="ghost"
                   size="icon"
                   className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
@@ -1162,6 +1167,7 @@ export default function Calendar() {
                   </Button>
                 )}
                 <Button
+                  aria-label={view === 'month' ? 'Next month' : 'Next week'}
                   variant="ghost"
                   size="icon"
                   className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
@@ -1219,8 +1225,17 @@ export default function Calendar() {
                           )}
                         >
                           <div
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Select ${format(day, 'EEEE, MMMM d, yyyy')}${dayEvents.length > 0 ? `, ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ', no events'}`}
                             onClick={() => setSelectedDate(day)}
-                            className="h-full"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setSelectedDate(day);
+                              }
+                            }}
+                            className="h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                           >
                             <div className={cn(
                               'mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold',
@@ -1253,9 +1268,19 @@ export default function Calendar() {
                                     onDragEnd={() => setDraggingEvent(null)}
                                   >
                                     <div
+                                      role="button"
+                                      tabIndex={0}
+                                      aria-label={`Open ${event.title || 'Event'} at ${safeFormatISO(event.startTime, 'HH:mm')}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleEventClick(event);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleEventClick(event);
+                                        }
                                       }}
                                       style={getEventStyle(event)}
                                       className="flex min-h-[20px] items-center gap-1.5 overflow-hidden rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-none shadow-sm ring-1 ring-white/10 transition-all duration-150 ease-out cursor-pointer hover:translate-x-0.5 hover:opacity-95 hover:ring-white/20 hover:shadow-[0_6px_18px_hsl(0_0%_0%/0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
@@ -1326,9 +1351,18 @@ export default function Calendar() {
                                     onDragEnd={() => setDraggingEvent(null)}
                                   >
                                     <div
+                                      role="button"
+                                      tabIndex={0}
+                                      aria-label={`Open ${event.title || 'Event'} at ${safeFormatISO(event.startTime, 'h:mm a')}`}
                                       onClick={() => handleEventClick(event)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault();
+                                          handleEventClick(event);
+                                        }
+                                      }}
                                       style={getEventStyle(event)}
-                                      className="w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate cursor-pointer hover:opacity-80 transition-opacity"
+                                      className="w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                                     >
                                       <div className="font-medium truncate">
                                         {event.title || 'Event'}
@@ -1372,6 +1406,7 @@ export default function Calendar() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    aria-label="Expand calendar tools sidebar"
                     variant="ghost"
                     size="icon"
                     className="mb-1 h-9 w-9 rounded-xl border border-white/10 text-zinc-300 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
@@ -1390,6 +1425,9 @@ export default function Calendar() {
                     <Tooltip key={tab.id}>
                       <TooltipTrigger asChild>
                         <button
+                          aria-label={tab.label}
+                          aria-pressed={sidebarTab === tab.id}
+                          title={tab.label}
                           onClick={() => {
                             setSidebarTab(tab.id);
                             setSidebarCollapsed(false);
@@ -1440,6 +1478,7 @@ export default function Calendar() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
+                          aria-label="Collapse calendar tools sidebar"
                           variant="ghost"
                           size="icon"
                           className="h-10 w-10 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95"
@@ -1462,6 +1501,8 @@ export default function Calendar() {
                           <Tooltip key={tab.id}>
                             <TooltipTrigger asChild>
                               <TabsTrigger
+                                aria-label={tab.label}
+                                title={tab.label}
                                 value={tab.id}
                                 className={cn(
                                   "relative h-11 rounded-xl border border-white/10 bg-white/[0.03] p-0 text-zinc-400 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
@@ -1778,6 +1819,7 @@ export default function Calendar() {
               <button
                 key={calendar.id}
                 title={calendar.name}
+                aria-pressed={selectedCalendarId === calendar.id}
                 onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                 className={cn(
                   'group rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.99]',

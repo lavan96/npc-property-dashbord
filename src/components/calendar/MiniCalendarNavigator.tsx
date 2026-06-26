@@ -50,6 +50,7 @@ export function MiniCalendarNavigator({
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button
+          aria-label="Previous mini calendar month"
           variant="ghost"
           size="icon"
           className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
@@ -59,6 +60,7 @@ export function MiniCalendarNavigator({
         </Button>
         <span className="text-sm font-semibold tracking-tight text-white">{format(currentMonth, 'MMM yyyy')}</span>
         <Button
+          aria-label="Next mini calendar month"
           variant="ghost"
           size="icon"
           className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
@@ -89,6 +91,8 @@ export function MiniCalendarNavigator({
           return (
             <button
               key={dateKey}
+              aria-label={`Select ${format(day, 'EEEE, MMMM d, yyyy')}${eventCount > 0 ? `, ${eventCount} event${eventCount === 1 ? '' : 's'}` : ', no events'}`}
+              aria-pressed={Boolean(isSelected)}
               onClick={() => onDateSelect(day)}
               className={cn(
                 'relative flex h-7 w-full items-center justify-center rounded-xl border text-[10px] font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
