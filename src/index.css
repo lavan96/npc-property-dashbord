@@ -1488,9 +1488,9 @@ html {
     @apply rounded-2xl border border-primary/25 bg-primary/10 p-2 text-primary shadow-inner shadow-primary/10;
   }
 
-  .reports-kpi-tile-value::before { @apply bg-emerald-500/70; }
-  .reports-kpi-tile-activity::before { @apply bg-amber-500/80; }
-  .reports-kpi-tile-coverage::before { @apply bg-sky-500/70; }
+  .reports-kpi-tile-value::before { background-color: hsl(var(--success) / 0.7); }
+  .reports-kpi-tile-activity::before { background-color: hsl(var(--warning) / 0.82); }
+  .reports-kpi-tile-coverage::before { background-color: hsl(var(--info) / 0.72); }
 
   .reports-secondary-metric-grid {
     @apply rounded-3xl border border-border/60 bg-background/35 p-1.5;
@@ -1517,12 +1517,12 @@ html {
     @apply flex h-9 w-9 items-center justify-center rounded-2xl border border-border/70 bg-background/70 shadow-inner;
   }
 
-  .reports-secondary-metric-success { @apply border-emerald-500/25; }
-  .reports-secondary-metric-success::before { @apply via-emerald-500/60; }
-  .reports-secondary-metric-warning { @apply border-amber-500/35 bg-gradient-to-br from-card via-card/95 to-amber-500/5; }
-  .reports-secondary-metric-warning::before { @apply via-amber-500/70; }
-  .reports-secondary-metric-destructive { @apply border-rose-500/35 bg-gradient-to-br from-card via-card/95 to-rose-500/5; }
-  .reports-secondary-metric-destructive::before { @apply via-rose-500/70; }
+  .reports-secondary-metric-success { border-color: hsl(var(--success) / 0.25); }
+  .reports-secondary-metric-success::before { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--success) / 0.6) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .reports-secondary-metric-warning { border-color: hsl(var(--warning) / 0.35); background-image: linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card) / 0.95), hsl(var(--warning-light) / 0.5)); }
+  .reports-secondary-metric-warning::before { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--warning) / 0.7) var(--tw-gradient-via-position), var(--tw-gradient-to); }
+  .reports-secondary-metric-destructive { border-color: hsl(var(--destructive) / 0.32); background-image: linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card) / 0.95), hsl(var(--destructive-light) / 0.5)); }
+  .reports-secondary-metric-destructive::before { --tw-gradient-stops: var(--tw-gradient-from), hsl(var(--destructive) / 0.64) var(--tw-gradient-via-position), var(--tw-gradient-to); }
 }
 
 @layer components {
@@ -1552,15 +1552,15 @@ html {
   }
 
   .reports-insight-alert-warning {
-    @apply border-amber-500/35 bg-amber-500/10 text-foreground;
+    @apply border-warning/30 bg-warning-light/70 text-foreground;
   }
 
   .reports-insight-alert-positive {
-    @apply border-emerald-500/30 bg-emerald-500/5 text-foreground;
+    @apply border-success/25 bg-success-light/70 text-foreground;
   }
 
   .reports-insight-alert-negative {
-    @apply border-rose-500/35 bg-rose-500/5 text-foreground;
+    @apply border-destructive/30 bg-destructive-light/70 text-foreground;
   }
 
   .reports-insight-alert-neutral {
@@ -1577,11 +1577,11 @@ html {
   }
 
   .reports-severity-medium::before {
-    @apply bg-amber-500/80;
+    background-color: hsl(var(--warning) / 0.82);
   }
 
   .reports-severity-high::before {
-    @apply bg-rose-500/80;
+    background-color: hsl(var(--destructive) / 0.76);
   }
 
   .reports-insight-icon-wrap {
@@ -1601,15 +1601,15 @@ html {
   }
 
   .reports-severity-badge.reports-severity-high {
-    @apply border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-200;
+    @apply border-destructive/30 bg-destructive-light/70 text-destructive;
   }
 
   .reports-severity-badge.reports-severity-medium {
-    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+    @apply border-warning/30 bg-warning-light/70 text-warning;
   }
 
   .reports-severity-badge.reports-severity-low {
-    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+    @apply border-success/25 bg-success-light/70 text-success;
   }
 
   .reports-empty-insight-state {
@@ -1764,11 +1764,11 @@ html {
   }
 
   .reports-activity-high {
-    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+    @apply border-success/25 bg-success-light/70 text-success;
   }
 
   .reports-activity-medium {
-    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+    @apply border-warning/30 bg-warning-light/70 text-warning;
   }
 
   .reports-activity-low {
@@ -1866,11 +1866,11 @@ html {
   }
 
   .reports-performance-high {
-    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+    @apply border-success/25 bg-success-light/70 text-success;
   }
 
   .reports-performance-medium {
-    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+    @apply border-warning/30 bg-warning-light/70 text-warning;
   }
 
   .reports-performance-standard {
@@ -1963,11 +1963,11 @@ html {
   }
 
   .reports-quality-severity-warning {
-    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+    @apply border-warning/30 bg-warning-light/70 text-warning;
   }
 
   .reports-quality-severity-critical {
-    @apply border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-200;
+    @apply border-destructive/30 bg-destructive-light/70 text-destructive;
   }
 
   .reports-quality-severity-info {
@@ -1987,7 +1987,7 @@ html {
   }
 
   .reports-quality-actions-card {
-    @apply border-amber-500/25 bg-gradient-to-br from-card via-card/95 to-amber-500/5;
+    border-color: hsl(var(--warning) / 0.25); background-image: linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card) / 0.95), hsl(var(--warning-light) / 0.5));
   }
 
   .reports-quality-action-row {
@@ -2038,7 +2038,7 @@ html {
   }
 
   .reports-suburb-insight {
-    @apply shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md hover:shadow-amber-500/10;
+    @apply shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10;
   }
 
   .reports-suburb-stat-grid {
@@ -2099,11 +2099,11 @@ html {
   }
 
   .reports-types-insight {
-    @apply shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md hover:shadow-amber-500/10;
+    @apply shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10;
   }
 
   .reports-types-badge {
-    @apply rounded-full border-amber-500/35 bg-amber-500/10 px-2.5 py-0.5 font-bold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-200;
+    @apply rounded-full border-warning/30 bg-warning-light/70 px-2.5 py-0.5 font-bold uppercase tracking-[0.12em] text-warning;
   }
 
   .reports-types-legend {
@@ -2170,7 +2170,7 @@ html {
   }
 
   .reports-pricing-empty-state {
-    @apply flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-amber-500/35 bg-amber-500/10 px-6 text-center text-sm leading-6 text-amber-700 dark:text-amber-200;
+    @apply flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-primary/25 bg-primary/10 px-6 text-center text-sm leading-6 text-primary;
   }
 }
 
@@ -2591,7 +2591,7 @@ html {
   }
 
   .reports-state-card-warning {
-    @apply border-amber-500/30 bg-gradient-to-br from-card via-card/95 to-amber-500/5;
+    border-color: hsl(var(--warning) / 0.3); background-image: linear-gradient(to bottom right, hsl(var(--card)), hsl(var(--card) / 0.95), hsl(var(--warning-light) / 0.5));
   }
 
   .reports-suburb-empty-state,
@@ -2729,5 +2729,156 @@ html {
     .reports-investment-generator .reports-investment-panel-content {
       @apply p-3;
     }
+  }
+}
+
+@layer components {
+  /* Phase 23 final premium polish for Reports only. */
+  .reports-page-premium .ci-card,
+  .reports-page-premium .ci-card-premium,
+  .reports-investment-generator .ci-card,
+  .reports-investment-generator .ci-card-premium {
+    @apply relative border-primary/15 bg-gradient-to-br from-card via-card/95 to-background/75 shadow-xl shadow-black/5;
+  }
+
+  .reports-page-premium .ci-card-premium::after,
+  .reports-investment-generator .ci-card-premium::after {
+    content: '';
+    @apply pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent opacity-80;
+  }
+
+  .reports-top-command,
+  .reports-quant-header,
+  .reports-investment-hero {
+    @apply relative overflow-hidden;
+  }
+
+  .reports-top-command::before,
+  .reports-investment-hero::before {
+    content: '';
+    @apply pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-primary/10 blur-3xl;
+  }
+
+  .reports-primary-tab,
+  .reports-analytics-tab,
+  .reports-investment-mode-tab {
+    @apply border border-transparent bg-background/35 text-muted-foreground/95;
+  }
+
+  .reports-primary-tab[data-state='active'],
+  .reports-analytics-tab[data-state='active'],
+  .reports-investment-mode-tab[data-state='active'] {
+    @apply bg-gradient-to-br from-primary via-primary to-primary-hover text-primary-foreground shadow-xl shadow-primary/25;
+  }
+
+  .reports-page-premium [data-radix-tabs-content],
+  .reports-investment-generator [data-radix-tabs-content] {
+    @apply outline-none;
+  }
+
+  .reports-page-premium [data-slot='card-description'],
+  .reports-investment-generator [data-slot='card-description'],
+  .reports-page-premium .text-muted-foreground,
+  .reports-investment-generator .text-muted-foreground {
+    @apply text-muted-foreground/90;
+  }
+
+  .reports-suburb-card,
+  .reports-types-card,
+  .reports-pricing-card,
+  .reports-trend-card,
+  .reports-insight-card {
+    @apply overflow-hidden rounded-3xl border-primary/15 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5;
+  }
+
+  .reports-suburb-card-header,
+  .reports-types-card-header,
+  .reports-pricing-card-header {
+    @apply border-b border-border/60 bg-gradient-to-r from-primary/10 via-background/45 to-transparent pb-4;
+  }
+
+  .reports-suburb-card-content,
+  .reports-types-card-content,
+  .reports-pricing-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-suburb-chart,
+  .reports-types-chart,
+  .reports-pricing-chart,
+  .reports-trends-chart {
+    @apply rounded-3xl border border-border/60 bg-background/35 p-3 shadow-inner shadow-black/10;
+  }
+
+  .reports-suburb-empty-state,
+  .reports-types-empty-state,
+  .reports-pricing-empty-state {
+    @apply min-h-[280px] rounded-3xl border-primary/25 text-primary/90;
+  }
+
+  .reports-suburb-insight {
+    @apply border-primary/25 bg-primary/10 text-foreground shadow-sm;
+  }
+
+  .reports-severity-high::before,
+  .reports-insight-alert-negative {
+    @apply border-warning/30 bg-warning-light/70;
+  }
+
+  .reports-severity-badge.reports-severity-high {
+    @apply border-warning/30 bg-warning-light/70 text-warning;
+  }
+
+  .reports-investment-panel-header,
+  .reports-recent-panel .reports-investment-panel-header {
+    @apply border-b border-border/60 bg-gradient-to-r from-primary/10 via-background/50 to-transparent;
+  }
+
+  .reports-investment-flow > .space-y-3,
+  .reports-investment-flow > .space-y-4,
+  .reports-build-type-control,
+  .reports-supported-sites-panel,
+  .reports-investment-flow > div:not([data-radix-popper-content-wrapper]) {
+    @apply rounded-3xl border border-border/60 bg-background/40 p-4 shadow-sm;
+  }
+
+  .reports-engine-helper,
+  .reports-success-state {
+    @apply rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 shadow-sm;
+  }
+
+  .reports-success-state {
+    @apply border-success/25 bg-success-light/70;
+  }
+
+  .reports-upload-zone {
+    @apply cursor-pointer rounded-3xl border-2 border-dashed p-8 text-center shadow-inner transition-all duration-200;
+  }
+
+  .reports-upload-zone-idle {
+    @apply border-border/70 bg-background/35 hover:border-primary/45 hover:bg-primary/5;
+  }
+
+  .reports-upload-zone-active,
+  .reports-upload-zone-filled {
+    @apply border-primary/55 bg-primary/10 shadow-primary/10;
+  }
+
+  .reports-recent-item {
+    @apply rounded-2xl border border-border/60 bg-gradient-to-br from-background/75 to-primary/5 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35;
+  }
+
+  .reports-page-premium button:disabled,
+  .reports-investment-generator button:disabled {
+    @apply border border-border/70 bg-background/45 text-muted-foreground/80 opacity-90 ring-1 ring-inset ring-border/40;
+  }
+
+  .reports-validation-state-error {
+    @apply border-warning/30 bg-warning-light/70 text-warning;
+  }
+
+  .reports-validation-state-error .text-destructive,
+  .reports-validation-state-error .text-destructive\/80 {
+    @apply text-warning;
   }
 }
