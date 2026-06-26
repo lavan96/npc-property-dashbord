@@ -169,51 +169,55 @@ export default function InvestmentReportView() {
 
       {/* Main content */}
       <div className="flex-1 overflow-auto bg-muted/20">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 p-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
-          <div className="space-y-5">
-            <InvestmentReportHero
-              report={report}
-              isClientReport={isClientReport}
-              hasOverrides={hasOverrides}
-              reportTierLabel={reportTierLabel}
-              reportVariantLabel={reportVariantLabel}
-              reportStatusLabel={reportStatusLabel}
-            />
-
-            {hasOverrides && (
-              <InvestmentReportOverridePanel
-                overriddenFields={overriddenFields}
-                showOverrides={showOverrides}
-                onShowOverridesChange={setShowOverrides}
-              />
-            )}
-
-            <InvestmentReportDocument
-              report={report}
-              includeSources={includeSources}
-              onDownload={handleDownload}
-            />
-          </div>
-
-          <InvestmentReportExportPanel
+        <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
+          <InvestmentReportHero
             report={report}
-            includeSources={includeSources}
-            includeScoring={includeScoring}
-            includeCharts={includeCharts}
-            includeHeroImages={includeHeroImages}
-            includeSparklines={includeSparklines}
-            pdfDesignOptions={pdfDesignOptions}
-            pdfGeneratorRef={pdfGeneratorRef}
-            onIncludeSourcesChange={setIncludeSources}
-            onIncludeScoringChange={setIncludeScoring}
-            onIncludeChartsChange={setIncludeCharts}
-            onIncludeHeroImagesChange={setIncludeHeroImages}
-            onIncludeSparklinesChange={setIncludeSparklines}
-            onPdfDesignOptionsChange={setPdfDesignOptions}
-            onHeroImagesManage={() => setHeroDialogOpen(true)}
-            onRegenerated={handleReportUpdate}
-            onDownload={handleDownload}
+            isClientReport={isClientReport}
+            hasOverrides={hasOverrides}
+            reportTierLabel={reportTierLabel}
+            reportVariantLabel={reportVariantLabel}
+            reportStatusLabel={reportStatusLabel}
           />
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
+            <main className="min-w-0 order-1">
+              <InvestmentReportDocument
+                report={report}
+                includeSources={includeSources}
+                onDownload={handleDownload}
+              />
+            </main>
+
+            <aside className="order-2 min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+              <InvestmentReportExportPanel
+                report={report}
+                includeSources={includeSources}
+                includeScoring={includeScoring}
+                includeCharts={includeCharts}
+                includeHeroImages={includeHeroImages}
+                includeSparklines={includeSparklines}
+                pdfDesignOptions={pdfDesignOptions}
+                pdfGeneratorRef={pdfGeneratorRef}
+                onIncludeSourcesChange={setIncludeSources}
+                onIncludeScoringChange={setIncludeScoring}
+                onIncludeChartsChange={setIncludeCharts}
+                onIncludeHeroImagesChange={setIncludeHeroImages}
+                onIncludeSparklinesChange={setIncludeSparklines}
+                onPdfDesignOptionsChange={setPdfDesignOptions}
+                onHeroImagesManage={() => setHeroDialogOpen(true)}
+                onRegenerated={handleReportUpdate}
+                onDownload={handleDownload}
+              />
+
+              {hasOverrides && (
+                <InvestmentReportOverridePanel
+                  overriddenFields={overriddenFields}
+                  showOverrides={showOverrides}
+                  onShowOverridesChange={setShowOverrides}
+                />
+              )}
+            </aside>
+          </div>
         </div>
       </div>
 

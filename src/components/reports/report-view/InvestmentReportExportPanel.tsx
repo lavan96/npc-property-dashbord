@@ -54,7 +54,7 @@ export function InvestmentReportExportPanel({
   onDownload,
 }: ExportPanelProps) {
   return (
-    <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+    <div className="space-y-4">
       <Card className="overflow-hidden border-primary/10 bg-card/95 shadow-sm">
         <CardHeader className="border-b bg-gradient-to-br from-background via-background to-primary/5">
           <CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" />Publishing & Export</CardTitle>
@@ -156,6 +156,6 @@ export function InvestmentReportExportPanel({
           </Button>
         </CardContent>
       </Card>
-    </aside>
+    </div>
   );
 }
