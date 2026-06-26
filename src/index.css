@@ -2256,3 +2256,30 @@ html {
     @apply rounded-full border-primary/25 bg-background/60 font-semibold hover:border-primary/45 hover:bg-primary/10 hover:text-primary;
   }
 }
+
+@layer components {
+  .reports-investment-mode-shell {
+    @apply bg-gradient-to-br from-background/70 via-background/45 to-primary/5;
+  }
+
+  .reports-investment-mode-list {
+    @apply grid min-w-full grid-cols-3;
+  }
+
+  .reports-investment-mode-single {
+    @apply grid-cols-1;
+  }
+
+  .reports-investment-mode-tab {
+    @apply justify-center gap-2 border border-transparent text-center shadow-sm hover:-translate-y-0.5 hover:border-primary/25 data-[state=active]:border-primary/45 data-[state=active]:ring-1 data-[state=active]:ring-primary/25;
+  }
+
+  .reports-investment-mode-tab svg {
+    @apply shrink-0 transition-transform duration-200;
+  }
+
+  .reports-investment-mode-tab:hover svg,
+  .reports-investment-mode-tab[data-state='active'] svg {
+    @apply scale-110;
+  }
+}

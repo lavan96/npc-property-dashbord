@@ -1458,8 +1458,8 @@ export function InvestmentReportGenerator() {
                     </TabsList>
                   </div>
                 ) : (
-                  <TabsList className="grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
-                    <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <TabsList className="reports-investment-mode-list reports-investment-mode-single grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
+                    <TabsTrigger value="manual" className="reports-investment-mode-tab">
                       <MapPin className="h-4 w-4" />
                       Manual Entry
                     </TabsTrigger>
