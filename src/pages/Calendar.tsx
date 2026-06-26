@@ -104,6 +104,12 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
   { id: 'reminders', icon: <Bell className="h-4 w-4" />, label: 'Reminders', shortcut: '' },
 ];
 
+const CALENDAR_PAGE_SHELL = 'relative -m-4 min-h-[calc(100vh-2rem)] space-y-6 overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_30%),linear-gradient(180deg,hsl(220_18%_5%),hsl(220_16%_8%)_42%,hsl(220_14%_6%))] p-4 md:-m-6 md:p-6';
+const PREMIUM_CARD = 'border-white/10 bg-black/35 shadow-[0_18px_60px_hsl(0_0%_0%/0.35)] backdrop-blur-xl';
+const PREMIUM_PANEL = 'border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-950/85 to-zinc-900/70 shadow-[0_20px_70px_hsl(0_0%_0%/0.38)] backdrop-blur-xl';
+const PREMIUM_BUTTON = 'border-white/10 bg-white/[0.03] hover:border-primary/40 hover:bg-primary/10 hover:text-primary transition-all';
+const PREMIUM_MUTED_SURFACE = 'border-white/10 bg-white/[0.03]';
+
 export default function Calendar() {
   const { canEdit: canEditCalendar } = useModulePermissions('calendar');
   const isMobile = useIsMobile();
@@ -153,20 +159,20 @@ export default function Calendar() {
   // Smart tab ordering based on context
   const smartOrderedTabs = useMemo(() => {
     const order: SidebarTab[] = [];
-    
+
     // If selected date has conflicts, prioritize conflicts tab
     if (selectedDate) {
       const dayEvents = events.filter(e => {
         const d = safeParseISO(e.startTime);
         return d ? isSameDay(d, selectedDate) : false;
       });
-      
+
       // Check for overlapping events (conflicts)
       const hasConflicts = dayEvents.some((event, i) => {
         const start1 = safeParseISO(event.startTime);
         const end1 = safeParseISO(event.endTime);
         if (!start1 || !end1) return false;
-        
+
         return dayEvents.slice(i + 1).some(other => {
           const start2 = safeParseISO(other.startTime);
           const end2 = safeParseISO(other.endTime);
@@ -174,23 +180,23 @@ export default function Calendar() {
           return start1 < end2 && start2 < end1;
         });
       });
-      
+
       if (hasConflicts) {
         order.push('conflicts');
       }
-      
+
       if (dayEvents.length > 5) {
         order.push('analytics');
       }
     }
-    
+
     return order;
   }, [selectedDate, events]);
 
   // Toggle pin for a tab
   const handleTogglePin = useCallback((tab: SidebarTab) => {
-    setPinnedTabs(prev => 
-      prev.includes(tab) 
+    setPinnedTabs(prev =>
+      prev.includes(tab)
         ? prev.filter(t => t !== tab)
         : [...prev, tab]
     );
@@ -271,7 +277,7 @@ export default function Calendar() {
   }, []);
 
   const handleSelectAllEvents = useCallback(() => {
-    const dayEvents = selectedDate 
+    const dayEvents = selectedDate
       ? events.filter(e => {
           const d = safeParseISO(e.startTime);
           return d ? isSameDay(d, selectedDate) : false;
@@ -307,7 +313,7 @@ export default function Calendar() {
   const handleEventDrop = useCallback(async (event: GHLEvent, targetDate: Date, targetHour?: number) => {
     const originalStart = safeParseISO(event.startTime);
     const originalEnd = safeParseISO(event.endTime);
-    
+
     if (!originalStart || !originalEnd) {
       toast({
         title: 'Cannot reschedule',
@@ -323,7 +329,7 @@ export default function Calendar() {
     // Build new start time - interpret in configured booking timezone
     // Using static imports from top of file
     const bookingTz = getBookingTimezone();
-    
+
     let newStartDate: Date;
     if (targetHour !== undefined) {
       newStartDate = new Date(targetDate);
@@ -337,7 +343,7 @@ export default function Calendar() {
     const dateStr = `${newStartDate.getFullYear()}-${String(newStartDate.getMonth() + 1).padStart(2, '0')}-${String(newStartDate.getDate()).padStart(2, '0')}`;
     const timeStr = `${String(newStartDate.getHours()).padStart(2, '0')}:${String(newStartDate.getMinutes()).padStart(2, '0')}`;
     const newStartISO = toTimezoneISO(dateStr, timeStr, bookingTz);
-    
+
     // Calculate end from duration
     const endTotalMs = new Date(newStartISO).getTime() + duration;
     const newEndISO = new Date(endTotalMs).toISOString();
@@ -501,7 +507,7 @@ export default function Calendar() {
     const monthEnd = endOfMonth(currentMonth);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
-    
+
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth]);
 
@@ -558,7 +564,7 @@ export default function Calendar() {
         color: 'hsl(207 89% 41%)',
       };
     }
-    
+
     // Cancelled appointments - Red styling with strikethrough effect
     if (status === 'cancelled' || status === 'canceled') {
       return {
@@ -569,7 +575,7 @@ export default function Calendar() {
         opacity: 0.8,
       };
     }
-    
+
     // Rescheduled appointments - Orange styling
     if (status === 'rescheduled') {
       return {
@@ -578,7 +584,7 @@ export default function Calendar() {
         color: 'hsl(38 92% 50%)',
       };
     }
-    
+
     // No-show appointments - Muted red
     if (status === 'no_show' || status === 'noshow' || status === 'no-show') {
       return {
@@ -588,7 +594,7 @@ export default function Calendar() {
         opacity: 0.7,
       };
     }
-    
+
     // Confirmed appointments - Green styling
     if (status === 'confirmed') {
       return {
@@ -597,7 +603,7 @@ export default function Calendar() {
         color: 'hsl(142 76% 36%)',
       };
     }
-    
+
     // Default - Use calendar color
     const color = event.calendarColor || getCalendarColor(event.calendarId);
     return {
@@ -635,12 +641,12 @@ export default function Calendar() {
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className={CALENDAR_PAGE_SHELL}>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
           <p className="text-muted-foreground">GoHighLevel Calendar Integration</p>
         </div>
-        <Card className="border-destructive/50 bg-destructive/5">
+        <Card className={cn(PREMIUM_CARD, "border-destructive/50 bg-destructive/5")}>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-destructive mb-4">{error}</p>
             <Button
@@ -660,7 +666,7 @@ export default function Calendar() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={CALENDAR_PAGE_SHELL}>
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
@@ -674,7 +680,7 @@ export default function Calendar() {
       />
 
       {/* Event Details Modal with Edit/Delete */}
-      <EventDetailsModal 
+      <EventDetailsModal
         event={selectedEvent}
         open={eventModalOpen}
         onOpenChange={setEventModalOpen}
@@ -686,7 +692,7 @@ export default function Calendar() {
         onRescheduleEvent={async (eventId, data) => {
           const selectedCal = calendars.find(c => c.id === selectedEvent?.calendarId);
           const assignedUserId = data.assignedUserId || selectedCal?.teamMembers?.[0]?.userId || undefined;
-          
+
           // Call the GHL reschedule (update action)
           const result = await rescheduleEvent(
             eventId,
@@ -696,7 +702,7 @@ export default function Calendar() {
             data.originalEndTime,
             { overrideAvailability: data.overrideAvailability, assignedUserId }
           );
-          
+
           if (result.success) {
             // Send notifications to recipients if any
             const allNotificationRecipients = [
@@ -707,7 +713,7 @@ export default function Calendar() {
                 email: br.email,
               })),
             ];
-            
+
             if (allNotificationRecipients.length > 0) {
               try {
                 const calendarName = selectedCal?.name;
@@ -735,7 +741,7 @@ export default function Calendar() {
               }
             }
           }
-          
+
           return result;
         }}
       />
@@ -753,34 +759,45 @@ export default function Calendar() {
       />
 
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Calendar</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              GoHighLevel Appointments
-              {isUpdating && <span className="text-xs text-primary animate-pulse">(Updating...)</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
-                  Export current view
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {/* Mobile sidebar trigger */}
-            {isMobile && (
+      <section className={cn(PREMIUM_PANEL, "relative overflow-hidden rounded-2xl border p-4 md:p-6")}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="hidden rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_12px_35px_hsl(var(--primary)/0.12)] sm:block">
+                <CalendarIcon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Scheduling command centre
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Calendar</h1>
+                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-zinc-300">
+                  GoHighLevel Appointments
+                  {isUpdating && <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary animate-pulse">Updating...</span>}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-primary/30 bg-primary/15 font-semibold text-primary shadow-sm shadow-primary/10 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/20 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/50 active:translate-y-0">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                    Export current view
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Mobile sidebar trigger */}
+              {isMobile && (
               <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" className={PREMIUM_BUTTON}>
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -927,20 +944,21 @@ export default function Calendar() {
                   </div>
                 </SheetContent>
               </Sheet>
-            )}
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={handleRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(PREMIUM_BUTTON, "focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-95")}
+                onClick={handleRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
-        </div>
-        
-        {/* Controls row - scrollable on mobile */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 md:flex-wrap">
+
+          {/* Controls row - scrollable on mobile */}
+          <div className={cn(PREMIUM_MUTED_SURFACE, "flex items-center gap-2 overflow-x-auto rounded-xl border p-2 md:flex-wrap")}>
           {!isMobile && <KeyboardShortcutsHint />}
           <CalendarSearchDropdown
             events={events}
@@ -954,7 +972,7 @@ export default function Calendar() {
             setSearchQuery={setSearchQuery}
           />
           <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
-            <TabsList className="h-9">
+            <TabsList className="h-9 border border-white/10 bg-black/40">
               <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
               <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
               {!isMobile && (
@@ -966,7 +984,7 @@ export default function Calendar() {
             </TabsList>
           </Tabs>
           <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
-            <SelectTrigger className="w-[160px] md:w-[220px] shrink-0">
+            <SelectTrigger className="w-[160px] md:w-[220px] shrink-0 border-white/10 bg-black/30 focus:ring-primary/40">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="All Calendars" />
             </SelectTrigger>
@@ -975,7 +993,7 @@ export default function Calendar() {
               {calendars.map(cal => (
                 <SelectItem key={cal.id} value={cal.id}>
                   <div className="flex items-center gap-2">
-                    <div 
+                    <div
                       className="w-3 h-3 rounded-full shrink-0"
                       style={{ backgroundColor: cal.eventColor || '#3b82f6' }}
                     />
@@ -985,17 +1003,18 @@ export default function Calendar() {
               ))}
             </SelectContent>
           </Select>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Stats Row */}
       {isLoading ? (
         <StatsLoadingSkeleton />
       ) : (
-        <div className="grid grid-cols-4 gap-3">
-          <Card className="py-0">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
             <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted shrink-0">
+              <div className="p-2 rounded-lg border border-white/10 bg-white/[0.04] shrink-0">
                 <CalendarIcon className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
@@ -1004,9 +1023,9 @@ export default function Calendar() {
               </div>
             </CardContent>
           </Card>
-          <Card className="py-0">
+          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
             <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted shrink-0">
+              <div className="p-2 rounded-lg border border-white/10 bg-white/[0.04] shrink-0">
                 <LayoutList className="h-4 w-4 text-muted-foreground" />
               </div>
               <div>
@@ -1015,7 +1034,7 @@ export default function Calendar() {
               </div>
             </CardContent>
           </Card>
-          <Card className="py-0">
+          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
             <CardContent className="px-4 py-3 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
                 <Users className="h-4 w-4 text-emerald-500" />
@@ -1028,7 +1047,7 @@ export default function Calendar() {
               </div>
             </CardContent>
           </Card>
-          <Card className="py-0">
+          <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
             <CardContent className="px-4 py-3 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
                 <Clock className="h-4 w-4 text-blue-500" />
@@ -1044,7 +1063,7 @@ export default function Calendar() {
 
       {/* Calendar Legend */}
       {calendars.length > 0 && (
-        <Card className="py-0">
+        <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30")}>
           <CardContent className="px-4 py-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-muted-foreground mr-1">Calendars:</span>
@@ -1054,14 +1073,14 @@ export default function Calendar() {
                   onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                   className={cn(
                     'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md transition-colors border',
-                    selectedCalendarId === calendar.id 
-                      ? 'bg-primary/20 border-primary/40' 
-                      : selectedCalendarId === 'all' 
-                        ? 'bg-muted/50 border-border hover:bg-muted' 
+                    selectedCalendarId === calendar.id
+                      ? 'bg-primary/20 border-primary/40'
+                      : selectedCalendarId === 'all'
+                        ? 'bg-white/[0.04] border-white/10 hover:border-primary/30 hover:bg-primary/10'
                         : 'opacity-40 border-transparent hover:opacity-100'
                   )}
                 >
-                  <span 
+                  <span
                     className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
                   />
@@ -1086,12 +1105,12 @@ export default function Calendar() {
         isMobile ? "grid-cols-1" : sidebarCollapsed ? "grid-cols-[1fr_auto]" : "lg:grid-cols-3"
       )}>
         {/* Calendar View */}
-        <Card className={isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2'}>
+        <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl", isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2')}>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="h-5 w-5" />
-                {view === 'month' 
+                {view === 'month'
                   ? format(currentMonth, 'MMMM yyyy')
                   : view === 'week'
                     ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
@@ -1099,18 +1118,18 @@ export default function Calendar() {
                 }
               </CardTitle>
               <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
-                  onClick={() => view === 'month' 
+                  onClick={() => view === 'month'
                     ? setCurrentMonth(subMonths(currentMonth, 1))
                     : setCurrentWeek(subWeeks(currentWeek, 1))
                   }
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   size="sm"
                   onClick={goToToday}
                   className="font-medium"
@@ -1118,8 +1137,8 @@ export default function Calendar() {
                   Today
                 </Button>
                 {selectedDate && (
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={clearSelection}
                     className="text-muted-foreground"
@@ -1128,8 +1147,8 @@ export default function Calendar() {
                     Clear
                   </Button>
                 )}
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(addMonths(currentMonth, 1))
@@ -1157,7 +1176,7 @@ export default function Calendar() {
               ) : view === 'month' ? (
                 <>
                   {/* Day headers - Sticky */}
-                  <div className="grid grid-cols-7 gap-1 mb-1 sticky top-0 bg-background z-10">
+                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1 rounded-xl border border-white/10 bg-black/50 px-1 backdrop-blur">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                       <div key={day} className="text-center text-[10px] md:text-xs font-medium text-muted-foreground py-1 md:py-2">
                         {isMobile ? day.charAt(0) : day}
@@ -1165,12 +1184,12 @@ export default function Calendar() {
                     ))}
                   </div>
                   {/* Calendar grid with DropZones */}
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 gap-1.5">
                     {calendarDays.map(day => {
                       const dayEvents = getEventsForDay(day);
                       const isSelected = selectedDate && isSameDay(day, selectedDate);
                       const isCurrentMonth = isSameMonth(day, currentMonth);
-                      
+
                       return (
                         <DropZone
                           key={day.toISOString()}
@@ -1178,13 +1197,13 @@ export default function Calendar() {
                           onDrop={handleEventDrop}
                           disabled={isUpdating}
                             className={cn(
-                            'min-h-[72px] md:min-h-[100px] p-0.5 md:p-1.5 rounded-md border text-left transition-colors cursor-pointer',
-                            isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50',
+                            'min-h-[72px] md:min-h-[108px] p-0.5 md:p-1.5 rounded-xl border text-left transition-all duration-200 cursor-pointer bg-white/[0.015]',
+                            isSelected ? 'border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25),0_10px_30px_hsl(var(--primary)/0.08)]' : 'border-white/5 hover:border-primary/25 hover:bg-white/[0.04]',
                             !isCurrentMonth && 'opacity-40',
                             isToday(day) && 'ring-1 ring-primary'
                           )}
                         >
-                          <div 
+                          <div
                             onClick={() => setSelectedDate(day)}
                             className="h-full"
                           >
@@ -1209,7 +1228,7 @@ export default function Calendar() {
                                     toast({ title: 'Event cancelled' });
                                   }}
                                 >
-                                  <DraggableEvent 
+                                  <DraggableEvent
                                     event={event}
                                     disabled={isUpdating}
                                     onDragStart={setDraggingEvent}
@@ -1221,7 +1240,7 @@ export default function Calendar() {
                                         handleEventClick(event);
                                       }}
                                       style={getEventStyle(event)}
-                                      className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
+                                      className="text-[10px] truncate rounded-md px-1.5 py-0.5 shadow-sm ring-1 ring-white/10 cursor-pointer hover:opacity-90 hover:translate-x-0.5 transition-all"
                                     >
                                       {safeFormatISO(event.startTime, 'HH:mm')}
                                     </div>
@@ -1248,8 +1267,8 @@ export default function Calendar() {
                     <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2 border-b">
                       <div className="text-xs font-medium text-muted-foreground py-2 w-16"></div>
                       {weekDays.map(day => (
-                        <div 
-                          key={day.toISOString()} 
+                        <div
+                          key={day.toISOString()}
                           className={`text-center text-xs font-medium py-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}
                         >
                           <div>{format(day, 'EEE')}</div>
@@ -1269,7 +1288,7 @@ export default function Calendar() {
                           {weekDays.map(day => {
                             const hourEvents = getEventsForDayAndHour(day, hour);
                             return (
-                              <DropZone 
+                              <DropZone
                                 key={`${day.toISOString()}-${hour}`}
                                 date={day}
                                 hour={hour}
@@ -1323,7 +1342,7 @@ export default function Calendar() {
         {/* Sidebar Panel with Tabs - Hidden on mobile (accessible via Sheet) */}
         {!isMobile && (
         <Card className={cn(
-          "transition-all duration-300 overflow-hidden",
+          PREMIUM_PANEL, "rounded-2xl transition-all duration-300 overflow-hidden",
           sidebarCollapsed ? "w-[52px] min-w-[52px]" : "min-w-0"
         )}>
           {sidebarCollapsed ? (
@@ -1360,8 +1379,8 @@ export default function Calendar() {
                           }}
                           className={cn(
                             'h-9 w-9 flex flex-col items-center justify-center rounded-md transition-colors relative gap-0.5',
-                            sidebarTab === tab.id 
-                              ? 'bg-primary text-primary-foreground' 
+                            sidebarTab === tab.id
+                              ? 'bg-primary text-primary-foreground'
                               : 'hover:bg-muted text-muted-foreground hover:text-foreground',
                             isPinned && 'ring-1 ring-primary/30'
                           )}
@@ -1418,8 +1437,8 @@ export default function Calendar() {
                         return (
                           <Tooltip key={tab.id}>
                             <TooltipTrigger asChild>
-                              <TabsTrigger 
-                                value={tab.id} 
+                              <TabsTrigger
+                                value={tab.id}
                                 className={cn(
                                   "text-xs px-0.5 relative",
                                   isPinned && "ring-1 ring-primary/30"
@@ -1596,15 +1615,15 @@ export default function Calendar() {
         isLoading={isUpdating}
         onSubmit={async (data) => {
           const { secondaryRecipients, bookingRecipients, overrideAvailability, assignedUserId: manualAssignedUserId, ...appointmentData } = data;
-          
+
           // Use manually selected team member, or auto-assign first member as fallback
           const selectedCal = calendars.find(c => c.id === data.calendarId);
-          const assignedUserId = (manualAssignedUserId && manualAssignedUserId !== 'auto') 
-            ? manualAssignedUserId 
+          const assignedUserId = (manualAssignedUserId && manualAssignedUserId !== 'auto')
+            ? manualAssignedUserId
             : selectedCal?.teamMembers?.[0]?.userId || undefined;
-          
+
           const result = await createAppointment({ ...appointmentData, overrideAvailability, assignedUserId });
-          
+
           if (result.success) {
             logActivityDirect({
               actionType: 'appointment_created',
@@ -1614,7 +1633,7 @@ export default function Calendar() {
             });
             const calendarName = calendars.find(c => c.id === data.calendarId)?.name;
             const appointmentId = result.event?.id || `temp-${Date.now()}`;
-            
+
             // Combine all notification recipients: finance contacts + booking recipients
             const allNotificationRecipients = [
               ...(secondaryRecipients || []),
@@ -1666,15 +1685,15 @@ export default function Calendar() {
               }
             }
           }
-          
+
           return result.success;
         }}
         onSearchContacts={searchContacts}
       />
 
       {/* Calendars List — split into Frequently Used and Other */}
-      <Card>
-        <CardHeader>
+      <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl")}>
+        <CardHeader className="border-b border-white/10 bg-white/[0.02]">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Available Calendars ({calendars.length})
@@ -1719,10 +1738,10 @@ export default function Calendar() {
                 key={calendar.id}
                 onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                 className={cn(
-                  'p-3 rounded-lg border text-left transition-all',
+                  'p-4 rounded-xl border text-left transition-all duration-200 shadow-sm',
                   selectedCalendarId === calendar.id
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                    ? 'border-primary bg-primary/15 shadow-[0_12px_35px_hsl(var(--primary)/0.12)]'
+                    : 'border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10'
                 )}
               >
                 <div className="flex items-start justify-between">
@@ -1788,21 +1807,21 @@ export default function Calendar() {
   );
 }
 
-function EventCard({ 
-  event, 
+function EventCard({
+  event,
   getStatusColor,
   onClick
-}: { 
-  event: GHLEvent; 
+}: {
+  event: GHLEvent;
   getStatusColor: (status: string, appointmentStatus?: string) => string;
   onClick: () => void;
 }) {
   const color = event.calendarColor || '#3b82f6';
-  
+
   return (
-    <button 
+    <button
       onClick={onClick}
-      className="w-full p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors text-left"
+      className="w-full p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:border-primary/30 hover:bg-primary/10 transition-all text-left shadow-sm"
       style={{ borderLeftWidth: '4px', borderLeftColor: color }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -1810,7 +1829,7 @@ function EventCard({
           <p className="font-medium text-sm">{event.title || 'Untitled Event'}</p>
           {event.calendarName && (
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-              <span 
+              <span
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: color }}
               />
