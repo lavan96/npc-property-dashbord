@@ -16,7 +16,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, FileText, Link, Upload, X, Image, Car, CalendarDays, ChevronRight } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, FileText, Link, Upload, X, Image, Car, CalendarDays, ChevronRight, AlertCircle } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
@@ -1969,8 +1969,11 @@ export function InvestmentReportGenerator() {
               </Button>
 
               {isGenerating && (
-                <div className="text-center space-y-2">
-                  <p className="text-sm text-muted-foreground">
+                <div className="reports-processing-state text-center space-y-2">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
                     Analyzing market data and generating comprehensive report...
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -2045,12 +2048,14 @@ export function InvestmentReportGenerator() {
 
                   {/* Scrape Error */}
                   {scrapeError && (
-                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-destructive">Scraping Failed</p>
-                          <p className="text-sm text-destructive/80">{scrapeError}</p>
+                    <div className="reports-validation-state reports-validation-state-error">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 rounded-full bg-destructive/10 p-2 text-destructive">
+                          <AlertCircle className="h-4 w-4" />
+                        </span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-destructive">Scraping Failed</p>
+                          <p className="text-sm leading-6 text-destructive/80">{scrapeError}</p>
                         </div>
                       </div>
                     </div>
@@ -2398,12 +2403,14 @@ export function InvestmentReportGenerator() {
 
                   {/* PDF Error */}
                   {pdfError && (
-                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-destructive">Processing Failed</p>
-                          <p className="text-sm text-destructive/80">{pdfError}</p>
+                    <div className="reports-validation-state reports-validation-state-error">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 rounded-full bg-destructive/10 p-2 text-destructive">
+                          <AlertCircle className="h-4 w-4" />
+                        </span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-destructive">Processing Failed</p>
+                          <p className="text-sm leading-6 text-destructive/80">{pdfError}</p>
                         </div>
                       </div>
                     </div>

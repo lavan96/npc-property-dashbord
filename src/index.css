@@ -2575,3 +2575,46 @@ html {
     @apply transition-transform duration-150 ease-out;
   }
 }
+
+@layer components {
+  .reports-loading-card {
+    @apply relative overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 shadow-xl shadow-primary/10;
+  }
+
+  .reports-loading-card::before {
+    content: '';
+    @apply pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent;
+  }
+
+  .reports-state-card {
+    @apply rounded-3xl border shadow-lg shadow-black/5;
+  }
+
+  .reports-state-card-warning {
+    @apply border-amber-500/30 bg-gradient-to-br from-card via-card/95 to-amber-500/5;
+  }
+
+  .reports-suburb-empty-state,
+  .reports-types-empty-state,
+  .reports-pricing-empty-state {
+    @apply flex-col gap-3 border-dashed bg-gradient-to-br from-background/70 via-background/45 to-primary/5 font-medium;
+  }
+
+  .reports-suburb-empty-state svg,
+  .reports-types-empty-state svg,
+  .reports-pricing-empty-state svg {
+    @apply rounded-full border border-primary/20 bg-primary/10 p-2 text-primary shadow-sm box-content;
+  }
+
+  .reports-processing-state {
+    @apply rounded-2xl border border-primary/15 bg-primary/5 p-4 shadow-sm;
+  }
+
+  .reports-validation-state {
+    @apply rounded-2xl border p-4 shadow-sm;
+  }
+
+  .reports-validation-state-error {
+    @apply border-destructive/25 bg-destructive/10;
+  }
+}
