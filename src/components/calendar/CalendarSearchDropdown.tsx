@@ -165,7 +165,7 @@ export function CalendarSearchDropdown({
 
       {/* Dropdown */}
       {isOpen && searchQuery.trim() && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150">
           <ScrollArea className="max-h-[calc(100vh-180px)] sm:max-h-[520px]">
             {loadingContacts && filteredResults.length === 0 ? (
               <div className="space-y-2 p-3">

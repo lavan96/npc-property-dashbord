@@ -105,9 +105,9 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
 ];
 
 const CALENDAR_PAGE_SHELL = 'relative -m-4 min-h-[calc(100vh-2rem)] space-y-6 overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_30%),linear-gradient(180deg,hsl(220_18%_5%),hsl(220_16%_8%)_42%,hsl(220_14%_6%))] p-4 md:-m-6 md:p-6';
-const PREMIUM_CARD = 'border-white/10 bg-black/35 shadow-[0_18px_60px_hsl(0_0%_0%/0.35)] backdrop-blur-xl';
-const PREMIUM_PANEL = 'border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-950/85 to-zinc-900/70 shadow-[0_20px_70px_hsl(0_0%_0%/0.38)] backdrop-blur-xl';
-const PREMIUM_BUTTON = 'border-white/10 bg-white/[0.03] hover:border-primary/40 hover:bg-primary/10 hover:text-primary transition-all';
+const PREMIUM_CARD = 'border-white/10 bg-black/35 shadow-[0_18px_60px_hsl(0_0%_0%/0.35)] backdrop-blur-xl transition-all duration-200 ease-out';
+const PREMIUM_PANEL = 'border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-950/85 to-zinc-900/70 shadow-[0_20px_70px_hsl(0_0%_0%/0.38)] backdrop-blur-xl transition-all duration-200 ease-out';
+const PREMIUM_BUTTON = 'border-white/10 bg-white/[0.03] transition-all duration-200 ease-out hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)]';
 const PREMIUM_MUTED_SURFACE = 'border-white/10 bg-white/[0.03]';
 
 export default function Calendar() {
@@ -1079,11 +1079,11 @@ export default function Calendar() {
                       <button
                         onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                         className={cn(
-                          'group flex max-w-[190px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
+                          'group flex max-w-[190px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium shadow-sm transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.98]',
                           selectedCalendarId === calendar.id
                             ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_10px_28px_hsl(var(--primary)/0.14)]'
                             : selectedCalendarId === 'all'
-                              ? 'border-white/10 bg-white/[0.04] text-zinc-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary'
+                              ? 'border-white/10 bg-white/[0.04] text-zinc-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.10)]'
                               : 'border-white/5 bg-white/[0.025] text-zinc-500 opacity-70 hover:opacity-100 hover:border-primary/25 hover:text-zinc-200'
                         )}
                       >
@@ -1212,8 +1212,8 @@ export default function Calendar() {
                           onDrop={handleEventDrop}
                           disabled={isUpdating}
                           className={cn(
-                            'min-h-[76px] rounded-xl border p-1 text-left transition-all duration-200 cursor-pointer bg-white/[0.02] focus-within:ring-2 focus-within:ring-primary/40 md:min-h-[116px] md:p-2',
-                            isSelected ? 'border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.35),0_14px_36px_hsl(var(--primary)/0.12)]' : 'border-white/5 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white/[0.045]',
+                            'min-h-[76px] rounded-xl border p-1 text-left transition-all duration-200 ease-out cursor-pointer bg-white/[0.02] focus-within:ring-2 focus-within:ring-primary/40 md:min-h-[116px] md:p-2',
+                            isSelected ? 'border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.35),0_14px_36px_hsl(var(--primary)/0.12)]' : 'border-white/5 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white/[0.045] hover:shadow-[0_10px_26px_hsl(var(--primary)/0.08)]',
                             !isCurrentMonth && 'bg-black/20 opacity-50',
                             isToday(day) && 'ring-1 ring-primary/70'
                           )}
@@ -1258,7 +1258,7 @@ export default function Calendar() {
                                         handleEventClick(event);
                                       }}
                                       style={getEventStyle(event)}
-                                      className="flex min-h-[20px] items-center gap-1.5 overflow-hidden rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-none shadow-sm ring-1 ring-white/10 transition-all cursor-pointer hover:translate-x-0.5 hover:opacity-95 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
+                                      className="flex min-h-[20px] items-center gap-1.5 overflow-hidden rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-none shadow-sm ring-1 ring-white/10 transition-all duration-150 ease-out cursor-pointer hover:translate-x-0.5 hover:opacity-95 hover:ring-white/20 hover:shadow-[0_6px_18px_hsl(0_0%_0%/0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
                                     >
                                       <span className="shrink-0 tabular-nums">{safeFormatISO(event.startTime, 'HH:mm')}</span>
                                       {!isMobile && (
@@ -1464,7 +1464,7 @@ export default function Calendar() {
                               <TabsTrigger
                                 value={tab.id}
                                 className={cn(
-                                  "relative h-11 rounded-xl border border-white/10 bg-white/[0.03] p-0 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
+                                  "relative h-11 rounded-xl border border-white/10 bg-white/[0.03] p-0 text-zinc-400 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
                                   isPinned && "ring-1 ring-primary/30"
                                 )}
                                 onContextMenu={(e) => {
@@ -1780,10 +1780,10 @@ export default function Calendar() {
                 title={calendar.name}
                 onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                 className={cn(
-                  'group rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
+                  'group rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.99]',
                   selectedCalendarId === calendar.id
                     ? 'border-primary/60 bg-primary/15 shadow-[0_16px_42px_hsl(var(--primary)/0.14)]'
-                    : 'border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_16px_42px_hsl(0_0%_0%/0.24)]'
+                    : 'border-white/10 bg-white/[0.03] hover:-translate-y-1 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_18px_46px_hsl(0_0%_0%/0.28)]'
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
