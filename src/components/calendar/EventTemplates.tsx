@@ -415,7 +415,7 @@ function TemplateButton({
       {/* Success indicator */}
       {isRecentlyCreated && (
         <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center animate-in zoom-in">
-          <CheckCircle2 className="h-3 w-3 text-white" />
+          <CheckCircle2 className="h-3 w-3 text-foreground" />
         </div>
       )}
 

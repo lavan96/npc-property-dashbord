@@ -88,7 +88,7 @@ export function EnhancedEventPreview({
       >
         {/* Header with color */}
         <div 
-          className="p-3 text-white"
+          className="p-3 text-foreground"
           style={{ backgroundColor: event.calendarColor || '#3b82f6' }}
         >
           <h4 className="font-medium text-sm truncate">{event.title || 'Untitled Event'}</h4>
