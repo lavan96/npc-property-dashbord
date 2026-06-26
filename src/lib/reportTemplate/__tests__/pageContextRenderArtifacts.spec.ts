@@ -3,7 +3,7 @@ import {
   buildPageContextRenderArtifactManifest,
   pageContextRenderManifestToReviewArtifacts,
 } from '../ingestion/visualQuality';
-import type { PdfPageContextConsumerGuardrail } from '../ingestion/pageContexts';
+import type { PdfPageContext, PdfPageContextConsumerGuardrail } from '../ingestion/pageContexts';
 
 const guardrail: PdfPageContextConsumerGuardrail = {
   version: 'pdf-page-context-consumer-guardrail-v1',
