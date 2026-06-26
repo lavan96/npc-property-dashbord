@@ -1,64 +1,111 @@
 import { format } from 'date-fns';
-import { AlertCircle, Calendar, CheckCircle2, Edit, Send, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, FileText, GitBranch, ShieldAlert, Sparkles, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { InvestmentReport } from './types';
+import { getInvestmentGradeTone, getInvestmentScoreSummary, getScoreTone } from './utils';
 
 interface Props {
   report: InvestmentReport;
   isClientReport: boolean;
   hasOverrides: boolean;
-  reportScore: string | number | null;
   reportTierLabel: string;
   reportVariantLabel: string;
   reportStatusLabel: string;
-  onSendToClient: () => void;
-  onEdit: () => void;
-  onOverride: () => void;
 }
 
 export function InvestmentReportHero({
   report,
   isClientReport,
   hasOverrides,
-  reportScore,
   reportTierLabel,
   reportVariantLabel,
   reportStatusLabel,
-  onSendToClient,
-  onEdit,
-  onOverride,
 }: Props) {
+  const overrideCount = report.manual_overrides ? Object.keys(report.manual_overrides).length : 0;
+  const scoreSummary = getInvestmentScoreSummary(report);
+  const scoreTone = getScoreTone(scoreSummary.score);
+  const gradeTone = getInvestmentGradeTone(scoreSummary.grade);
+  const isDerivedVariant = Boolean(report.derived_from_report_id);
+
   return (
     <Card className="overflow-hidden border-primary/10 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm">
-      <CardContent className="p-6">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" /> Investment Report</Badge>
-              {isClientReport && <Badge variant="outline">Client-ready</Badge>}
-              {hasOverrides && <Badge className="gap-1 bg-amber-600 text-white hover:bg-amber-600"><AlertCircle className="h-3 w-3" /> Adjusted Data</Badge>}
+      <CardContent className="p-0">
+        <div className="border-b bg-background/40 p-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" /> Investment Report</Badge>
+                <Badge variant="outline" className="capitalize">{reportTierLabel}</Badge>
+                <Badge variant="outline" className="capitalize">{reportVariantLabel}</Badge>
+                {isDerivedVariant && <Badge variant="secondary" className="gap-1"><GitBranch className="h-3 w-3" /> Variant</Badge>}
+                {isClientReport && <Badge variant="outline">Client-ready</Badge>}
+                {hasOverrides && <Badge className="gap-1 bg-amber-600 text-white hover:bg-amber-600"><AlertCircle className="h-3 w-3" /> {overrideCount} Adjustment{overrideCount !== 1 ? 's' : ''}</Badge>}
+              </div>
+
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl xl:text-4xl">{report.property_address}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" /> Generated {format(new Date(report.created_at), 'PPpp')}</span>
+                  <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" /> {isClientReport ? 'Client report' : 'Internal report'}</span>
+                  {report.status && <span className="inline-flex items-center gap-1.5 capitalize"><CheckCircle2 className="h-4 w-4" /> {reportStatusLabel}</span>}
+                </div>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{report.property_address}</h1>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" /> Generated {format(new Date(report.created_at), 'PPpp')}</span>
-                <span className="inline-flex items-center gap-1.5 capitalize"><CheckCircle2 className="h-4 w-4" /> {reportStatusLabel}</span>
+
+            <div className="rounded-2xl border bg-background/70 p-4 shadow-sm xl:min-w-[300px]">
+              <div className="flex items-center gap-4">
+                <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-2xl font-bold shadow-sm ${gradeTone}`}>
+                  {scoreSummary.grade || '—'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Investment Grade</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {scoreSummary.recommendation || (scoreSummary.insufficient ? 'Insufficient data for a numeric investment score' : 'Score calculated from available report data')}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[460px]">
-            <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Tier</p><p className="mt-1 truncate text-sm font-semibold capitalize">{reportTierLabel}</p></div>
-            <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Variant</p><p className="mt-1 truncate text-sm font-semibold capitalize">{reportVariantLabel}</p></div>
-            <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Score</p><p className="mt-1 text-sm font-semibold">{reportScore ?? 'Not scored'}</p></div>
-            <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Client Status</p><p className="mt-1 text-sm font-semibold">{isClientReport ? 'Client report' : 'Internal'}</p></div>
-          </div>
         </div>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Button size="sm" onClick={onSendToClient}><Send className="h-4 w-4 mr-1" />Send to Client</Button>
-          <Button variant="outline" size="sm" onClick={onEdit}><Edit className="h-4 w-4 mr-1" />Edit Report</Button>
-          <Button variant="outline" size="sm" onClick={onOverride}><SlidersHorizontal className="h-4 w-4 mr-1" />Adjust Data</Button>
+
+        <div className="grid gap-3 p-6 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-xl border bg-background/70 p-4">
+            <p className="text-xs text-muted-foreground">Investment grade</p>
+            <p className="mt-2 text-lg font-semibold">{scoreSummary.grade || 'Not graded'}</p>
+            {scoreSummary.insufficient && <p className="mt-1 text-xs text-muted-foreground">Insufficient data</p>}
+          </div>
+          <div className="rounded-xl border bg-background/70 p-4">
+            <p className="text-xs text-muted-foreground">Score /100</p>
+            {scoreSummary.insufficient ? (
+              <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                <ShieldAlert className="h-4 w-4" />
+                Insufficient data
+              </div>
+            ) : (
+              <div className="mt-2 flex items-end gap-1">
+                <Star className="mb-1 h-4 w-4 fill-amber-500 text-amber-500" />
+                <span className={`text-2xl font-bold ${scoreTone}`}>{scoreSummary.score}</span>
+                <span className="pb-1 text-sm text-muted-foreground">/100</span>
+              </div>
+            )}
+            {scoreSummary.partialLabel && <p className="mt-1 text-xs text-muted-foreground">{scoreSummary.partialLabel}</p>}
+          </div>
+          <div className="rounded-xl border bg-background/70 p-4">
+            <p className="text-xs text-muted-foreground">Report tier</p>
+            <p className="mt-2 truncate text-lg font-semibold capitalize">{reportTierLabel}</p>
+            <p className="mt-1 truncate text-xs text-muted-foreground capitalize">{reportVariantLabel}</p>
+          </div>
+          <div className="rounded-xl border bg-background/70 p-4">
+            <p className="text-xs text-muted-foreground">Manual overrides</p>
+            <p className="mt-2 text-lg font-semibold">{overrideCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{overrideCount === 0 ? 'No adjustments' : 'Adjusted fields'}</p>
+          </div>
+          <div className="rounded-xl border bg-background/70 p-4">
+            <p className="text-xs text-muted-foreground">Report status</p>
+            <p className="mt-2 truncate text-lg font-semibold capitalize">{report.status ? reportStatusLabel : 'No status'}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{isClientReport ? 'Client report' : 'Internal report'}</p>
+          </div>
         </div>
       </CardContent>
     </Card>

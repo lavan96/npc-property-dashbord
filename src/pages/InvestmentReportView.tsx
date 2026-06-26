@@ -16,7 +16,7 @@ import { InvestmentReportHero } from '@/components/reports/report-view/Investmen
 import { InvestmentReportLoadingState } from '@/components/reports/report-view/InvestmentReportLoadingState';
 import { InvestmentReportOverridePanel } from '@/components/reports/report-view/InvestmentReportOverridePanel';
 import type { ClientInfo, InvestmentReport } from '@/components/reports/report-view/types';
-import { getHasOverrides, getOverriddenFields, getReportScore, getReportStatusLabel, getReportTierLabel, getReportVariantLabel } from '@/components/reports/report-view/utils';
+import { getHasOverrides, getOverriddenFields, getReportStatusLabel, getReportTierLabel, getReportVariantLabel } from '@/components/reports/report-view/utils';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
 export default function InvestmentReportView() {
@@ -137,7 +137,6 @@ export default function InvestmentReportView() {
   };
 
   const hasOverrides = useMemo(() => getHasOverrides(report), [report]);
-  const reportScore = useMemo(() => getReportScore(report), [report]);
   const reportTierLabel = useMemo(() => getReportTierLabel(report), [report]);
   const reportVariantLabel = useMemo(() => getReportVariantLabel(report), [report]);
   const reportStatusLabel = useMemo(() => getReportStatusLabel(report), [report]);
@@ -176,13 +175,9 @@ export default function InvestmentReportView() {
               report={report}
               isClientReport={isClientReport}
               hasOverrides={hasOverrides}
-              reportScore={reportScore}
               reportTierLabel={reportTierLabel}
               reportVariantLabel={reportVariantLabel}
               reportStatusLabel={reportStatusLabel}
-              onSendToClient={() => setSendToClientOpen(true)}
-              onEdit={() => setEditorOpen(true)}
-              onOverride={() => setOverrideModalOpen(true)}
             />
 
             {hasOverrides && (
