@@ -104,6 +104,12 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
   { id: 'reminders', icon: <Bell className="h-4 w-4" />, label: 'Reminders', shortcut: '' },
 ];
 
+const CALENDAR_PAGE_SHELL = 'relative -m-4 min-h-[calc(100vh-2rem)] space-y-6 overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_30%),linear-gradient(180deg,hsl(220_18%_5%),hsl(220_16%_8%)_42%,hsl(220_14%_6%))] p-4 md:-m-6 md:p-6';
+const PREMIUM_CARD = 'border-white/10 bg-black/35 shadow-[0_18px_60px_hsl(0_0%_0%/0.35)] backdrop-blur-xl';
+const PREMIUM_PANEL = 'border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-950/85 to-zinc-900/70 shadow-[0_20px_70px_hsl(0_0%_0%/0.38)] backdrop-blur-xl';
+const PREMIUM_BUTTON = 'border-white/10 bg-white/[0.03] hover:border-primary/40 hover:bg-primary/10 hover:text-primary transition-all';
+const PREMIUM_MUTED_SURFACE = 'border-white/10 bg-white/[0.03]';
+
 export default function Calendar() {
   const { canEdit: canEditCalendar } = useModulePermissions('calendar');
   const isMobile = useIsMobile();
@@ -153,20 +159,20 @@ export default function Calendar() {
   // Smart tab ordering based on context
   const smartOrderedTabs = useMemo(() => {
     const order: SidebarTab[] = [];
-    
+
     // If selected date has conflicts, prioritize conflicts tab
     if (selectedDate) {
       const dayEvents = events.filter(e => {
         const d = safeParseISO(e.startTime);
         return d ? isSameDay(d, selectedDate) : false;
       });
-      
+
       // Check for overlapping events (conflicts)
       const hasConflicts = dayEvents.some((event, i) => {
         const start1 = safeParseISO(event.startTime);
         const end1 = safeParseISO(event.endTime);
         if (!start1 || !end1) return false;
-        
+
         return dayEvents.slice(i + 1).some(other => {
           const start2 = safeParseISO(other.startTime);
           const end2 = safeParseISO(other.endTime);
@@ -174,23 +180,23 @@ export default function Calendar() {
           return start1 < end2 && start2 < end1;
         });
       });
-      
+
       if (hasConflicts) {
         order.push('conflicts');
       }
-      
+
       if (dayEvents.length > 5) {
         order.push('analytics');
       }
     }
-    
+
     return order;
   }, [selectedDate, events]);
 
   // Toggle pin for a tab
   const handleTogglePin = useCallback((tab: SidebarTab) => {
-    setPinnedTabs(prev => 
-      prev.includes(tab) 
+    setPinnedTabs(prev =>
+      prev.includes(tab)
         ? prev.filter(t => t !== tab)
         : [...prev, tab]
     );
@@ -271,7 +277,7 @@ export default function Calendar() {
   }, []);
 
   const handleSelectAllEvents = useCallback(() => {
-    const dayEvents = selectedDate 
+    const dayEvents = selectedDate
       ? events.filter(e => {
           const d = safeParseISO(e.startTime);
           return d ? isSameDay(d, selectedDate) : false;
@@ -307,7 +313,7 @@ export default function Calendar() {
   const handleEventDrop = useCallback(async (event: GHLEvent, targetDate: Date, targetHour?: number) => {
     const originalStart = safeParseISO(event.startTime);
     const originalEnd = safeParseISO(event.endTime);
-    
+
     if (!originalStart || !originalEnd) {
       toast({
         title: 'Cannot reschedule',
@@ -323,7 +329,7 @@ export default function Calendar() {
     // Build new start time - interpret in configured booking timezone
     // Using static imports from top of file
     const bookingTz = getBookingTimezone();
-    
+
     let newStartDate: Date;
     if (targetHour !== undefined) {
       newStartDate = new Date(targetDate);
@@ -337,7 +343,7 @@ export default function Calendar() {
     const dateStr = `${newStartDate.getFullYear()}-${String(newStartDate.getMonth() + 1).padStart(2, '0')}-${String(newStartDate.getDate()).padStart(2, '0')}`;
     const timeStr = `${String(newStartDate.getHours()).padStart(2, '0')}:${String(newStartDate.getMinutes()).padStart(2, '0')}`;
     const newStartISO = toTimezoneISO(dateStr, timeStr, bookingTz);
-    
+
     // Calculate end from duration
     const endTotalMs = new Date(newStartISO).getTime() + duration;
     const newEndISO = new Date(endTotalMs).toISOString();
@@ -501,7 +507,7 @@ export default function Calendar() {
     const monthEnd = endOfMonth(currentMonth);
     const calendarStart = startOfWeek(monthStart);
     const calendarEnd = endOfWeek(monthEnd);
-    
+
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentMonth]);
 
@@ -532,13 +538,13 @@ export default function Calendar() {
   const getStatusColor = (status: string, appointmentStatus?: string) => {
     const effectiveStatus = appointmentStatus || status;
     switch (effectiveStatus?.toLowerCase()) {
-      case 'confirmed': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'booked': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'showed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      case 'noshow': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'cancelled': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-      case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      default: return 'bg-muted text-muted-foreground border-border';
+      case 'confirmed': return 'rounded-full border-emerald-400/25 bg-emerald-500/15 text-emerald-300';
+      case 'booked': return 'rounded-full border-blue-400/25 bg-blue-500/15 text-blue-300';
+      case 'showed': return 'rounded-full border-teal-400/25 bg-teal-500/15 text-teal-300';
+      case 'noshow': return 'rounded-full border-red-400/25 bg-red-500/15 text-red-300';
+      case 'cancelled': return 'rounded-full border-zinc-500/25 bg-zinc-500/15 text-zinc-300';
+      case 'pending': return 'rounded-full border-amber-400/25 bg-amber-500/15 text-amber-300';
+      default: return 'rounded-full border-white/10 bg-white/[0.04] text-zinc-400';
     }
   };
 
@@ -558,7 +564,7 @@ export default function Calendar() {
         color: 'hsl(207 89% 41%)',
       };
     }
-    
+
     // Cancelled appointments - Red styling with strikethrough effect
     if (status === 'cancelled' || status === 'canceled') {
       return {
@@ -569,7 +575,7 @@ export default function Calendar() {
         opacity: 0.8,
       };
     }
-    
+
     // Rescheduled appointments - Orange styling
     if (status === 'rescheduled') {
       return {
@@ -578,7 +584,7 @@ export default function Calendar() {
         color: 'hsl(38 92% 50%)',
       };
     }
-    
+
     // No-show appointments - Muted red
     if (status === 'no_show' || status === 'noshow' || status === 'no-show') {
       return {
@@ -588,7 +594,7 @@ export default function Calendar() {
         opacity: 0.7,
       };
     }
-    
+
     // Confirmed appointments - Green styling
     if (status === 'confirmed') {
       return {
@@ -597,7 +603,7 @@ export default function Calendar() {
         color: 'hsl(142 76% 36%)',
       };
     }
-    
+
     // Default - Use calendar color
     const color = event.calendarColor || getCalendarColor(event.calendarId);
     return {
@@ -635,12 +641,12 @@ export default function Calendar() {
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className={CALENDAR_PAGE_SHELL}>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
           <p className="text-muted-foreground">GoHighLevel Calendar Integration</p>
         </div>
-        <Card className="border-destructive/50 bg-destructive/5">
+        <Card className={cn(PREMIUM_CARD, "border-destructive/50 bg-destructive/5")}>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-destructive mb-4">{error}</p>
             <Button
@@ -660,7 +666,7 @@ export default function Calendar() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={CALENDAR_PAGE_SHELL}>
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
@@ -674,7 +680,7 @@ export default function Calendar() {
       />
 
       {/* Event Details Modal with Edit/Delete */}
-      <EventDetailsModal 
+      <EventDetailsModal
         event={selectedEvent}
         open={eventModalOpen}
         onOpenChange={setEventModalOpen}
@@ -686,7 +692,7 @@ export default function Calendar() {
         onRescheduleEvent={async (eventId, data) => {
           const selectedCal = calendars.find(c => c.id === selectedEvent?.calendarId);
           const assignedUserId = data.assignedUserId || selectedCal?.teamMembers?.[0]?.userId || undefined;
-          
+
           // Call the GHL reschedule (update action)
           const result = await rescheduleEvent(
             eventId,
@@ -696,7 +702,7 @@ export default function Calendar() {
             data.originalEndTime,
             { overrideAvailability: data.overrideAvailability, assignedUserId }
           );
-          
+
           if (result.success) {
             // Send notifications to recipients if any
             const allNotificationRecipients = [
@@ -707,7 +713,7 @@ export default function Calendar() {
                 email: br.email,
               })),
             ];
-            
+
             if (allNotificationRecipients.length > 0) {
               try {
                 const calendarName = selectedCal?.name;
@@ -735,7 +741,7 @@ export default function Calendar() {
               }
             }
           }
-          
+
           return result;
         }}
       />
@@ -753,34 +759,45 @@ export default function Calendar() {
       />
 
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Calendar</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              GoHighLevel Appointments
-              {isUpdating && <span className="text-xs text-primary animate-pulse">(Updating...)</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
-                  Export current view
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {/* Mobile sidebar trigger */}
-            {isMobile && (
+      <section className={cn(PREMIUM_PANEL, "relative overflow-hidden rounded-2xl border p-4 md:p-6")}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="hidden rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_12px_35px_hsl(var(--primary)/0.12)] sm:block">
+                <CalendarIcon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Scheduling command centre
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Calendar</h1>
+                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-zinc-300">
+                  GoHighLevel Appointments
+                  {isUpdating && <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary animate-pulse">Updating...</span>}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-10 rounded-xl border-white/10 bg-white/[0.04] px-3 font-semibold text-zinc-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                    Export current view
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Mobile sidebar trigger */}
+              {isMobile && (
               <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" className={cn(PREMIUM_BUTTON, "h-10 w-10 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95")}>
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -799,8 +816,8 @@ export default function Calendar() {
                             className={cn(
                               "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md transition-colors min-h-[36px] touch-manipulation",
                               sidebarTab === tab.id
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:text-foreground"
+                                ? "border border-primary/50 bg-primary/20 text-primary"
+                                : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                             )}
                           >
                             {tab.icon}
@@ -927,115 +944,117 @@ export default function Calendar() {
                   </div>
                 </SheetContent>
               </Sheet>
-            )}
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={handleRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(PREMIUM_BUTTON, "h-10 w-10 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60")}
+                onClick={handleRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Controls row - scrollable on mobile */}
+          <div className={cn(PREMIUM_MUTED_SURFACE, "flex flex-wrap items-center gap-2 rounded-2xl border p-2.5")}>
+            {!isMobile && <KeyboardShortcutsHint />}
+            <CalendarSearchDropdown
+              events={events}
+              contactCache={contactCache}
+              fetchContact={fetchContact}
+              onSelectEvent={(event) => {
+                setSelectedEvent(event);
+                setEventModalOpen(true);
+              }}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+            />
+            <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
+              <TabsList className="h-10 rounded-xl border border-white/10 bg-black/35 p-1 shadow-inner shadow-black/20">
+                <TabsTrigger value="month" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Month</TabsTrigger>
+                <TabsTrigger value="week" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Week</TabsTrigger>
+                {!isMobile && (
+                  <TabsTrigger value="timeline" className="flex h-8 items-center gap-1 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">
+                    <LayoutList className="h-3 w-3" />
+                    Timeline
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </Tabs>
+            <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
+              <SelectTrigger className="h-10 w-full shrink-0 rounded-xl border-white/10 bg-black/35 px-3 text-sm shadow-inner shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px]">
+                <Filter className="mr-2 h-4 w-4 text-primary/80" />
+                <SelectValue placeholder="All Calendars" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-white/10 bg-zinc-950/95 shadow-[0_18px_60px_hsl(0_0%_0%/0.4)] backdrop-blur-xl">
+                <SelectItem value="all">All Calendars</SelectItem>
+                {calendars.map(cal => (
+                  <SelectItem key={cal.id} value={cal.id}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full shrink-0 ring-2 ring-black/30 shadow-sm"
+                        style={{ backgroundColor: cal.eventColor || '#3b82f6' }}
+                      />
+                      <span className="truncate max-w-[120px]">{cal.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        
-        {/* Controls row - scrollable on mobile */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 md:flex-wrap">
-          {!isMobile && <KeyboardShortcutsHint />}
-          <CalendarSearchDropdown
-            events={events}
-            contactCache={contactCache}
-            fetchContact={fetchContact}
-            onSelectEvent={(event) => {
-              setSelectedEvent(event);
-              setEventModalOpen(true);
-            }}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-          />
-          <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
-            <TabsList className="h-9">
-              <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
-              <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
-              {!isMobile && (
-                <TabsTrigger value="timeline" className="text-xs flex items-center gap-1">
-                  <LayoutList className="h-3 w-3" />
-                  Timeline
-                </TabsTrigger>
-              )}
-            </TabsList>
-          </Tabs>
-          <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
-            <SelectTrigger className="w-[160px] md:w-[220px] shrink-0">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All Calendars" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Calendars</SelectItem>
-              {calendars.map(cal => (
-                <SelectItem key={cal.id} value={cal.id}>
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: cal.eventColor || '#3b82f6' }}
-                    />
-                    <span className="truncate max-w-[120px]">{cal.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      </section>
 
       {/* Stats Row */}
       {isLoading ? (
         <StatsLoadingSkeleton />
       ) : (
-        <div className="grid grid-cols-4 gap-3">
-          <Card className="py-0">
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted shrink-0">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-black/45 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight">{calendars.length}</div>
-                <p className="text-xs text-muted-foreground">Calendars</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-white">{calendars.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Calendars</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-zinc-400 transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
+                <CalendarIcon className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted shrink-0">
-                <LayoutList className="h-4 w-4 text-muted-foreground" />
-              </div>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-black/45 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight">{filteredEvents.length}</div>
-                <p className="text-xs text-muted-foreground">Total Events</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-white">{filteredEvents.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Total Events</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-zinc-400 transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
+                <LayoutList className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-emerald-500/10 shrink-0">
-                <Users className="h-4 w-4 text-emerald-500" />
-              </div>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/35 hover:bg-emerald-950/10 hover:shadow-[0_22px_70px_hsl(160_84%_20%/0.16)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight text-emerald-500">
+                <div className="text-3xl font-bold leading-none tracking-tight text-emerald-400">
                   {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
                 </div>
-                <p className="text-xs text-muted-foreground">Confirmed</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/70">Confirmed</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-emerald-400 transition-all group-hover:border-emerald-300/40 group-hover:bg-emerald-400/15">
+                <Users className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
-          <Card className="py-0">
-            <CardContent className="px-4 py-3 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10 shrink-0">
-                <Clock className="h-4 w-4 text-blue-500" />
-              </div>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_22px_70px_hsl(var(--primary)/0.16)]")}>
+            <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-xl font-bold leading-tight text-blue-500">{upcomingEvents.length}</div>
-                <p className="text-xs text-muted-foreground">Upcoming</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-primary">{upcomingEvents.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary/75">Upcoming</p>
+              </div>
+              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-3 text-primary transition-all group-hover:border-primary/40 group-hover:bg-primary/15">
+                <Clock className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
@@ -1044,39 +1063,45 @@ export default function Calendar() {
 
       {/* Calendar Legend */}
       {calendars.length > 0 && (
-        <Card className="py-0">
+        <Card className={cn(PREMIUM_CARD, "py-0 transition-all duration-200 hover:border-primary/25")}>
           <CardContent className="px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground mr-1">Calendars:</span>
-              {calendars.map(calendar => (
-                <button
-                  key={calendar.id}
-                  onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
-                  className={cn(
-                    'flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md transition-colors border',
-                    selectedCalendarId === calendar.id 
-                      ? 'bg-primary/20 border-primary/40' 
-                      : selectedCalendarId === 'all' 
-                        ? 'bg-muted/50 border-border hover:bg-muted' 
-                        : 'opacity-40 border-transparent hover:opacity-100'
-                  )}
-                >
-                  <span 
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
-                  />
-                  <span className="truncate max-w-[120px]">{calendar.name}</span>
-                </button>
-              ))}
-              {selectedCalendarId !== 'all' && (
-                <button
-                  onClick={() => setSelectedCalendarId('all')}
-                  className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline ml-1"
-                >
-                  Show all
-                </button>
-              )}
-            </div>
+            <TooltipProvider delayDuration={150}>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="mr-0.5 shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Calendars:</span>
+                {calendars.map(calendar => (
+                  <Tooltip key={calendar.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
+                        className={cn(
+                          'group flex max-w-[190px] items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
+                          selectedCalendarId === calendar.id
+                            ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_10px_28px_hsl(var(--primary)/0.14)]'
+                            : selectedCalendarId === 'all'
+                              ? 'border-white/10 bg-white/[0.04] text-zinc-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary'
+                              : 'border-white/5 bg-white/[0.025] text-zinc-500 opacity-70 hover:opacity-100 hover:border-primary/25 hover:text-zinc-200'
+                        )}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-black/30"
+                          style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
+                        />
+                        <span className="min-w-0 truncate">{calendar.name}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{calendar.name}</TooltipContent>
+                  </Tooltip>
+                ))}
+                {selectedCalendarId !== 'all' && (
+                  <button
+                    onClick={() => setSelectedCalendarId('all')}
+                    className="ml-0.5 rounded-full border border-white/10 px-3 py-2 text-xs font-medium text-zinc-400 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+                  >
+                    Show all
+                  </button>
+                )}
+              </div>
+            </TooltipProvider>
           </CardContent>
         </Card>
       )}
@@ -1086,51 +1111,55 @@ export default function Calendar() {
         isMobile ? "grid-cols-1" : sidebarCollapsed ? "grid-cols-[1fr_auto]" : "lg:grid-cols-3"
       )}>
         {/* Calendar View */}
-        <Card className={isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2'}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
-                {view === 'month' 
+        <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl border-primary/10", isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2')}>
+          <CardHeader className="border-b border-white/10 bg-white/[0.02] pb-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+                <span className="rounded-xl border border-primary/25 bg-primary/10 p-2 text-primary">
+                  <CalendarIcon className="h-5 w-5" />
+                </span>
+                {view === 'month'
                   ? format(currentMonth, 'MMMM yyyy')
                   : view === 'week'
                     ? `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`
                     : selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Timeline'
                 }
               </CardTitle>
-              <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  variant="ghost"
                   size="icon"
-                  onClick={() => view === 'month' 
+                  className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
+                  onClick={() => view === 'month'
                     ? setCurrentMonth(subMonths(currentMonth, 1))
                     : setCurrentWeek(subWeeks(currentWeek, 1))
                   }
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   size="sm"
                   onClick={goToToday}
-                  className="font-medium"
+                  className="h-10 rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]"
                 >
                   Today
                 </Button>
                 {selectedDate && (
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     onClick={clearSelection}
-                    className="text-muted-foreground"
+                    className="h-10 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.98]"
                   >
                     <X className="h-3 w-3 mr-1" />
                     Clear
                   </Button>
                 )}
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
+                  className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(addMonths(currentMonth, 1))
                     : setCurrentWeek(addWeeks(currentWeek, 1))
@@ -1141,7 +1170,7 @@ export default function Calendar() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 md:p-4">
             {/* Animation wrapper with swipe support */}
             <div
               {...(isMobile ? calendarSwipeHandlers : {})}
@@ -1157,41 +1186,44 @@ export default function Calendar() {
               ) : view === 'month' ? (
                 <>
                   {/* Day headers - Sticky */}
-                  <div className="grid grid-cols-7 gap-1 mb-1 sticky top-0 bg-background z-10">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                      <div key={day} className="text-center text-[10px] md:text-xs font-medium text-muted-foreground py-1 md:py-2">
+                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1.5 rounded-2xl border border-white/10 bg-black/60 p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <div key={day} className="rounded-xl py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400 md:text-xs">
                         {isMobile ? day.charAt(0) : day}
                       </div>
                     ))}
                   </div>
                   {/* Calendar grid with DropZones */}
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 gap-1.5 rounded-2xl border border-white/10 bg-black/20 p-1.5 shadow-inner shadow-black/20 md:gap-2 md:p-2">
                     {calendarDays.map(day => {
                       const dayEvents = getEventsForDay(day);
                       const isSelected = selectedDate && isSameDay(day, selectedDate);
                       const isCurrentMonth = isSameMonth(day, currentMonth);
-                      
+
                       return (
                         <DropZone
                           key={day.toISOString()}
                           date={day}
                           onDrop={handleEventDrop}
                           disabled={isUpdating}
-                            className={cn(
-                            'min-h-[72px] md:min-h-[100px] p-0.5 md:p-1.5 rounded-md border text-left transition-colors cursor-pointer',
-                            isSelected ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-muted/50',
-                            !isCurrentMonth && 'opacity-40',
-                            isToday(day) && 'ring-1 ring-primary'
+                          className={cn(
+                            'min-h-[76px] rounded-xl border p-1 text-left transition-all duration-200 cursor-pointer bg-white/[0.02] focus-within:ring-2 focus-within:ring-primary/40 md:min-h-[116px] md:p-2',
+                            isSelected ? 'border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.35),0_14px_36px_hsl(var(--primary)/0.12)]' : 'border-white/5 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white/[0.045]',
+                            !isCurrentMonth && 'bg-black/20 opacity-50',
+                            isToday(day) && 'ring-1 ring-primary/70'
                           )}
                         >
-                          <div 
+                          <div
                             onClick={() => setSelectedDate(day)}
                             className="h-full"
                           >
-                            <div className={`text-xs font-medium mb-1 ${isToday(day) ? 'text-primary' : ''}`}>
+                            <div className={cn(
+                              'mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold',
+                              isSelected ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : isToday(day) ? 'border border-primary/50 bg-primary/10 text-primary' : isCurrentMonth ? 'text-zinc-200' : 'text-zinc-500'
+                            )}>
                               {format(day, 'd')}
                             </div>
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                               {dayEvents.slice(0, isMobile ? 2 : 3).map(event => (
                                 <EnhancedEventPreview
                                   key={event.id}
@@ -1209,7 +1241,7 @@ export default function Calendar() {
                                     toast({ title: 'Event cancelled' });
                                   }}
                                 >
-                                  <DraggableEvent 
+                                  <DraggableEvent
                                     event={event}
                                     disabled={isUpdating}
                                     onDragStart={setDraggingEvent}
@@ -1221,15 +1253,18 @@ export default function Calendar() {
                                         handleEventClick(event);
                                       }}
                                       style={getEventStyle(event)}
-                                      className="text-[10px] truncate px-1 py-0.5 rounded cursor-pointer hover:opacity-80"
+                                      className="flex min-h-[20px] items-center gap-1.5 overflow-hidden rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-none shadow-sm ring-1 ring-white/10 transition-all cursor-pointer hover:translate-x-0.5 hover:opacity-95 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
                                     >
-                                      {safeFormatISO(event.startTime, 'HH:mm')}
+                                      <span className="shrink-0 tabular-nums">{safeFormatISO(event.startTime, 'HH:mm')}</span>
+                                      {!isMobile && (
+                                        <span className="min-w-0 truncate opacity-90">{event.title || 'Event'}</span>
+                                      )}
                                     </div>
                                   </DraggableEvent>
                                 </EnhancedEventPreview>
                               ))}
                               {dayEvents.length > (isMobile ? 2 : 3) && (
-                                <div className="text-[9px] md:text-[10px] text-muted-foreground px-1">
+                                <div className="rounded-lg border border-white/5 bg-white/[0.04] px-1.5 py-1 text-[9px] font-semibold text-zinc-400 md:text-[10px]">
                                   +{dayEvents.length - (isMobile ? 2 : 3)} more
                                 </div>
                               )}
@@ -1248,8 +1283,8 @@ export default function Calendar() {
                     <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2 border-b">
                       <div className="text-xs font-medium text-muted-foreground py-2 w-16"></div>
                       {weekDays.map(day => (
-                        <div 
-                          key={day.toISOString()} 
+                        <div
+                          key={day.toISOString()}
                           className={`text-center text-xs font-medium py-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}
                         >
                           <div>{format(day, 'EEE')}</div>
@@ -1269,7 +1304,7 @@ export default function Calendar() {
                           {weekDays.map(day => {
                             const hourEvents = getEventsForDayAndHour(day, hour);
                             return (
-                              <DropZone 
+                              <DropZone
                                 key={`${day.toISOString()}-${hour}`}
                                 date={day}
                                 hour={hour}
@@ -1323,18 +1358,18 @@ export default function Calendar() {
         {/* Sidebar Panel with Tabs - Hidden on mobile (accessible via Sheet) */}
         {!isMobile && (
         <Card className={cn(
-          "transition-all duration-300 overflow-hidden",
+          PREMIUM_PANEL, "rounded-2xl transition-all duration-300 overflow-hidden border-primary/10",
           sidebarCollapsed ? "w-[52px] min-w-[52px]" : "min-w-0"
         )}>
           {sidebarCollapsed ? (
             // Collapsed: compact vertical icon strip
-            <div className="flex flex-col items-center py-3 gap-1">
+            <div className="flex flex-col items-center gap-2 py-3">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 mb-2"
+                    className="mb-1 h-9 w-9 rounded-xl border border-white/10 text-zinc-300 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
                     onClick={() => setSidebarCollapsed(false)}
                   >
                     <PanelLeft className="h-4 w-4" />
@@ -1359,10 +1394,10 @@ export default function Calendar() {
                             handleTogglePin(tab.id);
                           }}
                           className={cn(
-                            'h-9 w-9 flex flex-col items-center justify-center rounded-md transition-colors relative gap-0.5',
-                            sidebarTab === tab.id 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'hover:bg-muted text-muted-foreground hover:text-foreground',
+                            'relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
+                            sidebarTab === tab.id
+                              ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_10px_24px_hsl(var(--primary)/0.14)]'
+                              : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-primary/35 hover:bg-primary/10 hover:text-primary',
                             isPinned && 'ring-1 ring-primary/30'
                           )}
                         >
@@ -1386,11 +1421,14 @@ export default function Calendar() {
           ) : (
             // Expanded: full sidebar with header and content
             <>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-muted-foreground">Tools</span>
+              <CardHeader className="border-b border-white/10 bg-white/[0.02] pb-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-sm font-semibold text-white">Tools</span>
+                    <p className="mt-0.5 text-[11px] text-zinc-500">Calendar command sidebar</p>
+                  </div>
                   <div className="flex items-center gap-1 ml-auto">
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setQuickAddModalOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-10 rounded-xl border-primary/40 bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]" onClick={() => setQuickAddModalOpen(true)}>
                       <Plus className="h-3 w-3 mr-1" />
                       Quick Add
                     </Button>
@@ -1399,7 +1437,7 @@ export default function Calendar() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-10 w-10 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95"
                           onClick={() => setSidebarCollapsed(true)}
                         >
                           <PanelLeftClose className="h-4 w-4" />
@@ -1412,16 +1450,16 @@ export default function Calendar() {
 
                 <TooltipProvider delayDuration={100}>
                   <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                    <TabsList className="w-full flex flex-wrap h-auto gap-0.5 p-1">
+                    <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-black/35 p-2 shadow-inner shadow-black/20">
                       {SIDEBAR_TABS.map((tab) => {
                         const isPinned = pinnedTabs.includes(tab.id);
                         return (
                           <Tooltip key={tab.id}>
                             <TooltipTrigger asChild>
-                              <TabsTrigger 
-                                value={tab.id} 
+                              <TabsTrigger
+                                value={tab.id}
                                 className={cn(
-                                  "text-xs px-0.5 relative",
+                                  "relative h-11 rounded-xl border border-white/10 bg-white/[0.03] p-0 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
                                   isPinned && "ring-1 ring-primary/30"
                                 )}
                                 onContextMenu={(e) => {
@@ -1453,7 +1491,7 @@ export default function Calendar() {
 
               <CardContent className="p-3">
               {/* Mini Calendar Navigator */}
-              <div className="mb-4 pb-3 border-b">
+              <div className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-3 shadow-inner shadow-black/20">
                 <MiniCalendarNavigator
                   currentMonth={currentMonth}
                   setCurrentMonth={setCurrentMonth}
@@ -1468,17 +1506,29 @@ export default function Calendar() {
 
               {sidebarTab === 'events' && (
                 <div>
-                  <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
-                  </h4>
+                  <div className="mb-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                    <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
+                      <Clock className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">
+                        {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
+                      </h4>
+                      <p className="text-[11px] text-zinc-500">
+                        {selectedDate ? 'Selected day agenda' : 'Next scheduled appointments'}
+                      </p>
+                    </div>
+                  </div>
                   <div>
                     {isLoading ? (
                       <SidebarLoadingSkeleton />
                     ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-muted-foreground">
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                          <CalendarIcon className="h-6 w-6" />
+                        </div>
+                        <p className="text-sm font-medium text-zinc-300">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                        <p className="mt-1 text-xs text-zinc-500">Use Quick Add to schedule from this panel.</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1596,15 +1646,15 @@ export default function Calendar() {
         isLoading={isUpdating}
         onSubmit={async (data) => {
           const { secondaryRecipients, bookingRecipients, overrideAvailability, assignedUserId: manualAssignedUserId, ...appointmentData } = data;
-          
+
           // Use manually selected team member, or auto-assign first member as fallback
           const selectedCal = calendars.find(c => c.id === data.calendarId);
-          const assignedUserId = (manualAssignedUserId && manualAssignedUserId !== 'auto') 
-            ? manualAssignedUserId 
+          const assignedUserId = (manualAssignedUserId && manualAssignedUserId !== 'auto')
+            ? manualAssignedUserId
             : selectedCal?.teamMembers?.[0]?.userId || undefined;
-          
+
           const result = await createAppointment({ ...appointmentData, overrideAvailability, assignedUserId });
-          
+
           if (result.success) {
             logActivityDirect({
               actionType: 'appointment_created',
@@ -1614,7 +1664,7 @@ export default function Calendar() {
             });
             const calendarName = calendars.find(c => c.id === data.calendarId)?.name;
             const appointmentId = result.event?.id || `temp-${Date.now()}`;
-            
+
             // Combine all notification recipients: finance contacts + booking recipients
             const allNotificationRecipients = [
               ...(secondaryRecipients || []),
@@ -1666,25 +1716,30 @@ export default function Calendar() {
               }
             }
           }
-          
+
           return result.success;
         }}
         onSearchContacts={searchContacts}
       />
 
       {/* Calendars List — split into Frequently Used and Other */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Available Calendars ({calendars.length})
+      <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl border-primary/10")}>
+        <CardHeader className="border-b border-white/10 bg-white/[0.02]">
+          <CardTitle className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+              <span className="rounded-2xl border border-primary/25 bg-primary/10 p-2 text-primary">
+                <Users className="h-5 w-5" />
+              </span>
+              Available Calendars ({calendars.length})
+            </span>
+            <span className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Calendar registry</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 md:p-5">
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
               ))}
             </div>
           ) : (() => {
@@ -1717,41 +1772,42 @@ export default function Calendar() {
               return (
               <button
                 key={calendar.id}
+                title={calendar.name}
                 onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                 className={cn(
-                  'p-3 rounded-lg border text-left transition-all',
+                  'group rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
                   selectedCalendarId === calendar.id
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                    ? 'border-primary/60 bg-primary/15 shadow-[0_16px_42px_hsl(var(--primary)/0.14)]'
+                    : 'border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_16px_42px_hsl(0_0%_0%/0.24)]'
                 )}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-3 h-3 rounded-full shrink-0"
+                        className="h-3.5 w-3.5 rounded-full shrink-0 ring-2 ring-black/30 shadow-sm"
                         style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
                       />
-                      <span className="font-medium text-sm truncate">{calendar.name}</span>
+                      <span className="truncate text-sm font-semibold text-zinc-100 transition-colors group-hover:text-white">{calendar.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-[10px]">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-zinc-300">
                         {calendar.calendarType.replace('_', ' ')}
                       </Badge>
                       {calendar.isActive && (
-                        <Badge className="text-[10px] bg-green-500/20 text-green-400 border-green-500/30">
+                        <Badge className="rounded-full border-emerald-400/25 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
                           Active
                         </Badge>
                       )}
                       {calEventCount > 0 && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                           {calEventCount} event{calEventCount !== 1 ? 's' : ''}
                         </Badge>
                       )}
                     </div>
                   </div>
                   {calendar.teamMembers && calendar.teamMembers.length > 0 && (
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/25 px-2 py-1 text-xs text-zinc-400">
                       <Users className="h-3 w-3" />
                       {calendar.teamMembers.length} member{calendar.teamMembers.length !== 1 ? 's' : ''}
                     </div>
@@ -1762,19 +1818,19 @@ export default function Calendar() {
             };
 
             return (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 {frequentlyUsed.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Most Frequently Used</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Most Frequently Used</h4>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {frequentlyUsed.map(renderCalendarCard)}
                     </div>
                   </div>
                 )}
                 {otherCalendars.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Other Calendars</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Other Calendars</h4>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {otherCalendars.map(renderCalendarCard)}
                     </div>
                   </div>
@@ -1788,21 +1844,21 @@ export default function Calendar() {
   );
 }
 
-function EventCard({ 
-  event, 
+function EventCard({
+  event,
   getStatusColor,
   onClick
-}: { 
-  event: GHLEvent; 
+}: {
+  event: GHLEvent;
   getStatusColor: (status: string, appointmentStatus?: string) => string;
   onClick: () => void;
 }) {
   const color = event.calendarColor || '#3b82f6';
-  
+
   return (
-    <button 
+    <button
       onClick={onClick}
-      className="w-full p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors text-left"
+      className="w-full p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:border-primary/30 hover:bg-primary/10 transition-all text-left shadow-sm"
       style={{ borderLeftWidth: '4px', borderLeftColor: color }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -1810,15 +1866,15 @@ function EventCard({
           <p className="font-medium text-sm">{event.title || 'Untitled Event'}</p>
           {event.calendarName && (
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-              <span 
-                className="w-2 h-2 rounded-full shrink-0"
+              <span
+                className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-black/30"
                 style={{ backgroundColor: color }}
               />
               {event.calendarName}
             </p>
           )}
         </div>
-        <Badge className={`text-[10px] shrink-0 ${getStatusColor(event.status, event.appointmentStatus)}`}>
+        <Badge className={`shrink-0 px-2 py-0.5 text-[10px] font-semibold ${getStatusColor(event.status, event.appointmentStatus)}`}>
           {event.appointmentStatus || event.status}
         </Badge>
       </div>

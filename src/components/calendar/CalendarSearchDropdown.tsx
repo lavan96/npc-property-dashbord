@@ -137,9 +137,9 @@ export function CalendarSearchDropdown({
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative min-w-[240px] flex-1 sm:flex-none">
       <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/80" />
         <Input
           placeholder="Search events, contacts..."
           value={searchQuery}
@@ -148,7 +148,7 @@ export function CalendarSearchDropdown({
             setIsOpen(true);
           }}
           onFocus={() => searchQuery.trim() && setIsOpen(true)}
-          className="w-[260px] pl-8 pr-8 h-9"
+          className="h-10 w-full rounded-xl border-white/10 bg-black/35 pl-10 pr-10 text-sm shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/35 sm:w-[300px] lg:w-[340px]"
         />
         {searchQuery && (
           <button
@@ -156,7 +156,7 @@ export function CalendarSearchDropdown({
               setSearchQuery('');
               setIsOpen(false);
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95"
           >
             <X className="h-4 w-4" />
           </button>
@@ -165,7 +165,7 @@ export function CalendarSearchDropdown({
 
       {/* Dropdown */}
       {isOpen && searchQuery.trim() && (
-        <div className="absolute top-full mt-1 left-0 w-[400px] bg-popover border border-border rounded-md shadow-lg z-50">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl">
           <ScrollArea className="max-h-[calc(100vh-180px)] sm:max-h-[520px]">
             {loadingContacts && filteredResults.length === 0 ? (
               <div className="p-3 space-y-2">
@@ -185,7 +185,7 @@ export function CalendarSearchDropdown({
               </div>
             ) : (
               <div className="py-1">
-                <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                <div className="border-b border-white/10 px-3 py-2 text-xs font-medium text-muted-foreground">
                   {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
                 </div>
                 {filteredResults.map((event) => {
@@ -195,11 +195,11 @@ export function CalendarSearchDropdown({
                     <button
                       key={event.id}
                       onClick={() => handleSelectEvent(event)}
-                      className="w-full px-3 py-2 text-left hover:bg-muted/50 transition-colors flex items-start gap-3"
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none"
                     >
                       {/* Calendar color indicator */}
                       <div
-                        className="w-1 h-full min-h-[40px] rounded-full shrink-0"
+                        className="h-full min-h-[40px] w-1 shrink-0 rounded-full ring-1 ring-black/30"
                         style={{ backgroundColor: event.calendarColor || '#3b82f6' }}
                       />
 
