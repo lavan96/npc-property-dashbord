@@ -21,6 +21,11 @@ import {
   type PdfPageContextSource,
   type PdfPageContextValidation,
 } from './pageContexts';
+import {
+  buildPageContextRenderArtifactManifest,
+  pageContextRenderManifestToReviewArtifacts,
+  type PageContextRenderArtifactManifest,
+} from './visualQuality';
 
 export interface PersistedImportRecord {
   id: string;
@@ -92,6 +97,7 @@ export interface LoadImportReviewDraftResult {
   pageContextEntrypoint: PageContextEntrypoint | null;
   pageContextValidation: PdfPageContextValidation;
   pageContextGuardrail: PdfPageContextConsumerGuardrail;
+  renderArtifactManifest: PageContextRenderArtifactManifest;
   artifactPaths: {
     cdir?: string | null;
     cdirFidelity?: string | null;
@@ -138,6 +144,12 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
   });
 
   const pageContextGuardrail = buildPdfPageContextConsumerGuardrail(pageContextSelection);
+  const renderArtifactManifest = buildPageContextRenderArtifactManifest({
+    importId: data.record.id,
+    pageContexts: pageContextSelection.pageContexts,
+    guardrail: pageContextGuardrail,
+  });
+  const pageContextReviewArtifacts = pageContextRenderManifestToReviewArtifacts(renderArtifactManifest);
 
   if (shouldBlockPdfPageContextImport(pageContextSelection)) {
     throw new Error(
@@ -150,7 +162,11 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     cdir,
     template: options.template,
     fidelity: data.cdirFidelity ?? undefined,
-    artifacts: [...importAssetToReviewArtifacts(data.importAsset), ...(options.artifacts ?? [])],
+    artifacts: [
+      ...importAssetToReviewArtifacts(data.importAsset),
+      ...pageContextReviewArtifacts,
+      ...(options.artifacts ?? []),
+    ],
   });
 
   return {
@@ -164,6 +180,7 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     pageContextEntrypoint: pageContextSelection.pageContextEntrypoint,
     pageContextValidation: pageContextSelection.pageContextValidation,
     pageContextGuardrail,
+    renderArtifactManifest,
     artifactPaths: data.artifactPaths ?? {},
   };
 }
