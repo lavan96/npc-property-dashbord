@@ -1412,20 +1412,23 @@ export function InvestmentReportGenerator() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="ci-foundation reports-investment-generator space-y-6">
       {/* Header */}
-      <div className="space-y-2">
+      <Card className="ci-card-premium reports-investment-hero">
+        <CardContent className="p-5 md:p-6 space-y-2">
+        <p className="ci-tab-eyebrow">Investment report workspace</p>
         <h2 className="text-2xl font-bold text-foreground">Investment Report Generator</h2>
         <p className="text-muted-foreground">
           Generate comprehensive property investment analysis for addresses, postcodes, or states across Australia.
         </p>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="reports-investment-layout grid gap-6 lg:grid-cols-3">
         {/* Generator Form */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
+          <Card className="ci-card-premium reports-investment-panel">
+            <CardHeader className="reports-investment-panel-header border-b border-border/60">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
                 Generate Investment Analysis
@@ -1434,29 +1437,29 @@ export function InvestmentReportGenerator() {
                 Choose your input method - enter details manually, scrape from a URL, or upload a PDF.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="reports-investment-panel-content space-y-6">
             {/* Input Mode Tabs */}
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
                 {isPropertySpecific ? (
-                  <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
-                    <TabsList className="inline-flex w-auto min-w-max">
-                      <TabsTrigger value="manual" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                  <div className="reports-investment-mode-shell overflow-x-auto -mx-1 px-1 scrollbar-hide">
+                    <TabsList className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
+                      <TabsTrigger value="manual" className="reports-investment-mode-tab">
                         <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Manual
                       </TabsTrigger>
-                      <TabsTrigger value="url" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                      <TabsTrigger value="url" className="reports-investment-mode-tab">
                         <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         URL Scrape
                       </TabsTrigger>
-                      <TabsTrigger value="pdf" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                      <TabsTrigger value="pdf" className="reports-investment-mode-tab">
                         <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         PDF Upload
                       </TabsTrigger>
                     </TabsList>
                   </div>
                 ) : (
-                  <TabsList className="grid w-full grid-cols-1">
-                    <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <TabsList className="reports-investment-mode-list reports-investment-mode-single grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
+                    <TabsTrigger value="manual" className="reports-investment-mode-tab">
                       <MapPin className="h-4 w-4" />
                       Manual Entry
                     </TabsTrigger>
@@ -1464,45 +1467,45 @@ export function InvestmentReportGenerator() {
                 )}
 
                 {/* Manual Entry Tab */}
-                <TabsContent value="manual" className="space-y-6 pt-4">
+                <TabsContent value="manual" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection - Only for property-specific */}
                   {isPropertySpecific && (
                     <>
                       <div className="space-y-3">
-                        <Label className="text-base font-semibold">Build Type</Label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                        <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
+                        <div className="reports-build-type-grid">
+                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
                               name="buildType"
                               value="existing_property"
                               checked={preGenData.buildType === 'existing_property'}
                               onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
-                              className="h-4 w-4 text-primary"
+                              className="reports-build-type-radio h-4 w-4 text-primary"
                               disabled={isGenerating}
                             />
                             <span className="text-sm">Existing Property</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
                               name="buildType"
                               value="new_build"
                               checked={preGenData.buildType === 'new_build'}
                               onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
-                              className="h-4 w-4 text-primary"
+                              className="reports-build-type-radio h-4 w-4 text-primary"
                               disabled={isGenerating}
                             />
                             <span className="text-sm">New Build</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
                               name="buildType"
                               value="land_only"
                               checked={preGenData.buildType === 'land_only'}
                               onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'land_only' }))}
-                              className="h-4 w-4 text-primary"
+                              className="reports-build-type-radio h-4 w-4 text-primary"
                               disabled={isGenerating}
                             />
                             <span className="text-sm">Land Only</span>
@@ -1516,10 +1519,10 @@ export function InvestmentReportGenerator() {
                   <div className="space-y-3">
                     <Label htmlFor="queryType">Analysis Scope</Label>
                     <Select value={queryType} onValueChange={(value: 'address' | 'zipcode' | 'suburb' | 'state') => setQueryType(value)}>
-                      <SelectTrigger className="bg-background">
+                      <SelectTrigger className="reports-select-trigger bg-background">
                         <SelectValue placeholder="Select analysis type" />
                       </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
+                      <SelectContent className="reports-select-content bg-background z-50">
                         <SelectItem value="address">
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
@@ -1555,10 +1558,10 @@ export function InvestmentReportGenerator() {
                       value={generationEngine}
                       onValueChange={(value: 'legacy' | 'compass-40') => setGenerationEngine(value)}
                     >
-                      <SelectTrigger className="bg-background">
+                      <SelectTrigger className="reports-select-trigger bg-background">
                         <SelectValue placeholder="Select engine" />
                       </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
+                      <SelectContent className="reports-select-content bg-background z-50">
                         <SelectItem value="legacy">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-medium">Legacy Compass — Stable</span>
@@ -1573,7 +1576,7 @@ export function InvestmentReportGenerator() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="reports-engine-helper text-xs text-muted-foreground">
                       You can switch engines later via the Regenerate action on each report.
                     </p>
                   </div>
@@ -1630,22 +1633,23 @@ export function InvestmentReportGenerator() {
               <Separator />
 
               {/* Property Details - Optional but Recommended */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Property Details</Label>
-                  <Badge variant="default" className="text-xs">Required for Scoring</Badge>
+              <div className="reports-property-details-panel space-y-4">
+                <div className="reports-property-details-header">
+                  <Label className="reports-investment-section-label text-base font-semibold">Property Details</Label>
+                  <Badge variant="default" className="reports-required-scoring-badge text-xs">Required for Scoring</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="reports-property-details-helper text-sm text-muted-foreground">
                   Purchase price is required for investment scoring. Other details are optional but enhance analysis accuracy.
                 </p>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="propertyPrice" className="flex items-center gap-1">
+                <div className="reports-property-details-grid grid gap-4 sm:grid-cols-2">
+                  <div className="reports-property-field space-y-2">
+                    <Label htmlFor="propertyPrice" className="reports-property-field-label flex items-center gap-1">
                       Purchase Price ($) <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="propertyPrice"
+                      className="reports-property-input"
                       type="text"
                       inputMode="numeric"
                       value={formatNumberWithCommas(propertyPrice)}
@@ -1656,10 +1660,11 @@ export function InvestmentReportGenerator() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="weeklyRent">Weekly Rent ($)</Label>
+                  <div className="reports-property-field space-y-2">
+                    <Label className="reports-property-field-label" htmlFor="weeklyRent">Weekly Rent ($)</Label>
                     <Input
                       id="weeklyRent"
+                      className="reports-property-input"
                       type="text"
                       inputMode="numeric"
                       value={formatNumberWithCommas(weeklyRent)}
@@ -1669,13 +1674,13 @@ export function InvestmentReportGenerator() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="propertyType">Property Type</Label>
+                  <div className="reports-property-field space-y-2">
+                    <Label className="reports-property-field-label" htmlFor="propertyType">Property Type</Label>
                     <Select value={propertyType} onValueChange={setPropertyType}>
-                      <SelectTrigger>
+                      <SelectTrigger className="reports-property-select-trigger">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
+                      <SelectContent className="reports-property-select-content bg-background z-50">
                         <SelectItem value="house">House</SelectItem>
                         <SelectItem value="apartment">Apartment/Unit</SelectItem>
                         <SelectItem value="townhouse">Townhouse</SelectItem>
@@ -1688,10 +1693,11 @@ export function InvestmentReportGenerator() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="beds">Bedrooms</Label>
+                  <div className="reports-property-field space-y-2">
+                    <Label className="reports-property-field-label" htmlFor="beds">Bedrooms</Label>
                     <Input
                       id="beds"
+                      className="reports-property-input"
                       type="number"
                       value={beds}
                       onChange={(e) => setBeds(e.target.value)}
@@ -1700,10 +1706,11 @@ export function InvestmentReportGenerator() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="baths">Bathrooms</Label>
+                  <div className="reports-property-field space-y-2">
+                    <Label className="reports-property-field-label" htmlFor="baths">Bathrooms</Label>
                     <Input
                       id="baths"
+                      className="reports-property-input"
                       type="number"
                       value={baths}
                       onChange={(e) => setBaths(e.target.value)}
@@ -1712,13 +1719,14 @@ export function InvestmentReportGenerator() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="carSpaces" className="flex items-center gap-1">
+                  <div className="reports-property-field space-y-2">
+                    <Label htmlFor="carSpaces" className="reports-property-field-label flex items-center gap-1">
                       <Car className="h-4 w-4" />
                       Car Spaces
                     </Label>
                     <Input
                       id="carSpaces"
+                      className="reports-property-input"
                       type="number"
                       min="0"
                       value={carSpaces}
@@ -1728,10 +1736,11 @@ export function InvestmentReportGenerator() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="landSize">Land Size (m²)</Label>
+                  <div className="reports-property-field space-y-2">
+                    <Label className="reports-property-field-label" htmlFor="landSize">Land Size (m²)</Label>
                       <Input
                         id="landSize"
+                        className="reports-property-input"
                         type="text"
                         inputMode="decimal"
                         value={landSize}
@@ -1741,10 +1750,11 @@ export function InvestmentReportGenerator() {
                       />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="buildSize">Build Size (m²)</Label>
+                  <div className="reports-property-field space-y-2">
+                    <Label className="reports-property-field-label" htmlFor="buildSize">Build Size (m²)</Label>
                       <Input
                         id="buildSize"
+                        className="reports-property-input"
                         type="text"
                         inputMode="decimal"
                         value={buildSize}
@@ -1940,7 +1950,7 @@ export function InvestmentReportGenerator() {
                 onClick={handleGenerate}
                 disabled={isGenerating || !query.trim() || (isPropertySpecific && (!propertyPrice || parseFloat(propertyPrice) <= 0))}
                 size="lg"
-                className="w-full"
+                className="w-full shadow-lg shadow-primary/20"
               >
                 {isGenerating ? (
                   <>
@@ -1969,10 +1979,10 @@ export function InvestmentReportGenerator() {
 
                 {/* URL Scrape Tab - Only for property-specific queries */}
                 {isPropertySpecific && (
-                <TabsContent value="url" className="space-y-6 pt-4">
+                <TabsContent value="url" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold">Build Type</Label>
+                  <div className="reports-build-type-control space-y-3">
+                    <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
                     <BuildTypeSelector
                       value={preGenData.buildType as BuildType}
                       onChange={(value) => setPreGenData(prev => ({ ...prev, buildType: value }))}
@@ -2058,22 +2068,23 @@ export function InvestmentReportGenerator() {
                   <Separator />
 
                   {/* Property Details - Required for URL Scrape */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold">Property Details</Label>
-                      <Badge variant="default" className="text-xs">Required for Scoring</Badge>
+                  <div className="reports-property-details-panel space-y-4">
+                    <div className="reports-property-details-header">
+                      <Label className="reports-investment-section-label text-base font-semibold">Property Details</Label>
+                      <Badge variant="default" className="reports-required-scoring-badge text-xs">Required for Scoring</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="reports-property-details-helper text-sm text-muted-foreground">
                       Purchase price is required for investment scoring. Other details are optional but will override scraped values.
                     </p>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="urlPropertyPrice" className="flex items-center gap-1">
+                    <div className="reports-property-details-grid grid gap-4 sm:grid-cols-2">
+                      <div className="reports-property-field space-y-2">
+                        <Label htmlFor="urlPropertyPrice" className="reports-property-field-label flex items-center gap-1">
                           Purchase Price ($) <span className="text-destructive">*</span>
                         </Label>
                         <Input
                           id="urlPropertyPrice"
+                          className="reports-property-input"
                           type="text"
                           inputMode="numeric"
                           value={formatNumberWithCommas(propertyPrice)}
@@ -2084,10 +2095,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="urlWeeklyRent">Weekly Rent ($)</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="urlWeeklyRent">Weekly Rent ($)</Label>
                         <Input
                           id="urlWeeklyRent"
+                          className="reports-property-input"
                           type="text"
                           inputMode="numeric"
                           value={formatNumberWithCommas(weeklyRent)}
@@ -2097,13 +2109,13 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="urlPropertyType">Property Type</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="urlPropertyType">Property Type</Label>
                         <Select value={propertyType} onValueChange={setPropertyType}>
-                          <SelectTrigger>
+                          <SelectTrigger className="reports-property-select-trigger">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-background z-50">
+                          <SelectContent className="reports-property-select-content bg-background z-50">
                             <SelectItem value="house">House</SelectItem>
                             <SelectItem value="apartment">Apartment/Unit</SelectItem>
                             <SelectItem value="townhouse">Townhouse</SelectItem>
@@ -2116,10 +2128,11 @@ export function InvestmentReportGenerator() {
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="urlBeds">Bedrooms</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="urlBeds">Bedrooms</Label>
                         <Input
                           id="urlBeds"
+                          className="reports-property-input"
                           type="number"
                           value={beds}
                           onChange={(e) => setBeds(e.target.value)}
@@ -2128,10 +2141,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="urlBaths">Bathrooms</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="urlBaths">Bathrooms</Label>
                         <Input
                           id="urlBaths"
+                          className="reports-property-input"
                           type="number"
                           value={baths}
                           onChange={(e) => setBaths(e.target.value)}
@@ -2140,13 +2154,14 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="urlCarSpaces" className="flex items-center gap-1">
+                      <div className="reports-property-field space-y-2">
+                        <Label htmlFor="urlCarSpaces" className="reports-property-field-label flex items-center gap-1">
                           <Car className="h-4 w-4" />
                           Car Spaces
                         </Label>
                         <Input
                           id="urlCarSpaces"
+                          className="reports-property-input"
                           type="number"
                           min="0"
                           value={carSpaces}
@@ -2156,10 +2171,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="urlLandSize">Land Size (m²)</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="urlLandSize">Land Size (m²)</Label>
                         <Input
                           id="urlLandSize"
+                          className="reports-property-input"
                           type="text"
                           inputMode="decimal"
                           value={landSize}
@@ -2169,10 +2185,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="urlBuildSize">Build Size (m²)</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="urlBuildSize">Build Size (m²)</Label>
                         <Input
                           id="urlBuildSize"
+                          className="reports-property-input"
                           type="text"
                           inputMode="decimal"
                           value={buildSize}
@@ -2246,7 +2263,7 @@ export function InvestmentReportGenerator() {
                     onClick={handleGenerateFromUrl}
                     disabled={isUrlGenerating || !urlScrapedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
                     size="lg"
-                    className="w-full"
+                    className="w-full shadow-lg shadow-primary/20"
                   >
                     {isUrlGenerating ? (
                       <>
@@ -2265,10 +2282,10 @@ export function InvestmentReportGenerator() {
 
                 {/* PDF Upload Tab - Only for property-specific queries */}
                 {isPropertySpecific && (
-                <TabsContent value="pdf" className="space-y-6 pt-4">
+                <TabsContent value="pdf" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-semibold">Build Type</Label>
+                  <div className="reports-build-type-control space-y-3">
+                    <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
                     <BuildTypeSelector
                       value={preGenData.buildType as BuildType}
                       onChange={(value) => setPreGenData(prev => ({ ...prev, buildType: value }))}
@@ -2356,7 +2373,7 @@ export function InvestmentReportGenerator() {
                     disabled={isParsing || !pdfFile}
                     size="lg"
                     variant={pdfParsedData ? "outline" : "default"}
-                    className="w-full"
+                    className="w-full shadow-lg shadow-primary/20"
                   >
                     {isParsing ? (
                       <>
@@ -2404,22 +2421,23 @@ export function InvestmentReportGenerator() {
                   <Separator />
 
                   {/* Property Details - Required for PDF mode */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold">Property Details</Label>
-                      <Badge variant="default" className="text-xs">Required for Scoring</Badge>
+                  <div className="reports-property-details-panel space-y-4">
+                    <div className="reports-property-details-header">
+                      <Label className="reports-investment-section-label text-base font-semibold">Property Details</Label>
+                      <Badge variant="default" className="reports-required-scoring-badge text-xs">Required for Scoring</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="reports-property-details-helper text-sm text-muted-foreground">
                       Purchase price is required for investment scoring. Other details are optional but will override extracted values.
                     </p>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfPropertyPrice" className="flex items-center gap-1">
+                    <div className="reports-property-details-grid grid gap-4 sm:grid-cols-2">
+                      <div className="reports-property-field space-y-2">
+                        <Label htmlFor="pdfPropertyPrice" className="reports-property-field-label flex items-center gap-1">
                           Purchase Price ($) <span className="text-destructive">*</span>
                         </Label>
                         <Input
                           id="pdfPropertyPrice"
+                          className="reports-property-input"
                           type="text"
                           inputMode="numeric"
                           value={formatNumberWithCommas(propertyPrice)}
@@ -2430,10 +2448,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfWeeklyRent">Weekly Rent ($)</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="pdfWeeklyRent">Weekly Rent ($)</Label>
                         <Input
                           id="pdfWeeklyRent"
+                          className="reports-property-input"
                           type="text"
                           inputMode="numeric"
                           value={formatNumberWithCommas(weeklyRent)}
@@ -2443,13 +2462,13 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfPropertyType">Property Type</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="pdfPropertyType">Property Type</Label>
                         <Select value={propertyType} onValueChange={setPropertyType}>
-                          <SelectTrigger>
+                          <SelectTrigger className="reports-property-select-trigger">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-background z-50">
+                          <SelectContent className="reports-property-select-content bg-background z-50">
                             <SelectItem value="house">House</SelectItem>
                             <SelectItem value="apartment">Apartment/Unit</SelectItem>
                             <SelectItem value="townhouse">Townhouse</SelectItem>
@@ -2462,10 +2481,11 @@ export function InvestmentReportGenerator() {
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfBeds">Bedrooms</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="pdfBeds">Bedrooms</Label>
                         <Input
                           id="pdfBeds"
+                          className="reports-property-input"
                           type="number"
                           value={beds}
                           onChange={(e) => setBeds(e.target.value)}
@@ -2474,10 +2494,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfBaths">Bathrooms</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="pdfBaths">Bathrooms</Label>
                         <Input
                           id="pdfBaths"
+                          className="reports-property-input"
                           type="number"
                           value={baths}
                           onChange={(e) => setBaths(e.target.value)}
@@ -2486,13 +2507,14 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfCarSpaces" className="flex items-center gap-1">
+                      <div className="reports-property-field space-y-2">
+                        <Label htmlFor="pdfCarSpaces" className="reports-property-field-label flex items-center gap-1">
                           <Car className="h-4 w-4" />
                           Car Spaces
                         </Label>
                         <Input
                           id="pdfCarSpaces"
+                          className="reports-property-input"
                           type="number"
                           min="0"
                           value={carSpaces}
@@ -2502,10 +2524,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfLandSize">Land Size (m²)</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="pdfLandSize">Land Size (m²)</Label>
                         <Input
                           id="pdfLandSize"
+                          className="reports-property-input"
                           type="text"
                           inputMode="decimal"
                           value={landSize}
@@ -2515,10 +2538,11 @@ export function InvestmentReportGenerator() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="pdfBuildSize">Build Size (m²)</Label>
+                      <div className="reports-property-field space-y-2">
+                        <Label className="reports-property-field-label" htmlFor="pdfBuildSize">Build Size (m²)</Label>
                         <Input
                           id="pdfBuildSize"
+                          className="reports-property-input"
                           type="text"
                           inputMode="decimal"
                           value={buildSize}
@@ -2592,7 +2616,7 @@ export function InvestmentReportGenerator() {
                     onClick={handleGenerateFromPdf}
                     disabled={isPdfGenerating || !pdfParsedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
                     size="lg"
-                    className="w-full"
+                    className="w-full shadow-lg shadow-primary/20"
                   >
                     {isPdfGenerating ? (
                       <>
@@ -2616,8 +2640,8 @@ export function InvestmentReportGenerator() {
 
         {/* Recent Reports Sidebar */}
         <div>
-          <Card>
-            <CardHeader>
+          <Card className="ci-card-premium reports-recent-panel">
+            <CardHeader className="reports-investment-panel-header border-b border-border/60">
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Recent Reports
@@ -2626,9 +2650,9 @@ export function InvestmentReportGenerator() {
                 Your recently generated investment analyses
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="reports-recent-panel-content">
               {recentReports.length === 0 ? (
-                <div className="text-center py-8 space-y-2">
+                <div className="reports-recent-empty text-center py-8 space-y-2">
                   <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
                   <p className="text-sm text-muted-foreground">No reports generated yet</p>
                   <p className="text-xs text-muted-foreground">Generate your first report to see it here</p>
@@ -2638,7 +2662,7 @@ export function InvestmentReportGenerator() {
                   {recentReports.map((report) => (
                     <div
                       key={report.id}
-                      className="border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="reports-recent-item rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 cursor-pointer"
                       onClick={() => {
                         window.location.href = `/generated-reports?reportId=${report.id}`;
                       }}
@@ -2663,7 +2687,7 @@ export function InvestmentReportGenerator() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
+                    className="reports-recent-all-button w-full shadow-lg shadow-primary/20"
                     onClick={() => {
                       window.location.href = '/generated-reports';
                     }}
@@ -2679,8 +2703,8 @@ export function InvestmentReportGenerator() {
 
       {/* Results Display */}
       {showResults && generatedReport && (
-        <Card>
-          <CardHeader>
+        <Card className="ci-card-premium">
+          <CardHeader className="border-b border-border/60">
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
               Generated Investment Analysis
@@ -2690,7 +2714,7 @@ export function InvestmentReportGenerator() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="bg-muted/30 rounded-lg p-6 max-h-96 overflow-y-auto">
+            <div className="bg-background/60 border border-border/70 rounded-2xl p-6 max-h-96 overflow-y-auto shadow-inner">
               <pre className="whitespace-pre-wrap text-sm leading-relaxed">
                 {generatedReport}
               </pre>
