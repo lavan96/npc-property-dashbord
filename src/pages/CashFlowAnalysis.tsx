@@ -195,7 +195,13 @@ export default function CashFlowAnalysis() {
 
   return (
     <div className="space-y-6 p-6">
-      <CashFlowPageHero dateRangeLabel={dateRangeLabel} />
+      <CashFlowPageHero
+        reports={reports}
+        filteredReports={filteredReports}
+        dateRangeLabel={dateRangeLabel}
+        buildTypeFilter={buildTypeFilter}
+        getBuildType={getBuildType}
+      />
 
       <CashFlowToolbar
         searchQuery={searchQuery}
@@ -204,6 +210,8 @@ export default function CashFlowAnalysis() {
         onDateRangeChange={setDateRange}
         buildTypeFilter={buildTypeFilter}
         onBuildTypeFilterChange={setBuildTypeFilter}
+        filteredCount={filteredReports.length}
+        loadedCount={reports.length}
       />
 
       {loading ? (
