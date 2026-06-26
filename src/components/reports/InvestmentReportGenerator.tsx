@@ -16,7 +16,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, FileText, Link, Upload, X, Image, Car } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, FileText, Link, Upload, X, Image, Car, CalendarDays, ChevronRight } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
@@ -2643,54 +2643,71 @@ export function InvestmentReportGenerator() {
 
         {/* Recent Reports Sidebar */}
         <div>
-          <Card className="ci-card-premium reports-recent-panel">
-            <CardHeader className="reports-investment-panel-header border-b border-border/60">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Recent Reports
-              </CardTitle>
-              <CardDescription>
-                Your recently generated investment analyses
-              </CardDescription>
+          <Card className="ci-card-premium reports-recent-panel overflow-hidden border-primary/10 bg-gradient-to-b from-card via-card to-muted/20 shadow-xl shadow-primary/5">
+            <CardHeader className="reports-investment-panel-header border-b border-border/60 bg-muted/20 pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1.5">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <span className="rounded-full bg-primary/10 p-2 text-primary ring-1 ring-primary/15">
+                      <FileText className="h-4 w-4" />
+                    </span>
+                    Recent Reports
+                  </CardTitle>
+                  <CardDescription className="leading-relaxed">
+                    Your recently generated investment analyses
+                  </CardDescription>
+                </div>
+                {recentReports.length > 0 && (
+                  <Badge variant="outline" className="rounded-full bg-background/80 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                    {recentReports.length}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
-            <CardContent className="reports-recent-panel-content">
+            <CardContent className="reports-recent-panel-content p-4 sm:p-5">
               {recentReports.length === 0 ? (
-                <div className="reports-recent-empty text-center py-8 space-y-2">
+                <div className="reports-recent-empty rounded-2xl border border-dashed border-border/70 bg-background/50 px-4 py-10 text-center space-y-2">
                   <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
-                  <p className="text-sm text-muted-foreground">No reports generated yet</p>
+                  <p className="text-sm font-medium text-foreground">No reports generated yet</p>
                   <p className="text-xs text-muted-foreground">Generate your first report to see it here</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {recentReports.map((report) => (
-                    <div
-                      key={report.id}
-                      className="reports-recent-item rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 cursor-pointer"
-                      onClick={() => {
-                        window.location.href = `/generated-reports?reportId=${report.id}`;
-                      }}
-                    >
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium line-clamp-2">
-                          {report.property_address}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(report.created_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </p>
-                          {(report as any).status === 'processing' && (
-                            <Badge variant="secondary" className="text-xs animate-pulse">Processing</Badge>
-                          )}
+                <div className="space-y-4">
+                  <div className="max-h-[34rem] space-y-3 overflow-y-auto pr-1">
+                    {recentReports.map((report) => (
+                      <div
+                        key={report.id}
+                        className="reports-recent-item group cursor-pointer rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/10 focus-within:border-primary/40"
+                        onClick={() => {
+                          window.location.href = `/generated-reports?reportId=${report.id}`;
+                        }}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-semibold leading-5 text-foreground line-clamp-2">
+                              {report.property_address}
+                            </p>
+                            <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground opacity-50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary group-hover:opacity-100" />
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              {new Date(report.created_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                            {(report as any).status === 'processing' && (
+                              <Badge variant="secondary" className="w-fit rounded-full border border-primary/15 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary shadow-sm animate-pulse">Processing</Badge>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                   
                   <Separator />
                   <Button
                     variant="outline"
                     size="sm"
-                    className="reports-recent-all-button w-full shadow-lg shadow-primary/20"
+                    className="reports-recent-all-button w-full rounded-xl border-primary/25 bg-background/80 font-semibold text-primary shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                     onClick={() => {
                       window.location.href = '/generated-reports';
                     }}
