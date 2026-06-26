@@ -576,6 +576,35 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply min-w-0;
   }
 
+  .dashboard-theme-hero::before,
+  .dashboard-theme-section::before,
+  .dashboard-theme-section-accent::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset-inline: 2rem;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.65), transparent);
+  }
+
+  .dashboard-theme-hero::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    right: -5rem;
+    top: -6rem;
+    height: 14rem;
+    width: 14rem;
+    border-radius: 9999px;
+    background: hsl(var(--primary) / 0.1);
+    filter: blur(48px);
+  }
+
+  .dashboard-theme-section-accent::before {
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.72), transparent);
+  }
+
   .dashboard-section {
     @apply relative flex flex-col gap-3 md:gap-4;
   }
