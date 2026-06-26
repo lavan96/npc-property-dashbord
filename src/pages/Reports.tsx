@@ -330,43 +330,49 @@ export default function Reports() {
               </Suspense>
             </TabsContent>
 
-            <TabsContent value="suburbs" className="space-y-4">
-              <Card className="ci-card">
-                <CardHeader>
+            <TabsContent value="suburbs" className="space-y-4 reports-suburbs-suite">
+              <Card className="ci-card reports-suburb-card">
+                <CardHeader className="reports-suburb-card-header">
                   <CardTitle>Listings by Suburb</CardTitle>
                   <CardDescription>Top 10 suburbs by listing volume — higher bars indicate stronger market activity in that area</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <ChartContainer ref={suburbChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
+                <CardContent className="reports-suburb-card-content space-y-4">
+                  {suburbChartData.length > 0 ? (
+                  <ChartContainer ref={suburbChartRef} config={chartConfig} className="reports-suburb-chart h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={suburbChartData} margin={{ bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <BarChart data={suburbChartData} margin={{ top: 12, right: 14, left: 0, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-suburb-grid" />
                         <XAxis 
                           dataKey="suburb" 
                           angle={-45}
                           textAnchor="end"
                           height={80}
                           fontSize={11}
-                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                          tickLine={false}
+                          axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }}
                         />
-                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickLine={false} axisLine={{ stroke: 'hsl(var(--border) / 0.55)' }} />
                         <ChartTooltip 
                           content={({ active, payload }) => {
                             if (!active || !payload?.length) return null;
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
+                              <div className="reports-suburb-tooltip">
                                 <p className="font-semibold text-sm text-foreground">{data.suburb}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings ({pct}% of total)</p>
                               </div>
                             );
                           }}
                         />
-                        <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  ) : (
+                    <div className="reports-suburb-empty-state">No suburb listing data available.</div>
+                  )}
                   {/* Sub-metrics */}
                   {suburbChartData.length >= 2 && (() => {
                     const top = suburbChartData[0];
@@ -374,7 +380,7 @@ export default function Reports() {
                     const topPct = totalListings > 0 ? ((top.count / totalListings) * 100).toFixed(0) : '0';
                     const ratio = second.count > 0 ? (top.count / second.count).toFixed(1) : '—';
                     return (
-                      <div className="flex items-start gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
+                      <div className="reports-suburb-insight flex items-start gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
                         <Lightbulb className="h-4 w-4 mt-0.5 text-yellow-500 shrink-0" />
                         <p className="text-xs text-foreground">
                           <span className="font-semibold">{top.suburb}</span> leads with {topPct}% of all listings ({top.count}), {ratio}× the volume of the next suburb ({second.suburb} at {second.count}).
@@ -383,16 +389,16 @@ export default function Reports() {
                       </div>
                     );
                   })()}
-                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
-                    <div className="text-center">
+                  <div className="reports-suburb-stat-grid grid grid-cols-3 gap-3 pt-2 border-t">
+                    <div className="reports-suburb-stat text-center">
                       <p className="text-lg font-bold text-foreground">{suburbChartData.length}</p>
                       <p className="text-[11px] text-muted-foreground">Suburbs Tracked</p>
                     </div>
-                    <div className="text-center">
+                    <div className="reports-suburb-stat text-center">
                       <p className="text-lg font-bold text-foreground">{suburbChartData[0]?.suburb || '—'}</p>
                       <p className="text-[11px] text-muted-foreground">Top Suburb</p>
                     </div>
-                    <div className="text-center">
+                    <div className="reports-suburb-stat text-center">
                       <p className="text-lg font-bold text-foreground">
                         {suburbChartData.length > 0 ? Math.round(suburbChartData.reduce((s, d) => s + d.count, 0) / suburbChartData.length) : 0}
                       </p>
@@ -489,7 +495,7 @@ export default function Reports() {
                   <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={priceRangeChartData}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-suburb-grid" />
                         <XAxis dataKey="range" fontSize={11} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                         <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                         <ChartTooltip 
@@ -556,7 +562,7 @@ export default function Reports() {
                   <ChartContainer ref={bedroomChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={bedroomChartData}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-suburb-grid" />
                         <XAxis dataKey="beds" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                         <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                         <ChartTooltip 
@@ -577,7 +583,7 @@ export default function Reports() {
                     </ResponsiveContainer>
                   </ChartContainer>
                   {/* Bedroom insights */}
-                  <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                  <div className="reports-suburb-stat-grid grid grid-cols-3 gap-3 pt-2 border-t">
                     <div className="text-center">
                       <p className="text-lg font-bold text-foreground">
                         {bedroomChartData.length > 0 
