@@ -149,7 +149,7 @@ export function CalendarSearchDropdown({
             setIsOpen(true);
           }}
           onFocus={() => searchQuery.trim() && setIsOpen(true)}
-          className="h-10 w-full rounded-xl border-white/10 bg-black/35 pl-10 pr-10 text-sm shadow-inner shadow-black/20 transition-all placeholder:text-zinc-500 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/35 sm:w-[300px] lg:w-[340px]"
+          className="h-10 w-full rounded-xl border-border bg-card/80 pl-10 pr-10 text-sm shadow-inner shadow-black/20 transition-all placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/35 sm:w-[300px] lg:w-[340px]"
         />
         {searchQuery && (
           <button
@@ -167,7 +167,7 @@ export function CalendarSearchDropdown({
 
       {/* Dropdown */}
       {isOpen && searchQuery.trim() && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl animate-in fade-in-0 zoom-in-95 duration-150">
           <ScrollArea className="max-h-[calc(100vh-180px)] sm:max-h-[520px]">
             {loadingContacts && filteredResults.length === 0 ? (
               <div className="space-y-2 p-3">
@@ -183,15 +183,15 @@ export function CalendarSearchDropdown({
               </div>
             ) : filteredResults.length === 0 ? (
               <div className="p-5 text-center text-sm text-muted-foreground">
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-primary/70">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-white/[0.04] text-primary/70">
                   <Search className="h-4 w-4" />
                 </div>
-                <p className="font-medium text-zinc-300">No events found for "{searchQuery}"</p>
-                <p className="mt-1 text-xs text-zinc-500">Try a calendar, contact, address or note keyword.</p>
+                <p className="font-medium text-muted-foreground">No events found for "{searchQuery}"</p>
+                <p className="mt-1 text-xs text-muted-foreground">Try a calendar, contact, address or note keyword.</p>
               </div>
             ) : (
               <div className="py-1">
-                <div className="border-b border-white/10 px-3 py-2 text-xs font-medium text-muted-foreground">
+                <div className="border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground">
                   {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
                 </div>
                 {filteredResults.map((event) => {

@@ -105,10 +105,10 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
 ];
 
 const CALENDAR_PAGE_SHELL = 'relative -m-4 min-h-[calc(100vh-2rem)] space-y-6 overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_30%),linear-gradient(180deg,hsl(220_18%_5%),hsl(220_16%_8%)_42%,hsl(220_14%_6%))] p-4 md:-m-6 md:p-6';
-const PREMIUM_CARD = 'border-white/10 bg-black/35 shadow-[0_18px_60px_hsl(0_0%_0%/0.35)] backdrop-blur-xl transition-all duration-200 ease-out';
-const PREMIUM_PANEL = 'border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-950/85 to-zinc-900/70 shadow-[0_20px_70px_hsl(0_0%_0%/0.38)] backdrop-blur-xl transition-all duration-200 ease-out';
-const PREMIUM_BUTTON = 'border-white/10 bg-white/[0.03] transition-all duration-200 ease-out hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)]';
-const PREMIUM_MUTED_SURFACE = 'border-white/10 bg-white/[0.03]';
+const PREMIUM_CARD = 'border-border bg-card/80 shadow-[0_18px_60px_hsl(0_0%_0%/0.35)] backdrop-blur-xl transition-all duration-200 ease-out';
+const PREMIUM_PANEL = 'border-border bg-gradient-to-br from-zinc-950/95 via-zinc-950/85 to-zinc-900/70 shadow-[0_20px_70px_hsl(0_0%_0%/0.38)] backdrop-blur-xl transition-all duration-200 ease-out';
+const PREMIUM_BUTTON = 'border-border bg-white/[0.03] transition-all duration-200 ease-out hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)]';
+const PREMIUM_MUTED_SURFACE = 'border-border bg-white/[0.03]';
 
 export default function Calendar() {
   const { canEdit: canEditCalendar } = useModulePermissions('calendar');
@@ -542,9 +542,9 @@ export default function Calendar() {
       case 'booked': return 'rounded-full border-blue-400/25 bg-blue-500/15 text-blue-300';
       case 'showed': return 'rounded-full border-teal-400/25 bg-teal-500/15 text-teal-300';
       case 'noshow': return 'rounded-full border-red-400/25 bg-red-500/15 text-red-300';
-      case 'cancelled': return 'rounded-full border-zinc-500/25 bg-zinc-500/15 text-zinc-300';
+      case 'cancelled': return 'rounded-full border-border bg-muted text-muted-foreground';
       case 'pending': return 'rounded-full border-amber-400/25 bg-amber-500/15 text-amber-300';
-      default: return 'rounded-full border-white/10 bg-white/[0.04] text-zinc-400';
+      default: return 'rounded-full border-border bg-white/[0.04] text-muted-foreground';
     }
   };
 
@@ -777,8 +777,8 @@ export default function Calendar() {
                   <Sparkles className="h-3.5 w-3.5" />
                   Scheduling command centre
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Calendar</h1>
-                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-zinc-300">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">Calendar</h1>
+                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   GoHighLevel Appointments
                   {isUpdating && <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary shadow-sm shadow-primary/10 animate-pulse">Updating...</span>}
                 </p>
@@ -787,7 +787,7 @@ export default function Calendar() {
             <div className="flex flex-wrap items-center gap-2 md:justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-10 rounded-xl border-white/10 bg-white/[0.04] px-3 font-semibold text-zinc-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]">
+                  <Button variant="outline" size="sm" className="h-10 rounded-xl border-border bg-white/[0.04] px-3 font-semibold text-zinc-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]">
                     <Mail className="h-4 w-4 mr-2" />
                     Export
                   </Button>
@@ -806,13 +806,13 @@ export default function Calendar() {
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="flex h-full w-full flex-col border-white/10 bg-zinc-950/95 p-0 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl sm:w-[340px]">
-                  <SheetHeader className="shrink-0 border-b border-white/10 bg-white/[0.03] p-4">
-                    <SheetTitle className="text-white">Calendar Tools</SheetTitle>
+                <SheetContent side="right" className="flex h-full w-full flex-col border-border bg-popover p-0 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl sm:w-[340px]">
+                  <SheetHeader className="shrink-0 border-b border-border bg-white/[0.03] p-4">
+                    <SheetTitle className="text-foreground">Calendar Tools</SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col flex-1 overflow-hidden">
                     {/* Tab triggers - scrollable horizontally */}
-                    <div className="shrink-0 overflow-x-auto border-b border-white/10 px-4 py-3">
+                    <div className="shrink-0 overflow-x-auto border-b border-border px-4 py-3">
                       <div className="inline-flex flex-wrap gap-2">
                         {SIDEBAR_TABS.map(tab => (
                           <button
@@ -823,7 +823,7 @@ export default function Calendar() {
                               "inline-flex min-h-[40px] touch-manipulation items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45",
                               sidebarTab === tab.id
                                 ? "border border-primary/50 bg-primary/20 text-primary shadow-[0_10px_24px_hsl(var(--primary)/0.14)]"
-                                : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                                : "border border-border bg-white/[0.03] text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                             )}
                           >
                             {tab.icon}
@@ -835,7 +835,7 @@ export default function Calendar() {
                     {/* Tab content */}
                     <ScrollArea className="flex-1 p-4">
                       {/* Mini Calendar Navigator */}
-                      <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-inner shadow-black/20">
+                      <div className="mb-4 rounded-2xl border border-border bg-white/[0.03] p-3 shadow-inner shadow-black/20">
                         <MiniCalendarNavigator
                           currentMonth={currentMonth}
                           setCurrentMonth={setCurrentMonth}
@@ -850,18 +850,18 @@ export default function Calendar() {
 
                       {sidebarTab === 'events' && (
                         <div>
-                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
                             <Clock className="h-4 w-4 text-primary" />
                             {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
                           </h4>
                           {isLoading ? (
                             <SidebarLoadingSkeleton />
                           ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-zinc-500 shadow-inner shadow-black/20">
+                            <div className="rounded-2xl border border-border bg-white/[0.03] px-4 py-8 text-center text-muted-foreground shadow-inner shadow-black/20">
                               <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary/80">
                                 <CalendarIcon className="h-5 w-5" />
                               </div>
-                              <p className="text-sm font-medium text-zinc-300">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                              <p className="text-sm font-medium text-muted-foreground">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -981,11 +981,11 @@ export default function Calendar() {
               setSearchQuery={setSearchQuery}
             />
             <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
-              <TabsList className="h-10 w-full rounded-xl border border-white/10 bg-black/35 p-1 shadow-inner shadow-black/20 sm:w-auto">
-                <TabsTrigger value="month" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Month</TabsTrigger>
-                <TabsTrigger value="week" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Week</TabsTrigger>
+              <TabsList className="h-10 w-full rounded-xl border border-border bg-card/80 p-1 shadow-inner shadow-black/20 sm:w-auto">
+                <TabsTrigger value="month" className="h-8 rounded-lg px-3 text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Month</TabsTrigger>
+                <TabsTrigger value="week" className="h-8 rounded-lg px-3 text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Week</TabsTrigger>
                 {!isMobile && (
-                  <TabsTrigger value="timeline" className="flex h-8 items-center gap-1 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">
+                  <TabsTrigger value="timeline" className="flex h-8 items-center gap-1 rounded-lg px-3 text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">
                     <LayoutList className="h-3 w-3" />
                     Timeline
                   </TabsTrigger>
@@ -993,11 +993,11 @@ export default function Calendar() {
               </TabsList>
             </Tabs>
             <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
-              <SelectTrigger className="h-10 w-full min-w-[200px] flex-1 shrink-0 rounded-xl border-white/10 bg-black/35 px-3 text-sm shadow-inner shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px] sm:flex-none">
+              <SelectTrigger className="h-10 w-full min-w-[200px] flex-1 shrink-0 rounded-xl border-border bg-card/80 px-3 text-sm shadow-inner shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px] sm:flex-none">
                 <Filter className="mr-2 h-4 w-4 text-primary/80" />
                 <SelectValue placeholder="All Calendars" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-white/10 bg-zinc-950/95 shadow-[0_18px_60px_hsl(0_0%_0%/0.4)] backdrop-blur-xl">
+              <SelectContent className="rounded-xl border-border bg-popover shadow-[0_18px_60px_hsl(0_0%_0%/0.4)] backdrop-blur-xl">
                 <SelectItem value="all">All Calendars</SelectItem>
                 {calendars.map(cal => (
                   <SelectItem key={cal.id} value={cal.id}>
@@ -1021,24 +1021,24 @@ export default function Calendar() {
         <StatsLoadingSkeleton />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-black/45 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card/85 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
             <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-3xl font-bold leading-none tracking-tight text-white">{calendars.length}</div>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Calendars</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-foreground">{calendars.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Calendars</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-zinc-400 transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
+              <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-muted-foreground transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
                 <CalendarIcon className="h-5 w-5" />
               </div>
             </CardContent>
           </Card>
-          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-black/45 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card/85 hover:shadow-[0_22px_70px_hsl(0_0%_0%/0.42)]")}>
             <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-3xl font-bold leading-none tracking-tight text-white">{filteredEvents.length}</div>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Total Events</p>
+                <div className="text-3xl font-bold leading-none tracking-tight text-foreground">{filteredEvents.length}</div>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Events</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-zinc-400 transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
+              <div className="rounded-2xl border border-border bg-white/[0.04] p-3 text-muted-foreground transition-all group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary">
                 <LayoutList className="h-5 w-5" />
               </div>
             </CardContent>
@@ -1076,7 +1076,7 @@ export default function Calendar() {
           <CardContent className="px-4 py-3">
             <TooltipProvider delayDuration={150}>
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="mr-0.5 shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Calendars:</span>
+                <span className="mr-0.5 shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Calendars:</span>
                 {calendars.map(calendar => (
                   <Tooltip key={calendar.id}>
                     <TooltipTrigger asChild>
@@ -1089,8 +1089,8 @@ export default function Calendar() {
                           selectedCalendarId === calendar.id
                             ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_10px_28px_hsl(var(--primary)/0.14)]'
                             : selectedCalendarId === 'all'
-                              ? 'border-white/10 bg-white/[0.04] text-zinc-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.10)]'
-                              : 'border-white/5 bg-white/[0.025] text-zinc-500 opacity-70 hover:opacity-100 hover:border-primary/25 hover:text-zinc-200'
+                              ? 'border-border bg-white/[0.04] text-muted-foreground hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.10)]'
+                              : 'border-white/5 bg-white/[0.025] text-muted-foreground opacity-70 hover:opacity-100 hover:border-primary/25 hover:text-zinc-200'
                         )}
                       >
                         <span
@@ -1106,7 +1106,7 @@ export default function Calendar() {
                 {selectedCalendarId !== 'all' && (
                   <button
                     onClick={() => setSelectedCalendarId('all')}
-                    className="ml-0.5 rounded-full border border-white/10 px-3 py-2 text-xs font-medium text-zinc-400 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+                    className="ml-0.5 rounded-full border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                   >
                     Show all
                   </button>
@@ -1123,9 +1123,9 @@ export default function Calendar() {
       )}>
         {/* Calendar View */}
         <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl border-primary/10", isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2')}>
-          <CardHeader className="border-b border-white/10 bg-white/[0.02] pb-3">
+          <CardHeader className="border-b border-border bg-white/[0.02] pb-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+              <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-foreground">
                 <span className="rounded-xl border border-primary/25 bg-primary/10 p-2 text-primary">
                   <CalendarIcon className="h-5 w-5" />
                 </span>
@@ -1141,7 +1141,7 @@ export default function Calendar() {
                   aria-label={view === 'month' ? 'Previous month' : 'Previous week'}
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
+                  className="h-10 w-10 rounded-xl border border-border text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(subMonths(currentMonth, 1))
                     : setCurrentWeek(subWeeks(currentWeek, 1))
@@ -1162,7 +1162,7 @@ export default function Calendar() {
                     variant="ghost"
                     size="sm"
                     onClick={clearSelection}
-                    className="h-10 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.98]"
+                    className="h-10 rounded-xl border border-border text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.98]"
                   >
                     <X className="h-3 w-3 mr-1" />
                     Clear
@@ -1172,7 +1172,7 @@ export default function Calendar() {
                   aria-label={view === 'month' ? 'Next month' : 'Next week'}
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
+                  className="h-10 w-10 rounded-xl border border-border text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(addMonths(currentMonth, 1))
                     : setCurrentWeek(addWeeks(currentWeek, 1))
@@ -1199,15 +1199,15 @@ export default function Calendar() {
               ) : view === 'month' ? (
                 <>
                   {/* Day headers - Sticky */}
-                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1.5 rounded-2xl border border-white/10 bg-black/60 p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-card/90 p-1.5 shadow-inner shadow-black/30 backdrop-blur">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                      <div key={day} className="rounded-xl py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400 md:text-xs">
+                      <div key={day} className="rounded-xl py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-xs">
                         {isMobile ? day.charAt(0) : day}
                       </div>
                     ))}
                   </div>
                   {/* Calendar grid with DropZones */}
-                  <div className="grid grid-cols-7 gap-1.5 rounded-2xl border border-white/10 bg-black/20 p-1.5 shadow-inner shadow-black/20 md:gap-2 md:p-2">
+                  <div className="grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-muted/40 p-1.5 shadow-inner shadow-black/20 md:gap-2 md:p-2">
                     {calendarDays.map(day => {
                       const dayEvents = getEventsForDay(day);
                       const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -1222,7 +1222,7 @@ export default function Calendar() {
                           className={cn(
                             'min-h-[76px] rounded-xl border p-1 text-left transition-all duration-200 ease-out cursor-pointer bg-white/[0.02] focus-within:ring-2 focus-within:ring-primary/40 md:min-h-[116px] md:p-2',
                             isSelected ? 'border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.35),0_14px_36px_hsl(var(--primary)/0.12)]' : 'border-white/5 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white/[0.045] hover:shadow-[0_10px_26px_hsl(var(--primary)/0.08)]',
-                            !isCurrentMonth && 'bg-black/20 opacity-50',
+                            !isCurrentMonth && 'bg-muted/40 opacity-50',
                             isToday(day) && 'ring-1 ring-primary/70'
                           )}
                         >
@@ -1241,7 +1241,7 @@ export default function Calendar() {
                           >
                             <div className={cn(
                               'mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold',
-                              isSelected ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : isToday(day) ? 'border border-primary/50 bg-primary/10 text-primary' : isCurrentMonth ? 'text-zinc-200' : 'text-zinc-500'
+                              isSelected ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : isToday(day) ? 'border border-primary/50 bg-primary/10 text-primary' : isCurrentMonth ? 'text-zinc-200' : 'text-muted-foreground'
                             )}>
                               {format(day, 'd')}
                             </div>
@@ -1296,7 +1296,7 @@ export default function Calendar() {
                                 </EnhancedEventPreview>
                               ))}
                               {dayEvents.length > (isMobile ? 2 : 3) && (
-                                <div className="rounded-lg border border-white/5 bg-white/[0.04] px-1.5 py-1 text-[9px] font-semibold text-zinc-400 md:text-[10px]">
+                                <div className="rounded-lg border border-white/5 bg-white/[0.04] px-1.5 py-1 text-[9px] font-semibold text-muted-foreground md:text-[10px]">
                                   +{dayEvents.length - (isMobile ? 2 : 3)} more
                                 </div>
                               )}
@@ -1309,15 +1309,15 @@ export default function Calendar() {
                 </>
               ) : view === 'week' ? (
                 /* Week View with Drag and Drop */
-                <div className={cn("h-[600px] rounded-2xl border border-white/10 bg-black/20 shadow-inner shadow-black/20", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
+                <div className={cn("h-[600px] rounded-2xl border border-border bg-muted/40 shadow-inner shadow-black/20", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
                   <div className="min-w-[700px]">
                     {/* Week day headers - Sticky */}
-                    <div className="sticky top-0 z-10 mb-1 grid grid-cols-8 gap-1 border-b border-white/10 bg-zinc-950/95 p-2 shadow-sm backdrop-blur-xl">
-                      <div className="w-16 py-2 text-xs font-medium text-zinc-500"></div>
+                    <div className="sticky top-0 z-10 mb-1 grid grid-cols-8 gap-1 border-b border-border bg-popover p-2 shadow-sm backdrop-blur-xl">
+                      <div className="w-16 py-2 text-xs font-medium text-muted-foreground"></div>
                       {weekDays.map(day => (
                         <div
                           key={day.toISOString()}
-                          className={`rounded-xl py-2 text-center text-xs font-semibold ${isToday(day) ? 'bg-primary/10 text-primary' : 'text-zinc-400'}`}
+                          className={`rounded-xl py-2 text-center text-xs font-semibold ${isToday(day) ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
                         >
                           <div className="uppercase tracking-[0.16em]">{format(day, 'EEE')}</div>
                           <div className={`mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold ${isToday(day) ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : 'text-zinc-200'}`}>
@@ -1329,8 +1329,8 @@ export default function Calendar() {
                     {/* Time grid with DropZones */}
                     <div className="relative">
                       {weekHours.map(hour => (
-                        <div key={hour} className="grid grid-cols-8 gap-1 border-t border-white/10">
-                          <div className="sticky left-0 w-16 bg-zinc-950/90 py-1 pr-2 text-right text-[10px] font-medium text-zinc-500 backdrop-blur">
+                        <div key={hour} className="grid grid-cols-8 gap-1 border-t border-border">
+                          <div className="sticky left-0 w-16 bg-popover/90 py-1 pr-2 text-right text-[10px] font-medium text-muted-foreground backdrop-blur">
                             {format(new Date().setHours(hour, 0), 'h a')}
                           </div>
                           {weekDays.map(day => {
@@ -1342,7 +1342,7 @@ export default function Calendar() {
                                 hour={hour}
                                 onDrop={handleEventDrop}
                                 disabled={isUpdating}
-                                className="min-h-[52px] border-l border-white/10 px-1.5 py-1 transition-colors hover:bg-white/[0.03]"
+                                className="min-h-[52px] border-l border-border px-1.5 py-1 transition-colors hover:bg-white/[0.03]"
                               >
                                 {hourEvents.map(event => (
                                   <DraggableEvent
@@ -1411,7 +1411,7 @@ export default function Calendar() {
                     aria-label="Expand calendar tools sidebar"
                     variant="ghost"
                     size="icon"
-                    className="mb-1 h-9 w-9 rounded-xl border border-white/10 text-zinc-300 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
+                    className="mb-1 h-9 w-9 rounded-xl border border-border text-muted-foreground hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
                     onClick={() => setSidebarCollapsed(false)}
                   >
                     <PanelLeft className="h-4 w-4" />
@@ -1442,7 +1442,7 @@ export default function Calendar() {
                             'relative flex h-10 w-10 flex-col items-center justify-center gap-0.5 rounded-xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
                             sidebarTab === tab.id
                               ? 'border-primary/60 bg-primary/20 text-primary shadow-[0_10px_24px_hsl(var(--primary)/0.14)]'
-                              : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-primary/35 hover:bg-primary/10 hover:text-primary',
+                              : 'border-border bg-white/[0.03] text-muted-foreground hover:border-primary/35 hover:bg-primary/10 hover:text-primary',
                             isPinned && 'ring-1 ring-primary/30'
                           )}
                         >
@@ -1466,11 +1466,11 @@ export default function Calendar() {
           ) : (
             // Expanded: full sidebar with header and content
             <>
-              <CardHeader className="border-b border-white/10 bg-white/[0.02] pb-3">
+              <CardHeader className="border-b border-border bg-white/[0.02] pb-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <span className="text-sm font-semibold text-white">Tools</span>
-                    <p className="mt-0.5 text-[11px] text-zinc-500">Calendar command sidebar</p>
+                    <span className="text-sm font-semibold text-foreground">Tools</span>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">Calendar command sidebar</p>
                   </div>
                   <div className="flex items-center gap-1 ml-auto">
                     <Button size="sm" variant="outline" className="h-10 rounded-xl border-primary/40 bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]" onClick={() => setQuickAddModalOpen(true)}>
@@ -1483,7 +1483,7 @@ export default function Calendar() {
                           aria-label="Collapse calendar tools sidebar"
                           variant="ghost"
                           size="icon"
-                          className="h-10 w-10 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95"
+                          className="h-10 w-10 rounded-xl border border-border text-muted-foreground transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95"
                           onClick={() => setSidebarCollapsed(true)}
                         >
                           <PanelLeftClose className="h-4 w-4" />
@@ -1496,7 +1496,7 @@ export default function Calendar() {
 
                 <TooltipProvider delayDuration={100}>
                   <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                    <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-black/35 p-2 shadow-inner shadow-black/20">
+                    <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-2xl border border-border bg-card/80 p-2 shadow-inner shadow-black/20">
                       {SIDEBAR_TABS.map((tab) => {
                         const isPinned = pinnedTabs.includes(tab.id);
                         return (
@@ -1507,7 +1507,7 @@ export default function Calendar() {
                                 title={tab.label}
                                 value={tab.id}
                                 className={cn(
-                                  "relative h-11 rounded-xl border border-white/10 bg-white/[0.03] p-0 text-zinc-400 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
+                                  "relative h-11 rounded-xl border border-border bg-white/[0.03] p-0 text-muted-foreground transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 data-[state=active]:border-primary/60 data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.14)]",
                                   isPinned && "ring-1 ring-primary/30"
                                 )}
                                 onContextMenu={(e) => {
@@ -1539,7 +1539,7 @@ export default function Calendar() {
 
               <CardContent className="p-3">
               {/* Mini Calendar Navigator */}
-              <div className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-3 shadow-inner shadow-black/20">
+              <div className="mb-4 rounded-2xl border border-border bg-muted/40 p-3 shadow-inner shadow-black/20">
                 <MiniCalendarNavigator
                   currentMonth={currentMonth}
                   setCurrentMonth={setCurrentMonth}
@@ -1554,15 +1554,15 @@ export default function Calendar() {
 
               {sidebarTab === 'events' && (
                 <div>
-                  <div className="mb-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <div className="mb-3 flex items-center gap-2 rounded-2xl border border-border bg-white/[0.03] px-3 py-2">
                     <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
                       <Clock className="h-4 w-4" />
                     </span>
                     <div>
-                      <h4 className="text-sm font-semibold text-white">
+                      <h4 className="text-sm font-semibold text-foreground">
                         {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
                       </h4>
-                      <p className="text-[11px] text-zinc-500">
+                      <p className="text-[11px] text-muted-foreground">
                         {selectedDate ? 'Selected day agenda' : 'Next scheduled appointments'}
                       </p>
                     </div>
@@ -1571,12 +1571,12 @@ export default function Calendar() {
                     {isLoading ? (
                       <SidebarLoadingSkeleton />
                     ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-muted-foreground">
+                      <div className="rounded-2xl border border-dashed border-border bg-white/[0.03] px-4 py-8 text-center text-muted-foreground">
                         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
                           <CalendarIcon className="h-6 w-6" />
                         </div>
-                        <p className="text-sm font-medium text-zinc-300">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
-                        <p className="mt-1 text-xs text-zinc-500">Use Quick Add to schedule from this panel.</p>
+                        <p className="text-sm font-medium text-muted-foreground">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Use Quick Add to schedule from this panel.</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1772,15 +1772,15 @@ export default function Calendar() {
 
       {/* Calendars List — split into Frequently Used and Other */}
       <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl border-primary/10")}>
-        <CardHeader className="border-b border-white/10 bg-white/[0.02]">
+        <CardHeader className="border-b border-border bg-white/[0.02]">
           <CardTitle className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <span className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+            <span className="flex items-center gap-3 text-xl font-semibold tracking-tight text-foreground">
               <span className="rounded-2xl border border-primary/25 bg-primary/10 p-2 text-primary">
                 <Users className="h-5 w-5" />
               </span>
               Available Calendars ({calendars.length})
             </span>
-            <span className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Calendar registry</span>
+            <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Calendar registry</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 md:p-5">
@@ -1827,7 +1827,7 @@ export default function Calendar() {
                   'group rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.99]',
                   selectedCalendarId === calendar.id
                     ? 'border-primary/60 bg-gradient-to-br from-primary/18 via-primary/10 to-white/[0.03] shadow-[0_16px_42px_hsl(var(--primary)/0.14)]'
-                    : 'border-white/10 bg-gradient-to-br from-white/[0.045] to-white/[0.02] hover:-translate-y-1 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_18px_46px_hsl(0_0%_0%/0.28)]'
+                    : 'border-border bg-gradient-to-br from-white/[0.045] to-white/[0.02] hover:-translate-y-1 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_18px_46px_hsl(0_0%_0%/0.28)]'
                 )}
               >
                 <div className="flex h-full items-start justify-between gap-3">
@@ -1837,10 +1837,10 @@ export default function Calendar() {
                         className="h-3.5 w-3.5 rounded-full shrink-0 ring-2 ring-black/30 shadow-sm"
                         style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
                       />
-                      <span className="truncate text-sm font-semibold text-zinc-100 transition-colors group-hover:text-white">{calendar.name}</span>
+                      <span className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-foreground">{calendar.name}</span>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-zinc-300">
+                      <Badge variant="outline" className="rounded-full border-border bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                         {calendar.calendarType.replace('_', ' ')}
                       </Badge>
                       {calendar.isActive && (
@@ -1856,7 +1856,7 @@ export default function Calendar() {
                     </div>
                   </div>
                   {calendar.teamMembers && calendar.teamMembers.length > 0 && (
-                    <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-xs font-medium text-zinc-400">
+                    <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
                       <Users className="h-3 w-3 text-primary/80" />
                       {calendar.teamMembers.length} member{calendar.teamMembers.length !== 1 ? 's' : ''}
                     </div>
@@ -1870,7 +1870,7 @@ export default function Calendar() {
               <div className="space-y-7">
                 {frequentlyUsed.length > 0 && (
                   <div>
-                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Most Frequently Used</h4>
+                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Most Frequently Used</h4>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {frequentlyUsed.map(renderCalendarCard)}
                     </div>
@@ -1878,7 +1878,7 @@ export default function Calendar() {
                 )}
                 {otherCalendars.length > 0 && (
                   <div>
-                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Other Calendars</h4>
+                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Other Calendars</h4>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {otherCalendars.map(renderCalendarCard)}
                     </div>
@@ -1907,14 +1907,14 @@ function EventCard({
   return (
     <button
       onClick={onClick}
-      className="w-full rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.025] p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:shadow-[0_12px_30px_hsl(0_0%_0%/0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+      className="w-full rounded-xl border border-border bg-gradient-to-br from-white/[0.05] to-white/[0.025] p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:shadow-[0_12px_30px_hsl(0_0%_0%/0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
       style={{ borderLeftWidth: '4px', borderLeftColor: color }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="truncate text-sm font-semibold text-zinc-100">{event.title || 'Untitled Event'}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{event.title || 'Untitled Event'}</p>
           {event.calendarName && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <span
                 className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-black/30"
                 style={{ backgroundColor: color }}

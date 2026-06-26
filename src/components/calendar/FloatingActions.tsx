@@ -37,7 +37,7 @@ export function FloatingActions({
               <Button
                 size="icon"
                 variant="outline"
-                className="h-10 w-10 rounded-full border-white/10 bg-black/70 text-zinc-300 shadow-lg backdrop-blur transition-all animate-in fade-in slide-in-from-bottom-2 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
+                className="h-10 w-10 rounded-full border-border bg-card/90 text-muted-foreground shadow-lg backdrop-blur transition-all animate-in fade-in slide-in-from-bottom-2 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                 onClick={onScrollTop}
               >
                 <ChevronUp className="h-4 w-4" />
@@ -54,7 +54,7 @@ export function FloatingActions({
               <Button
                 size="icon"
                 variant="outline"
-                className="h-10 w-10 rounded-full border-white/10 bg-black/70 text-zinc-300 shadow-lg backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
+                className="h-10 w-10 rounded-full border-border bg-card/90 text-muted-foreground shadow-lg backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                 onClick={onClearSelection}
               >
                 <X className="h-4 w-4" />
@@ -70,7 +70,7 @@ export function FloatingActions({
             <Button
               size="icon"
               variant="outline"
-              className="h-10 w-10 rounded-full border-white/10 bg-black/70 text-zinc-300 shadow-lg backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-10 w-10 rounded-full border-border bg-card/90 text-muted-foreground shadow-lg backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={onRefresh}
               disabled={isRefreshing}
             >
