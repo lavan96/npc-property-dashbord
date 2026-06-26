@@ -7,12 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ArrowLeft, Loader2, Download, Edit, MapPin, Calendar, FileText, TrendingUp, Link, AlertCircle, Settings, ChevronDown, PenLine, Calculator, Send, Images } from 'lucide-react';
+import { ArrowLeft, Loader2, Download, Edit, Calendar, TrendingUp, Link, AlertCircle, Settings, ChevronDown, PenLine, Calculator, Send, Images, CheckCircle2, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
-import { useToast } from '@/hooks/use-toast';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { PremiumPdfButton } from '@/components/reports/PremiumPdfButton';
@@ -57,8 +55,6 @@ interface ClientInfo {
 export default function InvestmentReportView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   const [report, setReport] = useState<InvestmentReport | null>(null);
   const [clientInfo, setClientInfo] = useState<ClientInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,6 +196,17 @@ export default function InvestmentReportView() {
 
   const hasOverrides = report?.manual_overrides && Object.keys(report.manual_overrides).length > 0;
 
+  const reportScore = useMemo(() => {
+    const score = report?.investment_score;
+    if (!score) return null;
+    if (typeof score === 'number' || typeof score === 'string') return score;
+    return score.overall_score ?? score.score ?? score.totalScore ?? score.rating ?? null;
+  }, [report?.investment_score]);
+
+  const reportTierLabel = report?.report_tier ? report.report_tier.replace(/_/g, ' ') : 'Standard';
+  const reportVariantLabel = report?.report_variant ? report.report_variant.replace(/_/g, ' ') : 'Primary';
+  const reportStatusLabel = report?.status ? report.status.replace(/_/g, ' ') : 'Draft';
+
   const overriddenFields = useMemo(() => {
     if (!hasOverrides || !report) return [];
     const fieldMappings: Record<string, string> = {
@@ -253,235 +260,168 @@ export default function InvestmentReportView() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Header bar */}
-      <div className="p-4 border-b flex items-center justify-between gap-4 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          {isClientReport && clientInfo ? (
-            <Button variant="ghost" size="sm" onClick={() => navigate('/clients')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to {clientInfo.primary_first_name} {clientInfo.primary_surname}
+      {/* Sticky command header */}
+      <div className="sticky top-0 z-30 border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 flex-shrink-0">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            {isClientReport && clientInfo ? (
+              <Button variant="ghost" size="sm" onClick={() => navigate('/clients')} className="shrink-0">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to {clientInfo.primary_first_name} {clientInfo.primary_surname}
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="shrink-0">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
+            <Separator orientation="vertical" className="hidden h-7 sm:block" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold">Report Workspace</p>
+                {isClientReport && <Badge variant="secondary" className="text-xs">Client Report</Badge>}
+              </div>
+              <p className="truncate text-xs text-muted-foreground">{report.property_address}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <div className="rounded-lg border bg-card/70 p-1">
+              <ReportVariantControls
+                compositeReportId={report.derived_from_report_id || report.id}
+                reportVariant={report.report_variant}
+                derivedFromReportId={report.derived_from_report_id}
+                onNavigate={(rid) => navigate(`/investment-report/${rid}`)}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-1 rounded-lg border bg-card/70 p-1">
+              <Button variant="ghost" size="sm" onClick={() => setSendToClientOpen(true)}>
+                <Send className="h-4 w-4 mr-1" />
+                Send
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate(`/cash-flow-analysis?reportId=${report.id}`)}>
+                <Calculator className="h-4 w-4 mr-1" />
+                Cash Flow
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setEditorOpen(true)}>
+                <Edit className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setOverrideModalOpen(true)}>
+                <Settings className="h-4 w-4 mr-1" />
+                Override
+              </Button>
+            </div>
+            <Button variant="default" size="sm" onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-1" />
+              Download
             </Button>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          )}
-          {isClientReport && (
-            <Badge variant="secondary" className="text-xs">
-              Client Report
-            </Badge>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {report && (
-            <ReportVariantControls
-              compositeReportId={report.derived_from_report_id || report.id}
-              reportVariant={report.report_variant}
-              derivedFromReportId={report.derived_from_report_id}
-              onNavigate={(rid) => navigate(`/investment-report/${rid}`)}
-            />
-          )}
-          {/* Send to Client */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSendToClientOpen(true)}
-          >
-            <Send className="h-4 w-4 mr-1" />
-            Send to Client
-          </Button>
-          {/* Cash Flow - available for all reports */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(`/cash-flow-analysis?reportId=${report.id}`)}
-          >
-            <Calculator className="h-4 w-4 mr-1" />
-            Cash Flow Analysis
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setEditorOpen(true)}>
-            <Edit className="h-4 w-4 mr-1" />
-            Edit
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setOverrideModalOpen(true)}>
-            <Settings className="h-4 w-4 mr-1" />
-            Override Data
-          </Button>
-          <Button variant="default" size="sm" onClick={handleDownload}>
-            <Download className="h-4 w-4 mr-1" />
-            Download
-          </Button>
+          </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto p-6 space-y-4">
-        {/* Report Header Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="space-y-1">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  {report.property_address}
-                </CardTitle>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-3 w-3" />
-                  Generated on {format(new Date(report.created_at), 'PPpp')}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="secondary">
-                  <FileText className="h-3 w-3 mr-1" />
-                  Investment Report
-                </Badge>
-                {hasOverrides && (
-                  <Badge variant="default" className="bg-primary">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Contains Manual Overrides
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Manual Overrides Indicator */}
-        {hasOverrides && (
-          <Collapsible open={showOverrides} onOpenChange={setShowOverrides}>
-            <Card className="border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
-              <CardHeader className="pb-3">
-                <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <PenLine className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-                      <span className="font-semibold text-amber-800 dark:text-amber-200">
-                        {overriddenFields.length} Field{overriddenFields.length !== 1 ? 's' : ''} Manually Edited
-                      </span>
+      <div className="flex-1 overflow-auto bg-muted/20">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 p-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
+          <div className="space-y-5">
+            {/* Executive report hero */}
+            <Card className="overflow-hidden border-primary/10 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" /> Investment Report</Badge>
+                      {isClientReport && <Badge variant="outline">Client-ready</Badge>}
+                      {hasOverrides && <Badge className="gap-1 bg-amber-600 text-white hover:bg-amber-600"><AlertCircle className="h-3 w-3" /> Adjusted Data</Badge>}
                     </div>
-                    <ChevronDown className={`h-4 w-4 text-amber-700 dark:text-amber-300 transition-transform ${showOverrides ? 'rotate-180' : ''}`} />
+                    <div>
+                      <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{report.property_address}</h1>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" /> Generated {format(new Date(report.created_at), 'PPpp')}</span>
+                        <span className="inline-flex items-center gap-1.5 capitalize"><CheckCircle2 className="h-4 w-4" /> {reportStatusLabel}</span>
+                      </div>
+                    </div>
                   </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {overriddenFields.map((field) => (
-                      <Badge
-                        key={field.key}
-                        variant="secondary"
-                        className="text-xs font-normal bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
-                      >
-                        <PenLine className="h-3 w-3 mr-1" />
-                        {field.displayName}
-                      </Badge>
-                    ))}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[460px]">
+                    <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Tier</p><p className="mt-1 truncate text-sm font-semibold capitalize">{reportTierLabel}</p></div>
+                    <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Variant</p><p className="mt-1 truncate text-sm font-semibold capitalize">{reportVariantLabel}</p></div>
+                    <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Score</p><p className="mt-1 text-sm font-semibold">{reportScore ?? 'Not scored'}</p></div>
+                    <div className="rounded-xl border bg-background/70 p-3"><p className="text-xs text-muted-foreground">Client Status</p><p className="mt-1 text-sm font-semibold">{isClientReport ? 'Client report' : 'Internal'}</p></div>
                   </div>
-                </CollapsibleContent>
-              </CardHeader>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => setSendToClientOpen(true)}><Send className="h-4 w-4 mr-1" />Send to Client</Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditorOpen(true)}><Edit className="h-4 w-4 mr-1" />Edit Report</Button>
+                  <Button variant="outline" size="sm" onClick={() => setOverrideModalOpen(true)}><SlidersHorizontal className="h-4 w-4 mr-1" />Adjust Data</Button>
+                </div>
+              </CardContent>
             </Card>
-          </Collapsible>
-        )}
 
-        {/* Report Content Card */}
-        <Card className="flex-1 flex flex-col">
-          <CardHeader className="pb-2 flex-shrink-0">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Analysis Report
-              </CardTitle>
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-3 w-3" />
-                  <span className="text-sm text-muted-foreground">Include scoring</span>
-                  <Switch checked={includeScoring} onCheckedChange={setIncludeScoring} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link className="h-3 w-3" />
-                  <span className="text-sm text-muted-foreground">Include sources</span>
-                  <Switch checked={includeSources} onCheckedChange={setIncludeSources} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Charts</span>
-                  <Switch checked={includeCharts} onCheckedChange={setIncludeCharts} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Hero images</span>
-                  <Switch checked={includeHeroImages} onCheckedChange={setIncludeHeroImages} />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => setHeroDialogOpen(true)}
-                    title="Generate, preview and choose hero images"
-                  >
-                    <Images className="h-3.5 w-3.5 mr-1" />
-                    Manage
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Sparklines</span>
-                  <Switch checked={includeSparklines} onCheckedChange={setIncludeSparklines} />
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <Separator />
-          <CardContent className="p-0 flex-1 flex flex-col">
-            <div className="p-4 border-b bg-muted/50 flex flex-wrap items-center gap-3">
-              <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">PDF tools are unavailable.</div>}>
-                <ClientPDFGenerator ref={pdfGeneratorRef} report={report} includeSources={includeSources} includeScoring={includeScoring} />
-              </ErrorBoundary>
+            {/* Data Adjustments disclosure */}
+            {hasOverrides && (
+              <Collapsible open={showOverrides} onOpenChange={setShowOverrides}>
+                <Card className="border-amber-200 bg-amber-50/70 shadow-sm dark:border-amber-800 dark:bg-amber-950/20">
+                  <CollapsibleTrigger className="w-full text-left">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-full bg-amber-100 p-2 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"><PenLine className="h-4 w-4" /></div>
+                          <div>
+                            <CardTitle className="text-base text-amber-950 dark:text-amber-100">Data Adjustments</CardTitle>
+                            <p className="text-sm text-amber-800/80 dark:text-amber-200/80">{overriddenFields.length} field{overriddenFields.length !== 1 ? 's' : ''} manually edited and included in this workspace.</p>
+                          </div>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-amber-700 transition-transform ${showOverrides ? 'rotate-180' : ''}`} />
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0"><div className="flex flex-wrap gap-2">{overriddenFields.map((field) => (<Badge key={field.key} variant="secondary" className="border border-amber-300 bg-amber-100 text-xs font-normal text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-100"><PenLine className="h-3 w-3 mr-1" />{field.displayName}</Badge>))}</div></CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
 
-              <PremiumPdfButton
-                reportId={report.id}
-                propertyAddress={report.property_address}
-                includeCharts={includeCharts}
-                includeHeroImages={includeHeroImages}
-                includeSparklines={includeSparklines}
-                designOptions={pdfDesignOptions}
-              />
+            {/* Premium readable report document */}
+            <Card className="shadow-sm">
+              <CardHeader className="border-b bg-card/80">
+                <CardTitle className="text-base flex items-center gap-2"><TrendingUp className="h-4 w-4" />Analysis Report</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="p-6 prose prose-sm max-w-none dark:prose-invert lg:p-8">
+                  <ErrorBoundary fallback={<div className="rounded-md border border-border bg-muted/40 p-4"><div className="text-sm font-medium text-foreground">Report content couldn't be displayed.</div><div className="mt-1 text-sm text-muted-foreground">You can still download the raw report text.</div><div className="mt-3"><Button variant="outline" size="sm" onClick={handleDownload}><Download className="h-3 w-3 mr-1" />Download raw text</Button></div></div>}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{report.report_content}</ReactMarkdown>
+                    {includeSources && report.sources_content && <div className="mt-8 border-t pt-6"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{report.sources_content}</ReactMarkdown></div>}
+                  </ErrorBoundary>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-
-              <RegenerateWithPerplexityButton
-                reportId={report.id}
-                propertyAddress={report.property_address}
-                onRegenerated={handleReportUpdate}
-                variant="default"
-                size="sm"
-              />
-              <PremiumPdfDesignPanel value={pdfDesignOptions} onChange={setPdfDesignOptions} />
-            </div>
-            <div className="p-6 prose prose-sm max-w-none dark:prose-invert">
-              <ErrorBoundary
-                fallback={
-                  <div className="rounded-md border border-border bg-muted/40 p-4">
-                    <div className="text-sm font-medium text-foreground">Report content couldn't be displayed.</div>
-                    <div className="mt-1 text-sm text-muted-foreground">You can still download the raw report text.</div>
-                    <div className="mt-3">
-                      <Button variant="outline" size="sm" onClick={handleDownload}>
-                        <Download className="h-3 w-3 mr-1" />
-                        Download raw text
-                      </Button>
-                    </div>
-                  </div>
-                }
-              >
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                  {report.report_content}
-                </ReactMarkdown>
-
-                {includeSources && report.sources_content && (
-                  <div className="mt-8 border-t pt-6">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                      {report.sources_content}
-                    </ReactMarkdown>
-                  </div>
-                )}
-              </ErrorBoundary>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Publishing/export control panel */}
+          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <Card className="shadow-sm">
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" />Publishing & Export</CardTitle></CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sm"><TrendingUp className="h-3.5 w-3.5" />Include scoring</span><Switch checked={includeScoring} onCheckedChange={setIncludeScoring} /></div>
+                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-sm"><Link className="h-3.5 w-3.5" />Include sources</span><Switch checked={includeSources} onCheckedChange={setIncludeSources} /></div>
+                  <div className="flex items-center justify-between gap-3"><span className="text-sm">Charts</span><Switch checked={includeCharts} onCheckedChange={setIncludeCharts} /></div>
+                  <div className="flex items-center justify-between gap-3"><span className="text-sm">Sparklines</span><Switch checked={includeSparklines} onCheckedChange={setIncludeSparklines} /></div>
+                  <div className="flex items-center justify-between gap-3"><span className="text-sm">Hero images</span><Switch checked={includeHeroImages} onCheckedChange={setIncludeHeroImages} /></div>
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => setHeroDialogOpen(true)}><Images className="h-3.5 w-3.5 mr-1" />Manage hero images</Button>
+                </div>
+                <div className="grid gap-2">
+                  <ErrorBoundary fallback={<div className="text-sm text-muted-foreground">PDF tools are unavailable.</div>}><ClientPDFGenerator ref={pdfGeneratorRef} report={report} includeSources={includeSources} includeScoring={includeScoring} /></ErrorBoundary>
+                  <PremiumPdfButton reportId={report.id} propertyAddress={report.property_address} includeCharts={includeCharts} includeHeroImages={includeHeroImages} includeSparklines={includeSparklines} designOptions={pdfDesignOptions} />
+                  <RegenerateWithPerplexityButton reportId={report.id} propertyAddress={report.property_address} onRegenerated={handleReportUpdate} variant="default" size="sm" />
+                  <PremiumPdfDesignPanel value={pdfDesignOptions} onChange={setPdfDesignOptions} />
+                  <Button variant="outline" size="sm" onClick={handleDownload}><Download className="h-4 w-4 mr-1" />Download raw text</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
       </div>
 
       {/* Editor Modal */}
