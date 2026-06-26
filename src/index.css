@@ -2053,3 +2053,68 @@ html {
     @apply flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
   }
 }
+
+@layer components {
+  .reports-types-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-types-card {
+    @apply overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-primary/10 transition-all duration-200 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-types-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-types-card-header [data-slot='card-title'],
+  .reports-types-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-types-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-types-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-types-chart {
+    @apply w-full rounded-2xl bg-background/35 p-2;
+  }
+
+  .reports-types-chart .recharts-sector {
+    filter: drop-shadow(0 7px 12px hsl(0 0% 0% / 0.14));
+    transition: opacity 160ms ease, filter 160ms ease;
+  }
+
+  .reports-types-chart .recharts-sector:hover {
+    opacity: 0.92;
+    filter: drop-shadow(0 0 16px hsl(var(--primary) / 0.28));
+  }
+
+  .reports-types-tooltip {
+    @apply rounded-2xl border border-primary/25 bg-popover/95 p-3 shadow-xl shadow-black/20 backdrop-blur;
+  }
+
+  .reports-types-insight {
+    @apply shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md hover:shadow-amber-500/10;
+  }
+
+  .reports-types-badge {
+    @apply rounded-full border-amber-500/35 bg-amber-500/10 px-2.5 py-0.5 font-bold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-types-legend {
+    @apply border-border/60;
+  }
+
+  .reports-types-legend-item {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-2.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card/90;
+  }
+
+  .reports-types-empty-state {
+    @apply flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}

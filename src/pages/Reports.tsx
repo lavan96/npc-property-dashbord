@@ -409,14 +409,15 @@ export default function Reports() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="property-type" className="space-y-4">
-              <Card className="ci-card">
-                <CardHeader>
+            <TabsContent value="property-type" className="space-y-4 reports-types-suite">
+              <Card className="ci-card reports-types-card">
+                <CardHeader className="reports-types-card-header">
                   <CardTitle>Property Type Distribution</CardTitle>
                   <CardDescription>Proportional breakdown of listings by property category</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="h-[280px] md:h-[400px]">
+                <CardContent className="reports-types-card-content space-y-4">
+                  {propertyTypeChartData.length > 0 ? (
+                  <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="reports-types-chart h-[280px] md:h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -428,8 +429,8 @@ export default function Reports() {
                             const pct = (props.percent * 100).toFixed(0);
                             return `${props.type} (${pct}%)`;
                           }}
-                          outerRadius={110}
-                          innerRadius={50}
+                          outerRadius={112}
+                          innerRadius={56}
                           fill="#8884d8"
                           dataKey="count"
                           paddingAngle={2}
@@ -444,7 +445,7 @@ export default function Reports() {
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
+                              <div className="reports-types-tooltip">
                                 <p className="font-semibold text-sm text-foreground">{data.type}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
                               </div>
@@ -454,26 +455,29 @@ export default function Reports() {
                       </PieChart>
                     </ResponsiveContainer>
                   </ChartContainer>
+                  ) : (
+                    <div className="reports-types-empty-state">No property type data available.</div>
+                  )}
                   {/* Dominant type callout */}
                   {propertyTypeChartData.length > 0 && (() => {
                     const dominant = propertyTypeChartData.reduce((max, d) => d.count > max.count ? d : max, propertyTypeChartData[0]);
                     const dominantPct = totalListings > 0 ? ((dominant.count / totalListings) * 100).toFixed(0) : '0';
                     return (
-                      <div className="flex items-center gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
+                      <div className="reports-types-insight flex items-center gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
                         <Lightbulb className="h-4 w-4 text-yellow-500 shrink-0" />
                         <p className="text-xs text-foreground">
                           <span className="font-semibold">{dominant.type}</span> properties dominate at <span className="font-semibold">{dominantPct}%</span> of all listings ({dominant.count} of {totalListings}).
                         </p>
-                        <Badge variant="outline" className="ml-auto shrink-0 text-[10px]">Dominant</Badge>
+                        <Badge variant="outline" className="reports-types-badge ml-auto shrink-0 text-[10px]">Dominant</Badge>
                       </div>
                     );
                   })()}
                   {/* Legend table */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t">
+                  <div className="reports-types-legend grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t">
                     {propertyTypeChartData.map((entry, i) => {
                       const pct = totalListings > 0 ? ((entry.count / totalListings) * 100).toFixed(1) : '0';
                       return (
-                        <div key={entry.type} className="flex items-center gap-2 text-xs">
+                        <div key={entry.type} className="reports-types-legend-item flex items-center gap-2 text-xs">
                           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                           <span className="text-muted-foreground truncate">{entry.type}</span>
                           <span className="font-medium ml-auto">{entry.count} ({pct}%)</span>
