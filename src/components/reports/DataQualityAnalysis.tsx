@@ -173,13 +173,13 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
   const activeIssues = qualityMetrics.issues.filter(i => i.count > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 reports-quality-suite">
       {/* Overall Quality Score Banner */}
-      <Card className="border-l-4" style={{ borderLeftColor: overallScore >= 80 ? 'hsl(var(--chart-2))' : overallScore >= 60 ? 'hsl(var(--chart-3))' : 'hsl(var(--destructive))' }}>
+      <Card className="reports-quality-score-card border-l-4" style={{ borderLeftColor: overallScore >= 80 ? 'hsl(var(--chart-2))' : overallScore >= 60 ? 'hsl(var(--chart-3))' : 'hsl(var(--destructive))' }}>
         <CardContent className="py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="text-3xl font-bold" style={{ color: overallScore >= 80 ? 'hsl(var(--chart-2))' : overallScore >= 60 ? 'hsl(var(--chart-3))' : 'hsl(var(--destructive))' }}>
+              <div className="reports-quality-score-value text-3xl font-bold" style={{ color: overallScore >= 80 ? 'hsl(var(--chart-2))' : overallScore >= 60 ? 'hsl(var(--chart-3))' : 'hsl(var(--destructive))' }}>
                 {overallScore.toFixed(0)}%
               </div>
               <div>
@@ -193,7 +193,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={overallScore >= 80 ? 'default' : overallScore >= 60 ? 'secondary' : 'destructive'}>
+              <Badge variant={overallScore >= 80 ? 'default' : overallScore >= 60 ? 'secondary' : 'destructive'} className="reports-quality-status-badge">
                 {overallScore >= 80 ? 'Healthy' : overallScore >= 60 ? 'Needs Attention' : 'Action Required'}
               </Badge>
             </div>
@@ -202,8 +202,8 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
       </Card>
 
       {/* Field Completeness */}
-      <Card>
-        <CardHeader>
+      <Card className="reports-quality-card">
+        <CardHeader className="reports-quality-card-header">
           <CardTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5" />
             Field Completeness
@@ -212,38 +212,38 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
             Percentage of listings with complete data across different field categories
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="reports-quality-card-content space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
+            <div className="reports-completeness-tile space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Required Fields</span>
                 <span className={`text-sm font-bold ${getCompletenessColor(qualityMetrics.completeness.required)}`}>
                   {qualityMetrics.completeness.required.toFixed(1)}%
                 </span>
               </div>
-              <Progress value={qualityMetrics.completeness.required} className="h-2" />
+              <Progress value={qualityMetrics.completeness.required} className="reports-quality-progress h-2" />
               <p className="text-xs text-muted-foreground">Address, Suburb, Price, Property Type</p>
             </div>
 
-            <div className="space-y-2">
+            <div className="reports-completeness-tile space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Important Fields</span>
                 <span className={`text-sm font-bold ${getCompletenessColor(qualityMetrics.completeness.important)}`}>
                   {qualityMetrics.completeness.important.toFixed(1)}%
                 </span>
               </div>
-              <Progress value={qualityMetrics.completeness.important} className="h-2" />
+              <Progress value={qualityMetrics.completeness.important} className="reports-quality-progress h-2" />
               <p className="text-xs text-muted-foreground">Beds, Baths, Agent, Agency</p>
             </div>
 
-            <div className="space-y-2">
+            <div className="reports-completeness-tile space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Optional Fields</span>
                 <span className={`text-sm font-bold ${getCompletenessColor(qualityMetrics.completeness.optional)}`}>
                   {qualityMetrics.completeness.optional.toFixed(1)}%
                 </span>
               </div>
-              <Progress value={qualityMetrics.completeness.optional} className="h-2" />
+              <Progress value={qualityMetrics.completeness.optional} className="reports-quality-progress h-2" />
               <p className="text-xs text-muted-foreground">Car Spaces, Land Size, Description</p>
             </div>
           </div>
@@ -252,8 +252,8 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
 
       {/* Data Quality Issues with Remediation */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
+        <Card className="reports-quality-card">
+          <CardHeader className="reports-quality-card-header">
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-warning" />
               Data Quality Issues
@@ -262,7 +262,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               Click any issue to see root cause and remediation steps
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="reports-quality-card-content space-y-2">
             {qualityMetrics.issues.map((issue) => (
               <Collapsible
                 key={issue.label}
@@ -270,15 +270,15 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
                 onOpenChange={(open) => setExpandedIssue(open ? issue.label : null)}
               >
                 <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-2">
+                  <div className={`reports-quality-issue-row reports-quality-severity-${issue.severity}`}>
+                    <div className="flex min-w-0 items-center gap-2">
                       {issue.count > 0 && issue.severity === 'critical' && <XCircle className="h-3.5 w-3.5 text-destructive" />}
                       {issue.count > 0 && issue.severity === 'warning' && <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />}
                       {(issue.count === 0 || issue.severity === 'info') && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                      <span className="text-sm">{issue.label}</span>
+                      <span className="reports-quality-issue-label">{issue.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={issue.count > 0 ? getSeverityBadge(issue.severity) : 'outline'}>
+                      <Badge variant={issue.count > 0 ? getSeverityBadge(issue.severity) : 'outline'} className={`reports-quality-count-badge reports-quality-severity-${issue.severity}`}>
                         {issue.count}
                       </Badge>
                       {expandedIssue === issue.label ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -286,7 +286,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="ml-6 mr-2 mb-3 p-3 rounded-md bg-muted/30 border border-border/50 space-y-2.5">
+                  <div className="reports-quality-detail-panel ml-6 mr-2 mb-3 space-y-2.5">
                     <div className="flex items-start gap-2">
                       <Info className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
                       <div>
@@ -315,8 +315,8 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
+        <Card className="reports-quality-card">
+          <CardHeader className="reports-quality-card-header">
             <CardTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-info" />
               Confidence Distribution
@@ -325,7 +325,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               Extraction confidence across all listings
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="reports-quality-card-content space-y-4">
             {/* Stacked horizontal bar */}
             {(() => {
               const tiers = [
@@ -337,14 +337,14 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
               const total = qualityMetrics.totalListings;
               return (
                 <div className="space-y-3">
-                  <div className="h-6 w-full rounded-full overflow-hidden flex bg-muted">
+                  <div className="reports-confidence-stack h-6 w-full rounded-full overflow-hidden flex bg-muted">
                     {tiers.map(tier => {
                       const pct = total > 0 ? (tier.count / total) * 100 : 0;
                       if (pct === 0) return null;
                       return (
                         <div
                           key={tier.label}
-                          className="h-full transition-all relative group"
+                          className="h-full transition-all relative group hover:brightness-110"
                           style={{ width: `${pct}%`, backgroundColor: tier.color }}
                           title={`${tier.label}: ${tier.count} (${pct.toFixed(0)}%)`}
                         />
@@ -352,11 +352,11 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
                     })}
                   </div>
                   {/* Legend */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="reports-confidence-legend grid grid-cols-2 gap-2">
                     {tiers.map(tier => {
                       const pct = total > 0 ? (tier.count / total) * 100 : 0;
                       return (
-                        <div key={tier.label} className="flex items-center gap-2 text-xs">
+                        <div key={tier.label} className="reports-confidence-legend-item flex items-center gap-2 text-xs">
                           <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: tier.color }} />
                           <span className="text-muted-foreground">{tier.label}</span>
                           <span className="font-semibold ml-auto">{tier.count} <span className="text-muted-foreground font-normal">({pct.toFixed(0)}%)</span></span>
@@ -384,8 +384,8 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
 
       {/* Actionable Summary */}
       {activeIssues.length > 0 && (
-        <Card className="bg-muted/30">
-          <CardHeader className="pb-3">
+        <Card className="reports-quality-card reports-quality-actions-card">
+          <CardHeader className="reports-quality-card-header pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Lightbulb className="h-5 w-5 text-yellow-500" />
               Recommended Actions
@@ -400,8 +400,8 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
                 })
                 .slice(0, 4)
                 .map(issue => (
-                  <div key={issue.label} className="flex items-start gap-2 p-2 rounded-md bg-background border border-border/50">
-                    <Badge variant={getSeverityBadge(issue.severity)} className="text-[10px] mt-0.5 shrink-0">
+                  <div key={issue.label} className={`reports-quality-action-row reports-quality-severity-${issue.severity}`}>
+                    <Badge variant={getSeverityBadge(issue.severity)} className={`reports-quality-count-badge reports-quality-severity-${issue.severity} text-[10px] mt-0.5 shrink-0`}>
                       {issue.severity === 'critical' ? 'URGENT' : issue.severity === 'warning' ? 'REVIEW' : 'FYI'}
                     </Badge>
                     <div>
