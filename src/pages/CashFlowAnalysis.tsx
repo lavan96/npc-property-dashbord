@@ -193,6 +193,12 @@ export default function CashFlowAnalysis() {
     openAnalysisForReport(report);
   };
 
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setDateRange('30');
+    setBuildTypeFilter('all');
+  };
+
   return (
     <div className="space-y-6 p-6">
       <CashFlowPageHero
@@ -217,7 +223,11 @@ export default function CashFlowAnalysis() {
       {loading ? (
         <CashFlowLoadingState />
       ) : filteredReports.length === 0 ? (
-        <CashFlowEmptyState onConfigureReports={() => navigate('/generated-reports')} />
+        <CashFlowEmptyState
+          variant={reports.length === 0 ? 'noReports' : 'noResults'}
+          onConfigureReports={() => navigate('/generated-reports')}
+          onClearFilters={handleClearFilters}
+        />
       ) : (
         <CashFlowReportGrid
           reports={filteredReports}
