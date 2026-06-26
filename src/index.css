@@ -2827,9 +2827,9 @@ html {
 
   .reports-page-premium [data-slot='card-description'],
   .reports-investment-generator [data-slot='card-description'],
-  .reports-page-premium .text-muted-foreground,
-  .reports-investment-generator .text-muted-foreground {
-    @apply text-muted-foreground/90;
+  .reports-page-premium [class~='text-muted-foreground'],
+  .reports-investment-generator [class~='text-muted-foreground'] {
+    color: hsl(var(--muted-foreground) / 0.9);
   }
 
   .reports-suburb-card,
@@ -2926,8 +2926,8 @@ html {
     @apply border-warning/30 bg-warning-light/70 text-warning;
   }
 
-  .reports-validation-state-error .text-destructive,
-  .reports-validation-state-error .text-destructive\/80 {
-    @apply text-warning;
+  .reports-validation-state-error [class~='text-destructive'],
+  .reports-validation-state-error [class~='text-destructive\/80'] {
+    color: hsl(var(--warning));
   }
 }
