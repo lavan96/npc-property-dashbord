@@ -806,23 +806,23 @@ export default function Calendar() {
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-full sm:w-[320px] p-0 flex flex-col h-full">
-                  <SheetHeader className="p-4 border-b shrink-0">
-                    <SheetTitle>Calendar Tools</SheetTitle>
+                <SheetContent side="right" className="flex h-full w-full flex-col border-white/10 bg-zinc-950/95 p-0 shadow-[0_22px_70px_hsl(0_0%_0%/0.45)] backdrop-blur-xl sm:w-[340px]">
+                  <SheetHeader className="shrink-0 border-b border-white/10 bg-white/[0.03] p-4">
+                    <SheetTitle className="text-white">Calendar Tools</SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col flex-1 overflow-hidden">
                     {/* Tab triggers - scrollable horizontally */}
-                    <div className="overflow-x-auto px-4 py-2 border-b shrink-0">
-                      <div className="inline-flex gap-1 flex-wrap">
+                    <div className="shrink-0 overflow-x-auto border-b border-white/10 px-4 py-3">
+                      <div className="inline-flex flex-wrap gap-2">
                         {SIDEBAR_TABS.map(tab => (
                           <button
                             key={tab.id}
                             aria-pressed={sidebarTab === tab.id}
                             onClick={() => setSidebarTab(tab.id)}
                             className={cn(
-                              "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md transition-colors min-h-[36px] touch-manipulation",
+                              "inline-flex min-h-[40px] touch-manipulation items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45",
                               sidebarTab === tab.id
-                                ? "border border-primary/50 bg-primary/20 text-primary"
+                                ? "border border-primary/50 bg-primary/20 text-primary shadow-[0_10px_24px_hsl(var(--primary)/0.14)]"
                                 : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                             )}
                           >
@@ -835,7 +835,7 @@ export default function Calendar() {
                     {/* Tab content */}
                     <ScrollArea className="flex-1 p-4">
                       {/* Mini Calendar Navigator */}
-                      <div className="mb-4 pb-3 border-b">
+                      <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3 shadow-inner shadow-black/20">
                         <MiniCalendarNavigator
                           currentMonth={currentMonth}
                           setCurrentMonth={setCurrentMonth}
@@ -850,16 +850,18 @@ export default function Calendar() {
 
                       {sidebarTab === 'events' && (
                         <div>
-                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+                            <Clock className="h-4 w-4 text-primary" />
                             {selectedDate ? format(selectedDate, 'EEEE, MMM d') : 'Upcoming'}
                           </h4>
                           {isLoading ? (
                             <SidebarLoadingSkeleton />
                           ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <CalendarIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                              <p className="text-sm">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center text-zinc-500 shadow-inner shadow-black/20">
+                              <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary/80">
+                                <CalendarIcon className="h-5 w-5" />
+                              </div>
+                              <p className="text-sm font-medium text-zinc-300">No events {selectedDate ? 'on this day' : 'upcoming'}</p>
                             </div>
                           ) : (
                             <div className="space-y-2">
@@ -1307,18 +1309,18 @@ export default function Calendar() {
                 </>
               ) : view === 'week' ? (
                 /* Week View with Drag and Drop */
-                <div className={cn("h-[600px]", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
+                <div className={cn("h-[600px] rounded-2xl border border-white/10 bg-black/20 shadow-inner shadow-black/20", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
                   <div className="min-w-[700px]">
                     {/* Week day headers - Sticky */}
-                    <div className="grid grid-cols-8 gap-1 mb-1 sticky top-0 bg-background z-10 pb-2 border-b">
-                      <div className="text-xs font-medium text-muted-foreground py-2 w-16"></div>
+                    <div className="sticky top-0 z-10 mb-1 grid grid-cols-8 gap-1 border-b border-white/10 bg-zinc-950/95 p-2 shadow-sm backdrop-blur-xl">
+                      <div className="w-16 py-2 text-xs font-medium text-zinc-500"></div>
                       {weekDays.map(day => (
                         <div
                           key={day.toISOString()}
-                          className={`text-center text-xs font-medium py-2 ${isToday(day) ? 'text-primary' : 'text-muted-foreground'}`}
+                          className={`rounded-xl py-2 text-center text-xs font-semibold ${isToday(day) ? 'bg-primary/10 text-primary' : 'text-zinc-400'}`}
                         >
-                          <div>{format(day, 'EEE')}</div>
-                          <div className={`text-lg font-bold ${isToday(day) ? 'bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+                          <div className="uppercase tracking-[0.16em]">{format(day, 'EEE')}</div>
+                          <div className={`mx-auto mt-1 flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold ${isToday(day) ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : 'text-zinc-200'}`}>
                             {format(day, 'd')}
                           </div>
                         </div>
@@ -1327,8 +1329,8 @@ export default function Calendar() {
                     {/* Time grid with DropZones */}
                     <div className="relative">
                       {weekHours.map(hour => (
-                        <div key={hour} className="grid grid-cols-8 gap-1 border-t border-border/50">
-                          <div className="text-[10px] text-muted-foreground py-1 w-16 text-right pr-2 sticky left-0 bg-background">
+                        <div key={hour} className="grid grid-cols-8 gap-1 border-t border-white/10">
+                          <div className="sticky left-0 w-16 bg-zinc-950/90 py-1 pr-2 text-right text-[10px] font-medium text-zinc-500 backdrop-blur">
                             {format(new Date().setHours(hour, 0), 'h a')}
                           </div>
                           {weekDays.map(day => {
@@ -1340,7 +1342,7 @@ export default function Calendar() {
                                 hour={hour}
                                 onDrop={handleEventDrop}
                                 disabled={isUpdating}
-                                className="min-h-[48px] border-l border-border/30 px-1 py-0.5"
+                                className="min-h-[52px] border-l border-white/10 px-1.5 py-1 transition-colors hover:bg-white/[0.03]"
                               >
                                 {hourEvents.map(event => (
                                   <DraggableEvent
@@ -1362,7 +1364,7 @@ export default function Calendar() {
                                         }
                                       }}
                                       style={getEventStyle(event)}
-                                      className="w-full text-left text-[10px] px-1 py-0.5 rounded mb-0.5 truncate cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+                                      className="mb-1 w-full cursor-pointer truncate rounded-lg px-1.5 py-1 text-left text-[10px] shadow-sm ring-1 ring-white/10 transition-all hover:translate-x-0.5 hover:opacity-90 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                                     >
                                       <div className="font-medium truncate">
                                         {event.title || 'Event'}
@@ -1824,11 +1826,11 @@ export default function Calendar() {
                 className={cn(
                   'group rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.99]',
                   selectedCalendarId === calendar.id
-                    ? 'border-primary/60 bg-primary/15 shadow-[0_16px_42px_hsl(var(--primary)/0.14)]'
-                    : 'border-white/10 bg-white/[0.03] hover:-translate-y-1 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_18px_46px_hsl(0_0%_0%/0.28)]'
+                    ? 'border-primary/60 bg-gradient-to-br from-primary/18 via-primary/10 to-white/[0.03] shadow-[0_16px_42px_hsl(var(--primary)/0.14)]'
+                    : 'border-white/10 bg-gradient-to-br from-white/[0.045] to-white/[0.02] hover:-translate-y-1 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_18px_46px_hsl(0_0%_0%/0.28)]'
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex h-full items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <div
@@ -1854,8 +1856,8 @@ export default function Calendar() {
                     </div>
                   </div>
                   {calendar.teamMembers && calendar.teamMembers.length > 0 && (
-                    <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/25 px-2 py-1 text-xs text-zinc-400">
-                      <Users className="h-3 w-3" />
+                    <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-xs font-medium text-zinc-400">
+                      <Users className="h-3 w-3 text-primary/80" />
                       {calendar.teamMembers.length} member{calendar.teamMembers.length !== 1 ? 's' : ''}
                     </div>
                   )}
@@ -1905,14 +1907,14 @@ function EventCard({
   return (
     <button
       onClick={onClick}
-      className="w-full p-3 rounded-xl border border-white/10 bg-white/[0.03] hover:border-primary/30 hover:bg-primary/10 transition-all text-left shadow-sm"
+      className="w-full rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.025] p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:shadow-[0_12px_30px_hsl(0_0%_0%/0.24)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
       style={{ borderLeftWidth: '4px', borderLeftColor: color }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm">{event.title || 'Untitled Event'}</p>
+          <p className="truncate text-sm font-semibold text-zinc-100">{event.title || 'Untitled Event'}</p>
           {event.calendarName && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+            <p className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
               <span
                 className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-black/30"
                 style={{ backgroundColor: color }}
