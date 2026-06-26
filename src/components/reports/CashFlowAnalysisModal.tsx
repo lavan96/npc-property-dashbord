@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,15 +21,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer, ChevronDown, ChevronRight, Send, Search, Check, ChevronsUpDown } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer, ChevronDown, ChevronRight, Send, Search, Check } from 'lucide-react';
 import { ComposedChart, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
+import { CashFlowCommandHeader } from '@/components/cash-flow/modal/CashFlowCommandHeader';
+import { CashFlowComparisonBar } from '@/components/cash-flow/modal/CashFlowComparisonBar';
+import { CashFlowExportMenu } from '@/components/cash-flow/modal/CashFlowExportMenu';
+import { CashFlowMetricsGrid } from '@/components/cash-flow/modal/CashFlowMetricsGrid';
+import { CashFlowModalShell } from '@/components/cash-flow/modal/CashFlowModalShell';
 import { 
   get10YearLoanProjection, 
   type MortgageInput, 
@@ -2167,7 +2170,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           onBlur={handleCellEditCommit}
           onKeyDown={handleEditKeyDown}
           autoFocus
-          className="h-7 w-full min-w-[80px] text-center text-xs p-1"
+          className="h-8 w-full min-w-[88px] rounded-lg border-primary/40 bg-primary/5 p-1 text-center text-xs shadow-sm"
         />
       );
     }
@@ -2176,12 +2179,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       return (
         <button
           onClick={() => handleCellEditStart(year, field, displayValue)}
-          className={`w-full text-center cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 transition-colors ${
-            hasOverrideValue ? 'bg-primary/10 font-semibold text-primary' : ''
+          className={`group relative w-full min-w-[88px] rounded-lg border px-2 py-1.5 text-center text-xs transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm ${
+            hasOverrideValue ? 'border-primary/30 bg-primary/10 font-semibold text-primary shadow-sm' : 'border-transparent bg-transparent'
           }`}
           title={hasOverrideValue ? 'Click to edit (overridden)' : 'Click to edit'}
         >
-          {formatFn(displayValue)}
+          {hasOverrideValue && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
+          <span className="block">{formatFn(displayValue)}</span>
+          <span className="mt-0.5 hidden text-[9px] font-normal text-muted-foreground group-hover:block">Edit</span>
         </button>
       );
     }
@@ -3925,297 +3930,78 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <div className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4">
-          <DialogHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
-                <DialogTitle className="text-lg md:text-xl flex items-center gap-2 flex-wrap">
-                  <Calculator className="h-5 w-5 shrink-0" />
-                  <span className="hidden sm:inline">10-Year Cash Flow Analysis</span>
-                  <span className="sm:hidden">Cash Flow Analysis</span>
-                  <Badge 
-                    variant={isNewBuild ? "default" : "secondary"}
-                    className="ml-2 text-xs"
-                  >
-                    {isNewBuild ? "New Build" : "Existing Property"}
-                  </Badge>
-                </DialogTitle>
-                <DialogDescription className="mt-1">
-                  {report.property_address}
-                </DialogDescription>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {hasChanges && (
-                  <Badge variant="outline" className="text-orange-600 border-orange-300">
-                    Unsaved Changes
-                  </Badge>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowResetConfirm(true)}
-                  disabled={Object.keys(yearlyOverrides).length === 0}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset All
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleSaveOverrides}
-                  disabled={isSaving || !hasChanges}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportExcel}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Excel
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export PDF
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64 bg-background border">
-                    <div className="p-3 space-y-3">
-                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Chart Export Options</div>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={includeAllChartsInExport}
-                            onCheckedChange={(checked) => handleGlobalChartsToggle(checked === true)}
-                          />
-                          <span className="text-sm font-medium">Include All Charts</span>
-                        </label>
-                        <Separator className="my-2" />
-                        <label className="flex items-center gap-2 cursor-pointer pl-4">
-                          <Checkbox
-                            checked={chartExportToggles.cashFlowTrends}
-                            onCheckedChange={(checked) => handleChartToggle('cashFlowTrends', checked === true)}
-                          />
-                          <span className="text-sm">Cash Flow Trends</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer pl-4">
-                          <Checkbox
-                            checked={chartExportToggles.yieldChart}
-                            onCheckedChange={(checked) => handleChartToggle('yieldChart', checked === true)}
-                          />
-                          <span className="text-sm">Yield Percentages</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer pl-4">
-                          <Checkbox
-                            checked={chartExportToggles.comparisonChart}
-                            onCheckedChange={(checked) => handleChartToggle('comparisonChart', checked === true)}
-                          />
-                          <span className="text-sm">Property Comparison</span>
-                        </label>
-                      </div>
-                      <Separator className="my-2" />
-                      <Button size="sm" className="w-full" onClick={() => exportSingleReportPDF()}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Generate PDF
-                      </Button>
-                      <FlattenPdfIconButton
-                        inline
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        label="Generate Flattened PDF"
-                        getPdfBlob={async () => {
-                          const b = await exportSingleReportPDF({ returnBlob: true });
-                          if (!b) throw new Error('Failed to generate cash flow PDF');
-                          return b;
-                        }}
-                        filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
-                      />
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="outline" size="sm" onClick={openPrintView}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print View
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setSendToClientOpen(true)}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send to Client
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-        </div>
+      <CashFlowModalShell
+        header={(
+          <CashFlowCommandHeader
+            propertyAddress={report.property_address}
+            isNewBuild={isNewBuild}
+            hasChanges={hasChanges}
+            hasOverrides={Object.keys(yearlyOverrides).length > 0}
+            isSaving={isSaving}
+            onResetAll={() => setShowResetConfirm(true)}
+            onSaveChanges={handleSaveOverrides}
+            onExportExcel={handleExportExcel}
+            onPrintView={openPrintView}
+            onSendToClient={() => setSendToClientOpen(true)}
+            pdfExportMenu={(
+              <CashFlowExportMenu
+                includeAllChartsInExport={includeAllChartsInExport}
+                chartExportToggles={chartExportToggles}
+                onGlobalChartsToggle={handleGlobalChartsToggle}
+                onChartToggle={handleChartToggle}
+                onExportPdf={exportSingleReportPDF}
+                filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
+              />
+            )}
+          />
+        )}
+        footer={(
+          <div className="px-6 py-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </div>
+        )}
+      >
+        <div className="space-y-6">
+          <CashFlowMetricsGrid
+            baseFinancialData={baseFinancialData}
+            projections={projections}
+            formatCurrency={formatCurrency}
+          />
 
-        <Separator />
-
-        <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Home className="h-4 w-4" />
-                    <span className="text-xs font-medium">Property Value</span>
-                  </div>
-                  <p className="text-2xl font-bold">{formatCurrency(baseFinancialData.marketValueNow)}</p>
-                  <p className="text-xs text-muted-foreground">Current market value</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-xs font-medium">Purchase Price</span>
-                  </div>
-                  <p className="text-2xl font-bold">{formatCurrency(baseFinancialData.purchasePrice)}</p>
-                  <p className="text-xs text-muted-foreground">Original purchase price</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="text-xs font-medium">10-Year Value</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600">
-                    {projections.length > 0 ? formatCurrency(projections[10]?.propertyMarketValue || 0) : '-'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Projected property value</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-xs font-medium">Year 10 Cash Flow</span>
-                  </div>
-                  <p className={`text-2xl font-bold ${(projections[10]?.afterTaxCashFlowPA || 0) < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                    {projections.length > 0 ? formatCurrency(projections[10]?.afterTaxCashFlowPA || 0) : '-'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">After-tax annual cash flow</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Percent className="h-4 w-4" />
-                    <span className="text-xs font-medium">Year 10 Equity</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600">
-                    {projections.length > 0 ? formatCurrency(projections[10]?.equityInProperty || 0) : '-'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Equity in property</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Comparison Mode Toggle & Land Tax Exclusion */}
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant={comparisonMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setComparisonMode(!comparisonMode)}
-                  className="gap-2"
-                >
-                  <GitCompare className="h-4 w-4" />
-                  {comparisonMode ? "Exit Comparison" : "Compare Reports"}
-                </Button>
-                {comparisonMode && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">Select up to 4 reports:</span>
-                    {selectedComparisonReportIds.length > 0 && (
-                      <div className="flex gap-1 flex-wrap">
-                        {selectedComparisonReportIds.map((id) => {
-                          const r = availableReports.find(rep => rep.id === id);
-                          return r ? (
-                            <Badge key={id} variant="secondary" className="text-xs flex items-center gap-1">
-                              {r.property_address.split(',')[0].substring(0, 20)}
-                              <X 
-                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                                onClick={() => handleToggleComparisonReport(id)}
-                              />
-                            </Badge>
-                          ) : null;
-                        })}
-                      </div>
-                    )}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className="w-[300px] justify-between text-sm font-normal"
-                          disabled={loadingReports || selectedComparisonReportIds.length >= 4}
-                        >
-                          {loadingReports ? "Loading..." : `Add property (${selectedComparisonReportIds.length}/4)`}
-                          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[350px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search properties..." />
-                          <CommandList>
-                            <CommandEmpty>No properties found.</CommandEmpty>
-                            <CommandGroup>
-                              {availableReports
-                                .filter(r => !selectedComparisonReportIds.includes(r.id))
-                                .map((r) => (
-                                  <CommandItem
-                                    key={r.id}
-                                    value={r.property_address}
-                                    onSelect={() => handleToggleComparisonReport(r.id)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Building className="mr-2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="truncate">
-                                      {r.property_address.length > 50
-                                        ? r.property_address.substring(0, 50) + '...'
-                                        : r.property_address}
-                                    </span>
-                                  </CommandItem>
-                                ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
-              </div>
-              
-              {/* Land Tax Exclusion Toggle */}
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="excludeLandTax"
-                  checked={excludeLandTaxFromCashFlow}
-                  onCheckedChange={(checked) => {
-                    setExcludeLandTaxFromCashFlow(checked === true);
-                    setHasChanges(true);
-                  }}
-                />
-                <label 
-                  htmlFor="excludeLandTax" 
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  Exclude Land Tax from analysis
-                </label>
-              </div>
-            </div>
+            <CashFlowComparisonBar
+              comparisonMode={comparisonMode}
+              onComparisonModeChange={setComparisonMode}
+              selectedComparisonReportIds={selectedComparisonReportIds}
+              availableReports={availableReports}
+              onToggleComparisonReport={handleToggleComparisonReport}
+              loadingReports={loadingReports}
+              investorProfile={investorProfile}
+              onInvestorProfileChange={setInvestorProfile}
+              excludeLandTaxFromCashFlow={excludeLandTaxFromCashFlow}
+              onExcludeLandTaxChange={(checked) => {
+                setExcludeLandTaxFromCashFlow(checked);
+                setHasChanges(true);
+              }}
+              hasChanges={hasChanges}
+            />
 
             {/* Cash Flow Trends Chart */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    10-Year Cash Flow Trends
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-3 text-xs flex-wrap">
+            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+              <CardHeader className="border-b bg-muted/20 pb-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                        <BarChart3 className="h-4 w-4" />
+                      </span>
+                      10-Year Cash Flow Trends
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Toggle metrics, inspect break-even points, and export the active trend chart.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-3 xl:items-end">
+                    <div className="flex flex-wrap gap-2 text-xs">
                       {[
                         { key: 'propertyValue' as const, label: 'Property Value', color: 'hsl(var(--primary))' },
                         { key: 'equity' as const, label: 'Equity', color: '#22c55e' },
@@ -4223,32 +4009,30 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         { key: 'rentalIncome' as const, label: 'Rental Income', color: '#f59e0b' },
                         { key: 'cashFlow' as const, label: 'Cash Flow', color: '#8b5cf6' },
                       ].map(({ key, label, color }) => (
-                        <label key={key} className="flex items-center gap-1.5 cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={chartMetrics[key]}
-                            onChange={(e) => setChartMetrics(prev => ({ ...prev, [key]: e.target.checked }))}
-                            className="rounded border-border"
-                          />
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                            {label}
-                          </span>
-                        </label>
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setChartMetrics(prev => ({ ...prev, [key]: !prev[key] }))}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors ${chartMetrics[key] ? 'border-primary/30 bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:bg-muted'}`}
+                        >
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                          {label}
+                        </button>
                       ))}
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => exportChartAsPNG(cashFlowChartRef, 'cash-flow-trends')}
-                      className="h-7 px-2"
+                      className="h-8 w-full justify-center gap-2 sm:w-auto"
                     >
                       <Image className="h-4 w-4" />
+                      Export PNG
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4 p-4">
                 {(() => {
                   const chartData = projections.filter(p => p.year >= 1).map((p, i, arr) => {
                     const prev = i > 0 ? arr[i - 1] : null;
@@ -4277,7 +4061,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={cashFlowChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={cashFlowChartRef} className="h-[420px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={chartData}
@@ -4343,7 +4127,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                               }}
                             />
                             <Legend 
-                              wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '18px' }}
                               iconType="circle"
                               iconSize={8}
                             />
@@ -4493,7 +4277,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ];
 
                         return (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t">
+                          <div className="grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-4">
                             {kpis.map(kpi => {
                               const min = Math.min(...kpi.sparkData);
                               const max = Math.max(...kpi.sparkData);
@@ -4502,7 +4286,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 `${(i / (kpi.sparkData.length - 1)) * 60},${24 - ((v - min) / range) * 20}`
                               ).join(' ');
                               return (
-                                <div key={kpi.label} className="bg-muted/40 rounded-lg p-2.5 space-y-1">
+                                <div key={kpi.label} className="space-y-1 rounded-xl border bg-muted/30 p-3">
                                   <p className="text-[10px] text-muted-foreground font-medium">{kpi.label}</p>
                                   <div className="flex items-end justify-between">
                                     <div>
@@ -4539,7 +4323,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         return (
                           <Collapsible open={showCashFlowInsight} onOpenChange={setShowCashFlowInsight}>
                             <CollapsibleTrigger asChild>
-                              <button className="mt-3 w-full flex items-center justify-between p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors text-xs font-semibold text-amber-800 dark:text-amber-300">
+                              <button className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors text-xs font-semibold text-amber-800 dark:text-amber-300">
                                 <span className="flex items-center gap-1.5">
                                   <TrendingUp className="h-3.5 w-3.5" />
                                   Cash Flow Trend Analysis
@@ -4572,24 +4356,30 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             </Card>
 
             {/* Yield Percentages Chart */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Percent className="h-4 w-4" />
-                    Yield Percentages Over 10 Years
-                  </CardTitle>
+            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+              <CardHeader className="border-b bg-muted/20 pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                        <Percent className="h-4 w-4" />
+                      </span>
+                      Yield Percentages Over 10 Years
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">Gross yield, net yield, and expense spread over the projection horizon.</p>
+                  </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => exportChartAsPNG(yieldChartRef, 'yield-percentages')}
-                    className="h-7 px-2"
+                    className="h-8 w-full justify-center gap-2 sm:w-auto"
                   >
                     <Image className="h-4 w-4" />
+                    Export PNG
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4 p-4">
                 {(() => {
                   const yieldData = projections.filter(p => p.year >= 1).map((p, i, arr) => {
                     const prev = i > 0 ? arr[i - 1] : null;
@@ -4605,7 +4395,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={yieldChartRef} className="h-[280px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={yieldChartRef} className="h-[320px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={yieldData}
@@ -4801,30 +4591,36 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* Comparison Chart - Side by Side (Up to 5 Properties) */}
             {comparisonMode && comparisonReports.length > 0 && allComparisonProjections.length > 0 && (
-              <Card className="border-primary/30">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <GitCompare className="h-4 w-4" />
-                      Property Comparison: Cash Flow ({comparisonReports.length + 1} Properties)
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
+              <Card className="overflow-hidden border-primary/30 shadow-sm">
+                <CardHeader className="border-b bg-primary/5 pb-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                          <GitCompare className="h-4 w-4" />
+                        </span>
+                        Property Comparison: Cash Flow ({comparisonReports.length + 1} Properties)
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground">Side-by-side projected value and after-tax cash-flow performance.</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:items-end">
+                      <Badge variant="outline" className="w-fit text-xs">
                         Comparing {comparisonReports.length + 1} properties
                       </Badge>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => exportChartAsPNG(comparisonChartRef, 'property-comparison')}
-                        className="h-7 px-2"
+                        className="h-8 w-full justify-center gap-2 sm:w-auto"
                       >
                         <Image className="h-4 w-4" />
+                        Export PNG
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div ref={comparisonChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
+                <CardContent className="p-4">
+                  <div ref={comparisonChartRef} className="h-[420px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={projections.filter(p => p.year >= 1).map((p, i) => {
@@ -5764,28 +5560,37 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             )}
 
             {/* 10-Year Projection Table with Inline Editing */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">10-Year Projection Overview</CardTitle>
+            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+              <CardHeader className="border-b bg-muted/20 pb-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <CardTitle className="text-base">10-Year Projection Overview</CardTitle>
+                    <p className="text-xs text-muted-foreground">Click editable year cells to override assumptions. Edited cells are highlighted.</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="inline-flex h-2 w-2 rounded-full bg-primary" />
+                    Edited override
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="sticky left-0 bg-background z-10 min-w-[180px]">Overview</TableHead>
+                <div className="max-w-full overflow-x-auto overscroll-x-contain">
+                  <Table className="min-w-[1280px] border-separate border-spacing-0">
+                    <TableHeader className="sticky top-0 z-20">
+                      <TableRow className="bg-slate-900 hover:bg-slate-900">
+                        <TableHead className="sticky left-0 z-30 min-w-[220px] bg-slate-900 text-white shadow-[6px_0_12px_-12px_rgba(15,23,42,0.7)]">Overview</TableHead>
                         {projections.map(p => (
-                          <TableHead key={p.year} className="text-center min-w-[100px]">
+                          <TableHead key={p.year} className="min-w-[105px] bg-slate-900 text-center text-white">
                             {p.year === 0 ? 'Today' : `Year ${p.year}`}
-                            {p.year >= 1 && <span className="block text-[10px] font-normal text-muted-foreground">editable</span>}
+                            {p.year >= 1 && <span className="block text-[10px] font-normal text-slate-300">editable</span>}
                           </TableHead>
                         ))}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {/* Capital Growth Rate - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Capital Growth %</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Capital Growth %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? '' : renderEditableCell(
@@ -5799,8 +5604,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* CPI Growth Rate - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">CPI Growth %</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">CPI Growth %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? '' : renderEditableCell(
@@ -5814,8 +5619,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Property Value - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Property Value $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Property Value $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {renderEditableCell(
@@ -5828,34 +5633,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Loan Amount $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Loan Amount $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.loanAmount.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow className="bg-muted/30">
-                        <TableCell className="sticky left-0 bg-muted/30 font-medium" colSpan={12}>Statistics</TableCell>
+                      <TableRow className="bg-primary/5 hover:bg-primary/5">
+                        <TableCell className="sticky left-0 z-10 bg-primary/5 py-3 text-xs font-bold uppercase tracking-wide text-primary" colSpan={12}>Statistics</TableCell>
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Equity $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Equity $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center text-green-600">{p.equityInProperty.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">LVR %</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">LVR %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.loanToValueRatio}</TableCell>
                         ))}
                       </TableRow>
                       
                       {/* Rental Income - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Rental Income $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Rental Income $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? `${baseFinancialData.weeklyRent}pw` : renderEditableCell(
@@ -5868,27 +5673,27 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Gross Yield %</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Gross Yield %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.year === 0 ? '' : p.grossYield}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Net Yield %</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Net Yield %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.year === 0 ? '' : p.netYield}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow className="bg-muted/30">
-                        <TableCell className="sticky left-0 bg-muted/30 font-medium" colSpan={12}>Cash Deductions</TableCell>
+                      <TableRow className="bg-primary/5 hover:bg-primary/5">
+                        <TableCell className="sticky left-0 z-10 bg-primary/5 py-3 text-xs font-bold uppercase tracking-wide text-primary" colSpan={12}>Cash Deductions</TableCell>
                       </TableRow>
                       
                       {/* Property Expenses - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Property Expenses $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Property Expenses $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? '0' : renderEditableCell(
@@ -5904,7 +5709,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       {/* Land Tax - Editable (moved from Summary to Cash Deductions) */}
                       {!excludeLandTaxFromCashFlow && (
                         <TableRow>
-                          <TableCell className="sticky left-0 bg-background font-medium">Land Tax $</TableCell>
+                          <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Land Tax $</TableCell>
                           {projections.map(p => (
                             <TableCell key={p.year} className="text-center p-1">
                               {p.year === 0 ? '' : renderEditableCell(
@@ -5919,8 +5724,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       )}
                       
                       {/* Interest Rate - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Interest Rate %</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Interest Rate %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? '' : renderEditableCell(
@@ -5934,8 +5739,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Interest Payments - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Interest Payments $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Interest Payments $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? '0' : renderEditableCell(
@@ -5949,8 +5754,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Principal Payments - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Principal Payments $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Principal Payments $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? '0' : renderEditableCell(
@@ -5963,8 +5768,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Pre-Tax Cash Flow p/a $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Pre-Tax Cash Flow p/a $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPA < 0 ? 'text-red-500' : 'text-green-600'}`}>
                             {p.year === 0 ? '' : p.preTaxCashFlowPA.toLocaleString()}
@@ -5972,8 +5777,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Pre-Tax Cash Flow p/w $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Pre-Tax Cash Flow p/w $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPW < 0 ? 'text-red-500' : 'text-green-600'}`}>
                             {p.year === 0 ? '' : p.preTaxCashFlowPW.toLocaleString()}
@@ -5981,13 +5786,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow className="bg-muted/30">
-                        <TableCell className="sticky left-0 bg-muted/30 font-medium" colSpan={12}>Non-Cash Deductions</TableCell>
+                      <TableRow className="bg-primary/5 hover:bg-primary/5">
+                        <TableCell className="sticky left-0 z-10 bg-primary/5 py-3 text-xs font-bold uppercase tracking-wide text-primary" colSpan={12}>Non-Cash Deductions</TableCell>
                       </TableRow>
                       
                       {/* Depreciation - Editable */}
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Depreciation $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Depreciation $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center p-1">
                             {p.year === 0 ? '' : renderEditableCell(
@@ -6000,19 +5805,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow className="bg-muted/30">
-                        <TableCell className="sticky left-0 bg-muted/30 font-medium" colSpan={12}>Summary</TableCell>
+                      <TableRow className="bg-primary/5 hover:bg-primary/5">
+                        <TableCell className="sticky left-0 z-10 bg-primary/5 py-3 text-xs font-bold uppercase tracking-wide text-primary" colSpan={12}>Summary</TableCell>
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Total Deductions $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Total Deductions $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.year === 0 ? '' : p.totalDeductions.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Net Profit/Loss $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Net Profit/Loss $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center ${p.netProfitLoss < 0 ? 'text-red-500' : 'text-green-600'}`}>
                             {p.year === 0 ? '' : p.netProfitLoss.toLocaleString()}
@@ -6020,15 +5825,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow>
-                        <TableCell className="sticky left-0 bg-background font-medium">Tax Refund $</TableCell>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Tax Refund $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center text-green-600">{p.year === 0 ? '' : p.taxRefund.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
                       <TableRow className="bg-primary/10">
-                        <TableCell className="sticky left-0 bg-primary/10 font-bold">After-Tax Cash Flow p/a $</TableCell>
+                        <TableCell className="sticky left-0 z-10 bg-primary/10 font-bold shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">After-Tax Cash Flow p/a $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center font-bold ${p.afterTaxCashFlowPA < 0 ? 'text-red-500' : 'text-green-600'}`}>
                             {p.year === 0 ? '' : p.afterTaxCashFlowPA.toLocaleString()}
@@ -6037,7 +5842,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       <TableRow className="bg-primary/10">
-                        <TableCell className="sticky left-0 bg-primary/10 font-bold">After-Tax Cash Flow p/w $</TableCell>
+                        <TableCell className="sticky left-0 z-10 bg-primary/10 font-bold shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">After-Tax Cash Flow p/w $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center font-bold ${p.afterTaxCashFlowPW < 0 ? 'text-red-500' : 'text-green-600'}`}>
                             {p.year === 0 ? '' : p.afterTaxCashFlowPW.toLocaleString()}
@@ -6051,13 +5856,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             </Card>
           </div>
         </div>
-
-        <Separator />
-
-        <div className="px-6 py-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </div>
-      </DialogContent>
+      </CashFlowModalShell>
     </Dialog>
 
     {/* Reset Confirmation Dialog */}
