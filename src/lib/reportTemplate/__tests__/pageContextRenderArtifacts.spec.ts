@@ -24,7 +24,7 @@ const guardrail: PdfPageContextConsumerGuardrail = {
   generated_at: '2026-01-01T00:00:00.000Z',
 };
 
-const makeContext = (pageNo: number) => ({
+const makeContext = (pageNo: number): PdfPageContext => (({
   version: 'pdf-page-context-v1',
   page_no: pageNo,
   page_index: pageNo - 1,
