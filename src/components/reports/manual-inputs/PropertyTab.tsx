@@ -113,7 +113,7 @@ export function PropertyTab({
   }, []);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="reports-overrides-property-tab space-y-6 animate-fade-in">
       {/* Build Type Selection - Using Shared Component */}
       <BuildTypeSelector
         value={buildType}
@@ -122,16 +122,16 @@ export function PropertyTab({
       />
 
       {/* Pricing Section */}
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+      <Card className="reports-overrides-section-card">
+        <CardContent className="reports-overrides-section-content pt-6">
+          <h3 className="reports-overrides-section-title text-lg font-semibold flex items-center gap-2 mb-4">
             <Building2 className="h-5 w-5 text-primary" />
             Pricing
           </h3>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="space-y-2">
-              <Label htmlFor="purchasePrice" className="text-sm font-medium">Purchase Price</Label>
+          <div className="reports-overrides-field-grid grid grid-cols-2 gap-4 mb-4">
+            <div className="reports-overrides-field space-y-2">
+              <Label htmlFor="purchasePrice" className="reports-overrides-label text-sm font-medium">Purchase Price</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                 <Input
@@ -142,12 +142,12 @@ export function PropertyTab({
                   onChange={handleCurrencyChange(setPurchasePrice)}
                   placeholder="750,000"
                   disabled={disabled}
-                  className="pl-7"
+                  className="reports-overrides-input pl-7"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="propertyValue" className="text-sm font-medium flex items-center gap-1">
+            <div className="reports-overrides-field space-y-2">
+              <Label htmlFor="propertyValue" className="reports-overrides-label text-sm font-medium flex items-center gap-1">
                 Property Value
                 <TooltipProvider>
                   <Tooltip>
@@ -170,7 +170,7 @@ export function PropertyTab({
                   onChange={handleCurrencyChange(setPropertyValue)}
                   placeholder="800,000"
                   disabled={disabled}
-                  className="pl-7"
+                  className="reports-overrides-input pl-7"
                 />
               </div>
             </div>
@@ -178,9 +178,9 @@ export function PropertyTab({
 
           {/* Land Price - shown for New Builds AND Land Only */}
           {(isNewBuild || isLandOnly) && (
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="space-y-2">
-                <Label htmlFor="landPrice" className="text-sm font-medium">Land Price</Label>
+            <div className="reports-overrides-field-grid grid grid-cols-2 gap-4 mb-4">
+              <div className="reports-overrides-field space-y-2">
+                <Label htmlFor="landPrice" className="reports-overrides-label text-sm font-medium">Land Price</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input
@@ -191,14 +191,14 @@ export function PropertyTab({
                     onChange={handleCurrencyChange(setLandPrice)}
                     placeholder="350,000"
                     disabled={disabled}
-                    className="pl-7"
+                    className="reports-overrides-input pl-7"
                   />
                 </div>
               </div>
               {/* Build Price - only shown for New Builds */}
               {isNewBuild && (
-                <div className="space-y-2">
-                  <Label htmlFor="buildPrice" className="text-sm font-medium">Build Price</Label>
+                <div className="reports-overrides-field space-y-2">
+                  <Label htmlFor="buildPrice" className="reports-overrides-label text-sm font-medium">Build Price</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                     <Input
@@ -209,7 +209,7 @@ export function PropertyTab({
                       onChange={handleCurrencyChange(setBuildPrice)}
                       placeholder="400,000"
                       disabled={disabled}
-                      className="pl-7"
+                      className="reports-overrides-input pl-7"
                     />
                   </div>
                 </div>
@@ -221,27 +221,27 @@ export function PropertyTab({
 
       {/* Property Specifications - Show Property Type always, hide other fields for Land Only */}
       {(setPropertyType || setCarSpaces || setLandSizeSqm || setBuildSizeSqm) && (
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+        <Card className="reports-overrides-section-card">
+          <CardContent className="reports-overrides-section-content pt-6">
+            <h3 className="reports-overrides-section-title text-lg font-semibold flex items-center gap-2 mb-4">
               <Ruler className="h-5 w-5 text-primary" />
               Property Specifications
             </h3>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="reports-overrides-field-grid grid grid-cols-2 gap-4">
               {/* Property Type - Always visible, auto-set to 'land' for Land Only */}
               {setPropertyType && (
-                <div className="space-y-2">
-                  <Label htmlFor="propertyType" className="text-sm font-medium">Property Type</Label>
+                <div className="reports-overrides-field space-y-2">
+                  <Label htmlFor="propertyType" className="reports-overrides-label text-sm font-medium">Property Type</Label>
                   <Select 
                     value={isLandOnly ? 'land' : (propertyType || 'house')} 
                     onValueChange={setPropertyType}
                     disabled={disabled || isLandOnly}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="reports-overrides-select-trigger">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent className="bg-background z-50">
+                    <SelectContent className="reports-overrides-select-content bg-background z-50">
                       <SelectItem value="house">House</SelectItem>
                       <SelectItem value="apartment">Apartment/Unit</SelectItem>
                       <SelectItem value="townhouse">Townhouse</SelectItem>
@@ -257,13 +257,14 @@ export function PropertyTab({
 
               {/* Car Spaces - Hide for Land Only */}
               {setCarSpaces && !isLandOnly && (
-                <div className="space-y-2">
-                  <Label htmlFor="carSpaces" className="text-sm font-medium flex items-center gap-1">
+                <div className="reports-overrides-field space-y-2">
+                  <Label htmlFor="carSpaces" className="reports-overrides-label text-sm font-medium flex items-center gap-1">
                     <Car className="h-3 w-3" />
                     Car Spaces
                   </Label>
                   <Input
                     id="carSpaces"
+                    className="reports-overrides-input"
                     type="text"
                     inputMode="numeric"
                     value={carSpaces || ''}
@@ -276,8 +277,8 @@ export function PropertyTab({
 
               {/* Land Size */}
               {setLandSizeSqm && (
-                <div className="space-y-2">
-                  <Label htmlFor="landSizeSqm" className="text-sm font-medium">Land Size</Label>
+                <div className="reports-overrides-field space-y-2">
+                  <Label htmlFor="landSizeSqm" className="reports-overrides-label text-sm font-medium">Land Size</Label>
                   <div className="relative">
                     <Input
                       id="landSizeSqm"
@@ -287,7 +288,7 @@ export function PropertyTab({
                       onChange={handleNumberChange(setLandSizeSqm)}
                       placeholder="450"
                       disabled={disabled}
-                      className="pr-12"
+                      className="reports-overrides-input pr-12"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
                   </div>
@@ -296,8 +297,8 @@ export function PropertyTab({
 
               {/* Build Size - Hide for Land Only */}
               {setBuildSizeSqm && !isLandOnly && (
-                <div className="space-y-2">
-                  <Label htmlFor="buildSizeSqm" className="text-sm font-medium">Build Size</Label>
+                <div className="reports-overrides-field space-y-2">
+                  <Label htmlFor="buildSizeSqm" className="reports-overrides-label text-sm font-medium">Build Size</Label>
                   <div className="relative">
                     <Input
                       id="buildSizeSqm"
@@ -307,7 +308,7 @@ export function PropertyTab({
                       onChange={handleNumberChange(setBuildSizeSqm)}
                       placeholder="180"
                       disabled={disabled}
-                      className="pr-12"
+                      className="reports-overrides-input pr-12"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">m²</span>
                   </div>
