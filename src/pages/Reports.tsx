@@ -204,7 +204,7 @@ export default function Reports() {
             </div>
 
             <div className="rounded-3xl border border-border/70 bg-background/55 p-1.5 shadow-inner shadow-black/10 backdrop-blur">
-              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-transparent p-0">
+              <TabsList aria-label="Reports sections" className="grid h-auto w-full grid-cols-2 gap-1 bg-transparent p-0">
                 <TabsTrigger value="quantitative" className="reports-primary-tab">
                   <BarChart3 className="h-4 w-4" />
                   <span className="hidden xs:inline">Quantitative</span>
@@ -287,7 +287,7 @@ export default function Reports() {
           {/* Charts and Analysis */}
           <Tabs defaultValue="temporal" className="ci-card-premium reports-analytics-tabs-panel p-3 md:p-4 space-y-4">
             <div className="reports-analytics-tabs-shell overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-              <TabsList className="reports-analytics-tabs-list inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-7 h-auto">
+              <TabsList aria-label="Analytics report sections" className="reports-analytics-tabs-list inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-7 h-auto">
                 <TabsTrigger value="temporal" className="reports-analytics-tab">
                   <TrendingUp className="h-3.5 w-3.5" />
                   Trends
@@ -357,7 +357,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="reports-suburb-card-content space-y-4">
                   {suburbChartData.length > 0 ? (
-                  <ChartContainer ref={suburbChartRef} config={chartConfig} className="reports-suburb-chart h-[280px] md:h-[400px]">
+                  <ChartContainer ref={suburbChartRef} config={chartConfig} className="reports-suburb-chart h-[280px] md:h-[400px]" role="img" aria-label="Listings by suburb chart">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={suburbChartData} margin={{ top: 12, right: 14, left: 0, bottom: 60 }}>
                         <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-pricing-grid" />
@@ -436,7 +436,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="reports-types-card-content space-y-4">
                   {propertyTypeChartData.length > 0 ? (
-                  <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="reports-types-chart h-[280px] md:h-[400px]">
+                  <ChartContainer ref={propertyTypeChartRef} config={chartConfig} className="reports-types-chart h-[280px] md:h-[400px]" role="img" aria-label="Listings by property type chart">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -516,7 +516,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="reports-pricing-card-content space-y-4">
                   {priceRangeChartData.length > 0 ? (
-                    <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="reports-pricing-chart h-[280px] md:h-[400px]">
+                    <ChartContainer ref={priceRangeChartRef} config={chartConfig} className="reports-pricing-chart h-[280px] md:h-[400px]" role="img" aria-label="Pricing distribution chart">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={priceRangeChartData} margin={{ top: 12, right: 14, left: 0, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-pricing-grid" />
@@ -587,7 +587,7 @@ export default function Reports() {
                 </CardHeader>
                 <CardContent className="reports-pricing-card-content space-y-4">
                   {bedroomChartData.length > 0 ? (
-                    <ChartContainer ref={bedroomChartRef} config={chartConfig} className="reports-pricing-chart h-[280px] md:h-[400px]">
+                    <ChartContainer ref={bedroomChartRef} config={chartConfig} className="reports-pricing-chart h-[280px] md:h-[400px]" role="img" aria-label="Bedroom distribution chart">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={bedroomChartData} margin={{ top: 12, right: 14, left: 0, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" opacity={0.3} className="reports-pricing-grid" />

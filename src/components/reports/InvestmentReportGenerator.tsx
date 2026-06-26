@@ -1442,7 +1442,7 @@ export function InvestmentReportGenerator() {
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
                 {isPropertySpecific ? (
                   <div className="reports-investment-mode-shell overflow-x-auto -mx-1 px-1 scrollbar-hide">
-                    <TabsList className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
+                    <TabsList aria-label="Investment report input method" className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
                       <TabsTrigger value="manual" className="reports-investment-mode-tab">
                         <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Manual
@@ -1458,7 +1458,7 @@ export function InvestmentReportGenerator() {
                     </TabsList>
                   </div>
                 ) : (
-                  <TabsList className="reports-investment-mode-list reports-investment-mode-single grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
+                  <TabsList aria-label="Investment report input method" className="reports-investment-mode-list reports-investment-mode-single grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
                     <TabsTrigger value="manual" className="reports-investment-mode-tab">
                       <MapPin className="h-4 w-4" />
                       Manual Entry
@@ -2684,9 +2684,18 @@ export function InvestmentReportGenerator() {
                     {recentReports.map((report) => (
                       <div
                         key={report.id}
-                        className="reports-recent-item group cursor-pointer rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/10 focus-within:border-primary/40"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open report for ${report.property_address}`}
+                        className="reports-recent-item group cursor-pointer rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/10 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         onClick={() => {
                           window.location.href = `/generated-reports?reportId=${report.id}`;
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            window.location.href = `/generated-reports?reportId=${report.id}`;
+                          }
                         }}
                       >
                         <div className="space-y-3">

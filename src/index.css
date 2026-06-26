@@ -2618,3 +2618,116 @@ html {
     @apply border-destructive/25 bg-destructive/10;
   }
 }
+
+@layer components {
+  .reports-page-premium,
+  .reports-investment-generator {
+    @apply min-w-0;
+  }
+
+  .reports-page-premium [role='tab'],
+  .reports-investment-generator [role='tab'],
+  .reports-page-premium button,
+  .reports-investment-generator button,
+  .reports-page-premium input,
+  .reports-investment-generator input,
+  .reports-page-premium textarea,
+  .reports-investment-generator textarea,
+  .reports-investment-generator [role='combobox'] {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .reports-page-premium [role='tab'],
+  .reports-investment-generator [role='tab'] {
+    @apply min-h-11 whitespace-nowrap;
+  }
+
+  .reports-page-premium .reports-analytics-tabs-shell,
+  .reports-investment-generator .reports-investment-mode-shell {
+    @apply max-w-full overflow-x-auto overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .reports-page-premium .reports-suburb-chart,
+  .reports-page-premium .reports-types-chart,
+  .reports-page-premium .reports-pricing-chart {
+    @apply min-w-0 overflow-x-auto;
+  }
+
+  .reports-page-premium .reports-suburb-chart .recharts-wrapper,
+  .reports-page-premium .reports-types-chart .recharts-wrapper,
+  .reports-page-premium .reports-pricing-chart .recharts-wrapper {
+    @apply min-w-[34rem];
+  }
+
+
+  @media (min-width: 768px) {
+    .reports-page-premium .reports-suburb-chart .recharts-wrapper,
+    .reports-page-premium .reports-types-chart .recharts-wrapper,
+    .reports-page-premium .reports-pricing-chart .recharts-wrapper {
+      @apply min-w-0;
+    }
+  }
+
+  .reports-investment-generator .reports-investment-layout,
+  .reports-investment-generator .reports-property-details-grid,
+  .reports-investment-generator .reports-build-type-grid {
+    @apply min-w-0;
+  }
+
+  .reports-investment-generator .reports-recent-panel {
+    @apply w-full;
+  }
+
+  @media (max-width: 1024px) {
+    .reports-investment-generator .reports-investment-layout {
+      @apply grid-cols-1;
+    }
+
+    .reports-investment-generator .reports-recent-panel {
+      @apply static;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .reports-page-premium .reports-kpi-grid {
+      @apply grid-cols-1;
+    }
+
+    .reports-page-premium .reports-secondary-metric-grid,
+    .reports-page-premium .reports-pricing-stat-grid,
+    .reports-page-premium .reports-suburb-stat-grid {
+      @apply grid-cols-1;
+    }
+
+    .reports-page-premium .reports-primary-tab,
+    .reports-page-premium .reports-analytics-tab,
+    .reports-investment-generator .reports-investment-mode-tab {
+      @apply min-h-12 px-3 text-xs;
+    }
+
+    .reports-investment-generator .reports-property-details-grid,
+    .reports-investment-generator .grid.sm\:grid-cols-2,
+    .reports-investment-generator .grid.sm\:grid-cols-3,
+    .reports-investment-generator .grid.md\:grid-cols-3 {
+      @apply grid-cols-1;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .reports-page-premium,
+    .reports-investment-generator {
+      @apply space-y-4;
+    }
+
+    .reports-page-premium .reports-analytics-tabs-shell,
+    .reports-investment-generator .reports-investment-mode-shell {
+      @apply -mx-1 px-1;
+    }
+
+    .reports-investment-generator .reports-recent-panel-content,
+    .reports-investment-generator .reports-investment-panel-content {
+      @apply p-3;
+    }
+  }
+}
