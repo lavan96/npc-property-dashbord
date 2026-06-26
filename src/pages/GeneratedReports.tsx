@@ -872,7 +872,12 @@ export default function GeneratedReports() {
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'quantitative' | 'investment' | 'comparisons')} className="w-full">
-        <ReportLibraryTabs isMobile={isMobile} />
+        <ReportLibraryTabs
+          isMobile={isMobile}
+          quantitativeCount={reports.length}
+          investmentCount={filteredInvestmentReports.length}
+          comparisonCount={filteredComparisons.length}
+        />
 
         <TabsContent value="quantitative" className="space-y-4">
           {reports.length === 0 ? (
