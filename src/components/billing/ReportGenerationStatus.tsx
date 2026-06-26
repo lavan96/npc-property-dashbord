@@ -74,24 +74,33 @@ export function ReportGenerationStatus({
   if (insufficient) {
     const short = Math.max(0, need - available);
     return (
-      <Alert variant="destructive" className={cn("border-destructive/50", className)}>
+      <Alert
+        variant="destructive"
+        className={cn(
+          "rounded-2xl border-destructive/40 bg-destructive/10 p-4 shadow-sm",
+          "[&>svg]:top-5 [&>svg]:text-destructive",
+          className,
+        )}
+      >
         <Ban className="h-4 w-4" />
-        <AlertTitle>Not enough report credits to generate this report</AlertTitle>
-        <AlertDescription className="flex flex-col gap-3">
-          <span>
+        <AlertTitle className="text-base font-semibold text-destructive">
+          Not enough report credits to generate this report
+        </AlertTitle>
+        <AlertDescription className="flex flex-col gap-4 text-sm text-foreground/90">
+          <span className="leading-relaxed">
             This report is estimated at{" "}
             <span className="font-semibold tabular-nums">{need.toLocaleString()}</span> tokens but
             only <span className="font-semibold tabular-nums">{available.toLocaleString()}</span>{" "}
             are available — short by{" "}
-            <span className="font-semibold tabular-nums">{short.toLocaleString()}</span>. Top up or
+            <span className="font-semibold tabular-nums text-destructive">{short.toLocaleString()}</span>. Top up or
             upgrade before generating.
           </span>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={openTopup}>
+            <Button size="sm" onClick={openTopup} className="shadow-sm">
               <Coins className="mr-2 h-4 w-4" /> Top up credits
               <ExternalLink className="ml-1.5 h-3 w-3 opacity-70" />
             </Button>
-            <Button size="sm" variant="outline" onClick={openBilling}>
+            <Button size="sm" variant="secondary" onClick={openBilling}>
               Upgrade plan
             </Button>
           </div>
