@@ -199,7 +199,7 @@ export function CalendarSearchDropdown({
                     >
                       {/* Calendar color indicator */}
                       <div
-                        className="w-1 h-full min-h-[40px] rounded-full shrink-0"
+                        className="h-full min-h-[40px] w-1 shrink-0 rounded-full ring-1 ring-black/30"
                         style={{ backgroundColor: event.calendarColor || '#3b82f6' }}
                       />
 

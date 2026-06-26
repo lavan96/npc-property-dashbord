@@ -538,13 +538,13 @@ export default function Calendar() {
   const getStatusColor = (status: string, appointmentStatus?: string) => {
     const effectiveStatus = appointmentStatus || status;
     switch (effectiveStatus?.toLowerCase()) {
-      case 'confirmed': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'booked': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'showed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      case 'noshow': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'cancelled': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-      case 'pending': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      default: return 'bg-muted text-muted-foreground border-border';
+      case 'confirmed': return 'rounded-full border-emerald-400/25 bg-emerald-500/15 text-emerald-300';
+      case 'booked': return 'rounded-full border-blue-400/25 bg-blue-500/15 text-blue-300';
+      case 'showed': return 'rounded-full border-teal-400/25 bg-teal-500/15 text-teal-300';
+      case 'noshow': return 'rounded-full border-red-400/25 bg-red-500/15 text-red-300';
+      case 'cancelled': return 'rounded-full border-zinc-500/25 bg-zinc-500/15 text-zinc-300';
+      case 'pending': return 'rounded-full border-amber-400/25 bg-amber-500/15 text-amber-300';
+      default: return 'rounded-full border-white/10 bg-white/[0.04] text-zinc-400';
     }
   };
 
@@ -816,8 +816,8 @@ export default function Calendar() {
                             className={cn(
                               "inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-md transition-colors min-h-[36px] touch-manipulation",
                               sidebarTab === tab.id
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:text-foreground"
+                                ? "border border-primary/50 bg-primary/20 text-primary"
+                                : "border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                             )}
                           >
                             {tab.icon}
@@ -994,7 +994,7 @@ export default function Calendar() {
                   <SelectItem key={cal.id} value={cal.id}>
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-3 h-3 rounded-full shrink-0"
+                        className="h-3 w-3 rounded-full shrink-0 ring-2 ring-black/30 shadow-sm"
                         style={{ backgroundColor: cal.eventColor || '#3b82f6' }}
                       />
                       <span className="truncate max-w-[120px]">{cal.name}</span>
@@ -1867,14 +1867,14 @@ function EventCard({
           {event.calendarName && (
             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
               <span
-                className="w-2 h-2 rounded-full shrink-0"
+                className="h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-black/30"
                 style={{ backgroundColor: color }}
               />
               {event.calendarName}
             </p>
           )}
         </div>
-        <Badge className={`text-[10px] shrink-0 ${getStatusColor(event.status, event.appointmentStatus)}`}>
+        <Badge className={`shrink-0 px-2 py-0.5 text-[10px] font-semibold ${getStatusColor(event.status, event.appointmentStatus)}`}>
           {event.appointmentStatus || event.status}
         </Badge>
       </div>
