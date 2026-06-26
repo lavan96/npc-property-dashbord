@@ -2173,3 +2173,86 @@ html {
     @apply flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-amber-500/35 bg-amber-500/10 px-6 text-center text-sm leading-6 text-amber-700 dark:text-amber-200;
   }
 }
+
+@layer components {
+  .reports-investment-hero {
+    @apply border-primary/20 shadow-lg shadow-primary/10;
+  }
+
+  .reports-investment-layout {
+    @apply items-start;
+  }
+
+  .reports-investment-panel,
+  .reports-recent-panel {
+    @apply overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-primary/10;
+  }
+
+  .reports-investment-panel-header {
+    @apply bg-background/35 pb-4;
+  }
+
+  .reports-investment-panel-header [data-slot='card-title'],
+  .reports-investment-panel-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-investment-panel-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-investment-panel-content,
+  .reports-recent-panel-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-investment-mode-shell {
+    @apply rounded-3xl border border-border/70 bg-background/45 p-1.5 shadow-inner shadow-black/10;
+  }
+
+  .reports-investment-mode-list {
+    @apply gap-1 bg-transparent p-0;
+  }
+
+  .reports-investment-mode-tab {
+    @apply min-h-11 rounded-2xl px-4 py-2.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25 sm:text-sm;
+  }
+
+  .reports-investment-flow > .space-y-3,
+  .reports-investment-flow > .space-y-4,
+  .reports-investment-flow > div:not([data-radix-popper-content-wrapper]) {
+    @apply rounded-2xl border border-border/70 bg-background/45 p-4 shadow-sm;
+  }
+
+  .reports-investment-flow [role='separator'] {
+    @apply bg-border/60;
+  }
+
+  .reports-investment-section-label {
+    @apply text-sm font-bold uppercase tracking-[0.14em] text-foreground;
+  }
+
+  .reports-investment-generator .text-muted-foreground {
+    @apply leading-6;
+  }
+
+  .reports-recent-panel {
+    @apply lg:sticky lg:top-4;
+  }
+
+  .reports-recent-empty {
+    @apply rounded-2xl border border-dashed border-border/70 bg-background/35 px-4;
+  }
+
+  .reports-recent-item {
+    @apply bg-background/55 hover:bg-primary/10;
+  }
+
+  .reports-recent-item p:first-child {
+    @apply text-foreground;
+  }
+
+  .reports-recent-all-button {
+    @apply rounded-full border-primary/25 bg-background/60 font-semibold hover:border-primary/45 hover:bg-primary/10 hover:text-primary;
+  }
+}
