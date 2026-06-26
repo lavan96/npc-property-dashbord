@@ -15,6 +15,7 @@ const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ASSET_BUCKET = 'template-import-assets';
 const ARTIFACT_BUCKET = 'template-import-artifacts';
 const PDF_DIAGNOSTICS_BUCKET = 'pdf-import-diagnostics';
+const PDF_DIAGNOSTICS_SIGNED_URL_TTL_SECONDS = 60 * 60;
 const TEMPLATE_FINALIZATION_ARTIFACT_CONTRACT = 'template-finalization-artifacts-v1';
 const TEMPLATE_IMPORT_WORKER_TOKEN = Deno.env.get('TEMPLATE_IMPORT_WORKER_TOKEN') ?? SERVICE_ROLE;
 
@@ -297,6 +298,84 @@ async function readPdfDiagnosticsJsonArtifact(admin: ReturnType<typeof createCli
     });
     return null;
   }
+}
+
+
+function normalizePdfDiagnosticsObjectPath(path: string | null | undefined): string | null {
+  if (!path || typeof path !== 'string') return null;
+  const trimmed = path.trim();
+  if (!trimmed) return null;
+  return trimmed.startsWith(`${PDF_DIAGNOSTICS_BUCKET}/`)
+    ? trimmed.slice(PDF_DIAGNOSTICS_BUCKET.length + 1)
+    : trimmed;
+}
+
+async function signPdfDiagnosticsArtifactPaths(
+  admin: ReturnType<typeof createClient>,
+  paths: Array<string | null | undefined>,
+): Promise<Record<string, string>> {
+  const unique = [...new Set(
+    paths
+      .map((path) => normalizePdfDiagnosticsObjectPath(path))
+      .filter((path): path is string => Boolean(path))
+  )];
+
+  if (!unique.length) return {};
+
+  const signed: Record<string, string> = {};
+  const { data, error } = await admin.storage
+    .from(PDF_DIAGNOSTICS_BUCKET)
+    .createSignedUrls(unique, PDF_DIAGNOSTICS_SIGNED_URL_TTL_SECONDS);
+
+  if (error) {
+    logDbError('sign_pdf_diagnostics_artifact_paths', error);
+    return {};
+  }
+
+  for (const item of data ?? []) {
+    const objectPath = normalizePdfDiagnosticsObjectPath((item as any)?.path);
+    const signedUrl = typeof (item as any)?.signedUrl === 'string' ? (item as any).signedUrl : null;
+    if (objectPath && signedUrl) {
+      signed[objectPath] = signedUrl;
+      signed[`${PDF_DIAGNOSTICS_BUCKET}/${objectPath}`] = signedUrl;
+    }
+  }
+
+  return signed;
+}
+
+function buildPdfPageArtifactSignedUrls(
+  pdfPageContexts: any[],
+  signedByPath: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  for (const ctx of pdfPageContexts ?? []) {
+    const pageNo = Number(ctx?.page_no ?? 0);
+    if (!Number.isFinite(pageNo) || pageNo <= 0) continue;
+
+    const artifacts = ctx?.artifacts && typeof ctx.artifacts === 'object' ? ctx.artifacts : {};
+    const entries: Array<[string, string | null | undefined]> = [
+      ['source', artifacts.raster_path],
+      ['raster', artifacts.raster_path],
+      ['docling', artifacts.docling_path],
+      ['blocks', artifacts.blocks_path],
+      ['tables', artifacts.tables_path],
+      ['pictures', artifacts.pictures_path],
+      ['summary', artifacts.summary_path],
+    ];
+
+    for (const [kind, rawPath] of entries) {
+      const objectPath = normalizePdfDiagnosticsObjectPath(rawPath);
+      if (!objectPath) continue;
+      const signedUrl = signedByPath[objectPath] ?? signedByPath[`${PDF_DIAGNOSTICS_BUCKET}/${objectPath}`] ?? null;
+      if (signedUrl) {
+        out[`${pageNo}:${kind}`] = signedUrl;
+      }
+    }
+  }
+
+  return out;
 }
 
 function summarizePdfPageManifest(manifest: any) {
@@ -864,6 +943,20 @@ Deno.serve(async (req) => {
       const pdfPageManifestSummary = summarizePdfPageManifest(pdfPageManifest);
       const pdfPageContexts = buildPdfPageContexts(pdfPageManifest);
       const pdfPageContextSummary = summarizePdfPageContexts(pdfPageContexts, pdfPageManifest);
+
+      const pdfDiagnosticsPathsToSign: Array<string | null | undefined> = [
+        pdfPageManifestPath,
+        ...pdfPageContexts.flatMap((ctx: any) => [
+          ctx?.artifacts?.raster_path,
+          ctx?.artifacts?.docling_path,
+          ctx?.artifacts?.blocks_path,
+          ctx?.artifacts?.tables_path,
+          ctx?.artifacts?.pictures_path,
+          ctx?.artifacts?.summary_path,
+        ]),
+      ];
+      const pdfDiagnosticsSignedByPath = await signPdfDiagnosticsArtifactPaths(admin, pdfDiagnosticsPathsToSign);
+      const pdfPageArtifactSignedUrls = buildPdfPageArtifactSignedUrls(pdfPageContexts, pdfDiagnosticsSignedByPath);
 
       return json({
         record,
