@@ -14,6 +14,7 @@ import { InvestmentReportErrorState } from '@/components/reports/report-view/Inv
 import { InvestmentReportExportPanel } from '@/components/reports/report-view/InvestmentReportExportPanel';
 import { InvestmentReportHero } from '@/components/reports/report-view/InvestmentReportHero';
 import { InvestmentReportLoadingState } from '@/components/reports/report-view/InvestmentReportLoadingState';
+import { InvestmentReportMobileActionBar } from '@/components/reports/report-view/InvestmentReportMobileActionBar';
 import { InvestmentReportOverridePanel } from '@/components/reports/report-view/InvestmentReportOverridePanel';
 import type { ClientInfo, InvestmentReport } from '@/components/reports/report-view/types';
 import { getHasOverrides, getOverriddenFields, getReportStatusLabel, getReportTierLabel, getReportVariantLabel } from '@/components/reports/report-view/utils';
@@ -168,8 +169,8 @@ export default function InvestmentReportView() {
       />
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto bg-muted/20">
-        <div className="mx-auto w-full max-w-7xl space-y-6 p-4 lg:p-6">
+      <div className="flex-1 overflow-auto overflow-x-hidden bg-muted/20">
+        <div className="mx-auto w-full max-w-7xl space-y-6 p-4 pb-24 lg:p-6">
           <InvestmentReportHero
             report={report}
             isClientReport={isClientReport}
@@ -220,6 +221,15 @@ export default function InvestmentReportView() {
           </div>
         </div>
       </div>
+
+      <InvestmentReportMobileActionBar
+        onDownload={handleDownload}
+        onSendToClient={() => setSendToClientOpen(true)}
+        onCashFlow={() => navigate(`/cash-flow-analysis?reportId=${report.id}`)}
+        onEdit={() => setEditorOpen(true)}
+        onOverride={() => setOverrideModalOpen(true)}
+        onManageHeroImages={() => setHeroDialogOpen(true)}
+      />
 
       {/* Editor Modal */}
       <InvestmentReportEditor

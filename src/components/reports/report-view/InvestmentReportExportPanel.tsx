@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
-import { Download, FileText, Images, Link, Paintbrush, RotateCcw, Sparkles, TrendingUp } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { ChevronDown, Download, FileText, Images, Link, Paintbrush, RotateCcw, Sparkles, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ClientPDFGenerator } from '@/components/reports/ClientPDFGenerator';
 import { PremiumPdfButton } from '@/components/reports/PremiumPdfButton';
@@ -53,14 +54,25 @@ export function InvestmentReportExportPanel({
   onRegenerated,
   onDownload,
 }: ExportPanelProps) {
+  const [controlsOpen, setControlsOpen] = useState(true);
+
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden border-primary/10 bg-card/95 shadow-sm">
-        <CardHeader className="border-b bg-gradient-to-br from-background via-background to-primary/5">
-          <CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" />Publishing & Export</CardTitle>
-          <CardDescription>Configure report content, generate PDFs, and manage premium styling.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5 p-4">
+      <Collapsible open={controlsOpen} onOpenChange={setControlsOpen}>
+        <Card className="overflow-hidden border-primary/10 bg-card/95 shadow-sm">
+          <CollapsibleTrigger className="w-full text-left">
+            <CardHeader className="border-b bg-gradient-to-br from-background via-background to-primary/5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" />Publishing & Export</CardTitle>
+                  <CardDescription>Configure report content, generate PDFs, and manage premium styling.</CardDescription>
+                </div>
+                <ChevronDown className={`mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform ${controlsOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-5 p-4">
           <section className="space-y-3">
             <div>
               <h3 className="text-sm font-semibold">PDF Content</h3>
@@ -154,8 +166,10 @@ export function InvestmentReportExportPanel({
             <Download className="h-4 w-4 mr-1" />
             Download raw text
           </Button>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }
