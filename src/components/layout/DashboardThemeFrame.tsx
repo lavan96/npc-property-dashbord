@@ -39,7 +39,7 @@ const variantClasses: Record<DashboardThemeFrameVariant, string> = {
 
 export const DashboardThemeFrame = forwardRef<HTMLElement, DashboardThemeFrameProps>(
   ({ as: Component = 'div', variant = 'section', className, children, ...props }, ref) => (
-    <Component ref={ref} className={cn(variantClasses[variant], className)} {...props}>
+    <Component ref={ref as any} className={cn(variantClasses[variant], className)} {...props}>
       {children}
     </Component>
   )

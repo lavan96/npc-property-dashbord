@@ -84,7 +84,7 @@ async function waitForImages(root: ParentNode): Promise<void> {
   }));
 }
 
-function selectedPages(pages: Element[], pageNumbers?: number[], maxPages?: number): Element[] {
+function selectedPages(pages: HTMLElement[], pageNumbers?: number[], maxPages?: number): HTMLElement[] {
   const wanted = pageNumbers?.length ? new Set(pageNumbers.map(Number).filter((n) => Number.isFinite(n) && n > 0)) : null;
   const out = pages.filter((_, idx) => !wanted || wanted.has(idx + 1));
   return out.slice(0, Math.max(1, maxPages ?? out.length));
