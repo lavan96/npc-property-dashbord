@@ -16,7 +16,7 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityLogger } from '@/hooks/useActivityLogger';
 import { addBackgroundJob } from '@/components/BackgroundJobTracker';
-import { Loader2, MapPin, Hash, Globe, TrendingUp, AlertCircle, FileText, Link, Upload, X, Image, Car } from 'lucide-react';
+import { Loader2, MapPin, Hash, Globe, TrendingUp, FileText, Link, Upload, X, Image, Car } from 'lucide-react';
 import { convertPdfToImages, isPdfFile, isImageFile, imageFileToBase64 } from '@/utils/pdfToImages';
 import { PreGenerationOverrides, PreGenerationData } from './PreGenerationOverrides';
 import { formatNumberWithCommas, removeCommas } from '@/hooks/useFormattedNumber';
@@ -1877,53 +1877,55 @@ export function InvestmentReportGenerator() {
               )}
 
               {/* Info Box */}
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-muted-foreground space-y-1">
+              <div className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/10 via-card to-card p-5 shadow-sm space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 rounded-full bg-primary/10 p-2 text-primary ring-1 ring-primary/15">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-3">
                     {isPropertySpecific ? (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>Property basics and financial snapshot</li>
-                          <li>Investment & growth potential analysis</li>
-                          <li>Location & suburb profile</li>
-                          <li>10-year projection calculations</li>
-                          <li>Investment recommendation with rating</li>
-                          <li>Curated sources and citations</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Property basics and financial snapshot</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Investment & growth potential analysis</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Location & suburb profile</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />10-year projection calculations</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Investment recommendation with rating</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Curated sources and citations</li>
                         </ul>
                       </>
                     ) : queryType === 'zipcode' ? (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>Postcode market overview and median prices</li>
-                          <li>Capital growth trends and rental yields</li>
-                          <li>Demographic and economic profile</li>
-                          <li>Infrastructure and development pipeline</li>
-                          <li>Investment potential assessment</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Postcode market overview and median prices</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Capital growth trends and rental yields</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Demographic and economic profile</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Infrastructure and development pipeline</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Investment potential assessment</li>
                         </ul>
                       </>
                     ) : queryType === 'suburb' ? (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>Suburb market performance snapshot</li>
-                          <li>Property price trends and rental data</li>
-                          <li>Demographics and lifestyle factors</li>
-                          <li>Amenities and transport analysis</li>
-                          <li>Growth corridor assessment</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Suburb market performance snapshot</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Property price trends and rental data</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Demographics and lifestyle factors</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Amenities and transport analysis</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Growth corridor assessment</li>
                         </ul>
                       </>
                     ) : (
                       <>
-                        <p><strong>What you'll get:</strong></p>
-                        <ul className="list-disc list-inside space-y-1 ml-2">
-                          <li>State-wide market conditions overview</li>
-                          <li>Regional growth hotspots</li>
-                          <li>Government policy and regulatory impacts</li>
-                          <li>Population and migration trends</li>
-                          <li>Top investment corridors and recommendations</li>
+                        <p className="text-sm font-semibold text-foreground"><strong>What you'll get:</strong></p>
+                        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />State-wide market conditions overview</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Regional growth hotspots</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Government policy and regulatory impacts</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Population and migration trends</li>
+                          <li className="flex gap-2"><span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />Top investment corridors and recommendations</li>
                         </ul>
                       </>
                     )}
@@ -1932,17 +1934,18 @@ export function InvestmentReportGenerator() {
               </div>
 
               {/* Token cost + balance status */}
-              <ReportGenerationStatus
-                kind="report.investment.compass"
-                estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 })}
-                className="mb-3"
-              />
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <span className="text-xs text-muted-foreground">Projected token cost (updates with inputs)</span>
-                <TokenCostEstimate
+              <div className="space-y-3 rounded-2xl border bg-card/80 p-4 shadow-sm">
+                <ReportGenerationStatus
                   kind="report.investment.compass"
-                  options={{ aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 }}
+                  estimate={estimateTokens('report.investment.compass', { aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 })}
                 />
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-3 py-2">
+                  <span className="text-xs font-medium text-muted-foreground">Projected token cost (updates with inputs)</span>
+                  <TokenCostEstimate
+                    kind="report.investment.compass"
+                    options={{ aiNarrative: true, extraSections: isPropertySpecific ? 1 : 0 }}
+                  />
+                </div>
               </div>
 
               {/* Generate Button */}
@@ -1950,7 +1953,7 @@ export function InvestmentReportGenerator() {
                 onClick={handleGenerate}
                 disabled={isGenerating || !query.trim() || (isPropertySpecific && (!propertyPrice || parseFloat(propertyPrice) <= 0))}
                 size="lg"
-                className="w-full shadow-lg shadow-primary/20"
+                className="w-full h-12 shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:border disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
               >
                 {isGenerating ? (
                   <>
