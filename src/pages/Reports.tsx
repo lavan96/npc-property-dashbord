@@ -27,7 +27,7 @@ const InvestmentReportGenerator = lazy(() => import('@/components/reports/Invest
 
 // Loading fallback component
 const ComponentLoader = () => (
-  <Card>
+  <Card className="ci-card-premium">
     <CardContent className="p-6">
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/3" />
@@ -166,62 +166,84 @@ export default function Reports() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Reports</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Generate property analysis and investment reports</p>
-        </div>
-      </div>
-
-      <Tabs defaultValue="quantitative" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
-          <TabsTrigger value="quantitative" className="flex items-center gap-1.5 py-2.5 text-xs sm:text-sm">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden xs:inline">Quantitative</span>
-            <span className="xs:hidden">Quant</span>
-          </TabsTrigger>
-          <TabsTrigger value="investment" className="flex items-center gap-1.5 py-2.5 text-xs sm:text-sm">
-            <TrendingUp className="h-4 w-4" />
-            <span>Investment</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="quantitative" className="space-y-4 md:space-y-6 mt-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
-            <div>
-              <h2 className="text-xl md:text-2xl font-bold text-foreground">Quantitative Analysis</h2>
-              <p className="text-sm text-muted-foreground">Statistical analysis of your property listings</p>
+    <div className="ci-foundation ci-page-shell reports-page-premium">
+      <Tabs defaultValue="quantitative" className="w-full space-y-6">
+        <Card className="ci-suite-header overflow-hidden reports-top-command">
+          <CardContent className="relative z-10 space-y-5 p-5 md:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="ci-header-icon reports-header-icon"><BarChart3 className="h-6 w-6" /></span>
+                <div>
+                  <p className="ci-tab-eyebrow">NPC reporting command centre</p>
+                  <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">Reports</h1>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">Generate property analysis and investment reports</p>
+                </div>
+              </div>
+              <div className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary shadow-sm">
+                Quantitative insights · Investment analysis
+              </div>
             </div>
-            <ReportConfigModal 
-              onGenerateReport={handleGenerateReport}
-              isGenerating={isGenerating}
-              progress={progress}
-              currentStep={currentStep}
-            />
-          </div>
+
+            <div className="rounded-3xl border border-border/70 bg-background/55 p-1.5 shadow-inner shadow-black/10 backdrop-blur">
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-transparent p-0">
+                <TabsTrigger value="quantitative" className="reports-primary-tab">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden xs:inline">Quantitative</span>
+                  <span className="xs:hidden">Quant</span>
+                </TabsTrigger>
+                <TabsTrigger value="investment" className="reports-primary-tab">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>Investment</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </CardContent>
+        </Card>
+
+        <TabsContent value="quantitative" className="space-y-5 md:space-y-7 mt-0">
+          <Card className="ci-card-premium reports-quant-header">
+            <CardContent className="p-5 md:p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="max-w-3xl">
+                  <p className="ci-tab-eyebrow">Quantitative intelligence</p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground md:text-3xl">Quantitative Analysis</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-base">Statistical analysis of your property listings</p>
+                </div>
+                <ReportConfigModal
+                  onGenerateReport={handleGenerateReport}
+                  isGenerating={isGenerating}
+                  progress={progress}
+                  currentStep={currentStep}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
           {/* KPIs */}
-          <div ref={kpisRef} className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <div ref={kpisRef} className="grid gap-4 grid-cols-2 lg:grid-cols-4 reports-kpi-grid">
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-primary"
               title="Total Listings"
               value={totalListings.toLocaleString()}
               icon={<Building2 className="h-4 w-4" />}
               description="All property listings"
             />
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-value"
               title="Average Price"
               value={`$${avgPrice.toLocaleString()}`}
               icon={<DollarSign className="h-4 w-4" />}
               description="Across all listings"
             />
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-activity"
               title="Recent Listings"
               value={recentListings.toLocaleString()}
               icon={<Calendar className="h-4 w-4" />}
               description="Last 30 days"
             />
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-coverage"
               title="Unique Suburbs"
               value={suburbChartData.length.toLocaleString()}
               icon={<MapPin className="h-4 w-4" />}
@@ -244,34 +266,34 @@ export default function Reports() {
           </div>
 
           {/* Charts and Analysis */}
-          <Tabs defaultValue="temporal" className="space-y-4">
+          <Tabs defaultValue="temporal" className="ci-card-premium p-3 md:p-4 space-y-4">
             <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-              <TabsList className="inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-7 h-auto">
-                <TabsTrigger value="temporal" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+              <TabsList className="inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-7 h-auto bg-background/60 border border-border/70 rounded-2xl p-1">
+                <TabsTrigger value="temporal" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <TrendingUp className="h-3 w-3" />
                   Trends
                 </TabsTrigger>
-                <TabsTrigger value="geographic" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                <TabsTrigger value="geographic" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Globe className="h-3 w-3" />
                   Geographic
                 </TabsTrigger>
-                <TabsTrigger value="agents" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                <TabsTrigger value="agents" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Users className="h-3 w-3" />
                   Agents
                 </TabsTrigger>
-                <TabsTrigger value="data-quality" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                <TabsTrigger value="data-quality" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <BarChart3 className="h-3 w-3" />
                   Quality
                 </TabsTrigger>
-                <TabsTrigger value="suburbs" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                <TabsTrigger value="suburbs" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <MapPin className="h-3 w-3" />
                   Suburbs
                 </TabsTrigger>
-                <TabsTrigger value="property-type" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                <TabsTrigger value="property-type" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Building2 className="h-3 w-3" />
                   Types
                 </TabsTrigger>
-                <TabsTrigger value="price-range" className="flex items-center gap-1 px-3 py-2 text-xs whitespace-nowrap">
+                <TabsTrigger value="price-range" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <DollarSign className="h-3 w-3" />
                   Pricing
                 </TabsTrigger>
@@ -309,7 +331,7 @@ export default function Reports() {
             </TabsContent>
 
             <TabsContent value="suburbs" className="space-y-4">
-              <Card>
+              <Card className="ci-card">
                 <CardHeader>
                   <CardTitle>Listings by Suburb</CardTitle>
                   <CardDescription>Top 10 suburbs by listing volume — higher bars indicate stronger market activity in that area</CardDescription>
@@ -334,7 +356,7 @@ export default function Reports() {
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
                                 <p className="font-semibold text-sm text-foreground">{data.suburb}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings ({pct}% of total)</p>
                               </div>
@@ -352,7 +374,7 @@ export default function Reports() {
                     const topPct = totalListings > 0 ? ((top.count / totalListings) * 100).toFixed(0) : '0';
                     const ratio = second.count > 0 ? (top.count / second.count).toFixed(1) : '—';
                     return (
-                      <div className="flex items-start gap-2 p-3 rounded-md bg-muted/30 border border-border/50">
+                      <div className="flex items-start gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
                         <Lightbulb className="h-4 w-4 mt-0.5 text-yellow-500 shrink-0" />
                         <p className="text-xs text-foreground">
                           <span className="font-semibold">{top.suburb}</span> leads with {topPct}% of all listings ({top.count}), {ratio}× the volume of the next suburb ({second.suburb} at {second.count}).
@@ -382,7 +404,7 @@ export default function Reports() {
             </TabsContent>
 
             <TabsContent value="property-type" className="space-y-4">
-              <Card>
+              <Card className="ci-card">
                 <CardHeader>
                   <CardTitle>Property Type Distribution</CardTitle>
                   <CardDescription>Proportional breakdown of listings by property category</CardDescription>
@@ -416,7 +438,7 @@ export default function Reports() {
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
                                 <p className="font-semibold text-sm text-foreground">{data.type}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
                               </div>
@@ -431,7 +453,7 @@ export default function Reports() {
                     const dominant = propertyTypeChartData.reduce((max, d) => d.count > max.count ? d : max, propertyTypeChartData[0]);
                     const dominantPct = totalListings > 0 ? ((dominant.count / totalListings) * 100).toFixed(0) : '0';
                     return (
-                      <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30 border border-border/50">
+                      <div className="flex items-center gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
                         <Lightbulb className="h-4 w-4 text-yellow-500 shrink-0" />
                         <p className="text-xs text-foreground">
                           <span className="font-semibold">{dominant.type}</span> properties dominate at <span className="font-semibold">{dominantPct}%</span> of all listings ({dominant.count} of {totalListings}).
@@ -458,7 +480,7 @@ export default function Reports() {
             </TabsContent>
 
             <TabsContent value="price-range" className="space-y-4">
-              <Card>
+              <Card className="ci-card">
                 <CardHeader>
                   <CardTitle>Price Range Distribution</CardTitle>
                   <CardDescription>Listings grouped by price brackets — identifies the dominant market segment</CardDescription>
@@ -476,7 +498,7 @@ export default function Reports() {
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
                                 <p className="font-semibold text-sm text-foreground">{data.range}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
                               </div>
@@ -525,7 +547,7 @@ export default function Reports() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="ci-card">
                 <CardHeader>
                   <CardTitle>Bedroom Distribution</CardTitle>
                   <CardDescription>Listings by number of bedrooms — reveals the dominant property configuration</CardDescription>
@@ -543,7 +565,7 @@ export default function Reports() {
                             const data = payload[0].payload;
                             const pct = totalListings > 0 ? ((data.count / totalListings) * 100).toFixed(1) : '0';
                             return (
-                              <div className="bg-popover border border-border rounded-lg p-3 shadow-md">
+                              <div className="bg-popover/95 border border-primary/25 rounded-xl p-3 shadow-xl shadow-black/20 backdrop-blur">
                                 <p className="font-semibold text-sm text-foreground">{data.beds} Bedroom{data.beds !== '1' ? 's' : ''}</p>
                                 <p className="text-xs text-muted-foreground mt-1">{data.count} listings • {pct}% of total</p>
                               </div>
@@ -581,7 +603,7 @@ export default function Reports() {
           </Tabs>
         </TabsContent>
 
-        <TabsContent value="investment" className="space-y-6">
+        <TabsContent value="investment" className="space-y-6 mt-0">
           <ErrorBoundary fallback={
             <Card>
               <CardContent className="p-6">
