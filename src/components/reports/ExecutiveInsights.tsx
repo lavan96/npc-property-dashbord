@@ -160,10 +160,10 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
   }, [listings]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 reports-insight-suite">
       {/* Key Insights */}
-      <Card>
-        <CardHeader>
+      <Card className="reports-insight-card reports-executive-summary-card">
+        <CardHeader className="reports-insight-card-header">
           <CardTitle>Executive Summary</CardTitle>
           <CardDescription>Key insights and market observations from your property data</CardDescription>
         </CardHeader>
@@ -171,17 +171,19 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
           <div className="space-y-3">
             {insights.insights.length > 0 ? (
               insights.insights.map((insight, index) => (
-                <Alert key={index} className={`border-l-4 ${
-                  insight.type === 'positive' ? 'border-l-success' : 
+                <Alert key={index} className={`reports-insight-alert reports-insight-alert-${insight.type} border-l-4 ${
+                  insight.type === 'positive' ? 'border-l-success' :
                   insight.type === 'warning' ? 'border-l-warning' : 'border-l-destructive'
                 }`}>
-                  <div className="flex items-start gap-2">
-                    {insight.type === 'positive' && <TrendingUp className="h-4 w-4 text-success mt-0.5" />}
-                    {insight.type === 'warning' && <AlertTriangle className="h-4 w-4 text-warning mt-0.5" />}
-                    {insight.type === 'negative' && <TrendingDown className="h-4 w-4 text-destructive mt-0.5" />}
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{insight.title}</div>
-                      <AlertDescription className="text-xs mt-1">
+                  <div className="flex items-start gap-3">
+                    <span className="reports-insight-icon-wrap">
+                      {insight.type === 'positive' && <TrendingUp className="h-4 w-4 text-success" />}
+                      {insight.type === 'warning' && <AlertTriangle className="h-4 w-4 text-warning" />}
+                      {insight.type === 'negative' && <TrendingDown className="h-4 w-4 text-destructive" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="reports-insight-row-title">{insight.title}</div>
+                      <AlertDescription className="reports-insight-row-description">
                         {insight.description}
                       </AlertDescription>
                     </div>
@@ -189,9 +191,9 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
                 </Alert>
               ))
             ) : (
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
+              <Alert className="reports-insight-alert reports-insight-alert-neutral">
+                <span className="reports-insight-icon-wrap"><Info className="h-4 w-4" /></span>
+                <AlertDescription className="reports-insight-row-description">
                   Market conditions are stable with no significant trends requiring immediate attention.
                 </AlertDescription>
               </Alert>
@@ -202,8 +204,8 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Recommendations */}
-        <Card>
-          <CardHeader>
+        <Card className="reports-insight-card reports-action-card">
+          <CardHeader className="reports-insight-card-header">
             <CardTitle>Action Items</CardTitle>
             <CardDescription>Recommended actions based on data analysis</CardDescription>
           </CardHeader>
@@ -211,27 +213,29 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
             <div className="space-y-3">
               {insights.recommendations.length > 0 ? (
                 insights.recommendations.map((rec, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 border rounded-lg">
-                    <CheckCircle className={`h-4 w-4 mt-0.5 ${
-                      rec.priority === 'high' ? 'text-destructive' : 
-                      rec.priority === 'medium' ? 'text-warning' : 'text-success'
-                    }`} />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="font-medium text-sm">{rec.title}</div>
+                  <div key={index} className={`reports-insight-row reports-action-row reports-severity-${rec.priority}`}>
+                    <span className="reports-insight-icon-wrap">
+                      <CheckCircle className={`h-4 w-4 ${
+                        rec.priority === 'high' ? 'text-destructive' :
+                        rec.priority === 'medium' ? 'text-warning' : 'text-success'
+                      }`} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <div className="reports-insight-row-title">{rec.title}</div>
                         <Badge variant={
-                          rec.priority === 'high' ? 'destructive' : 
+                          rec.priority === 'high' ? 'destructive' :
                           rec.priority === 'medium' ? 'secondary' : 'default'
-                        } className="text-xs">
+                        } className={`reports-severity-badge reports-severity-${rec.priority}`}>
                           {rec.priority}
                         </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground">{rec.description}</div>
+                      <div className="reports-insight-row-description">{rec.description}</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-muted-foreground text-center py-4">
+                <div className="reports-empty-insight-state">
                   All key metrics are within expected ranges. No action items identified — market observations are also clear.
                 </div>
               )}
@@ -240,8 +244,8 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
         </Card>
 
         {/* Anomalies */}
-        <Card>
-          <CardHeader>
+        <Card className="reports-insight-card reports-observation-card">
+          <CardHeader className="reports-insight-card-header">
             <CardTitle>Market Observations</CardTitle>
             <CardDescription>Notable patterns and anomalies detected</CardDescription>
           </CardHeader>
@@ -249,24 +253,26 @@ export function ExecutiveInsights({ listings }: ExecutiveInsightsProps) {
             <div className="space-y-3">
               {insights.anomalies.length > 0 ? (
                 insights.anomalies.map((anomaly, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 border rounded-lg">
-                    <AlertTriangle className={`h-4 w-4 mt-0.5 ${
-                      anomaly.severity === 'high' ? 'text-destructive' : 
-                      anomaly.severity === 'medium' ? 'text-warning' : 'text-muted-foreground'
-                    }`} />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="font-medium text-sm">{anomaly.title}</div>
-                        <Badge variant="outline" className="text-xs">
+                  <div key={index} className={`reports-insight-row reports-observation-row reports-severity-${anomaly.severity}`}>
+                    <span className="reports-insight-icon-wrap">
+                      <AlertTriangle className={`h-4 w-4 ${
+                        anomaly.severity === 'high' ? 'text-destructive' :
+                        anomaly.severity === 'medium' ? 'text-warning' : 'text-muted-foreground'
+                      }`} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <div className="reports-insight-row-title">{anomaly.title}</div>
+                        <Badge variant="outline" className={`reports-severity-badge reports-severity-${anomaly.severity}`}>
                           {anomaly.severity}
                         </Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground">{anomaly.description}</div>
+                      <div className="reports-insight-row-description">{anomaly.description}</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-muted-foreground text-center py-4">
+                <div className="reports-empty-insight-state">
                   No anomalies detected — all metrics are consistent and no action items have been flagged.
                 </div>
               )}
