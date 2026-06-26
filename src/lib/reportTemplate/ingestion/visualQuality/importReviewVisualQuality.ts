@@ -2,7 +2,7 @@ import type { ImportReviewArtifact, ImportReviewDraft } from '../review';
 import type { PageContextRenderArtifactManifest } from './pageContextArtifacts';
 import type { GeneratedRenderPageRaster } from './generatedRenderCapture';
 import type { VisualImportFinalMode, VisualImportQualityReport } from './schema';
-import type { SaveVisualQualityResult } from './persist';
+import type { PersistedVisualQuality, SaveVisualQualityResult } from './persist';
 import {
   persistRenderDiffVisualQuality,
   type PersistRenderDiffResult,
@@ -98,6 +98,20 @@ export function summarizeVisualQualityForReview(options: {
     problems: options.problems ?? [],
     generatedAt: report.generatedAt,
   };
+}
+
+
+export function persistedVisualQualityToReviewSummary(payload: PersistedVisualQuality): VisualQaReviewSummary {
+  const signedUrlCount = Object.keys(payload.signedUrls ?? {}).length;
+  return summarizeVisualQualityForReview({
+    report: payload.report,
+    persistResult: {
+      kind: 'ok',
+      summaryPath: payload.artifactPaths.summary,
+      uploadedCount: signedUrlCount,
+    },
+    problems: [],
+  });
 }
 
 export function generatedRastersToImportReviewArtifacts(options: {
