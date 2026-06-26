@@ -2232,7 +2232,7 @@ html {
     @apply text-sm font-bold uppercase tracking-[0.14em] text-foreground;
   }
 
-  .reports-investment-generator :is(p, span, div).text-muted-foreground {
+  .reports-investment-generator [class~="text-muted-foreground"] {
     line-height: 1.5rem;
   }
 
