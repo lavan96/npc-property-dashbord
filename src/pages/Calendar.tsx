@@ -1723,18 +1723,23 @@ export default function Calendar() {
       />
 
       {/* Calendars List — split into Frequently Used and Other */}
-      <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl")}>
+      <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl border-primary/10")}>
         <CardHeader className="border-b border-white/10 bg-white/[0.02]">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Available Calendars ({calendars.length})
+          <CardTitle className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+              <span className="rounded-2xl border border-primary/25 bg-primary/10 p-2 text-primary">
+                <Users className="h-5 w-5" />
+              </span>
+              Available Calendars ({calendars.length})
+            </span>
+            <span className="text-xs font-medium uppercase tracking-[0.2em] text-zinc-500">Calendar registry</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 md:p-5">
           {isLoading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
               ))}
             </div>
           ) : (() => {
@@ -1767,41 +1772,42 @@ export default function Calendar() {
               return (
               <button
                 key={calendar.id}
+                title={calendar.name}
                 onClick={() => setSelectedCalendarId(calendar.id === selectedCalendarId ? 'all' : calendar.id)}
                 className={cn(
-                  'p-4 rounded-xl border text-left transition-all duration-200 shadow-sm',
+                  'group rounded-2xl border p-4 text-left shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
                   selectedCalendarId === calendar.id
-                    ? 'border-primary bg-primary/15 shadow-[0_12px_35px_hsl(var(--primary)/0.12)]'
-                    : 'border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10'
+                    ? 'border-primary/60 bg-primary/15 shadow-[0_16px_42px_hsl(var(--primary)/0.14)]'
+                    : 'border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_16px_42px_hsl(0_0%_0%/0.24)]'
                 )}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-3 h-3 rounded-full shrink-0"
+                        className="h-3.5 w-3.5 rounded-full shrink-0 ring-2 ring-black/30 shadow-sm"
                         style={{ backgroundColor: calendar.eventColor || '#3b82f6' }}
                       />
-                      <span className="font-medium text-sm truncate">{calendar.name}</span>
+                      <span className="truncate text-sm font-semibold text-zinc-100 transition-colors group-hover:text-white">{calendar.name}</span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-[10px]">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="rounded-full border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-zinc-300">
                         {calendar.calendarType.replace('_', ' ')}
                       </Badge>
                       {calendar.isActive && (
-                        <Badge className="text-[10px] bg-green-500/20 text-green-400 border-green-500/30">
+                        <Badge className="rounded-full border-emerald-400/25 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
                           Active
                         </Badge>
                       )}
                       {calEventCount > 0 && (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                           {calEventCount} event{calEventCount !== 1 ? 's' : ''}
                         </Badge>
                       )}
                     </div>
                   </div>
                   {calendar.teamMembers && calendar.teamMembers.length > 0 && (
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-black/25 px-2 py-1 text-xs text-zinc-400">
                       <Users className="h-3 w-3" />
                       {calendar.teamMembers.length} member{calendar.teamMembers.length !== 1 ? 's' : ''}
                     </div>
@@ -1812,19 +1818,19 @@ export default function Calendar() {
             };
 
             return (
-              <div className="space-y-6">
+              <div className="space-y-7">
                 {frequentlyUsed.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Most Frequently Used</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Most Frequently Used</h4>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {frequentlyUsed.map(renderCalendarCard)}
                     </div>
                   </div>
                 )}
                 {otherCalendars.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Other Calendars</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Other Calendars</h4>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {otherCalendars.map(renderCalendarCard)}
                     </div>
                   </div>
