@@ -958,51 +958,51 @@ export default function Calendar() {
           </div>
 
           {/* Controls row - scrollable on mobile */}
-          <div className={cn(PREMIUM_MUTED_SURFACE, "flex items-center gap-2 overflow-x-auto rounded-xl border p-2 md:flex-wrap")}>
-          {!isMobile && <KeyboardShortcutsHint />}
-          <CalendarSearchDropdown
-            events={events}
-            contactCache={contactCache}
-            fetchContact={fetchContact}
-            onSelectEvent={(event) => {
-              setSelectedEvent(event);
-              setEventModalOpen(true);
-            }}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-          />
-          <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
-            <TabsList className="h-9 border border-white/10 bg-black/40">
-              <TabsTrigger value="month" className="text-xs">Month</TabsTrigger>
-              <TabsTrigger value="week" className="text-xs">Week</TabsTrigger>
-              {!isMobile && (
-                <TabsTrigger value="timeline" className="text-xs flex items-center gap-1">
-                  <LayoutList className="h-3 w-3" />
-                  Timeline
-                </TabsTrigger>
-              )}
-            </TabsList>
-          </Tabs>
-          <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
-            <SelectTrigger className="w-[160px] md:w-[220px] shrink-0 border-white/10 bg-black/30 focus:ring-primary/40">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All Calendars" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Calendars</SelectItem>
-              {calendars.map(cal => (
-                <SelectItem key={cal.id} value={cal.id}>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: cal.eventColor || '#3b82f6' }}
-                    />
-                    <span className="truncate max-w-[120px]">{cal.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className={cn(PREMIUM_MUTED_SURFACE, "flex flex-wrap items-center gap-2 rounded-2xl border p-2.5")}>
+            {!isMobile && <KeyboardShortcutsHint />}
+            <CalendarSearchDropdown
+              events={events}
+              contactCache={contactCache}
+              fetchContact={fetchContact}
+              onSelectEvent={(event) => {
+                setSelectedEvent(event);
+                setEventModalOpen(true);
+              }}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+            />
+            <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
+              <TabsList className="h-10 rounded-xl border border-white/10 bg-black/35 p-1 shadow-inner shadow-black/20">
+                <TabsTrigger value="month" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Month</TabsTrigger>
+                <TabsTrigger value="week" className="h-8 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">Week</TabsTrigger>
+                {!isMobile && (
+                  <TabsTrigger value="timeline" className="flex h-8 items-center gap-1 rounded-lg px-3 text-xs text-zinc-400 transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-white/5 data-[state=inactive]:hover:text-zinc-200 focus-visible:ring-2 focus-visible:ring-primary/40">
+                    <LayoutList className="h-3 w-3" />
+                    Timeline
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </Tabs>
+            <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
+              <SelectTrigger className="h-10 w-full shrink-0 rounded-xl border-white/10 bg-black/35 px-3 text-sm shadow-inner shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px]">
+                <Filter className="mr-2 h-4 w-4 text-primary/80" />
+                <SelectValue placeholder="All Calendars" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-white/10 bg-zinc-950/95 shadow-[0_18px_60px_hsl(0_0%_0%/0.4)] backdrop-blur-xl">
+                <SelectItem value="all">All Calendars</SelectItem>
+                {calendars.map(cal => (
+                  <SelectItem key={cal.id} value={cal.id}>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: cal.eventColor || '#3b82f6' }}
+                      />
+                      <span className="truncate max-w-[120px]">{cal.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </section>
