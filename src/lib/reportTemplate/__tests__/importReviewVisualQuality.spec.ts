@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   attachVisualQualityToImportReview,
   generatedRastersToImportReviewArtifacts,
+  persistedVisualQualityToReviewSummary,
   summarizeVisualQualityForReview,
   visualQualityReportToDiffReviewArtifacts,
   type GeneratedRenderPageRaster,
@@ -154,6 +155,52 @@ describe('import review visual quality bridge', () => {
     expect(summary.summaryPath).toBe('import_123/visual-quality.json');
     expect(summary.warningCount).toBe(1);
     expect(summary.recommendedActionCounts.accept_with_warnings).toBe(1);
+  });
+
+
+  it('summarizes persisted visual quality payloads with signed URL counts', () => {
+    const summary = persistedVisualQualityToReviewSummary({
+      importId: 'import_123',
+      report: {
+        importId: 'import_123',
+        templateId: 'template_123',
+        overallScore: 0.96,
+        pages: [
+          {
+            pageId: 'docling-page-1',
+            pageNumber: 1,
+            overallScore: 0.96,
+            pixelDifferenceScore: 0.96,
+            textCoverageScore: 0.5,
+            layoutDriftScore: 0.5,
+            missingElementScore: 0.5,
+            colorSimilarityScore: 0.98,
+            recommendedAction: 'accept',
+            warnings: [],
+          },
+        ],
+        repairPassesApplied: 0,
+        finalMode: 'hybrid',
+        manualReviewRequired: false,
+        generatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      artifactPaths: {
+        summary: 'import_123/visual-quality.json',
+        sourceRasters: 'import_123/pages',
+        generatedRasters: 'import_123/pages',
+        diffRasters: 'import_123/pages',
+      },
+      signedUrls: {
+        '1:source': 'https://signed.example/source.png',
+        '1:generated': 'https://signed.example/generated.png',
+        '1:diff': 'https://signed.example/diff.png',
+      },
+    });
+
+    expect(summary.persisted).toBe(true);
+    expect(summary.summaryPath).toBe('import_123/visual-quality.json');
+    expect(summary.uploadedCount).toBe(3);
+    expect(summary.overallScore).toBe(0.96);
   });
 
   it('converts generated and diff outputs into review artifacts', () => {
