@@ -2321,3 +2321,42 @@ html {
     @apply rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 leading-5;
   }
 }
+
+@layer components {
+  .reports-property-details-panel {
+    @apply rounded-3xl border border-border/70 bg-gradient-to-br from-background/70 via-background/45 to-primary/5 p-4 shadow-sm sm:p-5;
+  }
+
+  .reports-property-details-header {
+    @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .reports-required-scoring-badge {
+    @apply w-fit rounded-full border border-primary/30 bg-primary/15 px-3 py-1 font-semibold text-primary shadow-sm shadow-primary/10;
+  }
+
+  .reports-property-details-helper {
+    @apply max-w-3xl leading-6 text-muted-foreground/90;
+  }
+
+  .reports-property-details-grid {
+    @apply items-start rounded-2xl border border-border/50 bg-black/10 p-3 sm:p-4;
+  }
+
+  .reports-property-field {
+    @apply rounded-2xl border border-transparent p-2 transition-all duration-200 hover:border-primary/15 hover:bg-primary/5 focus-within:border-primary/35 focus-within:bg-primary/10 focus-within:shadow-sm focus-within:shadow-primary/10;
+  }
+
+  .reports-property-field-label {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors group-focus-within:text-primary;
+  }
+
+  .reports-property-input,
+  .reports-property-select-trigger {
+    @apply min-h-11 rounded-2xl border-border/70 bg-background/70 shadow-sm transition-all placeholder:text-muted-foreground/55 hover:border-primary/30 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .reports-property-select-content {
+    @apply rounded-2xl border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur;
+  }
+}
