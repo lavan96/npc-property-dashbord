@@ -1111,11 +1111,13 @@ export default function Calendar() {
         isMobile ? "grid-cols-1" : sidebarCollapsed ? "grid-cols-[1fr_auto]" : "lg:grid-cols-3"
       )}>
         {/* Calendar View */}
-        <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl", isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2')}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
+        <Card className={cn(PREMIUM_PANEL, "overflow-hidden rounded-2xl border-primary/10", isMobile ? '' : sidebarCollapsed ? '' : 'lg:col-span-2')}>
+          <CardHeader className="border-b border-white/10 bg-white/[0.02] pb-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+                <span className="rounded-xl border border-primary/25 bg-primary/10 p-2 text-primary">
+                  <CalendarIcon className="h-5 w-5" />
+                </span>
                 {view === 'month'
                   ? format(currentMonth, 'MMMM yyyy')
                   : view === 'week'
@@ -1123,10 +1125,11 @@ export default function Calendar() {
                     : selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Timeline'
                 }
               </CardTitle>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-9 w-9 rounded-xl border border-white/10 text-zinc-300 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(subMonths(currentMonth, 1))
                     : setCurrentWeek(subWeeks(currentWeek, 1))
@@ -1138,7 +1141,7 @@ export default function Calendar() {
                   variant="default"
                   size="sm"
                   onClick={goToToday}
-                  className="font-medium"
+                  className="rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/45"
                 >
                   Today
                 </Button>
@@ -1147,7 +1150,7 @@ export default function Calendar() {
                     variant="ghost"
                     size="sm"
                     onClick={clearSelection}
-                    className="text-muted-foreground"
+                    className="rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
                   >
                     <X className="h-3 w-3 mr-1" />
                     Clear
@@ -1156,6 +1159,7 @@ export default function Calendar() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-9 w-9 rounded-xl border border-white/10 text-zinc-300 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(addMonths(currentMonth, 1))
                     : setCurrentWeek(addWeeks(currentWeek, 1))
@@ -1166,7 +1170,7 @@ export default function Calendar() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 md:p-4">
             {/* Animation wrapper with swipe support */}
             <div
               {...(isMobile ? calendarSwipeHandlers : {})}
@@ -1182,15 +1186,15 @@ export default function Calendar() {
               ) : view === 'month' ? (
                 <>
                   {/* Day headers - Sticky */}
-                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1 rounded-xl border border-white/10 bg-black/50 px-1 backdrop-blur">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                      <div key={day} className="text-center text-[10px] md:text-xs font-medium text-muted-foreground py-1 md:py-2">
+                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1.5 rounded-2xl border border-white/10 bg-black/60 p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <div key={day} className="rounded-xl py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400 md:text-xs">
                         {isMobile ? day.charAt(0) : day}
                       </div>
                     ))}
                   </div>
                   {/* Calendar grid with DropZones */}
-                  <div className="grid grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-7 gap-1.5 rounded-2xl border border-white/10 bg-black/20 p-1.5 shadow-inner shadow-black/20 md:gap-2 md:p-2">
                     {calendarDays.map(day => {
                       const dayEvents = getEventsForDay(day);
                       const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -1202,21 +1206,24 @@ export default function Calendar() {
                           date={day}
                           onDrop={handleEventDrop}
                           disabled={isUpdating}
-                            className={cn(
-                            'min-h-[72px] md:min-h-[108px] p-0.5 md:p-1.5 rounded-xl border text-left transition-all duration-200 cursor-pointer bg-white/[0.015]',
-                            isSelected ? 'border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.25),0_10px_30px_hsl(var(--primary)/0.08)]' : 'border-white/5 hover:border-primary/25 hover:bg-white/[0.04]',
-                            !isCurrentMonth && 'opacity-40',
-                            isToday(day) && 'ring-1 ring-primary'
+                          className={cn(
+                            'min-h-[76px] rounded-xl border p-1 text-left transition-all duration-200 cursor-pointer bg-white/[0.02] focus-within:ring-2 focus-within:ring-primary/40 md:min-h-[116px] md:p-2',
+                            isSelected ? 'border-primary bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.35),0_14px_36px_hsl(var(--primary)/0.12)]' : 'border-white/5 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-white/[0.045]',
+                            !isCurrentMonth && 'bg-black/20 opacity-50',
+                            isToday(day) && 'ring-1 ring-primary/70'
                           )}
                         >
                           <div
                             onClick={() => setSelectedDate(day)}
                             className="h-full"
                           >
-                            <div className={`text-xs font-medium mb-1 ${isToday(day) ? 'text-primary' : ''}`}>
+                            <div className={cn(
+                              'mb-1 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold',
+                              isSelected ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : isToday(day) ? 'border border-primary/50 bg-primary/10 text-primary' : isCurrentMonth ? 'text-zinc-200' : 'text-zinc-500'
+                            )}>
                               {format(day, 'd')}
                             </div>
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                               {dayEvents.slice(0, isMobile ? 2 : 3).map(event => (
                                 <EnhancedEventPreview
                                   key={event.id}
@@ -1246,7 +1253,7 @@ export default function Calendar() {
                                         handleEventClick(event);
                                       }}
                                       style={getEventStyle(event)}
-                                      className="text-[10px] truncate rounded-md px-1.5 py-0.5 shadow-sm ring-1 ring-white/10 cursor-pointer hover:opacity-90 hover:translate-x-0.5 transition-all"
+                                      className="truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium shadow-sm ring-1 ring-white/10 transition-all cursor-pointer hover:translate-x-0.5 hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
                                     >
                                       {safeFormatISO(event.startTime, 'HH:mm')}
                                     </div>
@@ -1254,7 +1261,7 @@ export default function Calendar() {
                                 </EnhancedEventPreview>
                               ))}
                               {dayEvents.length > (isMobile ? 2 : 3) && (
-                                <div className="text-[9px] md:text-[10px] text-muted-foreground px-1">
+                                <div className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium text-zinc-400 md:text-[10px]">
                                   +{dayEvents.length - (isMobile ? 2 : 3)} more
                                 </div>
                               )}
