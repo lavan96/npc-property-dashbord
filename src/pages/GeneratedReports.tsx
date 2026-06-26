@@ -1,30 +1,38 @@
-import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Download, Eye, FileText, Calendar, BarChart3, TrendingUp, MapPin, History, RefreshCw, Home, Building2, Map, Globe, Star, Zap, Compass, Loader2, SlidersHorizontal, Archive, ArchiveRestore, User } from 'lucide-react';
+import { Archive, FileText, TrendingUp } from 'lucide-react';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Slider } from '@/components/ui/slider';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationsContext';
-import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
-import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/ReportActionMenu';
+import { ReportLibraryHero } from '@/components/reports/library/ReportLibraryHero';
+import { ReportLibraryTabs } from '@/components/reports/library/ReportLibraryTabs';
+import { ReportLibraryToolbar } from '@/components/reports/library/ReportLibraryToolbar';
+import { InvestmentReportCard } from '@/components/reports/library/InvestmentReportCard';
+import { QuantitativeReportCard } from '@/components/reports/library/QuantitativeReportCard';
+import { ComparisonReportCard } from '@/components/reports/library/ComparisonReportCard';
+import { ReportLibraryEmptyState } from '@/components/reports/library/ReportLibraryEmptyState';
+import { ReportLibrarySkeleton } from '@/components/reports/library/ReportLibrarySkeleton';
+import { ReportLibraryPagination } from '@/components/reports/library/ReportLibraryPagination';
+import type { ComparisonAnalysis, GeneratedReport, InvestmentReport } from '@/components/reports/library/types';
+
+// UI Refactor Safety Checklist (Phase 0):
+// - Preserve Supabase table names, secure edge function names, route paths, and permission guards.
+// - Preserve modal open/close flows, deep-link handling via reportId, and comparison context behavior.
+// - Preserve archive/unarchive, regenerate, tier-generation, and download behaviors.
+// - Preserve lightweight investment report list fetching: list queries must not select report_content.
+// - Fetch full report_content only through detail/view/download flows that already require it.
 
 // UI Refactor Safety Checklist (Phase 0):
 // - Preserve Supabase table names, secure edge function names, route paths, and permission guards.
@@ -41,7 +49,7 @@ const ReportVersionHistory = lazy(() => import('@/components/reports/ReportVersi
 const ManualDataOverrideModal = lazy(() => import('@/components/reports/ManualDataOverrideModal').then(m => ({ default: m.ManualDataOverrideModal })));
 
 // Non-lazy imports for components used inline without Suspense
-import { TierBadge, type ReportTier } from '@/components/reports/TierBadge';
+import type { ReportTier } from '@/components/reports/TierBadge';
 
 // Loading fallback for modals
 const ModalLoader = () => (
@@ -54,65 +62,8 @@ const ModalLoader = () => (
   </div>
 );
 
-interface GeneratedReport {
-  id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-  listing_count: number;
-  chart_images: any;
-  kpis: any;
-  analytics: any;
-  insights: any;
-  config: any;
-  generated_by?: string | null;
-}
-
-interface InvestmentReport {
-  id: string;
-  property_address: string;
-  property_listing_id: string | null;
-  report_content?: string;
-  sources_content?: string | null;
-  created_at: string;
-  current_version: number;
-  report_scope?: string; // Track report generation scope
-  report_tier?: 'compass' | 'briefing' | 'snapshot'; // Report tier
-  report_variant?: 'composite' | 'financial' | 'due_diligence' | null;
-  derived_from_report_id?: string | null;
-  parent_report_id?: string | null;
-  status?: string;
-  is_archived?: boolean;
-  manual_overrides?: any;
-  financial_calculations?: any;
-  demographics_data?: any;
-  economic_data?: any;
-  investment_score?: any;
-  location_intelligence?: any;
-  generated_by?: string | null;
-}
-
-interface ComparisonAnalysis {
-  id: string;
-  property_count: number;
-  property_addresses?: string[];
-  property_states?: string[];
-  report_title?: string;
-  report_ids: string[];
-  created_at: string;
-  analysis_summary: string | null;
-  executive_summary: string | null;
-  rankings: any;
-  recommendations: any;
-  financial_comparison: any;
-  location_comparison: any;
-  risk_comparison: any;
-  red_flags: any;
-  created_by?: string | null;
-}
-
 export default function GeneratedReports() {
-  const { canEdit: canEditReports, canDelete: canDeleteReports } = useModulePermissions('generated_reports');
+  const { canEdit: canEditReports } = useModulePermissions('generated_reports');
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [investmentReports, setInvestmentReports] = useState<InvestmentReport[]>([]);
   const [comparisons, setComparisons] = useState<ComparisonAnalysis[]>([]);
@@ -896,657 +847,116 @@ export default function GeneratedReports() {
   };
 
   if (loading) {
-    return (
-      <div className="flex-1 space-y-4 p-8 pt-6">
-        <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Generated Reports</h2>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="space-y-2">
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-                <div className="h-3 bg-muted rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-20 bg-muted rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    return <ReportLibrarySkeleton />;
   }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4 md:pt-6 pb-20 md:pb-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:space-y-2">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Generated Reports</h2>
-          <p className="text-sm md:text-base text-muted-foreground">
-            View and download your generated property reports
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Badge variant="secondary" className="text-xs">{reports.length} quantitative</Badge>
-          <Badge variant="outline" className="text-xs">{investmentReports.length} investment</Badge>
-        </div>
-      </div>
+      <ReportLibraryHero quantitativeCount={reports.length} investmentCount={investmentReports.length} />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'quantitative' | 'investment' | 'comparisons')} className="w-full">
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className={isMobile ? "inline-flex w-auto min-w-full" : "grid w-full grid-cols-3"}>
-            <TabsTrigger value="quantitative" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap">
-              <BarChart3 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Quantitative</span>
-              <span className="sm:hidden">Quant.</span>
-            </TabsTrigger>
-            <TabsTrigger value="investment" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap">
-              <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              Investment
-            </TabsTrigger>
-            <TabsTrigger value="comparisons" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap">
-              <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Comparisons</span>
-              <span className="sm:hidden">Compare</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <ReportLibraryTabs isMobile={isMobile} />
 
         <TabsContent value="quantitative" className="space-y-4">
           {reports.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center h-96 space-y-4">
-                <div className="text-6xl text-muted-foreground">📊</div>
-                <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold">No quantitative reports generated yet</h3>
-                  <p className="text-muted-foreground">
-                    Generate your first report from the Reports page
-                  </p>
-                </div>
-                <Button onClick={() => navigate('/reports')} className="mt-4">
-                  <FileText className="mr-2 h-4 w-4" />
-                  Go to Reports
-                </Button>
-              </CardContent>
-            </Card>
+            <ReportLibraryEmptyState
+              icon="📊"
+              title="No quantitative reports generated yet"
+              description="Generate your first report from the Reports page"
+              actionLabel="Go to Reports"
+              actionIcon={<FileText className="mr-2 h-4 w-4" />}
+              onAction={() => navigate('/reports')}
+            />
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {reports.map((report) => (
-                <Card key={report.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-start justify-between">
-                      <span className="line-clamp-2">{report.title}</span>
-                      <BarChart3 className="h-5 w-5 text-muted-foreground flex-shrink-0 ml-2" />
-                    </CardTitle>
-                    {report.description && (
-                      <CardDescription className="line-clamp-2">
-                        {report.description}
-                      </CardDescription>
-                    )}
-                    <CardDescription className="text-xs flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Generated on {format(new Date(report.created_at), 'PPp')}
-                    </CardDescription>
-                    <CardDescription className="text-xs flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      Generated by {generatorLabel(report.generated_by)}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Listings analyzed:</span>
-                        <Badge variant="outline">{report.listing_count}</Badge>
-                      </div>
-                      {report.kpis && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Avg. Price:</span>
-                          <span className="font-medium">
-                            ${report.kpis.avg_price?.toLocaleString() || 'N/A'}
-                          </span>
-                        </div>
-                      )}
-                      {report.analytics?.quality && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">Data Quality:</span>
-                          <span className="font-medium">
-                            {report.analytics.quality.avg_confidence?.toFixed(1) || 'N/A'}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex gap-2 pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleViewReport(report.id)}
-                        className="flex-1"
-                      >
-                        <Eye className="mr-1 h-3 w-3" />
-                        View
-                      </Button>
-                      <Button 
-                        variant="default" 
-                        size="sm" 
-                        onClick={() => handleDownloadPDF(report)}
-                        className="flex-1"
-                      >
-                        <Download className="mr-1 h-3 w-3" />
-                        PDF
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <QuantitativeReportCard
+                  key={report.id}
+                  report={report}
+                  generatorLabel={generatorLabel}
+                  onView={handleViewReport}
+                  onDownloadPDF={handleDownloadPDF}
+                />
               ))}
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="investment" className="space-y-4">
-          {/* Search Bar & Filters */}
-          <div className="flex flex-col gap-4 mb-4">
-            <div className="flex items-center gap-2 md:gap-4">
-              <div className="relative flex-1">
-                <Input
-                  type="text"
-                  placeholder="Search by property address..."
-                  value={investmentSearchQuery}
-                  onChange={(e) => {
-                    setInvestmentSearchQuery(e.target.value);
-                    setInvestmentPage(1);
-                  }}
-                />
-              </div>
-
-              {/* Mobile: Filter Sheet */}
-              {isMobile ? (
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="icon" className="shrink-0">
-                      <SlidersHorizontal className="h-4 w-4" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
-                    <SheetHeader className="p-4 border-b">
-                      <SheetTitle>Report Filters</SheetTitle>
-                    </SheetHeader>
-                    <ScrollArea className="flex-1 p-4">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Scope</label>
-                          <Select value={scopeFilter} onValueChange={(v) => { setScopeFilter(v); setInvestmentPage(1); }}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="All Reports" /></SelectTrigger>
-                            <SelectContent className="bg-background z-50">
-                              <SelectItem value="all">All Reports</SelectItem>
-                              <SelectItem value="address">Property Analysis</SelectItem>
-                              <SelectItem value="suburb">Suburb Analysis</SelectItem>
-                              <SelectItem value="zipcode">Postcode Analysis</SelectItem>
-                              <SelectItem value="state">State Analysis</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Grade</label>
-                          <Select value={gradeFilter} onValueChange={(v) => { setGradeFilter(v); setInvestmentPage(1); }}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="All Grades" /></SelectTrigger>
-                            <SelectContent className="bg-background z-50">
-                              <SelectItem value="all">All Grades</SelectItem>
-                              {['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'].map(g => (
-                                <SelectItem key={g} value={g}>Grade {g}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Tier</label>
-                          <Select value={tierFilter} onValueChange={(v) => { setTierFilter(v); setInvestmentPage(1); }}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="All Tiers" /></SelectTrigger>
-                            <SelectContent className="bg-background z-50">
-                              <SelectItem value="all">All Tiers</SelectItem>
-                              <SelectItem value="compass">Compass (Full)</SelectItem>
-                              <SelectItem value="briefing">Briefing (~20p)</SelectItem>
-                              <SelectItem value="snapshot">Snapshot (~5p)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Source</label>
-                          <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setInvestmentPage(1); }}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="All Sources" /></SelectTrigger>
-                            <SelectContent className="bg-background z-50">
-                              <SelectItem value="all">All Sources</SelectItem>
-                              <SelectItem value="manual">Manual</SelectItem>
-                              <SelectItem value="auto">Auto-generated</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Score Range: {scoreRange[0]} - {scoreRange[1]}</label>
-                          <Slider
-                            value={scoreRange}
-                            onValueChange={(value) => { setScoreRange(value as [number, number]); setInvestmentPage(1); }}
-                            min={0} max={100} step={5}
-                          />
-                        </div>
-                        <Button
-                          variant={showArchived ? "secondary" : "outline"}
-                          className="w-full gap-2"
-                          onClick={() => setShowArchived(!showArchived)}
-                        >
-                          <Archive className="h-4 w-4" />
-                          {showArchived ? 'Viewing Archived' : 'Show Archived'}
-                        </Button>
-                      </div>
-                    </ScrollArea>
-                  </SheetContent>
-                </Sheet>
-              ) : (
-                <>
-                  {/* Desktop inline filters */}
-                  <Select value={scopeFilter} onValueChange={(value) => { setScopeFilter(value); setInvestmentPage(1); }}>
-                    <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter by scope" /></SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      <SelectItem value="all">All Reports</SelectItem>
-                      <SelectItem value="address">
-                        <div className="flex items-center gap-2"><Home className="h-4 w-4" />Property Analysis</div>
-                      </SelectItem>
-                      <SelectItem value="suburb">
-                        <div className="flex items-center gap-2"><Building2 className="h-4 w-4" />Suburb Analysis</div>
-                      </SelectItem>
-                      <SelectItem value="zipcode">
-                        <div className="flex items-center gap-2"><Map className="h-4 w-4" />Postcode Analysis</div>
-                      </SelectItem>
-                      <SelectItem value="state">
-                        <div className="flex items-center gap-2"><Globe className="h-4 w-4" />State Analysis</div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={gradeFilter} onValueChange={(value) => { setGradeFilter(value); setInvestmentPage(1); }}>
-                    <SelectTrigger className="w-[140px]"><SelectValue placeholder="Filter by grade" /></SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      <SelectItem value="all">All Grades</SelectItem>
-                      {['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'F'].map(g => (
-                        <SelectItem key={g} value={g}>
-                          <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 rounded text-xs font-bold flex items-center justify-center ${getGradeColor(g)}`}>{g}</span>
-                            Grade {g}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={tierFilter} onValueChange={(value) => { setTierFilter(value); setInvestmentPage(1); }}>
-                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Filter by tier" /></SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      <SelectItem value="all">All Tiers</SelectItem>
-                      <SelectItem value="compass">
-                        <div className="flex items-center gap-2"><Compass className="h-4 w-4 text-amber-500" />Compass (Full)</div>
-                      </SelectItem>
-                      <SelectItem value="briefing">
-                        <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-blue-500" />Briefing (~20p)</div>
-                      </SelectItem>
-                      <SelectItem value="snapshot">
-                        <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-green-500" />Snapshot (~5p)</div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setInvestmentPage(1); }}>
-                    <SelectTrigger className="w-[160px]"><SelectValue placeholder="Filter by source" /></SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      <SelectItem value="all">All Sources</SelectItem>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="auto">Auto-generated</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Button
-                    variant={showArchived ? "secondary" : "outline"}
-                    size="sm"
-                    onClick={() => setShowArchived(!showArchived)}
-                    className="gap-2"
-                  >
-                    <Archive className="h-4 w-4" />
-                    {showArchived ? 'Viewing Archived' : 'Show Archived'}
-                  </Button>
-                </>
-              )}
-
-              {!showArchived && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Select value={dateRange} onValueChange={setDateRange}>
-                    <SelectTrigger className="w-[170px] h-9">
-                      <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
-                      <SelectValue placeholder="Date range" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      <SelectItem value="7">Last 7 days</SelectItem>
-                      <SelectItem value="30">Last 30 days</SelectItem>
-                      <SelectItem value="90">Last 90 days</SelectItem>
-                      <SelectItem value="180">Last 6 months</SelectItem>
-                      <SelectItem value="365">Last 12 months</SelectItem>
-                      <SelectItem value="all">All time</SelectItem>
-                      <SelectItem value="custom">Custom range…</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {dateRange === 'custom' && (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        type="date"
-                        value={customFrom}
-                        max={customTo || undefined}
-                        onChange={(e) => setCustomFrom(e.target.value)}
-                        className="h-9 w-[150px]"
-                        aria-label="From date"
-                      />
-                      <span className="text-muted-foreground text-xs">→</span>
-                      <Input
-                        type="date"
-                        value={customTo}
-                        min={customFrom || undefined}
-                        onChange={(e) => setCustomTo(e.target.value)}
-                        className="h-9 w-[150px]"
-                        aria-label="To date"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <Badge variant="secondary" className="hidden md:inline-flex">
-                {filteredInvestmentReports.length} of {investmentReports.filter(r => showArchived ? r.is_archived : !r.is_archived).length} reports
-              </Badge>
-
-              {!showArchived && (
-                <span className="text-xs text-muted-foreground hidden md:inline">
-                  {dateRangeLabel}
-                </span>
-              )}
-            </div>
-            
-            {/* Score Range Filter - desktop only */}
-            {!isMobile && (
-              <div className="flex items-center gap-4 px-1">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Star className="h-4 w-4" />
-                  <span>Score Range:</span>
-                </div>
-                <div className="flex-1 max-w-md flex items-center gap-4">
-                  <span className="text-sm font-medium w-8">{scoreRange[0]}</span>
-                  <Slider
-                    value={scoreRange}
-                    onValueChange={(value) => {
-                      setScoreRange(value as [number, number]);
-                      setInvestmentPage(1);
-                    }}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="flex-1"
-                  />
-                  <span className="text-sm font-medium w-8">{scoreRange[1]}</span>
-                </div>
-                {(scoreRange[0] > 0 || scoreRange[1] < 100) && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setScoreRange([0, 100])}
-                    className="text-xs"
-                  >
-                    Reset
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Mobile filter summary */}
-            {isMobile && (scopeFilter !== 'all' || gradeFilter !== 'all' || tierFilter !== 'all' || sourceFilter !== 'all' || scoreRange[0] > 0 || scoreRange[1] < 100) && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="secondary" className="text-xs">
-                  {[scopeFilter !== 'all', gradeFilter !== 'all', tierFilter !== 'all', sourceFilter !== 'all', scoreRange[0] > 0 || scoreRange[1] < 100].filter(Boolean).length} filter(s)
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {filteredInvestmentReports.length} reports
-                </Badge>
-              </div>
-            )}
-          </div>
+          <ReportLibraryToolbar
+            isMobile={isMobile}
+            investmentSearchQuery={investmentSearchQuery}
+            setInvestmentSearchQuery={setInvestmentSearchQuery}
+            setInvestmentPage={setInvestmentPage}
+            scopeFilter={scopeFilter}
+            setScopeFilter={setScopeFilter}
+            gradeFilter={gradeFilter}
+            setGradeFilter={setGradeFilter}
+            tierFilter={tierFilter}
+            setTierFilter={setTierFilter}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+            scoreRange={scoreRange}
+            setScoreRange={setScoreRange}
+            showArchived={showArchived}
+            setShowArchived={setShowArchived}
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            customFrom={customFrom}
+            setCustomFrom={setCustomFrom}
+            customTo={customTo}
+            setCustomTo={setCustomTo}
+            dateRangeLabel={dateRangeLabel}
+            filteredCount={filteredInvestmentReports.length}
+            investmentReports={investmentReports}
+            getGradeColor={getGradeColor}
+          />
 
           {filteredInvestmentReports.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center h-96 space-y-4">
-                <div className="text-6xl text-muted-foreground">🏠</div>
-                <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold">No investment reports generated yet</h3>
-                  <p className="text-muted-foreground">
-                    Generate your first investment report from a property listing
-                  </p>
-                </div>
-                <Button onClick={() => navigate('/listings')} className="mt-4">
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  Go to Listings
-                </Button>
-              </CardContent>
-            </Card>
+            <ReportLibraryEmptyState
+              icon="🏠"
+              title="No investment reports generated yet"
+              description="Generate your first investment report from a property listing"
+              actionLabel="Go to Listings"
+              actionIcon={<TrendingUp className="mr-2 h-4 w-4" />}
+              onAction={() => navigate('/listings')}
+            />
           ) : (
             <>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {paginatedInvestmentReports.map((report) => (
-                <Card key={report.id} className="overflow-hidden hover:shadow-lg transition-shadow relative">
-                  <div className="absolute top-4 right-4 z-10">
-                    <Checkbox
-                      checked={isSelected(report.id)}
-                      onCheckedChange={(checked) => handleToggleSelection(report, checked as boolean)}
-                      disabled={!canAddMore && !isSelected(report.id)}
-                      className="h-5 w-5 bg-background border-2"
-                    />
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-start justify-between pr-8">
-                      <div className="flex flex-col gap-1">
-                        <span className="line-clamp-2">{report.property_address}</span>
-                        {report.report_scope && (
-                          <Badge 
-                            variant="secondary"
-                            className={`text-xs w-fit flex items-center gap-1 ${
-                              report.report_scope === 'address' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300' :
-                              report.report_scope === 'suburb' ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300' :
-                              report.report_scope === 'zipcode' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                              'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300'
-                            }`}
-                          >
-                            {report.report_scope === 'address' && (
-                              <>
-                                <Home className="h-3 w-3" />
-                                Property Analysis
-                              </>
-                            )}
-                            {report.report_scope === 'suburb' && (
-                              <>
-                                <Building2 className="h-3 w-3" />
-                                Suburb Analysis
-                              </>
-                            )}
-                            {report.report_scope === 'zipcode' && (
-                              <>
-                                <Map className="h-3 w-3" />
-                                Postcode Analysis
-                              </>
-                            )}
-                            {report.report_scope === 'state' && (
-                              <>
-                                <Globe className="h-3 w-3" />
-                                State Analysis
-                              </>
-                            )}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {report.report_tier && (
-                          <TierBadge tier={report.report_tier} showIcon={false} />
-                        )}
-                        {report.report_variant && report.report_variant !== 'composite' && (
-                          <Badge variant="outline" className="text-xs">
-                            {report.report_variant === 'financial' ? 'FIN' : 'PLDD'}
-                          </Badge>
-                        )}
-                        {autoGeneratedReportIds.has(report.id) && (
-                          <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-300">
-                            <Zap className="h-3 w-3 mr-1" />
-                            Auto
-                          </Badge>
-                        )}
-                        {report.status === 'pending' && (
-                          <Badge variant="outline" className="text-xs">Pending</Badge>
-                        )}
-                        <TrendingUp className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      </div>
-                    </CardTitle>
-                    <CardDescription className="text-xs flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Generated on {format(new Date(report.created_at), 'PPp')}
-                    </CardDescription>
-                    <CardDescription className="text-xs flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      Generated by {generatorLabel(report.generated_by)}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Investment Grade & Score Display */}
-                    {report.investment_score ? (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg font-bold text-lg flex items-center justify-center ${getGradeColor(report.investment_score.grade)}`}>
-                            {report.investment_score.grade || 'N/A'}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">{report.investment_score?.scoreType === 'area' ? 'Area Grade' : 'Investment Grade'}</span>
-                            <span className="text-sm font-medium">{report.investment_score.recommendation?.split(' ').slice(0, 2).join(' ') || 'Not rated'}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs text-muted-foreground">Score</span>
-                          <span className={`text-xl font-bold ${getScoreColor(report.investment_score.totalScore || 0)}`}>
-                            {report.investment_score.totalScore || 0}<span className="text-sm font-normal text-muted-foreground">/100</span>
-                          </span>
-                        </div>
-                      </div>
-                    ) : ['suburb', 'zipcode', 'state'].includes(report.report_scope || '') ? (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-dashed">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg font-bold text-sm flex items-center justify-center bg-muted text-muted-foreground">
-                            <Map className="h-5 w-5" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">Area Score</span>
-                            <span className="text-sm text-muted-foreground">Generate a new report to calculate area score</span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : null}
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-muted-foreground truncate">{report.property_address}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col gap-2 pt-2">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/investment-report/${report.id}`)}
-                          className="flex-1"
-                        >
-                          <Eye className="mr-1 h-3 w-3" />
-                          View
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => downloadInvestmentReportText(report)}
-                          className="flex-1"
-                        >
-                          <Download className="mr-1 h-3 w-3" />
-                          Download
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <RegenerateReportButton
-                          reportId={report.id}
-                          propertyAddress={report.property_address}
-                          onRegenerated={handleInvestmentReportUpdate}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                        />
-                        <ReportActionMenu
-                          surface="report-card"
-                          label={report.property_address}
-                          report={{
-                            reportId: report.id,
-                            status: (report.status as ReportActionStatus) || 'completed',
-                            tier: report.report_tier,
-                            scope: report.report_scope,
-                            isArchived: !!report.is_archived,
-                          }}
-                          generatingTier={
-                            generatingTier?.reportId === report.id ? generatingTier.tier as 'briefing' | 'snapshot' : null
-                          }
-                          callbacks={{
-                            onViewHistory: () => handleViewVersionHistory(report),
-                            onToggleArchive: () => report.is_archived ? unarchiveReport(report.id) : archiveReport(report.id),
-                            onGenerateBriefing: report.report_tier === 'compass' ? () => handleGenerateTier(report, 'briefing') : undefined,
-                            onGenerateSnapshot: report.report_tier === 'compass' ? () => handleGenerateTier(report, 'snapshot') : undefined,
-                          }}
-                          permissions={{ canArchive: canEditReports }}
-                          triggerClassName="h-8 w-8"
-                        />
-                      </div>
-                      {/* PDF download is available inside the report viewer (View) to avoid loading huge report payloads in the list. */}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-            {/* Pagination Controls */}
-            {totalInvestmentPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setInvestmentPage(p => Math.max(1, p - 1))}
-                  disabled={investmentPage === 1}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  Page {investmentPage} of {totalInvestmentPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setInvestmentPage(p => Math.min(totalInvestmentPages, p + 1))}
-                  disabled={investmentPage === totalInvestmentPages}
-                >
-                  Next
-                </Button>
+                  <InvestmentReportCard
+                    key={report.id}
+                    report={report}
+                    isSelected={isSelected(report.id)}
+                    canAddMore={canAddMore}
+                    isAutoGenerated={autoGeneratedReportIds.has(report.id)}
+                    generatingTier={generatingTier?.reportId === report.id ? generatingTier.tier : null}
+                    canEditReports={canEditReports}
+                    generatorLabel={generatorLabel}
+                    getGradeColor={getGradeColor}
+                    getScoreColor={getScoreColor}
+                    onToggleSelection={handleToggleSelection}
+                    onView={(selected) => navigate(`/investment-report/${selected.id}`)}
+                    onDownload={downloadInvestmentReportText}
+                    onRegenerated={handleInvestmentReportUpdate}
+                    onViewHistory={handleViewVersionHistory}
+                    onToggleArchive={(selected) => selected.is_archived ? unarchiveReport(selected.id) : archiveReport(selected.id)}
+                    onGenerateTier={handleGenerateTier}
+                  />
+                ))}
               </div>
-            )}
+              <ReportLibraryPagination
+                page={investmentPage}
+                totalPages={totalInvestmentPages}
+                onPrevious={() => setInvestmentPage(p => Math.max(1, p - 1))}
+                onNext={() => setInvestmentPage(p => Math.min(totalInvestmentPages, p + 1))}
+              />
             </>
           )}
         </TabsContent>
 
         <TabsContent value="comparisons" className="space-y-4">
-          {/* Comparisons Archive Toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">{comparisons.length} comparison{comparisons.length !== 1 ? 's' : ''}</Badge>
@@ -1563,90 +973,24 @@ export default function GeneratedReports() {
           </div>
 
           {filteredComparisons.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center h-96 space-y-4">
-                <div className="text-6xl text-muted-foreground">{showArchivedComparisons ? '📦' : '🔄'}</div>
-                <div className="text-center space-y-2">
-                  <h3 className="text-lg font-semibold">
-                    {showArchivedComparisons ? 'No Archived Comparisons' : 'No Comparison Analyses Yet'}
-                  </h3>
-                  <p className="text-muted-foreground">
-                    {showArchivedComparisons 
-                      ? 'Archived comparisons will appear here'
-                      : 'Select 2-5 investment reports and click "Compare Properties" to create your first comparison analysis'
-                    }
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <ReportLibraryEmptyState
+              icon={showArchivedComparisons ? '📦' : '🔄'}
+              title={showArchivedComparisons ? 'No Archived Comparisons' : 'No Comparison Analyses Yet'}
+              description={showArchivedComparisons ? 'Archived comparisons will appear here' : 'Select 2-5 investment reports and click "Compare Properties" to create your first comparison analysis'}
+            />
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredComparisons.map((comparison: any) => (
-                <Card key={comparison.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
-                      <span className="flex-1 line-clamp-2">{comparison.report_title || `${comparison.property_count} Property Comparison`}</span>
-                    </CardTitle>
-                    <CardDescription className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3" />
-                        {format(new Date(comparison.created_at), 'MMM dd, yyyy')}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User className="h-3 w-3" />
-                        Created by {generatorLabel(comparison.created_by)}
-                      </div>
-                      {comparison.property_states && comparison.property_states.length > 0 && (
-                        <div className="text-xs">
-                          States: {comparison.property_states.join(', ')}
-                        </div>
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {comparison.executive_summary && (
-                      <p className="text-sm text-muted-foreground line-clamp-3">
-                        {comparison.executive_summary}
-                      </p>
-                    )}
-                    {comparison.rankings && comparison.rankings.length > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium">Top Ranked:</p>
-                        <Badge variant="default">
-                          {comparison.rankings[0]?.address || `Property #${comparison.rankings[0]?.propertyNumber}`}
-                        </Badge>
-                      </div>
-                    )}
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedComparison(comparison);
-                          setComparisonViewerOpen(true);
-                        }}
-                        className="flex-1"
-                      >
-                        <Eye className="mr-1 h-3 w-3" />
-                        View Analysis
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => archiveComparison(comparison.id, !comparison.is_archived)}
-                        title={comparison.is_archived ? "Restore comparison" : "Archive comparison"}
-                        className="px-2"
-                      >
-                        {comparison.is_archived ? (
-                          <ArchiveRestore className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Archive className="h-3 w-3 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <ComparisonReportCard
+                  key={comparison.id}
+                  comparison={comparison}
+                  generatorLabel={generatorLabel}
+                  onView={(selected) => {
+                    setSelectedComparison(selected);
+                    setComparisonViewerOpen(true);
+                  }}
+                  onToggleArchive={archiveComparison}
+                />
               ))}
             </div>
           )}
