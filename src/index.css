@@ -2232,8 +2232,8 @@ html {
     @apply text-sm font-bold uppercase tracking-[0.14em] text-foreground;
   }
 
-  .reports-investment-generator .text-muted-foreground {
-    @apply leading-6;
+  .reports-investment-generator [class~="text-muted-foreground"] {
+    line-height: 1.5rem;
   }
 
   .reports-recent-panel {
@@ -2409,7 +2409,7 @@ html {
   }
 
   .reports-overrides-tab-content {
-    @apply outline-none data-[state=active]:animate-fade-in;
+    @apply outline-none;
   }
 
   .reports-overrides-build-shell,
