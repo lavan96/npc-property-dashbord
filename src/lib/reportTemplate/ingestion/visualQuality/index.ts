@@ -99,3 +99,15 @@ export {
   type PageContextRenderArtifactManifest,
   type PageContextSourceRenderArtifact,
 } from './pageContextArtifacts';
+
+
+export {
+  GENERATED_RENDER_ARTIFACT_MANIFEST_VERSION,
+  buildGeneratedRenderArtifactManifest,
+  captureGeneratedTemplatePageRasters,
+  generatedRenderRastersToReviewArtifacts,
+  type CaptureGeneratedRenderOptions,
+  type GeneratedRenderArtifactManifest,
+  type GeneratedRenderArtifactPage,
+  type GeneratedRenderPageRaster,
+} from './generatedRenderCapture';
