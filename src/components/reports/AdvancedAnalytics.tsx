@@ -130,16 +130,22 @@ export function AdvancedAnalytics({ listings }: AdvancedAnalyticsProps) {
 
   if (!analytics) return null;
 
+  const velocityTone = analytics.velocity.change > 0 ? 'success' : 'destructive';
+  const qualityTone = analytics.quality.avgConfidence > 70 ? 'success' : analytics.quality.avgConfidence > 50 ? 'warning' : 'destructive';
+  const coverageTone = analytics.market.totalSuburbs > 0 ? 'success' : 'warning';
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 reports-secondary-metric-grid">
+      <Card className={`reports-secondary-metric reports-secondary-metric-${velocityTone}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Market Velocity</CardTitle>
-          {analytics.velocity.change > 0 ? (
-            <TrendingUp className="h-4 w-4 text-success" />
-          ) : (
-            <TrendingDown className="h-4 w-4 text-destructive" />
-          )}
+          <span className="reports-secondary-metric-icon">
+            {analytics.velocity.change > 0 ? (
+              <TrendingUp className="h-4 w-4 text-success" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-destructive" />
+            )}
+          </span>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{analytics.velocity.current}</div>
@@ -155,10 +161,10 @@ export function AdvancedAnalytics({ listings }: AdvancedAnalyticsProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="reports-secondary-metric reports-secondary-metric-neutral">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Price Distribution</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <span className="reports-secondary-metric-icon"><Activity className="h-4 w-4 text-muted-foreground" /></span>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">${analytics.pricing.median.toLocaleString()}</div>
@@ -171,10 +177,10 @@ export function AdvancedAnalytics({ listings }: AdvancedAnalyticsProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={`reports-secondary-metric reports-secondary-metric-${qualityTone}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Data Quality</CardTitle>
-          <AlertTriangle className={`h-4 w-4 ${analytics.quality.avgConfidence > 70 ? 'text-success' : analytics.quality.avgConfidence > 50 ? 'text-warning' : 'text-destructive'}`} />
+          <span className="reports-secondary-metric-icon"><AlertTriangle className={`h-4 w-4 ${analytics.quality.avgConfidence > 70 ? 'text-success' : analytics.quality.avgConfidence > 50 ? 'text-warning' : 'text-destructive'}`} /></span>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{analytics.quality.avgConfidence.toFixed(1)}%</div>
@@ -187,10 +193,10 @@ export function AdvancedAnalytics({ listings }: AdvancedAnalyticsProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={`reports-secondary-metric reports-secondary-metric-${coverageTone}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Market Coverage</CardTitle>
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <span className="reports-secondary-metric-icon"><Activity className="h-4 w-4 text-muted-foreground" /></span>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{analytics.market.totalSuburbs}</div>
