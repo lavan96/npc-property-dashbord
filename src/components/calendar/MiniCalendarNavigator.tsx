@@ -52,7 +52,7 @@ export function MiniCalendarNavigator({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -61,7 +61,7 @@ export function MiniCalendarNavigator({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -116,7 +116,7 @@ export function MiniCalendarNavigator({
       <Button
         variant="outline"
         size="sm"
-        className="h-8 w-full rounded-xl border-primary/25 bg-primary/10 text-xs font-semibold text-primary transition-all hover:border-primary/45 hover:bg-primary/15 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="h-9 w-full rounded-xl border-primary/35 bg-primary/15 text-xs font-semibold text-primary transition-all hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/20 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-[0.98]"
         onClick={goToToday}
       >
         Today

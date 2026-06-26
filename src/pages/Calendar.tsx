@@ -782,7 +782,7 @@ export default function Calendar() {
             <div className="flex flex-wrap items-center gap-2 md:justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-primary/30 bg-primary/15 font-semibold text-primary shadow-sm shadow-primary/10 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/20 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/50 active:translate-y-0">
+                  <Button variant="outline" size="sm" className="h-10 rounded-xl border-white/10 bg-white/[0.04] px-3 font-semibold text-zinc-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]">
                     <Mail className="h-4 w-4 mr-2" />
                     Export
                   </Button>
@@ -797,7 +797,7 @@ export default function Calendar() {
               {isMobile && (
               <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" className={PREMIUM_BUTTON}>
+                  <Button variant="outline" size="icon" className={cn(PREMIUM_BUTTON, "h-10 w-10 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95")}>
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -948,7 +948,7 @@ export default function Calendar() {
               <Button
                 variant="outline"
                 size="icon"
-                className={cn(PREMIUM_BUTTON, "focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-95")}
+                className={cn(PREMIUM_BUTTON, "h-10 w-10 rounded-xl focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60")}
                 onClick={handleRefresh}
                 disabled={isLoading}
               >
@@ -1129,7 +1129,7 @@ export default function Calendar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-xl border border-white/10 text-zinc-300 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
+                  className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(subMonths(currentMonth, 1))
                     : setCurrentWeek(subWeeks(currentWeek, 1))
@@ -1141,7 +1141,7 @@ export default function Calendar() {
                   variant="default"
                   size="sm"
                   onClick={goToToday}
-                  className="rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/45"
+                  className="h-10 rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]"
                 >
                   Today
                 </Button>
@@ -1150,7 +1150,7 @@ export default function Calendar() {
                     variant="ghost"
                     size="sm"
                     onClick={clearSelection}
-                    className="rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
+                    className="h-10 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-[0.98]"
                   >
                     <X className="h-3 w-3 mr-1" />
                     Clear
@@ -1159,7 +1159,7 @@ export default function Calendar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-xl border border-white/10 text-zinc-300 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
+                  className="h-10 w-10 rounded-xl border border-white/10 text-zinc-300 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                   onClick={() => view === 'month'
                     ? setCurrentMonth(addMonths(currentMonth, 1))
                     : setCurrentWeek(addWeeks(currentWeek, 1))
@@ -1428,7 +1428,7 @@ export default function Calendar() {
                     <p className="mt-0.5 text-[11px] text-zinc-500">Calendar command sidebar</p>
                   </div>
                   <div className="flex items-center gap-1 ml-auto">
-                    <Button size="sm" variant="outline" className="h-9 rounded-xl border-primary/30 bg-primary/15 px-3 text-xs font-semibold text-primary shadow-sm shadow-primary/10 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/20 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45" onClick={() => setQuickAddModalOpen(true)}>
+                    <Button size="sm" variant="outline" className="h-10 rounded-xl border-primary/40 bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-[0.98]" onClick={() => setQuickAddModalOpen(true)}>
                       <Plus className="h-3 w-3 mr-1" />
                       Quick Add
                     </Button>
@@ -1437,7 +1437,7 @@ export default function Calendar() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45"
+                          className="h-10 w-10 rounded-xl border border-white/10 text-zinc-400 transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:scale-95"
                           onClick={() => setSidebarCollapsed(true)}
                         >
                           <PanelLeftClose className="h-4 w-4" />
