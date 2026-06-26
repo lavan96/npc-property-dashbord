@@ -3984,15 +3984,22 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             />
 
             {/* Cash Flow Trends Chart */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    10-Year Cash Flow Trends
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-3 text-xs flex-wrap">
+            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+              <CardHeader className="border-b bg-muted/20 pb-4">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                        <BarChart3 className="h-4 w-4" />
+                      </span>
+                      10-Year Cash Flow Trends
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Toggle metrics, inspect break-even points, and export the active trend chart.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-3 xl:items-end">
+                    <div className="flex flex-wrap gap-2 text-xs">
                       {[
                         { key: 'propertyValue' as const, label: 'Property Value', color: 'hsl(var(--primary))' },
                         { key: 'equity' as const, label: 'Equity', color: '#22c55e' },
@@ -4000,32 +4007,30 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         { key: 'rentalIncome' as const, label: 'Rental Income', color: '#f59e0b' },
                         { key: 'cashFlow' as const, label: 'Cash Flow', color: '#8b5cf6' },
                       ].map(({ key, label, color }) => (
-                        <label key={key} className="flex items-center gap-1.5 cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            checked={chartMetrics[key]}
-                            onChange={(e) => setChartMetrics(prev => ({ ...prev, [key]: e.target.checked }))}
-                            className="rounded border-border"
-                          />
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                            {label}
-                          </span>
-                        </label>
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setChartMetrics(prev => ({ ...prev, [key]: !prev[key] }))}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors ${chartMetrics[key] ? 'border-primary/30 bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:bg-muted'}`}
+                        >
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                          {label}
+                        </button>
                       ))}
                     </div>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => exportChartAsPNG(cashFlowChartRef, 'cash-flow-trends')}
-                      className="h-7 px-2"
+                      className="h-8 w-full justify-center gap-2 sm:w-auto"
                     >
                       <Image className="h-4 w-4" />
+                      Export PNG
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4 p-4">
                 {(() => {
                   const chartData = projections.filter(p => p.year >= 1).map((p, i, arr) => {
                     const prev = i > 0 ? arr[i - 1] : null;
@@ -4054,7 +4059,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={cashFlowChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={cashFlowChartRef} className="h-[420px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={chartData}
@@ -4120,7 +4125,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                               }}
                             />
                             <Legend 
-                              wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }}
+                              wrapperStyle={{ fontSize: '11px', paddingTop: '18px' }}
                               iconType="circle"
                               iconSize={8}
                             />
@@ -4270,7 +4275,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ];
 
                         return (
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t">
+                          <div className="grid grid-cols-1 gap-3 border-t pt-4 sm:grid-cols-2 xl:grid-cols-4">
                             {kpis.map(kpi => {
                               const min = Math.min(...kpi.sparkData);
                               const max = Math.max(...kpi.sparkData);
@@ -4279,7 +4284,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                 `${(i / (kpi.sparkData.length - 1)) * 60},${24 - ((v - min) / range) * 20}`
                               ).join(' ');
                               return (
-                                <div key={kpi.label} className="bg-muted/40 rounded-lg p-2.5 space-y-1">
+                                <div key={kpi.label} className="space-y-1 rounded-xl border bg-muted/30 p-3">
                                   <p className="text-[10px] text-muted-foreground font-medium">{kpi.label}</p>
                                   <div className="flex items-end justify-between">
                                     <div>
@@ -4316,7 +4321,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         return (
                           <Collapsible open={showCashFlowInsight} onOpenChange={setShowCashFlowInsight}>
                             <CollapsibleTrigger asChild>
-                              <button className="mt-3 w-full flex items-center justify-between p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors text-xs font-semibold text-amber-800 dark:text-amber-300">
+                              <button className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors text-xs font-semibold text-amber-800 dark:text-amber-300">
                                 <span className="flex items-center gap-1.5">
                                   <TrendingUp className="h-3.5 w-3.5" />
                                   Cash Flow Trend Analysis
@@ -4349,24 +4354,30 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             </Card>
 
             {/* Yield Percentages Chart */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Percent className="h-4 w-4" />
-                    Yield Percentages Over 10 Years
-                  </CardTitle>
+            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
+              <CardHeader className="border-b bg-muted/20 pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                        <Percent className="h-4 w-4" />
+                      </span>
+                      Yield Percentages Over 10 Years
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">Gross yield, net yield, and expense spread over the projection horizon.</p>
+                  </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => exportChartAsPNG(yieldChartRef, 'yield-percentages')}
-                    className="h-7 px-2"
+                    className="h-8 w-full justify-center gap-2 sm:w-auto"
                   >
                     <Image className="h-4 w-4" />
+                    Export PNG
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4 p-4">
                 {(() => {
                   const yieldData = projections.filter(p => p.year >= 1).map((p, i, arr) => {
                     const prev = i > 0 ? arr[i - 1] : null;
@@ -4382,7 +4393,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={yieldChartRef} className="h-[280px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={yieldChartRef} className="h-[320px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={yieldData}
@@ -4578,30 +4589,36 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* Comparison Chart - Side by Side (Up to 5 Properties) */}
             {comparisonMode && comparisonReports.length > 0 && allComparisonProjections.length > 0 && (
-              <Card className="border-primary/30">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <GitCompare className="h-4 w-4" />
-                      Property Comparison: Cash Flow ({comparisonReports.length + 1} Properties)
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
+              <Card className="overflow-hidden border-primary/30 shadow-sm">
+                <CardHeader className="border-b bg-primary/5 pb-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                          <GitCompare className="h-4 w-4" />
+                        </span>
+                        Property Comparison: Cash Flow ({comparisonReports.length + 1} Properties)
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground">Side-by-side projected value and after-tax cash-flow performance.</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:items-end">
+                      <Badge variant="outline" className="w-fit text-xs">
                         Comparing {comparisonReports.length + 1} properties
                       </Badge>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => exportChartAsPNG(comparisonChartRef, 'property-comparison')}
-                        className="h-7 px-2"
+                        className="h-8 w-full justify-center gap-2 sm:w-auto"
                       >
                         <Image className="h-4 w-4" />
+                        Export PNG
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div ref={comparisonChartRef} className="h-[380px] w-full bg-white p-2" style={{ backgroundColor: '#ffffff' }}>
+                <CardContent className="p-4">
+                  <div ref={comparisonChartRef} className="h-[420px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={projections.filter(p => p.year >= 1).map((p, i) => {
@@ -5827,6 +5844,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
           </div>
+        </div>
       </CashFlowModalShell>
     </Dialog>
 
