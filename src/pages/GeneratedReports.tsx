@@ -26,6 +26,13 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { RegenerateReportButton } from '@/components/reports/RegenerateReportButton';
 import { ReportActionMenu, type ReportActionStatus } from '@/components/reports/ReportActionMenu';
 
+// UI Refactor Safety Checklist (Phase 0):
+// - Preserve Supabase table names, secure edge function names, route paths, and permission guards.
+// - Preserve modal open/close flows, deep-link handling via reportId, and comparison context behavior.
+// - Preserve archive/unarchive, regenerate, tier-generation, and download behaviors.
+// - Preserve lightweight investment report list fetching: list queries must not select report_content.
+// - Fetch full report_content only through detail/view/download flows that already require it.
+
 // Lazy load heavy modal components
 const InvestmentReportViewer = lazy(() => import('@/components/reports/InvestmentReportViewer').then(m => ({ default: m.InvestmentReportViewer })));
 const PropertyComparisonModal = lazy(() => import('@/components/reports/PropertyComparisonModal').then(m => ({ default: m.PropertyComparisonModal })));
