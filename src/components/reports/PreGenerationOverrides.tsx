@@ -654,44 +654,44 @@ export function PreGenerationOverrides({
   ]);
 
   return (
-    <Card className="border-dashed">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base md:text-lg flex items-center gap-2">
-          <Calculator className="h-4 w-4 md:h-5 md:w-5" />
+    <Card className="reports-overrides-panel border-dashed">
+      <CardHeader className="reports-overrides-header pb-3">
+        <CardTitle className="reports-overrides-title text-base md:text-lg flex items-center gap-2">
+          <Calculator className="h-4 w-4 md:h-5 md:w-5 text-primary" />
           Pre-Generation Overrides
         </CardTitle>
-        <CardDescription className="text-xs md:text-sm">
+        <CardDescription className="reports-overrides-description text-xs md:text-sm">
           Set manual values to inject into the report generation.
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-3 md:px-6">
+      <CardContent className="reports-overrides-content px-3 md:px-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className={isMobile ? "overflow-x-auto -mx-3 px-3 pb-2" : ""}>
-            <TabsList className={isMobile ? "inline-flex w-auto min-w-full mb-4" : "grid w-full grid-cols-4 mb-4"}>
+          <div className={isMobile ? "reports-overrides-tabs-scroll overflow-x-auto -mx-3 px-3 pb-2" : "reports-overrides-tabs-wrap"}>
+            <TabsList className={isMobile ? "reports-overrides-tabs-list inline-flex w-auto min-w-full mb-4" : "reports-overrides-tabs-list grid w-full grid-cols-4 mb-4"}>
               <TabsTrigger 
                 value="property" 
-                className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
               >
                 <Home className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Property</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="financials" 
-                className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
               >
                 <DollarSign className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Financials</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="income" 
-                className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Income</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="advanced" 
-                className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
               >
                 <Settings2 className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Advanced</span>
@@ -699,8 +699,8 @@ export function PreGenerationOverrides({
             </TabsList>
           </div>
 
-          <ScrollArea className={isMobile ? "h-[350px] pr-2" : "h-[450px] pr-4"}>
-            <TabsContent value="property" className="mt-0">
+          <ScrollArea className={isMobile ? "reports-overrides-scroll h-[350px] pr-2" : "reports-overrides-scroll h-[450px] pr-4"}>
+            <TabsContent value="property" className="reports-overrides-tab-content mt-0">
               <PropertyTab
                 buildType={buildType}
                 onBuildTypeChange={handleBuildTypeChange}
@@ -740,7 +740,7 @@ export function PreGenerationOverrides({
               />
             </TabsContent>
 
-            <TabsContent value="financials" className="mt-0">
+            <TabsContent value="financials" className="reports-overrides-tab-content mt-0">
               <FinancialsTab
                 buildType={buildType}
                 purchasePrice={purchasePrice}
@@ -781,7 +781,7 @@ export function PreGenerationOverrides({
               />
             </TabsContent>
 
-            <TabsContent value="income" className="mt-0">
+            <TabsContent value="income" className="reports-overrides-tab-content mt-0">
               <IncomeExpensesTab
                 weeklyRent={weeklyRent}
                 setWeeklyRent={setWeeklyRent}
@@ -819,7 +819,7 @@ export function PreGenerationOverrides({
               />
             </TabsContent>
 
-            <TabsContent value="advanced" className="mt-0">
+            <TabsContent value="advanced" className="reports-overrides-tab-content mt-0">
               <AdvancedTab
                 buildType={buildType}
                 cpiGrowthRate={cpiGrowthRate}

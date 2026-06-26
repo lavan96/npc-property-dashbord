@@ -26,18 +26,18 @@ export function BuildTypeSelector({
     <RadioGroup
       value={value}
       onValueChange={(v) => onChange(v as BuildType)}
-      className="grid grid-cols-3 gap-4"
+      className="reports-overrides-build-grid grid grid-cols-3 gap-4"
       disabled={disabled}
     >
       {/* Existing Property */}
       <Label
         htmlFor="existing_property"
         className={cn(
-          "flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
+          "reports-overrides-build-card flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
           size === 'sm' ? 'p-3' : 'p-5',
           value === 'existing_property'
-            ? 'border-primary bg-primary/5 shadow-md' 
-            : 'border-border hover:border-primary/50 hover:bg-muted/50',
+            ? 'reports-overrides-build-card-active border-primary bg-primary/5 shadow-md'
+            : 'reports-overrides-build-card-inactive border-border hover:border-primary/50 hover:bg-muted/50',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -65,11 +65,11 @@ export function BuildTypeSelector({
       <Label
         htmlFor="new_build"
         className={cn(
-          "flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
+          "reports-overrides-build-card flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
           size === 'sm' ? 'p-3' : 'p-5',
           value === 'new_build'
-            ? 'border-primary bg-primary/5 shadow-md' 
-            : 'border-border hover:border-primary/50 hover:bg-muted/50',
+            ? 'reports-overrides-build-card-active border-primary bg-primary/5 shadow-md'
+            : 'reports-overrides-build-card-inactive border-border hover:border-primary/50 hover:bg-muted/50',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -97,11 +97,11 @@ export function BuildTypeSelector({
       <Label
         htmlFor="land_only"
         className={cn(
-          "flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
+          "reports-overrides-build-card flex flex-col items-center justify-center border-2 rounded-xl cursor-pointer transition-all",
           size === 'sm' ? 'p-3' : 'p-5',
           value === 'land_only'
-            ? 'border-primary bg-primary/5 shadow-md' 
-            : 'border-border hover:border-primary/50 hover:bg-muted/50',
+            ? 'reports-overrides-build-card-active border-primary bg-primary/5 shadow-md'
+            : 'reports-overrides-build-card-inactive border-border hover:border-primary/50 hover:bg-muted/50',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -132,8 +132,8 @@ export function BuildTypeSelector({
   }
 
   return (
-    <Card className={cn("border-2", className)}>
-      <CardContent className="pt-6">
+    <Card className={cn("reports-overrides-build-shell border-2", className)}>
+      <CardContent className="reports-overrides-build-content pt-6">
         {content}
       </CardContent>
     </Card>
