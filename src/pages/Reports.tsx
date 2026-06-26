@@ -201,45 +201,49 @@ export default function Reports() {
         </Card>
 
         <TabsContent value="quantitative" className="space-y-5 md:space-y-7 mt-0">
-          <Card className="ci-card-premium">
-            <CardContent className="p-4 md:p-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-            <div>
-              <p className="ci-tab-eyebrow">Quantitative intelligence</p>
-              <h2 className="text-xl md:text-2xl font-bold text-foreground">Quantitative Analysis</h2>
-              <p className="text-sm text-muted-foreground">Statistical analysis of your property listings</p>
-            </div>
-            <ReportConfigModal 
-              onGenerateReport={handleGenerateReport}
-              isGenerating={isGenerating}
-              progress={progress}
-              currentStep={currentStep}
-            />
-          </div>
+          <Card className="ci-card-premium reports-quant-header">
+            <CardContent className="p-5 md:p-6">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="max-w-3xl">
+                  <p className="ci-tab-eyebrow">Quantitative intelligence</p>
+                  <h2 className="mt-1 text-2xl font-bold tracking-tight text-foreground md:text-3xl">Quantitative Analysis</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-base">Statistical analysis of your property listings</p>
+                </div>
+                <ReportConfigModal
+                  onGenerateReport={handleGenerateReport}
+                  isGenerating={isGenerating}
+                  progress={progress}
+                  currentStep={currentStep}
+                />
+              </div>
             </CardContent>
           </Card>
 
           {/* KPIs */}
           <div ref={kpisRef} className="grid gap-4 grid-cols-2 lg:grid-cols-4 reports-kpi-grid">
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-primary"
               title="Total Listings"
               value={totalListings.toLocaleString()}
               icon={<Building2 className="h-4 w-4" />}
               description="All property listings"
             />
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-value"
               title="Average Price"
               value={`$${avgPrice.toLocaleString()}`}
               icon={<DollarSign className="h-4 w-4" />}
               description="Across all listings"
             />
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-activity"
               title="Recent Listings"
               value={recentListings.toLocaleString()}
               icon={<Calendar className="h-4 w-4" />}
               description="Last 30 days"
             />
             <KPICard
+              className="reports-kpi-tile reports-kpi-tile-coverage"
               title="Unique Suburbs"
               value={suburbChartData.length.toLocaleString()}
               icon={<MapPin className="h-4 w-4" />}
