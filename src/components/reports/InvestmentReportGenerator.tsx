@@ -1473,39 +1473,39 @@ export function InvestmentReportGenerator() {
                     <>
                       <div className="space-y-3">
                         <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                        <div className="reports-build-type-grid">
+                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
                               name="buildType"
                               value="existing_property"
                               checked={preGenData.buildType === 'existing_property'}
                               onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'existing_property' }))}
-                              className="h-4 w-4 text-primary"
+                              className="reports-build-type-radio h-4 w-4 text-primary"
                               disabled={isGenerating}
                             />
                             <span className="text-sm">Existing Property</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
                               name="buildType"
                               value="new_build"
                               checked={preGenData.buildType === 'new_build'}
                               onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'new_build' }))}
-                              className="h-4 w-4 text-primary"
+                              className="reports-build-type-radio h-4 w-4 text-primary"
                               disabled={isGenerating}
                             />
                             <span className="text-sm">New Build</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="reports-build-type-option flex items-center gap-2 cursor-pointer">
                             <input
                               type="radio"
                               name="buildType"
                               value="land_only"
                               checked={preGenData.buildType === 'land_only'}
                               onChange={() => setPreGenData(prev => ({ ...prev, buildType: 'land_only' }))}
-                              className="h-4 w-4 text-primary"
+                              className="reports-build-type-radio h-4 w-4 text-primary"
                               disabled={isGenerating}
                             />
                             <span className="text-sm">Land Only</span>
@@ -1519,10 +1519,10 @@ export function InvestmentReportGenerator() {
                   <div className="space-y-3">
                     <Label htmlFor="queryType">Analysis Scope</Label>
                     <Select value={queryType} onValueChange={(value: 'address' | 'zipcode' | 'suburb' | 'state') => setQueryType(value)}>
-                      <SelectTrigger className="bg-background">
+                      <SelectTrigger className="reports-select-trigger bg-background">
                         <SelectValue placeholder="Select analysis type" />
                       </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
+                      <SelectContent className="reports-select-content bg-background z-50">
                         <SelectItem value="address">
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
@@ -1558,10 +1558,10 @@ export function InvestmentReportGenerator() {
                       value={generationEngine}
                       onValueChange={(value: 'legacy' | 'compass-40') => setGenerationEngine(value)}
                     >
-                      <SelectTrigger className="bg-background">
+                      <SelectTrigger className="reports-select-trigger bg-background">
                         <SelectValue placeholder="Select engine" />
                       </SelectTrigger>
-                      <SelectContent className="bg-background z-50">
+                      <SelectContent className="reports-select-content bg-background z-50">
                         <SelectItem value="legacy">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-medium">Legacy Compass — Stable</span>
@@ -1576,7 +1576,7 @@ export function InvestmentReportGenerator() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="reports-engine-helper text-xs text-muted-foreground">
                       You can switch engines later via the Regenerate action on each report.
                     </p>
                   </div>
@@ -1974,7 +1974,7 @@ export function InvestmentReportGenerator() {
                 {isPropertySpecific && (
                 <TabsContent value="url" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
-                  <div className="space-y-3">
+                  <div className="reports-build-type-control space-y-3">
                     <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
                     <BuildTypeSelector
                       value={preGenData.buildType as BuildType}
@@ -2270,7 +2270,7 @@ export function InvestmentReportGenerator() {
                 {isPropertySpecific && (
                 <TabsContent value="pdf" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
-                  <div className="space-y-3">
+                  <div className="reports-build-type-control space-y-3">
                     <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
                     <BuildTypeSelector
                       value={preGenData.buildType as BuildType}
