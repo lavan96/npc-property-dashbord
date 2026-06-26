@@ -111,3 +111,20 @@ export {
   type GeneratedRenderArtifactPage,
   type GeneratedRenderPageRaster,
 } from './generatedRenderCapture';
+
+
+export {
+  RENDER_DIFF_PERSISTENCE_VERSION,
+  buildVisualQualityFromRenderPairs,
+  imageUrlToImageData,
+  loadSourceRastersFromManifest,
+  pairSourceAndGeneratedRasters,
+  persistRenderDiffVisualQuality,
+  sourceRasterRefsFromManifest,
+  type BuildVisualQualityFromRenderPairsOptions,
+  type PairedRenderPageRaster,
+  type PersistRenderDiffOptions,
+  type PersistRenderDiffResult,
+  type SourceRenderPageRaster,
+  type VisualQualityFromRenderPairs,
+} from './renderDiffPersistence';
