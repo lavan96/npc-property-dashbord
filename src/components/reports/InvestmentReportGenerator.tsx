@@ -1412,20 +1412,23 @@ export function InvestmentReportGenerator() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="ci-foundation reports-investment-generator space-y-6">
       {/* Header */}
-      <div className="space-y-2">
+      <Card className="ci-card-premium reports-investment-hero">
+        <CardContent className="p-5 md:p-6 space-y-2">
+        <p className="ci-tab-eyebrow">Investment report workspace</p>
         <h2 className="text-2xl font-bold text-foreground">Investment Report Generator</h2>
         <p className="text-muted-foreground">
           Generate comprehensive property investment analysis for addresses, postcodes, or states across Australia.
         </p>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="reports-investment-layout grid gap-6 lg:grid-cols-3">
         {/* Generator Form */}
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
+          <Card className="ci-card-premium reports-investment-panel">
+            <CardHeader className="reports-investment-panel-header border-b border-border/60">
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
                 Generate Investment Analysis
@@ -1434,29 +1437,29 @@ export function InvestmentReportGenerator() {
                 Choose your input method - enter details manually, scrape from a URL, or upload a PDF.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="reports-investment-panel-content space-y-6">
             {/* Input Mode Tabs */}
               <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as 'manual' | 'url' | 'pdf')}>
                 {isPropertySpecific ? (
-                  <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
-                    <TabsList className="inline-flex w-auto min-w-max">
-                      <TabsTrigger value="manual" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                  <div className="reports-investment-mode-shell overflow-x-auto -mx-1 px-1 scrollbar-hide">
+                    <TabsList className="reports-investment-mode-list inline-flex w-auto min-w-max rounded-2xl border border-border/70 bg-background/60 p-1">
+                      <TabsTrigger value="manual" className="reports-investment-mode-tab">
                         <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Manual
                       </TabsTrigger>
-                      <TabsTrigger value="url" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                      <TabsTrigger value="url" className="reports-investment-mode-tab">
                         <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         URL Scrape
                       </TabsTrigger>
-                      <TabsTrigger value="pdf" className="flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap">
+                      <TabsTrigger value="pdf" className="reports-investment-mode-tab">
                         <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         PDF Upload
                       </TabsTrigger>
                     </TabsList>
                   </div>
                 ) : (
-                  <TabsList className="grid w-full grid-cols-1">
-                    <TabsTrigger value="manual" className="flex items-center gap-2">
+                  <TabsList className="reports-investment-mode-list reports-investment-mode-single grid w-full grid-cols-1 rounded-2xl border border-border/70 bg-background/60 p-1">
+                    <TabsTrigger value="manual" className="reports-investment-mode-tab">
                       <MapPin className="h-4 w-4" />
                       Manual Entry
                     </TabsTrigger>
@@ -1464,12 +1467,12 @@ export function InvestmentReportGenerator() {
                 )}
 
                 {/* Manual Entry Tab */}
-                <TabsContent value="manual" className="space-y-6 pt-4">
+                <TabsContent value="manual" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection - Only for property-specific */}
                   {isPropertySpecific && (
                     <>
                       <div className="space-y-3">
-                        <Label className="text-base font-semibold">Build Type</Label>
+                        <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
                         <div className="flex gap-4">
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -1632,7 +1635,7 @@ export function InvestmentReportGenerator() {
               {/* Property Details - Optional but Recommended */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Property Details</Label>
+                  <Label className="reports-investment-section-label text-base font-semibold">Property Details</Label>
                   <Badge variant="default" className="text-xs">Required for Scoring</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -1940,7 +1943,7 @@ export function InvestmentReportGenerator() {
                 onClick={handleGenerate}
                 disabled={isGenerating || !query.trim() || (isPropertySpecific && (!propertyPrice || parseFloat(propertyPrice) <= 0))}
                 size="lg"
-                className="w-full"
+                className="w-full shadow-lg shadow-primary/20"
               >
                 {isGenerating ? (
                   <>
@@ -1969,10 +1972,10 @@ export function InvestmentReportGenerator() {
 
                 {/* URL Scrape Tab - Only for property-specific queries */}
                 {isPropertySpecific && (
-                <TabsContent value="url" className="space-y-6 pt-4">
+                <TabsContent value="url" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
                   <div className="space-y-3">
-                    <Label className="text-base font-semibold">Build Type</Label>
+                    <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
                     <BuildTypeSelector
                       value={preGenData.buildType as BuildType}
                       onChange={(value) => setPreGenData(prev => ({ ...prev, buildType: value }))}
@@ -2060,7 +2063,7 @@ export function InvestmentReportGenerator() {
                   {/* Property Details - Required for URL Scrape */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold">Property Details</Label>
+                      <Label className="reports-investment-section-label text-base font-semibold">Property Details</Label>
                       <Badge variant="default" className="text-xs">Required for Scoring</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -2246,7 +2249,7 @@ export function InvestmentReportGenerator() {
                     onClick={handleGenerateFromUrl}
                     disabled={isUrlGenerating || !urlScrapedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
                     size="lg"
-                    className="w-full"
+                    className="w-full shadow-lg shadow-primary/20"
                   >
                     {isUrlGenerating ? (
                       <>
@@ -2265,10 +2268,10 @@ export function InvestmentReportGenerator() {
 
                 {/* PDF Upload Tab - Only for property-specific queries */}
                 {isPropertySpecific && (
-                <TabsContent value="pdf" className="space-y-6 pt-4">
+                <TabsContent value="pdf" className="reports-investment-flow space-y-6 pt-4">
                   {/* Build Type Radio Selection */}
                   <div className="space-y-3">
-                    <Label className="text-base font-semibold">Build Type</Label>
+                    <Label className="reports-investment-section-label text-base font-semibold">Build Type</Label>
                     <BuildTypeSelector
                       value={preGenData.buildType as BuildType}
                       onChange={(value) => setPreGenData(prev => ({ ...prev, buildType: value }))}
@@ -2356,7 +2359,7 @@ export function InvestmentReportGenerator() {
                     disabled={isParsing || !pdfFile}
                     size="lg"
                     variant={pdfParsedData ? "outline" : "default"}
-                    className="w-full"
+                    className="w-full shadow-lg shadow-primary/20"
                   >
                     {isParsing ? (
                       <>
@@ -2406,7 +2409,7 @@ export function InvestmentReportGenerator() {
                   {/* Property Details - Required for PDF mode */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold">Property Details</Label>
+                      <Label className="reports-investment-section-label text-base font-semibold">Property Details</Label>
                       <Badge variant="default" className="text-xs">Required for Scoring</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -2592,7 +2595,7 @@ export function InvestmentReportGenerator() {
                     onClick={handleGenerateFromPdf}
                     disabled={isPdfGenerating || !pdfParsedData || !propertyPrice || parseFloat(propertyPrice) <= 0}
                     size="lg"
-                    className="w-full"
+                    className="w-full shadow-lg shadow-primary/20"
                   >
                     {isPdfGenerating ? (
                       <>
@@ -2616,8 +2619,8 @@ export function InvestmentReportGenerator() {
 
         {/* Recent Reports Sidebar */}
         <div>
-          <Card>
-            <CardHeader>
+          <Card className="ci-card-premium reports-recent-panel">
+            <CardHeader className="reports-investment-panel-header border-b border-border/60">
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
                 Recent Reports
@@ -2626,9 +2629,9 @@ export function InvestmentReportGenerator() {
                 Your recently generated investment analyses
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="reports-recent-panel-content">
               {recentReports.length === 0 ? (
-                <div className="text-center py-8 space-y-2">
+                <div className="reports-recent-empty text-center py-8 space-y-2">
                   <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
                   <p className="text-sm text-muted-foreground">No reports generated yet</p>
                   <p className="text-xs text-muted-foreground">Generate your first report to see it here</p>
@@ -2638,7 +2641,7 @@ export function InvestmentReportGenerator() {
                   {recentReports.map((report) => (
                     <div
                       key={report.id}
-                      className="border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                      className="reports-recent-item rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 cursor-pointer"
                       onClick={() => {
                         window.location.href = `/generated-reports?reportId=${report.id}`;
                       }}
@@ -2663,7 +2666,7 @@ export function InvestmentReportGenerator() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
+                    className="reports-recent-all-button w-full shadow-lg shadow-primary/20"
                     onClick={() => {
                       window.location.href = '/generated-reports';
                     }}
@@ -2679,8 +2682,8 @@ export function InvestmentReportGenerator() {
 
       {/* Results Display */}
       {showResults && generatedReport && (
-        <Card>
-          <CardHeader>
+        <Card className="ci-card-premium">
+          <CardHeader className="border-b border-border/60">
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
               Generated Investment Analysis
@@ -2690,7 +2693,7 @@ export function InvestmentReportGenerator() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="bg-muted/30 rounded-lg p-6 max-h-96 overflow-y-auto">
+            <div className="bg-background/60 border border-border/70 rounded-2xl p-6 max-h-96 overflow-y-auto shadow-inner">
               <pre className="whitespace-pre-wrap text-sm leading-relaxed">
                 {generatedReport}
               </pre>
