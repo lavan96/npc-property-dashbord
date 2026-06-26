@@ -266,35 +266,35 @@ export default function Reports() {
           </div>
 
           {/* Charts and Analysis */}
-          <Tabs defaultValue="temporal" className="ci-card-premium p-3 md:p-4 space-y-4">
-            <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-              <TabsList className="inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-7 h-auto bg-background/60 border border-border/70 rounded-2xl p-1">
-                <TabsTrigger value="temporal" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <TrendingUp className="h-3 w-3" />
+          <Tabs defaultValue="temporal" className="ci-card-premium reports-analytics-tabs-panel p-3 md:p-4 space-y-4">
+            <div className="reports-analytics-tabs-shell overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+              <TabsList className="reports-analytics-tabs-list inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-7 h-auto">
+                <TabsTrigger value="temporal" className="reports-analytics-tab">
+                  <TrendingUp className="h-3.5 w-3.5" />
                   Trends
                 </TabsTrigger>
-                <TabsTrigger value="geographic" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Globe className="h-3 w-3" />
+                <TabsTrigger value="geographic" className="reports-analytics-tab">
+                  <Globe className="h-3.5 w-3.5" />
                   Geographic
                 </TabsTrigger>
-                <TabsTrigger value="agents" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Users className="h-3 w-3" />
+                <TabsTrigger value="agents" className="reports-analytics-tab">
+                  <Users className="h-3.5 w-3.5" />
                   Agents
                 </TabsTrigger>
-                <TabsTrigger value="data-quality" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <BarChart3 className="h-3 w-3" />
+                <TabsTrigger value="data-quality" className="reports-analytics-tab">
+                  <BarChart3 className="h-3.5 w-3.5" />
                   Quality
                 </TabsTrigger>
-                <TabsTrigger value="suburbs" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <MapPin className="h-3 w-3" />
+                <TabsTrigger value="suburbs" className="reports-analytics-tab">
+                  <MapPin className="h-3.5 w-3.5" />
                   Suburbs
                 </TabsTrigger>
-                <TabsTrigger value="property-type" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <Building2 className="h-3 w-3" />
+                <TabsTrigger value="property-type" className="reports-analytics-tab">
+                  <Building2 className="h-3.5 w-3.5" />
                   Types
                 </TabsTrigger>
-                <TabsTrigger value="price-range" className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                  <DollarSign className="h-3 w-3" />
+                <TabsTrigger value="price-range" className="reports-analytics-tab">
+                  <DollarSign className="h-3.5 w-3.5" />
                   Pricing
                 </TabsTrigger>
               </TabsList>

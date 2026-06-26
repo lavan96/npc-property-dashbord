@@ -1616,3 +1616,44 @@ html {
     @apply rounded-2xl border border-dashed border-border/70 bg-background/45 px-4 py-6 text-center text-sm leading-6 text-muted-foreground;
   }
 }
+
+@layer components {
+  .reports-analytics-tabs-panel {
+    @apply border-primary/20 shadow-lg shadow-primary/10;
+  }
+
+  .reports-analytics-tabs-shell {
+    @apply rounded-3xl border border-border/70 bg-background/45 p-1.5 shadow-inner shadow-black/10 backdrop-blur;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.45) transparent;
+  }
+
+  .reports-analytics-tabs-shell::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .reports-analytics-tabs-shell::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .reports-analytics-tabs-shell::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-primary/35;
+  }
+
+  .reports-analytics-tabs-list {
+    @apply gap-1 bg-transparent p-0;
+  }
+
+  .reports-analytics-tab {
+    @apply min-h-11 min-w-28 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25 md:min-w-0;
+  }
+
+  .reports-analytics-tab svg {
+    @apply shrink-0 transition-transform duration-200;
+  }
+
+  .reports-analytics-tab:hover svg,
+  .reports-analytics-tab[data-state='active'] svg {
+    @apply scale-110;
+  }
+}
