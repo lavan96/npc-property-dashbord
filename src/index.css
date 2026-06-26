@@ -1387,3 +1387,669 @@ html {
     background: linear-gradient(90deg, hsl(var(--warning, var(--primary)) / 0.95), hsl(var(--primary) / 0.82));
   }
 }
+
+@layer components {
+  .reports-page-premium {
+    background-image:
+      radial-gradient(circle at 8% 0%, hsl(var(--primary) / 0.12), transparent 28rem),
+      radial-gradient(circle at 92% 12%, hsl(165 70% 38% / 0.08), transparent 24rem);
+  }
+
+  .reports-page-premium [data-radix-tabs-content] {
+    animation: reports-fade-in 180ms ease-out;
+  }
+
+  .reports-page-premium .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.7);
+  }
+
+  .reports-page-premium .recharts-bar-rectangle path,
+  .reports-page-premium .recharts-sector {
+    filter: drop-shadow(0 8px 14px hsl(0 0% 0% / 0.18));
+    transition: opacity 160ms ease, filter 160ms ease;
+  }
+
+  .reports-page-premium .recharts-bar-rectangle:hover path,
+  .reports-page-premium .recharts-sector:hover {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 14px hsl(var(--primary) / 0.35));
+  }
+
+  .reports-kpi-grid > * {
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .reports-kpi-grid > *:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px hsl(var(--primary) / 0.10);
+  }
+
+  .reports-investment-generator [role='tabpanel'] {
+    animation: reports-fade-in 180ms ease-out;
+  }
+
+  @keyframes reports-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@layer components {
+  .reports-top-command {
+    box-shadow: 0 22px 70px hsl(0 0% 0% / 0.18), 0 0 0 1px hsl(var(--primary) / 0.08);
+  }
+
+  .reports-header-icon {
+    box-shadow: inset 0 1px 0 hsl(var(--primary) / 0.35), 0 14px 34px hsl(var(--primary) / 0.16);
+  }
+
+  .reports-primary-tab {
+    @apply min-h-12 rounded-2xl text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25;
+  }
+}
+
+@layer components {
+  .reports-quant-header {
+    position: relative;
+  }
+
+  .reports-quant-header::before {
+    content: '';
+    @apply pointer-events-none absolute bottom-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent;
+  }
+
+  .reports-kpi-grid .reports-kpi-tile {
+    @apply relative overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-1 hover:border-primary/45 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-kpi-grid .reports-kpi-tile::before {
+    content: '';
+    @apply absolute inset-y-4 left-0 w-1 rounded-r-full bg-primary/55 opacity-70 transition-all duration-200;
+  }
+
+  .reports-kpi-grid .reports-kpi-tile:hover::before {
+    @apply inset-y-3 bg-primary opacity-100;
+    box-shadow: 0 0 18px hsl(var(--primary) / 0.55);
+  }
+
+  .reports-kpi-grid .dashboard-kpi-title {
+    @apply text-[0.7rem] font-bold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .reports-kpi-grid .dashboard-kpi-value {
+    @apply text-3xl font-bold tracking-tight text-foreground md:text-4xl;
+  }
+
+  .reports-kpi-grid .dashboard-kpi-card p {
+    @apply mt-2 text-xs font-medium leading-5 text-muted-foreground/90;
+  }
+
+  .reports-kpi-grid .dashboard-kpi-icon {
+    @apply rounded-2xl border border-primary/25 bg-primary/10 p-2 text-primary shadow-inner shadow-primary/10;
+  }
+
+  .reports-kpi-tile-value::before { @apply bg-emerald-500/70; }
+  .reports-kpi-tile-activity::before { @apply bg-amber-500/80; }
+  .reports-kpi-tile-coverage::before { @apply bg-sky-500/70; }
+
+  .reports-secondary-metric-grid {
+    @apply rounded-3xl border border-border/60 bg-background/35 p-1.5;
+  }
+
+  .reports-secondary-metric {
+    @apply relative overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-secondary-metric::before {
+    content: '';
+    @apply absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent;
+  }
+
+  .reports-secondary-metric .text-2xl {
+    @apply text-3xl font-bold tracking-tight text-foreground;
+  }
+
+  .reports-secondary-metric .text-xs.text-muted-foreground {
+    @apply leading-5 text-muted-foreground/90;
+  }
+
+  .reports-secondary-metric-icon {
+    @apply flex h-9 w-9 items-center justify-center rounded-2xl border border-border/70 bg-background/70 shadow-inner;
+  }
+
+  .reports-secondary-metric-success { @apply border-emerald-500/25; }
+  .reports-secondary-metric-success::before { @apply via-emerald-500/60; }
+  .reports-secondary-metric-warning { @apply border-amber-500/35 bg-gradient-to-br from-card via-card/95 to-amber-500/5; }
+  .reports-secondary-metric-warning::before { @apply via-amber-500/70; }
+  .reports-secondary-metric-destructive { @apply border-rose-500/35 bg-gradient-to-br from-card via-card/95 to-rose-500/5; }
+  .reports-secondary-metric-destructive::before { @apply via-rose-500/70; }
+}
+
+@layer components {
+  .reports-insight-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5;
+  }
+
+  .reports-insight-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-insight-card-header [data-slot='card-title'],
+  .reports-insight-card-header .text-2xl {
+    @apply text-lg font-bold tracking-tight text-foreground;
+  }
+
+  .reports-insight-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-executive-summary-card {
+    @apply border-primary/20 shadow-primary/10;
+  }
+
+  .reports-insight-alert {
+    @apply relative overflow-hidden rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10;
+  }
+
+  .reports-insight-alert-warning {
+    @apply border-amber-500/35 bg-amber-500/10 text-foreground;
+  }
+
+  .reports-insight-alert-positive {
+    @apply border-emerald-500/30 bg-emerald-500/5 text-foreground;
+  }
+
+  .reports-insight-alert-negative {
+    @apply border-rose-500/35 bg-rose-500/5 text-foreground;
+  }
+
+  .reports-insight-alert-neutral {
+    @apply border-border/70 bg-background/55 text-foreground;
+  }
+
+  .reports-insight-row {
+    @apply relative flex items-start gap-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10;
+  }
+
+  .reports-insight-row::before {
+    content: '';
+    @apply absolute inset-y-4 left-0 w-1 rounded-r-full bg-primary/45;
+  }
+
+  .reports-severity-medium::before {
+    @apply bg-amber-500/80;
+  }
+
+  .reports-severity-high::before {
+    @apply bg-rose-500/80;
+  }
+
+  .reports-insight-icon-wrap {
+    @apply mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-card/80 shadow-inner;
+  }
+
+  .reports-insight-row-title {
+    @apply text-sm font-semibold leading-5 text-foreground;
+  }
+
+  .reports-insight-row-description {
+    @apply mt-1 text-xs leading-5 text-muted-foreground/90;
+  }
+
+  .reports-severity-badge {
+    @apply rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em];
+  }
+
+  .reports-severity-badge.reports-severity-high {
+    @apply border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-200;
+  }
+
+  .reports-severity-badge.reports-severity-medium {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-severity-badge.reports-severity-low {
+    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+  }
+
+  .reports-empty-insight-state {
+    @apply rounded-2xl border border-dashed border-border/70 bg-background/45 px-4 py-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}
+
+@layer components {
+  .reports-analytics-tabs-panel {
+    @apply border-primary/20 shadow-lg shadow-primary/10;
+  }
+
+  .reports-analytics-tabs-shell {
+    @apply rounded-3xl border border-border/70 bg-background/45 p-1.5 shadow-inner shadow-black/10 backdrop-blur;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.45) transparent;
+  }
+
+  .reports-analytics-tabs-shell::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .reports-analytics-tabs-shell::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .reports-analytics-tabs-shell::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-primary/35;
+  }
+
+  .reports-analytics-tabs-list {
+    @apply gap-1 bg-transparent p-0;
+  }
+
+  .reports-analytics-tab {
+    @apply min-h-11 min-w-28 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25 md:min-w-0;
+  }
+
+  .reports-analytics-tab svg {
+    @apply shrink-0 transition-transform duration-200;
+  }
+
+  .reports-analytics-tab:hover svg,
+  .reports-analytics-tab[data-state='active'] svg {
+    @apply scale-110;
+  }
+}
+
+@layer components {
+  .reports-trends-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-trend-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-trend-card-primary {
+    @apply border-primary/25;
+  }
+
+  .reports-trend-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-trend-card-header [data-slot='card-title'],
+  .reports-trend-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-trend-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-trend-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-trends-chart {
+    @apply w-full rounded-2xl bg-background/35 p-2;
+  }
+
+  .reports-trends-chart .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.45);
+  }
+
+  .reports-trends-chart .recharts-line-curve {
+    filter: drop-shadow(0 7px 12px hsl(0 0% 0% / 0.16));
+  }
+
+  .reports-trends-chart .recharts-dot {
+    transition: r 160ms ease, filter 160ms ease;
+  }
+
+  .reports-trend-tooltip {
+    @apply rounded-2xl border-primary/25 bg-popover/95 px-3 py-2 shadow-xl shadow-black/20 backdrop-blur;
+  }
+
+  .reports-trend-empty-state {
+    @apply flex min-h-[250px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}
+
+@layer components {
+  .reports-geographic-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-geographic-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-location-matrix-card {
+    @apply border-primary/20;
+  }
+
+  .reports-geographic-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-geographic-card-header [data-slot='card-title'],
+  .reports-geographic-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-geographic-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-geographic-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-location-row {
+    @apply flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .reports-location-label {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .reports-location-meta {
+    @apply mt-1 text-xs leading-5 text-muted-foreground/90;
+  }
+
+  .reports-location-badges {
+    @apply flex shrink-0 flex-wrap items-center gap-2;
+  }
+
+  .reports-location-badge {
+    @apply rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em];
+  }
+
+  .reports-activity-high {
+    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+  }
+
+  .reports-activity-medium {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-activity-low {
+    @apply border-border/70 bg-background/70 text-muted-foreground;
+  }
+
+  .reports-geographic-chart {
+    @apply w-full rounded-2xl bg-background/35 p-2;
+  }
+
+  .reports-geographic-chart .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.45);
+  }
+
+  .reports-geographic-chart .recharts-bar-rectangle path,
+  .reports-geographic-chart .recharts-scatter-symbol {
+    filter: drop-shadow(0 7px 12px hsl(0 0% 0% / 0.14));
+  }
+
+  .reports-geographic-tooltip {
+    @apply rounded-2xl border-primary/25 bg-popover/95 px-3 py-2 shadow-xl shadow-black/20 backdrop-blur;
+  }
+
+  .reports-geographic-empty-state {
+    @apply flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}
+
+@layer components {
+  .reports-agent-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-agent-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-agent-ranking-card {
+    @apply border-primary/20;
+  }
+
+  .reports-agent-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-agent-card-header [data-slot='card-title'],
+  .reports-agent-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-agent-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-agent-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-agent-list {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.35) transparent;
+  }
+
+  .reports-agent-row,
+  .reports-agency-row {
+    @apply flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10 sm:flex-row sm:items-center;
+  }
+
+  .reports-agent-rank {
+    @apply flex h-8 min-w-8 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-bold text-primary;
+  }
+
+  .reports-agent-name {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .reports-agent-agency {
+    @apply truncate text-xs leading-5 text-muted-foreground/90;
+  }
+
+  .reports-agent-metric {
+    @apply shrink-0 text-left sm:text-right;
+  }
+
+  .reports-agent-count {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .reports-agent-submetric {
+    @apply text-xs text-muted-foreground/90;
+  }
+
+  .reports-agent-badge {
+    @apply w-fit rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em];
+  }
+
+  .reports-performance-high {
+    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+  }
+
+  .reports-performance-medium {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-performance-standard {
+    @apply border-border/70 bg-background/70 text-muted-foreground;
+  }
+
+  .reports-agent-toggle {
+    @apply rounded-full border border-border/70 bg-background/50 font-semibold hover:border-primary/35 hover:bg-primary/10 hover:text-primary;
+  }
+
+  .reports-agent-chart {
+    @apply w-full rounded-2xl bg-background/35 p-2;
+  }
+
+  .reports-agent-chart .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.45);
+  }
+
+  .reports-agent-chart .recharts-bar-rectangle path {
+    filter: drop-shadow(0 7px 12px hsl(0 0% 0% / 0.14));
+  }
+
+  .reports-agent-tooltip {
+    @apply rounded-2xl border-primary/25 bg-popover/95 px-3 py-2 shadow-xl shadow-black/20 backdrop-blur;
+  }
+
+  .reports-agent-empty-state {
+    @apply flex min-h-32 items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}
+
+@layer components {
+  .reports-quality-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-quality-score-card,
+  .reports-quality-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-quality-score-card {
+    @apply shadow-primary/10;
+  }
+
+  .reports-quality-score-value {
+    @apply tabular-nums tracking-tight;
+  }
+
+  .reports-quality-status-badge,
+  .reports-quality-count-badge {
+    @apply rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em];
+  }
+
+  .reports-quality-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-quality-card-header [data-slot='card-title'],
+  .reports-quality-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-quality-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-quality-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-completeness-tile {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm;
+  }
+
+  .reports-quality-progress {
+    @apply overflow-hidden rounded-full bg-background/70;
+  }
+
+  .reports-quality-progress > div {
+    @apply bg-primary;
+  }
+
+  .reports-quality-issue-row {
+    @apply flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10;
+  }
+
+  .reports-quality-issue-label {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .reports-quality-severity-warning {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-quality-severity-critical {
+    @apply border-rose-500/35 bg-rose-500/10 text-rose-700 dark:text-rose-200;
+  }
+
+  .reports-quality-severity-info {
+    @apply border-border/70 bg-background/70 text-muted-foreground;
+  }
+
+  .reports-quality-detail-panel {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-4 shadow-inner;
+  }
+
+  .reports-confidence-stack {
+    @apply border border-border/70 shadow-inner;
+  }
+
+  .reports-confidence-legend-item {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-2.5 shadow-sm;
+  }
+
+  .reports-quality-actions-card {
+    @apply border-amber-500/25 bg-gradient-to-br from-card via-card/95 to-amber-500/5;
+  }
+
+  .reports-quality-action-row {
+    @apply flex items-start gap-2 rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10;
+  }
+}
+
+@layer components {
+  .reports-suburbs-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-suburb-card {
+    @apply overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-primary/10 transition-all duration-200 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-suburb-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-suburb-card-header [data-slot='card-title'],
+  .reports-suburb-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-suburb-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-suburb-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-suburb-chart {
+    @apply w-full rounded-2xl bg-background/35 p-2;
+  }
+
+  .reports-suburb-chart .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.45);
+  }
+
+  .reports-suburb-chart .recharts-bar-rectangle path {
+    filter: drop-shadow(0 7px 12px hsl(0 0% 0% / 0.14));
+  }
+
+  .reports-suburb-tooltip {
+    @apply rounded-2xl border border-primary/25 bg-popover/95 p-3 shadow-xl shadow-black/20 backdrop-blur;
+  }
+
+  .reports-suburb-insight {
+    @apply shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-500/40 hover:shadow-md hover:shadow-amber-500/10;
+  }
+
+  .reports-suburb-stat-grid {
+    @apply border-border/60;
+  }
+
+  .reports-suburb-stat {
+    @apply rounded-2xl border border-border/70 bg-background/55 p-3 shadow-sm;
+  }
+
+  .reports-suburb-empty-state {
+    @apply flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}
