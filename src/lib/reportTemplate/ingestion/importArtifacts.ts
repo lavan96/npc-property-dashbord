@@ -12,6 +12,7 @@ import type { CdirFidelityReport } from './fidelity';
 import type { ReportTemplate } from '../templateSchema';
 import { importAssetToReviewArtifacts, type ImportAsset, type RawImportManifest } from './reconciliation';
 import {
+  buildPdfPageContextConsumerGuardrail,
   getPreferredPdfPageContextSource,
   shouldBlockPdfPageContextImport,
   type PageContextEntrypoint,
@@ -90,6 +91,7 @@ export interface LoadImportReviewDraftResult {
   pageContextSummary: PdfPageContextSummary | null;
   pageContextEntrypoint: PageContextEntrypoint | null;
   pageContextValidation: PdfPageContextValidation;
+  pageContextGuardrail: PdfPageContextConsumerGuardrail;
   artifactPaths: {
     cdir?: string | null;
     cdirFidelity?: string | null;
@@ -135,6 +137,8 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     pageContextSummary: data.pdfPageContextSummary ?? null,
   });
 
+  const pageContextGuardrail = buildPdfPageContextConsumerGuardrail(pageContextSelection);
+
   if (shouldBlockPdfPageContextImport(pageContextSelection)) {
     throw new Error(
       `PDF page context validation failed: ${pageContextSelection.pageContextValidation.problems.slice(0, 8).join('; ')}`
@@ -159,6 +163,7 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     pageContextSummary: pageContextSelection.pageContextSummary,
     pageContextEntrypoint: pageContextSelection.pageContextEntrypoint,
     pageContextValidation: pageContextSelection.pageContextValidation,
+    pageContextGuardrail,
     artifactPaths: data.artifactPaths ?? {},
   };
 }
