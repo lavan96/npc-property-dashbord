@@ -90,6 +90,26 @@ export interface PreferredPdfPageContextSource {
   reason: string;
 }
 
+export interface PdfPageContextConsumerGuardrail {
+  version: 'pdf-page-context-consumer-guardrail-v1';
+  selected_source: PdfPageContextSource;
+  page_context_source_used: boolean;
+  legacy_fallback_used: boolean;
+  fallback_allowed: boolean;
+  should_block_import: boolean;
+  reason: string;
+  manifest_path: string | null;
+  expected_page_count: number | null;
+  observed_page_count: number;
+  validation_ok: boolean;
+  validation_problem_count: number;
+  validation_problems: string[];
+  entrypoint_available: boolean;
+  parent_global_context_count: number | null;
+  generated_at: string;
+}
+
+
 function toNumberOrNull(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -322,6 +342,37 @@ export function getPreferredPdfPageContextSource(input: {
  * as authoritative. If that entrypoint is present but invalid, block the import
  * instead of silently falling back to stale or partial artifacts.
  */
+
+export function buildPdfPageContextConsumerGuardrail(
+  selection: PreferredPdfPageContextSource,
+): PdfPageContextConsumerGuardrail {
+  const validation = selection.pageContextValidation;
+  const entrypoint = selection.pageContextEntrypoint;
+  const pageContextSourceUsed = selection.source === 'per_page_docling';
+  const shouldBlock = shouldBlockPdfPageContextImport(selection);
+  const legacyFallbackUsed = selection.source === 'legacy_docling';
+  const fallbackAllowed = legacyFallbackUsed && !shouldBlock;
+
+  return {
+    version: 'pdf-page-context-consumer-guardrail-v1',
+    selected_source: selection.source,
+    page_context_source_used: pageContextSourceUsed,
+    legacy_fallback_used: legacyFallbackUsed,
+    fallback_allowed: fallbackAllowed,
+    should_block_import: shouldBlock,
+    reason: selection.reason,
+    manifest_path: entrypoint?.manifest_path ?? null,
+    expected_page_count: validation.expected_page_count,
+    observed_page_count: validation.observed_page_count,
+    validation_ok: validation.ok,
+    validation_problem_count: validation.problems.length,
+    validation_problems: validation.problems,
+    entrypoint_available: Boolean(entrypoint?.available),
+    parent_global_context_count: selection.pageContextSummary?.parent_global_context_count ?? null,
+    generated_at: new Date().toISOString(),
+  };
+}
+
 export function shouldBlockPdfPageContextImport(selection: PreferredPdfPageContextSource): boolean {
   return Boolean(
     selection.pageContextEntrypoint?.available
