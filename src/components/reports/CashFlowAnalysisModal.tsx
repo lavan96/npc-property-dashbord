@@ -3934,52 +3934,23 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
           <CashFlowCommandHeader
             propertyAddress={report.property_address}
             isNewBuild={isNewBuild}
-            actions={(
-              <>
-                {hasChanges && (
-                  <Badge variant="outline" className="text-orange-600 border-orange-300">
-                    Unsaved Changes
-                  </Badge>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowResetConfirm(true)}
-                  disabled={Object.keys(yearlyOverrides).length === 0}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset All
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleSaveOverrides}
-                  disabled={isSaving || !hasChanges}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportExcel}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Excel
-                </Button>
-                <CashFlowExportMenu
-                  includeAllChartsInExport={includeAllChartsInExport}
-                  chartExportToggles={chartExportToggles}
-                  onGlobalChartsToggle={handleGlobalChartsToggle}
-                  onChartToggle={handleChartToggle}
-                  onExportPdf={exportSingleReportPDF}
-                  filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
-                />
-                <Button variant="outline" size="sm" onClick={openPrintView}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print View
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setSendToClientOpen(true)}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send to Client
-                </Button>
-              </>
+            hasChanges={hasChanges}
+            hasOverrides={Object.keys(yearlyOverrides).length > 0}
+            isSaving={isSaving}
+            onResetAll={() => setShowResetConfirm(true)}
+            onSaveChanges={handleSaveOverrides}
+            onExportExcel={handleExportExcel}
+            onPrintView={openPrintView}
+            onSendToClient={() => setSendToClientOpen(true)}
+            pdfExportMenu={(
+              <CashFlowExportMenu
+                includeAllChartsInExport={includeAllChartsInExport}
+                chartExportToggles={chartExportToggles}
+                onGlobalChartsToggle={handleGlobalChartsToggle}
+                onChartToggle={handleChartToggle}
+                onExportPdf={exportSingleReportPDF}
+                filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
+              />
             )}
           />
         )}
