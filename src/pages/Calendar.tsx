@@ -759,37 +759,42 @@ export default function Calendar() {
       />
 
       {/* Header */}
-      <section className={cn(PREMIUM_PANEL, "relative overflow-hidden rounded-2xl border p-4 md:p-5")}>
+      <section className={cn(PREMIUM_PANEL, "relative overflow-hidden rounded-2xl border p-4 md:p-6")}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
         <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Scheduling command centre
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="hidden rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_12px_35px_hsl(var(--primary)/0.12)] sm:block">
+                <CalendarIcon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Scheduling command centre
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Calendar</h1>
+                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-zinc-300">
+                  GoHighLevel Appointments
+                  {isUpdating && <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary animate-pulse">Updating...</span>}
+                </p>
+              </div>
             </div>
-            <h1 className="text-2xl md:text-4xl font-bold tracking-tight text-white">Calendar</h1>
-            <p className="text-sm text-zinc-400 flex items-center gap-2">
-              GoHighLevel Appointments
-              {isUpdating && <span className="text-xs text-primary animate-pulse">(Updating...)</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className={PREMIUM_BUTTON}>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
-                  Export current view
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {/* Mobile sidebar trigger */}
-            {isMobile && (
+            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-primary/30 bg-primary/15 font-semibold text-primary shadow-sm shadow-primary/10 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/20 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/50 active:translate-y-0">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                    Export current view
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Mobile sidebar trigger */}
+              {isMobile && (
               <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="icon" className={PREMIUM_BUTTON}>
@@ -939,21 +944,21 @@ export default function Calendar() {
                   </div>
                 </SheetContent>
               </Sheet>
-            )}
-            <Button
-              variant="outline"
-              size="icon"
-              className={PREMIUM_BUTTON}
-              onClick={handleRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(PREMIUM_BUTTON, "focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-95")}
+                onClick={handleRefresh}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Controls row - scrollable on mobile */}
-        <div className={cn(PREMIUM_MUTED_SURFACE, "flex items-center gap-2 overflow-x-auto rounded-xl border p-2 md:flex-wrap")}>
+          {/* Controls row - scrollable on mobile */}
+          <div className={cn(PREMIUM_MUTED_SURFACE, "flex items-center gap-2 overflow-x-auto rounded-xl border p-2 md:flex-wrap")}>
           {!isMobile && <KeyboardShortcutsHint />}
           <CalendarSearchDropdown
             events={events}
@@ -998,7 +1003,7 @@ export default function Calendar() {
               ))}
             </SelectContent>
           </Select>
-        </div>
+          </div>
         </div>
       </section>
 
