@@ -832,7 +832,7 @@ export default function GeneratedReports() {
       sourceFilter !== 'all',
       scoreRange[0] > 0 || scoreRange[1] < 100,
       showArchived,
-      dateRange !== '30' || (dateRange === 'custom' && (customFrom.length > 0 || customTo.length > 0)),
+      dateRange !== '30',
     ].filter(Boolean).length;
   }, [investmentSearchQuery, scopeFilter, gradeFilter, tierFilter, sourceFilter, scoreRange, showArchived, dateRange, customFrom, customTo]);
 

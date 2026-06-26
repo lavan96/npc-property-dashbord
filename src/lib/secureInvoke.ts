@@ -98,12 +98,49 @@ function getAccessToken(): string | null {
 }
 
 /**
+ * Attempt to refresh the stored Supabase access token by calling
+ * custom-auth-verify with the existing session_token. Returns the new
+ * access token on success, or null when no refresh is possible.
+ */
+async function tryRefreshAccessToken(): Promise<string | null> {
+  const sessionToken = getSessionToken();
+  if (!sessionToken) return null;
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/custom-auth-verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-session-token': sessionToken,
+      },
+      credentials: 'omit',
+      body: JSON.stringify({ session_token: sessionToken }),
+    });
+    if (!resp.ok) return null;
+    const json = await resp.json().catch(() => null) as any;
+    if (json?.valid && json?.access_token) {
+      try { sessionStorage.setItem(ACCESS_TOKEN_KEY, json.access_token); } catch { /* ignore */ }
+      try { localStorage.setItem(ACCESS_TOKEN_KEY, json.access_token); } catch { /* ignore */ }
+      if (json?.session_token) {
+        try { sessionStorage.setItem(SESSION_TOKEN_KEY, json.session_token); } catch { /* ignore */ }
+        try { localStorage.setItem(SESSION_TOKEN_KEY, json.session_token); } catch { /* ignore */ }
+      }
+      return json.access_token as string;
+    }
+  } catch (err) {
+    console.warn('[secureInvoke] Token refresh failed', err);
+  }
+  return null;
+}
+
+/**
  * Invoke an edge function with HttpOnly cookie support
  */
 export async function invokeSecureFunction<T = any>(
   functionName: string,
   body?: Record<string, any>,
-  options?: { timeoutMs?: number }
+  options?: { timeoutMs?: number; _isRetry?: boolean }
 ): Promise<InvokeResult<T>> {
   try {
     const sessionToken = getSessionToken();
@@ -190,6 +227,15 @@ export async function invokeSecureFunction<T = any>(
           || message.includes('session expired')
         ));
 
+      // ── One-shot token refresh + retry on auth failure ──
+      if (isAuthFailure && !options?._isRetry && functionName !== 'custom-auth-verify') {
+        const refreshed = await tryRefreshAccessToken();
+        if (refreshed) {
+          console.log('[invokeSecureFunction] Access token refreshed, retrying', functionName);
+          return invokeSecureFunction<T>(functionName, body, { ...options, _isRetry: true });
+        }
+      }
+
       if (isAuthFailure) {
         markAuthFailure();
         if (isAuthExhausted()) {
@@ -250,6 +296,7 @@ export async function invokeSecureFunction<T = any>(
     };
   }
 }
+
 
 /**
  * Check if the user has an active session token or access token stored.

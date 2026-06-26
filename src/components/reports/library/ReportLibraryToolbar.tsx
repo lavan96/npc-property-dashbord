@@ -163,7 +163,7 @@ export function ReportLibraryToolbar(props: Props) {
   if (scoreRange[0] > 0 || scoreRange[1] < 100) {
     activeChips.push({ key: 'score', label: `Score: ${scoreRange[0]}–${scoreRange[1]}`, onReset: resetScoreRange });
   }
-  if (dateRange !== '30' || (dateRange === 'custom' && (customFrom || customTo))) {
+  if (dateRange !== '30') {
     activeChips.push({ key: 'date', label: `Date: ${dateRangeLabel.replace(/^Showing /, '')}`, onReset: resetDateRange });
   }
   if (showArchived) {
