@@ -134,6 +134,7 @@ export {
   IMPORT_REVIEW_VISUAL_QA_VERSION,
   attachVisualQualityToImportReview,
   generatedRastersToImportReviewArtifacts,
+  persistedVisualQualityToReviewSummary,
   summarizeVisualQualityForReview,
   visualQualityReportToDiffReviewArtifacts,
   type AttachVisualQualityToImportReviewOptions,

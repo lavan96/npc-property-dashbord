@@ -22,7 +22,7 @@ import { type FidelityMode, type ImportProgress, type ImportResult } from '@/lib
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
 import { loadImportReviewDraft, saveImportReviewDecision, type ImportReviewDecisionRecord, type LoadImportReviewDraftResult } from '@/lib/reportTemplate/ingestion/importArtifacts';
-import { runImportReviewVisualQualityPipeline, type VisualQaReviewSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
+import { loadVisualQuality, persistedVisualQualityToReviewSummary, runImportReviewVisualQualityPipeline, type PersistedVisualQuality, type VisualQaReviewSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 import { ImportReviewDialog } from './ImportReviewDialog';
 import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
 
@@ -67,6 +67,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const [persistedReview, setPersistedReview] = useState<LoadImportReviewDraftResult | null>(null);
   const [visualQaBusy, setVisualQaBusy] = useState(false);
   const [visualQaSummary, setVisualQaSummary] = useState<VisualQaReviewSummary | null>(null);
+  const [persistedVisualQuality, setPersistedVisualQuality] = useState<PersistedVisualQuality | null>(null);
 
   const reset = () => {
     setFile(null);
@@ -77,9 +78,11 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setRecordedDecision(null);
     setPersistedReview(null);
     setVisualQaSummary(null);
+    setPersistedVisualQuality(null);
     setPersistedReview(null);
     setVisualQaBusy(false);
     setVisualQaSummary(null);
+    setPersistedVisualQuality(null);
   };
 
   const handleClose = (v: boolean) => {
@@ -120,6 +123,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
       setRecordedDecision(null);
       setPersistedReview(null);
       setVisualQaSummary(null);
+    setPersistedVisualQuality(null);
       toast.success(`Imported ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'} via Docling.`);
     } catch (err) {
       toast.error(describeAuthError((err as Error).message) ?? `Import failed: ${(err as Error).message}`);
@@ -128,17 +132,33 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     }
   }, [file, mode, user?.id, isSuperadmin, redactPii]);
 
+  const hydratePersistedVisualQuality = useCallback(async (importId: string) => {
+    const loadedVisual = await loadVisualQuality(importId);
+    if (loadedVisual.kind === 'ok') {
+      setPersistedVisualQuality(loadedVisual.payload);
+      setVisualQaSummary(persistedVisualQualityToReviewSummary(loadedVisual.payload));
+      return loadedVisual.payload;
+    }
+    if (loadedVisual.kind === 'missing') {
+      setPersistedVisualQuality(null);
+      return null;
+    }
+    console.warn('[visualQuality] load failed', loadedVisual.message);
+    return null;
+  }, []);
+
   const openReview = useCallback(async () => {
     if (!result?.importId) return;
     try {
       const loaded = await loadImportReviewDraft({ importId: result.importId });
       setPersistedReview(loaded);
+      await hydratePersistedVisualQuality(result.importId);
       setReviewOpen(true);
     } catch (err) {
       toast.error(`Could not load persisted review artifacts: ${(err as Error).message}`);
       setReviewOpen(true);
     }
-  }, [result?.importId]);
+  }, [result?.importId, hydratePersistedVisualQuality]);
 
   const runVisualQa = useCallback(async () => {
     if (!persistedReview) {
@@ -160,11 +180,13 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         ...persistedReview,
         draft: qa.draft,
       });
-      setVisualQaSummary(qa.visualQa.summary);
 
       if (qa.visualQa.persistResult.kind === 'ok') {
+        const persisted = await hydratePersistedVisualQuality(persistedReview.record.id);
+        if (!persisted) setVisualQaSummary(qa.visualQa.summary);
         toast.success(`Visual QA saved · score ${Math.round(qa.visualQa.summary.overallScore * 100)}%`);
       } else {
+        setVisualQaSummary(qa.visualQa.summary);
         toast.error(`Visual QA could not be saved: ${qa.visualQa.persistResult.message}`);
       }
     } catch (err) {
@@ -172,7 +194,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     } finally {
       setVisualQaBusy(false);
     }
-  }, [persistedReview, result?.template.id, mode]);
+  }, [persistedReview, result?.template.id, mode, hydratePersistedVisualQuality]);
 
   const percent = (() => {
     if (!progress) return 0;
@@ -461,6 +483,8 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         visualQaAvailable={visualQaAvailable}
         visualQaBusy={visualQaBusy}
         visualQaSummary={visualQaSummary}
+        visualQualitySignedUrls={persistedVisualQuality?.signedUrls ?? null}
+        visualQualityArtifactPaths={persistedVisualQuality?.artifactPaths ?? null}
         onOpenTemplate={result ? () => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); } : undefined}
         recordedDecision={recordedDecision}
         onRecordDecision={result ? async (decision: ImportReviewDecision, note?: string) => {

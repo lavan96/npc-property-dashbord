@@ -36,6 +36,13 @@ interface Props {
   visualQaAvailable?: boolean;
   visualQaBusy?: boolean;
   visualQaSummary?: VisualQaReviewSummary | null;
+  visualQualitySignedUrls?: Record<string, string> | null;
+  visualQualityArtifactPaths?: {
+    summary?: string | null;
+    sourceRasters?: string | null;
+    generatedRasters?: string | null;
+    diffRasters?: string | null;
+  } | null;
 }
 
 function flattenLayers(layers: CdirLayer[]): CdirLayer[] {
@@ -61,7 +68,7 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
@@ -70,6 +77,13 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
   const sourceRasterArtifacts = draft?.artifacts.filter((artifact) => artifact.kind === 'source-raster') ?? [];
   const generatedRasterArtifacts = draft?.artifacts.filter((artifact) => artifact.kind === 'reconstructed-raster') ?? [];
   const diffRasterArtifacts = draft?.artifacts.filter((artifact) => artifact.kind === 'diff-raster') ?? [];
+  const signedUrls = visualQualitySignedUrls ?? {};
+  const signedSourceCount = Object.keys(signedUrls).filter((key) => key.endsWith(':source')).length;
+  const signedGeneratedCount = Object.keys(signedUrls).filter((key) => key.endsWith(':generated')).length;
+  const signedDiffCount = Object.keys(signedUrls).filter((key) => key.endsWith(':diff')).length;
+  const firstDiffUrl = Object.entries(signedUrls).find(([key]) => key.endsWith(':diff'))?.[1] ?? null;
+  const firstGeneratedUrl = Object.entries(signedUrls).find(([key]) => key.endsWith(':generated'))?.[1] ?? null;
+  const firstSourceUrl = Object.entries(signedUrls).find(([key]) => key.endsWith(':source'))?.[1] ?? null;
 
   const recordDecision = async (value: ImportReviewDecision) => {
     if (!onRecordDecision) return;
@@ -152,6 +166,29 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
                   <Metric label="Uploaded" value={String(visualQaSummary.uploadedCount)} />
                   <Metric label="Diff refs" value={String(diffRasterArtifacts.length)} />
                 </div>
+                {(signedSourceCount > 0 || signedGeneratedCount > 0 || signedDiffCount > 0) && (
+                  <div className="mt-3 rounded-md border bg-background/70 p-3 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium">Persisted visual artifacts</div>
+                      <Badge variant="outline">{signedSourceCount + signedGeneratedCount + signedDiffCount} signed URL{signedSourceCount + signedGeneratedCount + signedDiffCount === 1 ? '' : 's'}</Badge>
+                    </div>
+                    <div className="mt-2 grid gap-2 md:grid-cols-3">
+                      <Row label="Source rasters" value={String(signedSourceCount)} />
+                      <Row label="Generated rasters" value={String(signedGeneratedCount)} />
+                      <Row label="Diff rasters" value={String(signedDiffCount)} />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {firstSourceUrl && <a className="text-primary underline underline-offset-2" href={firstSourceUrl} target="_blank" rel="noreferrer">Open source</a>}
+                      {firstGeneratedUrl && <a className="text-primary underline underline-offset-2" href={firstGeneratedUrl} target="_blank" rel="noreferrer">Open generated</a>}
+                      {firstDiffUrl && <a className="text-primary underline underline-offset-2" href={firstDiffUrl} target="_blank" rel="noreferrer">Open diff</a>}
+                    </div>
+                    {visualQualityArtifactPaths?.summary && (
+                      <div className="mt-2 font-mono text-[10px] text-muted-foreground break-all">
+                        summary: {visualQualityArtifactPaths.summary}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {visualQaSummary.problems.length > 0 && (
                   <p className="mt-2 text-[11px] text-muted-foreground">
                     {visualQaSummary.problems.slice(0, 3).join(' · ')}
