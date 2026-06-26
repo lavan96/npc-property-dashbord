@@ -2064,7 +2064,7 @@ export function InvestmentReportGenerator() {
                   {/* Scraped data indicator - Moved to after scrape button */}
                   {urlScrapedData && (
                     <div className="reports-success-state">
-                      <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                      <p className="text-sm font-semibold text-success">
                         ✓ Scraped: <strong>{urlScrapedData.propertyAddress}</strong>
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -2419,7 +2419,7 @@ export function InvestmentReportGenerator() {
                   {/* Parsed data indicator - Moved to after parse button */}
                   {pdfParsedData && (
                     <div className="reports-success-state">
-                      <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                      <p className="text-sm font-semibold text-success">
                         ✓ Parsed: <strong>{pdfParsedData.propertyAddress}</strong>
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
