@@ -3,7 +3,7 @@ import {
   buildPageContextRenderArtifactManifest,
   pageContextRenderManifestToReviewArtifacts,
 } from '../ingestion/visualQuality';
-import type { PdfPageContextConsumerGuardrail } from '../ingestion/pageContexts';
+import type { PdfPageContext, PdfPageContextConsumerGuardrail } from '../ingestion/pageContexts';
 
 const guardrail: PdfPageContextConsumerGuardrail = {
   version: 'pdf-page-context-consumer-guardrail-v1',
@@ -24,7 +24,7 @@ const guardrail: PdfPageContextConsumerGuardrail = {
   generated_at: '2026-01-01T00:00:00.000Z',
 };
 
-const makeContext = (pageNo: number) => ({
+const makeContext = (pageNo: number): PdfPageContext => (({
   version: 'pdf-page-context-v1',
   page_no: pageNo,
   page_index: pageNo - 1,
@@ -50,7 +50,7 @@ const makeContext = (pageNo: number) => ({
     has_raster: true,
     has_parent_global_artifacts: true,
   },
-});
+}) as unknown as PdfPageContext);
 
 describe('PageContext render artifact manifest', () => {
   it('builds source render artifact refs from per-page contexts', () => {

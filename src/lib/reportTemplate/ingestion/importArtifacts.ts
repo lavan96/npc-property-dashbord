@@ -20,6 +20,7 @@ import {
   type PdfPageContextSummary,
   type PdfPageContextSource,
   type PdfPageContextValidation,
+  type PdfPageContextConsumerGuardrail,
 } from './pageContexts';
 import {
   buildPageContextRenderArtifactManifest,
