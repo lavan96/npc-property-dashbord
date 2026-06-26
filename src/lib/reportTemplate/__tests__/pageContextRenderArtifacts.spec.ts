@@ -50,7 +50,7 @@ const makeContext = (pageNo: number): PdfPageContext => (({
     has_raster: true,
     has_parent_global_artifacts: true,
   },
-});
+}) as unknown as PdfPageContext);
 
 describe('PageContext render artifact manifest', () => {
   it('builds source render artifact refs from per-page contexts', () => {
