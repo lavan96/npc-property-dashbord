@@ -14,7 +14,7 @@ import { ReportConfigModal } from '@/components/reports/ReportConfigModal';
 import { useReportGenerator } from '@/hooks/useReportGenerator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb } from 'lucide-react';
+import { Building2, MapPin, DollarSign, Calendar, TrendingUp, Users, Globe, BarChart3, Lightbulb, Loader2, AlertTriangle } from 'lucide-react';
 
 // Lazy load heavy analytics components
 const AdvancedAnalytics = lazy(() => import('@/components/reports/AdvancedAnalytics').then(m => ({ default: m.AdvancedAnalytics })));
@@ -27,12 +27,16 @@ const InvestmentReportGenerator = lazy(() => import('@/components/reports/Invest
 
 // Loading fallback component
 const ComponentLoader = () => (
-  <Card className="ci-card-premium">
+  <Card className="ci-card-premium reports-loading-card">
     <CardContent className="p-6">
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-1/3" />
-        <Skeleton className="h-4 w-2/3" />
-        <Skeleton className="h-32 w-full" />
+      <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-3 text-sm font-medium text-primary">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading reporting module...
+      </div>
+      <div className="mt-5 space-y-4">
+        <Skeleton className="h-8 w-1/3 rounded-full" />
+        <Skeleton className="h-4 w-2/3 rounded-full" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
       </div>
     </CardContent>
   </Card>
@@ -136,16 +140,31 @@ export default function Reports() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Reports</h1>
-            <p className="text-muted-foreground">Quantitative analysis of your property listings</p>
-          </div>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Loading reporting data...</p>
-          </div>
-        </div>
+      <div className="ci-foundation ci-page-shell reports-page-premium">
+        <Card className="ci-card-premium reports-loading-card overflow-hidden">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="ci-tab-eyebrow">NPC reporting command centre</p>
+                <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">Reports</h1>
+                <p className="mt-2 text-muted-foreground">Quantitative analysis of your property listings</p>
+              </div>
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading reporting data...
+              </div>
+            </div>
+            <div className="mt-8 grid gap-4 md:grid-cols-4">
+              {[0, 1, 2, 3].map((item) => (
+                <div key={item} className="rounded-2xl border border-border/70 bg-background/45 p-4 shadow-sm">
+                  <Skeleton className="h-4 w-24 rounded-full" />
+                  <Skeleton className="mt-4 h-8 w-20 rounded-full" />
+                  <Skeleton className="mt-3 h-3 w-full rounded-full" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -371,7 +390,7 @@ export default function Reports() {
                     </ResponsiveContainer>
                     </ChartContainer>
                   ) : (
-                    <div className="reports-suburb-empty-state">No suburb listing data available.</div>
+                    <div className="reports-suburb-empty-state"><BarChart3 className="h-5 w-5" /><span>No suburb listing data available.</span></div>
                   )}
                   {/* Sub-metrics */}
                   {suburbChartData.length >= 2 && (() => {
@@ -456,7 +475,7 @@ export default function Reports() {
                     </ResponsiveContainer>
                     </ChartContainer>
                   ) : (
-                    <div className="reports-types-empty-state">No property type data available.</div>
+                    <div className="reports-types-empty-state"><BarChart3 className="h-5 w-5" /><span>No property type data available.</span></div>
                   )}
                   {/* Dominant type callout */}
                   {propertyTypeChartData.length > 0 && (() => {
@@ -521,7 +540,7 @@ export default function Reports() {
                     </ResponsiveContainer>
                     </ChartContainer>
                   ) : (
-                    <div className="reports-pricing-empty-state">No pricing distribution data available.</div>
+                    <div className="reports-pricing-empty-state"><BarChart3 className="h-5 w-5" /><span>No pricing distribution data available.</span></div>
                   )}
                   {/* Price insights row */}
                   {(() => {
@@ -592,7 +611,7 @@ export default function Reports() {
                     </ResponsiveContainer>
                     </ChartContainer>
                   ) : (
-                    <div className="reports-pricing-empty-state">No bedroom distribution data available.</div>
+                    <div className="reports-pricing-empty-state"><BarChart3 className="h-5 w-5" /><span>No bedroom distribution data available.</span></div>
                   )}
                   {/* Bedroom insights */}
                   <div className="reports-pricing-stat-grid grid grid-cols-3 gap-3 pt-2 border-t">
@@ -623,10 +642,13 @@ export default function Reports() {
 
         <TabsContent value="investment" className="space-y-6 mt-0">
           <ErrorBoundary fallback={
-            <Card>
+            <Card className="ci-card-premium reports-state-card reports-state-card-warning">
               <CardContent className="p-6">
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Investment Report Generator encountered an error. Please refresh the page.</p>
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
+                  <span className="rounded-full border border-amber-500/25 bg-amber-500/10 p-3 text-amber-600 dark:text-amber-300">
+                    <AlertTriangle className="h-5 w-5" />
+                  </span>
+                  <p className="text-sm font-medium text-foreground">Investment Report Generator encountered an error. Please refresh the page.</p>
                 </div>
               </CardContent>
             </Card>

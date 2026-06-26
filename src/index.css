@@ -2463,3 +2463,158 @@ html {
     @apply rounded-2xl border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur;
   }
 }
+
+@layer components {
+  .reports-page-premium button,
+  .reports-investment-generator button {
+    @apply min-h-10 rounded-xl font-semibold transition-all duration-200 ease-out focus-visible:ring-2 focus-visible:ring-primary/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none;
+  }
+
+  .reports-page-premium button:not(:disabled):hover,
+  .reports-investment-generator button:not(:disabled):hover {
+    @apply -translate-y-0.5 shadow-md shadow-primary/10;
+  }
+
+  .reports-page-premium button:not(:disabled):active,
+  .reports-investment-generator button:not(:disabled):active {
+    @apply translate-y-0 scale-[0.99] shadow-sm;
+  }
+
+  .reports-page-premium button:disabled,
+  .reports-investment-generator button:disabled {
+    @apply border-border/70 bg-muted/70 text-muted-foreground opacity-80;
+  }
+
+  .reports-page-premium button svg,
+  .reports-investment-generator button svg,
+  .reports-page-premium [role='tab'] svg,
+  .reports-investment-generator [role='tab'] svg {
+    @apply shrink-0 transition-transform duration-200;
+  }
+
+  .reports-page-premium button:not(:disabled):hover svg,
+  .reports-investment-generator button:not(:disabled):hover svg,
+  .reports-page-premium [role='tab']:hover svg,
+  .reports-investment-generator [role='tab']:hover svg,
+  .reports-page-premium [role='tab'][data-state='active'] svg,
+  .reports-investment-generator [role='tab'][data-state='active'] svg {
+    @apply scale-110;
+  }
+
+  .reports-page-premium .reports-primary-tab,
+  .reports-page-premium .reports-analytics-tab,
+  .reports-investment-generator .reports-investment-mode-tab {
+    @apply will-change-transform;
+  }
+
+  .reports-page-premium .reports-primary-tab[data-state='active'],
+  .reports-page-premium .reports-analytics-tab[data-state='active'],
+  .reports-investment-generator .reports-investment-mode-tab[data-state='active'] {
+    @apply ring-1 ring-primary/25;
+    box-shadow: 0 12px 30px hsl(var(--primary) / 0.22), inset 0 1px 0 hsl(var(--primary-foreground) / 0.24);
+  }
+
+  .reports-page-premium input,
+  .reports-page-premium textarea,
+  .reports-investment-generator input,
+  .reports-investment-generator textarea,
+  .reports-investment-generator [role='combobox'] {
+    @apply min-h-11 rounded-xl border-border/70 bg-background/75 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/55 hover:border-primary/35 focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:bg-muted/60 disabled:text-muted-foreground;
+  }
+
+  .reports-investment-generator .reports-build-type-option,
+  .reports-investment-generator .reports-recent-item,
+  .reports-page-premium .reports-kpi-tile,
+  .reports-page-premium .reports-secondary-metric,
+  .reports-page-premium .reports-insight-row,
+  .reports-page-premium .reports-insight-alert {
+    @apply will-change-transform;
+  }
+
+  .reports-investment-generator .reports-build-type-option:has(input:checked) {
+    box-shadow: 0 14px 34px hsl(var(--primary) / 0.22), inset 0 1px 0 hsl(var(--primary-foreground) / 0.22);
+  }
+
+  .reports-investment-generator .reports-recent-item:hover {
+    box-shadow: 0 18px 42px hsl(var(--primary) / 0.14), inset 0 1px 0 hsl(var(--primary) / 0.16);
+  }
+
+  .reports-investment-generator .reports-recent-all-button,
+  .reports-page-premium .reports-primary-tab[data-state='active'],
+  .reports-page-premium .reports-analytics-tab[data-state='active'],
+  .reports-investment-generator .reports-investment-mode-tab[data-state='active'] {
+    @apply border-primary/40;
+  }
+
+  .reports-page-premium .recharts-wrapper,
+  .reports-page-premium .recharts-surface,
+  .reports-investment-generator .recharts-wrapper,
+  .reports-investment-generator .recharts-surface {
+    @apply overflow-visible;
+  }
+
+  .reports-page-premium .recharts-bar-rectangle path,
+  .reports-page-premium .recharts-sector,
+  .reports-page-premium .recharts-line-curve,
+  .reports-investment-generator .recharts-bar-rectangle path,
+  .reports-investment-generator .recharts-sector,
+  .reports-investment-generator .recharts-line-curve {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .reports-page-premium .recharts-bar-rectangle:hover path,
+  .reports-page-premium .recharts-sector:hover,
+  .reports-investment-generator .recharts-bar-rectangle:hover path,
+  .reports-investment-generator .recharts-sector:hover {
+    filter: drop-shadow(0 8px 14px hsl(var(--primary) / 0.25));
+    opacity: 0.92;
+  }
+
+  .reports-page-premium .recharts-tooltip-wrapper,
+  .reports-investment-generator .recharts-tooltip-wrapper {
+    @apply transition-transform duration-150 ease-out;
+  }
+}
+
+@layer components {
+  .reports-loading-card {
+    @apply relative overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card/95 to-primary/5 shadow-xl shadow-primary/10;
+  }
+
+  .reports-loading-card::before {
+    content: '';
+    @apply pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent;
+  }
+
+  .reports-state-card {
+    @apply rounded-3xl border shadow-lg shadow-black/5;
+  }
+
+  .reports-state-card-warning {
+    @apply border-amber-500/30 bg-gradient-to-br from-card via-card/95 to-amber-500/5;
+  }
+
+  .reports-suburb-empty-state,
+  .reports-types-empty-state,
+  .reports-pricing-empty-state {
+    @apply flex-col gap-3 border-dashed bg-gradient-to-br from-background/70 via-background/45 to-primary/5 font-medium;
+  }
+
+  .reports-suburb-empty-state svg,
+  .reports-types-empty-state svg,
+  .reports-pricing-empty-state svg {
+    @apply rounded-full border border-primary/20 bg-primary/10 p-2 text-primary shadow-sm box-content;
+  }
+
+  .reports-processing-state {
+    @apply rounded-2xl border border-primary/15 bg-primary/5 p-4 shadow-sm;
+  }
+
+  .reports-validation-state {
+    @apply rounded-2xl border p-4 shadow-sm;
+  }
+
+  .reports-validation-state-error {
+    @apply border-destructive/25 bg-destructive/10;
+  }
+}
