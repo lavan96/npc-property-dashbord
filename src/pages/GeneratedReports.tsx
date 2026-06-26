@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonBasket } from '@/components/reports/ComparisonBasket';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { format } from 'date-fns';
-import { Archive, FileText, TrendingUp } from 'lucide-react';
+import { Archive, BarChart3, FileText, MapPin, Search, TrendingUp } from 'lucide-react';
 import { useUserNames } from '@/hooks/useUserNames';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
@@ -838,6 +838,21 @@ export default function GeneratedReports() {
 
   const visibleLibraryReportsCount = reports.length + filteredInvestmentReports.length + filteredComparisons.length;
 
+
+  const clearInvestmentFilters = () => {
+    setInvestmentSearchQuery('');
+    setScopeFilter('all');
+    setGradeFilter('all');
+    setScoreRange([0, 100]);
+    setTierFilter('all');
+    setSourceFilter('all');
+    setShowArchived(false);
+    setDateRange('30');
+    setCustomFrom('');
+    setCustomTo('');
+    setInvestmentPage(1);
+  };
+
   const handleViewReport = (reportId: string) => {
     navigate(`/generated-reports/${reportId}`);
   };
@@ -890,11 +905,11 @@ export default function GeneratedReports() {
         <TabsContent value="quantitative" className="space-y-4">
           {reports.length === 0 ? (
             <ReportLibraryEmptyState
-              icon="📊"
-              title="No quantitative reports generated yet"
-              description="Generate your first report from the Reports page"
+              icon={BarChart3}
+              title="No quantitative reports yet"
+              description="Generate your first market charts, KPI, and listing analytics report from the Reports page."
               actionLabel="Go to Reports"
-              actionIcon={<FileText className="mr-2 h-4 w-4" />}
+              actionIcon={<FileText className="h-4 w-4" />}
               onAction={() => navigate('/reports')}
             />
           ) : (
@@ -946,12 +961,14 @@ export default function GeneratedReports() {
 
           {filteredInvestmentReports.length === 0 ? (
             <ReportLibraryEmptyState
-              icon="🏠"
-              title="No investment reports generated yet"
-              description="Generate your first investment report from a property listing"
-              actionLabel="Go to Listings"
-              actionIcon={<TrendingUp className="mr-2 h-4 w-4" />}
-              onAction={() => navigate('/listings')}
+              icon={showArchived ? Archive : activeInvestmentFiltersCount > 0 ? Search : TrendingUp}
+              title={showArchived ? 'No archived reports' : activeInvestmentFiltersCount > 0 ? 'No reports match these filters' : 'No investment reports yet'}
+              description={showArchived ? 'Archived investment reports will appear here when available.' : activeInvestmentFiltersCount > 0 ? 'Try clearing filters or broadening your search to see more reports.' : 'Generate your first investment report from a property listing.'}
+              actionLabel={!showArchived && activeInvestmentFiltersCount === 0 ? 'Go to Listings' : undefined}
+              actionIcon={!showArchived && activeInvestmentFiltersCount === 0 ? <TrendingUp className="h-4 w-4" /> : undefined}
+              onAction={!showArchived && activeInvestmentFiltersCount === 0 ? () => navigate('/listings') : undefined}
+              secondaryActionLabel={activeInvestmentFiltersCount > 0 ? 'Clear Filters' : undefined}
+              onSecondaryAction={activeInvestmentFiltersCount > 0 ? clearInvestmentFilters : undefined}
             />
           ) : (
             <>
@@ -1027,9 +1044,11 @@ export default function GeneratedReports() {
 
           {filteredComparisons.length === 0 ? (
             <ReportLibraryEmptyState
-              icon={showArchivedComparisons ? '📦' : '🔄'}
-              title={showArchivedComparisons ? 'No Archived Comparisons' : 'No Comparison Analyses Yet'}
-              description={showArchivedComparisons ? 'Archived comparisons will appear here' : 'Select 2-5 investment reports and click "Compare Properties" to create your first comparison analysis'}
+              icon={showArchivedComparisons ? Archive : filteredComparisons.length === 0 && comparisons.length > 0 ? Search : MapPin}
+              title={showArchivedComparisons ? 'No archived comparisons' : comparisons.length > 0 ? 'No comparisons match this view' : 'No comparison analyses yet'}
+              description={showArchivedComparisons ? 'Archived comparison analyses will appear here when available.' : comparisons.length > 0 ? 'Switch archive visibility or refresh your filters to find comparison analyses.' : 'Select 2-5 investment reports and click "Compare Properties" to create your first comparison analysis.'}
+              secondaryActionLabel={showArchivedComparisons ? 'Show Active Comparisons' : undefined}
+              onSecondaryAction={showArchivedComparisons ? () => setShowArchivedComparisons(false) : undefined}
             />
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

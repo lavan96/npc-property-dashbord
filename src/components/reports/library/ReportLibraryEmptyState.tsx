@@ -1,32 +1,56 @@
-import { ReactNode } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import type { ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { ArrowRight, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface ReportLibraryEmptyStateProps {
-  icon: ReactNode;
+  icon: LucideIcon;
   title: string;
   description: string;
   actionLabel?: string;
   actionIcon?: ReactNode;
   onAction?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }
 
-export function ReportLibraryEmptyState({ icon, title, description, actionLabel, actionIcon, onAction }: ReportLibraryEmptyStateProps) {
+export function ReportLibraryEmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  actionIcon,
+  onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+}: ReportLibraryEmptyStateProps) {
   return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center h-96 space-y-4">
-        <div className="text-6xl text-muted-foreground">{icon}</div>
-        <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <p className="text-muted-foreground">{description}</p>
+    <DashboardThemeFrame variant="section" className="flex min-h-[24rem] flex-col items-center justify-center p-8 text-center">
+      <div className="pointer-events-none absolute -top-24 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl" />
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/25 bg-amber-500/10 text-amber-700 shadow-sm shadow-amber-500/10 dark:text-amber-300">
+        <Icon className="h-7 w-7" />
+      </div>
+      <div className="relative mt-5 max-w-md space-y-2">
+        <h3 className="text-xl font-semibold tracking-tight text-foreground">{title}</h3>
+        <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+      {(actionLabel && onAction) || (secondaryActionLabel && onSecondaryAction) ? (
+        <div className="relative mt-6 flex flex-col gap-2 sm:flex-row">
+          {actionLabel && onAction && (
+            <Button onClick={onAction} className="gap-2 rounded-xl">
+              {actionIcon || <ArrowRight className="h-4 w-4" />}
+              {actionLabel}
+            </Button>
+          )}
+          {secondaryActionLabel && onSecondaryAction && (
+            <Button variant="outline" onClick={onSecondaryAction} className="gap-2 rounded-xl">
+              <RotateCcw className="h-4 w-4" />
+              {secondaryActionLabel}
+            </Button>
+          )}
         </div>
-        {actionLabel && onAction && (
-          <Button onClick={onAction} className="mt-4">
-            {actionIcon}
-            {actionLabel}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+      ) : null}
+    </DashboardThemeFrame>
   );
 }
