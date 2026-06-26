@@ -2731,3 +2731,154 @@ html {
     }
   }
 }
+
+@layer components {
+  /* Phase 23 final premium polish for Reports only. */
+  .reports-page-premium .ci-card,
+  .reports-page-premium .ci-card-premium,
+  .reports-investment-generator .ci-card,
+  .reports-investment-generator .ci-card-premium {
+    @apply relative border-primary/15 bg-gradient-to-br from-card via-card/95 to-background/75 shadow-xl shadow-black/5;
+  }
+
+  .reports-page-premium .ci-card-premium::after,
+  .reports-investment-generator .ci-card-premium::after {
+    content: '';
+    @apply pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent opacity-80;
+  }
+
+  .reports-top-command,
+  .reports-quant-header,
+  .reports-investment-hero {
+    @apply relative overflow-hidden;
+  }
+
+  .reports-top-command::before,
+  .reports-investment-hero::before {
+    content: '';
+    @apply pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-primary/10 blur-3xl;
+  }
+
+  .reports-primary-tab,
+  .reports-analytics-tab,
+  .reports-investment-mode-tab {
+    @apply border border-transparent bg-background/35 text-muted-foreground/95;
+  }
+
+  .reports-primary-tab[data-state='active'],
+  .reports-analytics-tab[data-state='active'],
+  .reports-investment-mode-tab[data-state='active'] {
+    @apply bg-gradient-to-br from-primary via-primary to-amber-500 text-primary-foreground shadow-xl shadow-primary/25;
+  }
+
+  .reports-page-premium [data-radix-tabs-content],
+  .reports-investment-generator [data-radix-tabs-content] {
+    @apply outline-none;
+  }
+
+  .reports-page-premium [data-slot='card-description'],
+  .reports-investment-generator [data-slot='card-description'],
+  .reports-page-premium .text-muted-foreground,
+  .reports-investment-generator .text-muted-foreground {
+    @apply text-muted-foreground/90;
+  }
+
+  .reports-suburb-card,
+  .reports-types-card,
+  .reports-pricing-card,
+  .reports-trend-card,
+  .reports-insight-card {
+    @apply overflow-hidden rounded-3xl border-primary/15 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5;
+  }
+
+  .reports-suburb-card-header,
+  .reports-types-card-header,
+  .reports-pricing-card-header {
+    @apply border-b border-border/60 bg-gradient-to-r from-primary/10 via-background/45 to-transparent pb-4;
+  }
+
+  .reports-suburb-card-content,
+  .reports-types-card-content,
+  .reports-pricing-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-suburb-chart,
+  .reports-types-chart,
+  .reports-pricing-chart,
+  .reports-trends-chart {
+    @apply rounded-3xl border border-border/60 bg-background/35 p-3 shadow-inner shadow-black/10;
+  }
+
+  .reports-suburb-empty-state,
+  .reports-types-empty-state,
+  .reports-pricing-empty-state {
+    @apply min-h-[280px] rounded-3xl border-primary/25 text-primary/90;
+  }
+
+  .reports-suburb-insight {
+    @apply border-primary/25 bg-primary/10 text-foreground shadow-sm;
+  }
+
+  .reports-severity-high::before,
+  .reports-insight-alert-negative {
+    @apply border-amber-500/35 bg-amber-500/10;
+  }
+
+  .reports-severity-badge.reports-severity-high {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-investment-panel-header,
+  .reports-recent-panel .reports-investment-panel-header {
+    @apply border-b border-border/60 bg-gradient-to-r from-primary/10 via-background/50 to-transparent;
+  }
+
+  .reports-investment-flow > .space-y-3,
+  .reports-investment-flow > .space-y-4,
+  .reports-build-type-control,
+  .reports-supported-sites-panel,
+  .reports-investment-flow > div:not([data-radix-popper-content-wrapper]) {
+    @apply rounded-3xl border border-border/60 bg-background/40 p-4 shadow-sm;
+  }
+
+  .reports-engine-helper,
+  .reports-success-state {
+    @apply rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 shadow-sm;
+  }
+
+  .reports-success-state {
+    @apply border-emerald-500/25 bg-emerald-500/10;
+  }
+
+  .reports-upload-zone {
+    @apply cursor-pointer rounded-3xl border-2 border-dashed p-8 text-center shadow-inner transition-all duration-200;
+  }
+
+  .reports-upload-zone-idle {
+    @apply border-border/70 bg-background/35 hover:border-primary/45 hover:bg-primary/5;
+  }
+
+  .reports-upload-zone-active,
+  .reports-upload-zone-filled {
+    @apply border-primary/55 bg-primary/10 shadow-primary/10;
+  }
+
+  .reports-recent-item {
+    @apply rounded-2xl border border-border/60 bg-gradient-to-br from-background/75 to-primary/5 p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35;
+  }
+
+  .reports-page-premium button:disabled,
+  .reports-investment-generator button:disabled {
+    @apply border border-border/70 bg-background/45 text-muted-foreground/80 opacity-90 ring-1 ring-inset ring-border/40;
+  }
+
+  .reports-validation-state-error {
+    @apply border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100;
+  }
+
+  .reports-validation-state-error .text-destructive,
+  .reports-validation-state-error .text-destructive\/80 {
+    @apply text-amber-700 dark:text-amber-200;
+  }
+}

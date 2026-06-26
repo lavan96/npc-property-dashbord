@@ -2063,8 +2063,8 @@ export function InvestmentReportGenerator() {
 
                   {/* Scraped data indicator - Moved to after scrape button */}
                   {urlScrapedData && (
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-700 dark:text-green-400">
+                    <div className="reports-success-state">
+                      <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                         ✓ Scraped: <strong>{urlScrapedData.propertyAddress}</strong>
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -2234,7 +2234,7 @@ export function InvestmentReportGenerator() {
                   />
 
                   {/* Info for URL mode */}
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <div className="reports-supported-sites-panel space-y-2">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-muted-foreground space-y-1">
@@ -2316,9 +2316,9 @@ export function InvestmentReportGenerator() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       className={`
-                        border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
-                        ${isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
-                        ${pdfFile ? 'bg-muted/30' : ''}
+                        reports-upload-zone
+                        ${isDragging ? 'reports-upload-zone-active' : 'reports-upload-zone-idle'}
+                        ${pdfFile ? 'reports-upload-zone-filled' : ''}
                       `}
                       onClick={() => document.getElementById('pdf-upload')?.click()}
                     >
@@ -2418,8 +2418,8 @@ export function InvestmentReportGenerator() {
 
                   {/* Parsed data indicator - Moved to after parse button */}
                   {pdfParsedData && (
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-sm text-green-700 dark:text-green-400">
+                    <div className="reports-success-state">
+                      <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
                         ✓ Parsed: <strong>{pdfParsedData.propertyAddress}</strong>
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -2589,7 +2589,7 @@ export function InvestmentReportGenerator() {
                   />
 
                   {/* Info for PDF mode */}
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <div className="reports-supported-sites-panel space-y-2">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-muted-foreground space-y-1">
