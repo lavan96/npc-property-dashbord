@@ -1796,3 +1796,108 @@ html {
     @apply flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
   }
 }
+
+@layer components {
+  .reports-agent-suite {
+    @apply rounded-3xl border border-border/60 bg-background/25 p-1.5;
+  }
+
+  .reports-agent-card {
+    @apply overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/95 to-background/70 shadow-lg shadow-black/5 transition-all duration-200 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  .reports-agent-ranking-card {
+    @apply border-primary/20;
+  }
+
+  .reports-agent-card-header {
+    @apply border-b border-border/60 bg-background/35 pb-4;
+  }
+
+  .reports-agent-card-header [data-slot='card-title'],
+  .reports-agent-card-header .text-2xl {
+    @apply text-base font-bold tracking-tight text-foreground md:text-lg;
+  }
+
+  .reports-agent-card-header [data-slot='card-description'] {
+    @apply mt-1 text-sm leading-6 text-muted-foreground;
+  }
+
+  .reports-agent-card-content {
+    @apply p-4 md:p-5;
+  }
+
+  .reports-agent-list {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.35) transparent;
+  }
+
+  .reports-agent-row,
+  .reports-agency-row {
+    @apply flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-card/90 hover:shadow-md hover:shadow-primary/10 sm:flex-row sm:items-center;
+  }
+
+  .reports-agent-rank {
+    @apply flex h-8 min-w-8 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-bold text-primary;
+  }
+
+  .reports-agent-name {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .reports-agent-agency {
+    @apply truncate text-xs leading-5 text-muted-foreground/90;
+  }
+
+  .reports-agent-metric {
+    @apply shrink-0 text-left sm:text-right;
+  }
+
+  .reports-agent-count {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .reports-agent-submetric {
+    @apply text-xs text-muted-foreground/90;
+  }
+
+  .reports-agent-badge {
+    @apply w-fit rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em];
+  }
+
+  .reports-performance-high {
+    @apply border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200;
+  }
+
+  .reports-performance-medium {
+    @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200;
+  }
+
+  .reports-performance-standard {
+    @apply border-border/70 bg-background/70 text-muted-foreground;
+  }
+
+  .reports-agent-toggle {
+    @apply rounded-full border border-border/70 bg-background/50 font-semibold hover:border-primary/35 hover:bg-primary/10 hover:text-primary;
+  }
+
+  .reports-agent-chart {
+    @apply w-full rounded-2xl bg-background/35 p-2;
+  }
+
+  .reports-agent-chart .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.45);
+  }
+
+  .reports-agent-chart .recharts-bar-rectangle path {
+    filter: drop-shadow(0 7px 12px hsl(0 0% 0% / 0.14));
+  }
+
+  .reports-agent-tooltip {
+    @apply rounded-2xl border-primary/25 bg-popover/95 px-3 py-2 shadow-xl shadow-black/20 backdrop-blur;
+  }
+
+  .reports-agent-empty-state {
+    @apply flex min-h-32 items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/35 px-6 text-center text-sm leading-6 text-muted-foreground;
+  }
+}
