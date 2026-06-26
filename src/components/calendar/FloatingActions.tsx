@@ -37,7 +37,7 @@ export function FloatingActions({
               <Button
                 size="icon"
                 variant="outline"
-                className="h-10 w-10 rounded-full shadow-lg bg-background animate-in fade-in slide-in-from-bottom-2"
+                className="h-10 w-10 rounded-full border-white/10 bg-black/70 text-zinc-300 shadow-lg backdrop-blur transition-all animate-in fade-in slide-in-from-bottom-2 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                 onClick={onScrollTop}
               >
                 <ChevronUp className="h-4 w-4" />
@@ -54,7 +54,7 @@ export function FloatingActions({
               <Button
                 size="icon"
                 variant="outline"
-                className="h-10 w-10 rounded-full shadow-lg bg-background"
+                className="h-10 w-10 rounded-full border-white/10 bg-black/70 text-zinc-300 shadow-lg backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
                 onClick={onClearSelection}
               >
                 <X className="h-4 w-4" />
@@ -70,7 +70,7 @@ export function FloatingActions({
             <Button
               size="icon"
               variant="outline"
-              className="h-10 w-10 rounded-full shadow-lg bg-background"
+              className="h-10 w-10 rounded-full border-white/10 bg-black/70 text-zinc-300 shadow-lg backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={onRefresh}
               disabled={isRefreshing}
             >
@@ -85,7 +85,7 @@ export function FloatingActions({
           <TooltipTrigger asChild>
             <Button
               size="icon"
-              className="h-12 w-12 rounded-full shadow-lg"
+              className="h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-[0_14px_36px_hsl(var(--primary)/0.28)] transition-all hover:-translate-y-1 hover:bg-primary/90 hover:shadow-[0_18px_46px_hsl(var(--primary)/0.34)] focus-visible:ring-2 focus-visible:ring-primary/45 active:translate-y-0 active:scale-95"
               onClick={onQuickAdd}
             >
               <Plus className="h-5 w-5" />

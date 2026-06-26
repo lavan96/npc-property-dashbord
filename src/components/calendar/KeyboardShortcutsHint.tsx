@@ -51,7 +51,11 @@ export function KeyboardShortcutsHint() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5 text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-10 gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-xs font-medium text-zinc-300 transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.98]"
+        >
           <Keyboard className="h-3 w-3" />
           <span className="hidden sm:inline">Shortcuts</span>
         </Button>
