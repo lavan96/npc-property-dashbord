@@ -16,10 +16,10 @@ import {
   SlidersHorizontal,
   Star,
   Table2,
-  X,
   Zap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ReportLibraryFilterChips, type ReportLibraryFilterChip } from './ReportLibraryFilterChips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -144,30 +144,30 @@ export function ReportLibraryToolbar(props: Props) {
     setInvestmentPage(1);
   };
 
-  const activeChips: Array<{ key: string; label: string; onReset: () => void }> = [];
+  const activeChips: ReportLibraryFilterChip[] = [];
   if (investmentSearchQuery.trim()) {
-      activeChips.push({ key: 'search', label: `Search: ${investmentSearchQuery.trim()}`, onReset: () => { setInvestmentSearchQuery(''); setInvestmentPage(1); } });
+    activeChips.push({ key: 'search', label: `Search: ${investmentSearchQuery.trim()}`, onReset: () => { setInvestmentSearchQuery(''); setInvestmentPage(1); } });
   }
   if (scopeFilter !== 'all') {
-      activeChips.push({ key: 'scope', label: `Scope: ${scopeOptions.find(option => option.value === scopeFilter)?.label || scopeFilter}`, onReset: () => updateFilter(setScopeFilter)('all') });
+    activeChips.push({ key: 'scope', label: `Scope: ${scopeOptions.find(option => option.value === scopeFilter)?.label || scopeFilter}`, onReset: () => updateFilter(setScopeFilter)('all') });
   }
   if (gradeFilter !== 'all') {
-      activeChips.push({ key: 'grade', label: `Grade: ${gradeFilter}`, onReset: () => updateFilter(setGradeFilter)('all') });
+    activeChips.push({ key: 'grade', label: `Grade: ${gradeFilter}`, onReset: () => updateFilter(setGradeFilter)('all') });
   }
   if (tierFilter !== 'all') {
-      activeChips.push({ key: 'tier', label: `Tier: ${tierOptions.find(option => option.value === tierFilter)?.label || tierFilter}`, onReset: () => updateFilter(setTierFilter)('all') });
+    activeChips.push({ key: 'tier', label: `Tier: ${tierOptions.find(option => option.value === tierFilter)?.label || tierFilter}`, onReset: () => updateFilter(setTierFilter)('all') });
   }
   if (sourceFilter !== 'all') {
-      activeChips.push({ key: 'source', label: `Source: ${sourceOptions.find(option => option.value === sourceFilter)?.label || sourceFilter}`, onReset: () => updateFilter(setSourceFilter)('all') });
+    activeChips.push({ key: 'source', label: `Source: ${sourceOptions.find(option => option.value === sourceFilter)?.label || sourceFilter}`, onReset: () => updateFilter(setSourceFilter)('all') });
   }
   if (scoreRange[0] > 0 || scoreRange[1] < 100) {
-      activeChips.push({ key: 'score', label: `Score: ${scoreRange[0]}–${scoreRange[1]}`, onReset: resetScoreRange });
+    activeChips.push({ key: 'score', label: `Score: ${scoreRange[0]}–${scoreRange[1]}`, onReset: resetScoreRange });
   }
   if (dateRange !== '30' || (dateRange === 'custom' && (customFrom || customTo))) {
-      activeChips.push({ key: 'date', label: `Date: ${dateRangeLabel.replace(/^Showing /, '')}`, onReset: resetDateRange });
+    activeChips.push({ key: 'date', label: `Date: ${dateRangeLabel.replace(/^Showing /, '')}`, onReset: resetDateRange });
   }
   if (showArchived) {
-      activeChips.push({ key: 'archive', label: 'Archived visible', onReset: () => setShowArchived(false) });
+    activeChips.push({ key: 'archive', label: 'Archived visible', onReset: () => setShowArchived(false) });
   }
 
   const archivedScopeCount = investmentReports.filter(r => showArchived ? r.is_archived : !r.is_archived).length;
@@ -271,7 +271,7 @@ export function ReportLibraryToolbar(props: Props) {
         </div>
       </DashboardThemeFrame>
 
-      <ActiveFilterChips chips={activeChips} />
+      <ReportLibraryFilterChips chips={activeChips} />
 
       {!isMobile && (
         <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
@@ -282,23 +282,6 @@ export function ReportLibraryToolbar(props: Props) {
           </CollapsibleContent>
         </Collapsible>
       )}
-    </div>
-  );
-}
-
-function ActiveFilterChips({ chips }: { chips: Array<{ key: string; label: string; onReset: () => void }> }) {
-  if (chips.length === 0) return null;
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {chips.map((chip) => (
-        <Badge key={chip.key} variant="secondary" className="gap-1 rounded-full px-3 py-1 text-xs">
-          {chip.label}
-          <button type="button" onClick={chip.onReset} className="ml-1 rounded-full p-0.5 hover:bg-background/70" aria-label={`Remove ${chip.label} filter`}>
-            <X className="h-3 w-3" />
-          </button>
-        </Badge>
-      ))}
     </div>
   );
 }

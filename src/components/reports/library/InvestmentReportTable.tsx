@@ -147,8 +147,8 @@ export function InvestmentReportTable({
                       propertyAddress={report.property_address}
                       onRegenerated={onRegenerated}
                       variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
+                      size="sm"
+                      className="h-8 rounded-lg px-2 text-xs"
                     />
                     <ReportActionMenu
                       surface="report-card"
