@@ -1,0 +1,91 @@
+import { format } from 'date-fns';
+import { Archive, ArchiveRestore, Calendar, Crown, Eye, MapPin, Scale, Trophy, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import type { ComparisonAnalysis } from './types';
+
+interface ComparisonReportCardProps {
+  comparison: ComparisonAnalysis & { is_archived?: boolean };
+  generatorLabel: (id?: string | null) => string;
+  onView: (comparison: ComparisonAnalysis) => void;
+  onToggleArchive: (comparisonId: string, archive: boolean) => void;
+}
+
+export function ComparisonReportCard({ comparison, generatorLabel, onView, onToggleArchive }: ComparisonReportCardProps) {
+  const topRanked = comparison.rankings?.[0]?.address || (comparison.rankings?.[0]?.propertyNumber ? `Property #${comparison.rankings[0].propertyNumber}` : 'Not ranked');
+  const states = comparison.property_states && comparison.property_states.length > 0
+    ? comparison.property_states.join(', ')
+    : 'No states listed';
+
+  return (
+    <Card className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10 dark:bg-slate-950/70">
+      <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl opacity-0 transition-opacity group-hover:opacity-100" />
+
+      <CardHeader className="relative space-y-4 p-4 pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <Badge variant="secondary" className="gap-1 bg-emerald-100 text-xs text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <Scale className="h-3 w-3" />
+            Comparison
+          </Badge>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5" />
+            {format(new Date(comparison.created_at), 'MMM dd, yyyy')}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="line-clamp-2 text-lg font-semibold leading-snug tracking-tight text-foreground">
+            {comparison.report_title || `${comparison.property_count} Property Comparison`}
+          </h3>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <User className="h-3.5 w-3.5" />
+            Created by {generatorLabel(comparison.created_by)}
+          </div>
+          {comparison.executive_summary ? (
+            <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{comparison.executive_summary}</p>
+          ) : (
+            <p className="text-sm leading-6 text-muted-foreground">No executive summary available yet.</p>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent className="relative space-y-4 px-4 pb-4">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <MetricTile label="Properties" value={comparison.property_count} icon={MapPin} />
+          <MetricTile label="States" value={states} icon={Crown} />
+          <MetricTile label="Top Ranked" value={topRanked} icon={Trophy} />
+        </div>
+      </CardContent>
+
+      <CardFooter className="relative flex gap-2 border-t border-border/60 bg-muted/20 p-4">
+        <Button variant="default" size="sm" onClick={() => onView(comparison)} className="flex-1 gap-1.5 rounded-xl">
+          <Eye className="h-3.5 w-3.5" />
+          View Analysis
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onToggleArchive(comparison.id, !comparison.is_archived)}
+          title={comparison.is_archived ? 'Restore comparison' : 'Archive comparison'}
+          className="gap-1.5 rounded-xl px-3"
+        >
+          {comparison.is_archived ? <ArchiveRestore className="h-3.5 w-3.5 text-green-600" /> : <Archive className="h-3.5 w-3.5" />}
+          <span className="hidden sm:inline">{comparison.is_archived ? 'Restore' : 'Archive'}</span>
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function MetricTile({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof MapPin }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-3 shadow-inner shadow-black/5">
+      <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{label}</span>
+        <Icon className="h-3.5 w-3.5 text-emerald-600/80 dark:text-emerald-300/80" />
+      </div>
+      <div className="truncate text-sm font-semibold text-foreground">{value}</div>
+    </div>
+  );
+}
