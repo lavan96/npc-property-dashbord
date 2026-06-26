@@ -34,13 +34,6 @@ import type { ComparisonAnalysis, GeneratedReport, InvestmentReport } from '@/co
 // - Preserve lightweight investment report list fetching: list queries must not select report_content.
 // - Fetch full report_content only through detail/view/download flows that already require it.
 
-// UI Refactor Safety Checklist (Phase 0):
-// - Preserve Supabase table names, secure edge function names, route paths, and permission guards.
-// - Preserve modal open/close flows, deep-link handling via reportId, and comparison context behavior.
-// - Preserve archive/unarchive, regenerate, tier-generation, and download behaviors.
-// - Preserve lightweight investment report list fetching: list queries must not select report_content.
-// - Fetch full report_content only through detail/view/download flows that already require it.
-
 // Lazy load heavy modal components
 const InvestmentReportViewer = lazy(() => import('@/components/reports/InvestmentReportViewer').then(m => ({ default: m.InvestmentReportViewer })));
 const PropertyComparisonModal = lazy(() => import('@/components/reports/PropertyComparisonModal').then(m => ({ default: m.PropertyComparisonModal })));
@@ -821,6 +814,22 @@ export default function GeneratedReports() {
     setComparisonModalOpen(true);
   };
 
+
+  const activeInvestmentFiltersCount = useMemo(() => {
+    return [
+      investmentSearchQuery.trim().length > 0,
+      scopeFilter !== 'all',
+      gradeFilter !== 'all',
+      tierFilter !== 'all',
+      sourceFilter !== 'all',
+      scoreRange[0] > 0 || scoreRange[1] < 100,
+      showArchived,
+      dateRange !== '30' || (dateRange === 'custom' && (customFrom.length > 0 || customTo.length > 0)),
+    ].filter(Boolean).length;
+  }, [investmentSearchQuery, scopeFilter, gradeFilter, tierFilter, sourceFilter, scoreRange, showArchived, dateRange, customFrom, customTo]);
+
+  const visibleLibraryReportsCount = reports.length + filteredInvestmentReports.length + filteredComparisons.length;
+
   const handleViewReport = (reportId: string) => {
     navigate(`/generated-reports/${reportId}`);
   };
@@ -852,7 +861,15 @@ export default function GeneratedReports() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4 md:pt-6 pb-20 md:pb-6">
-      <ReportLibraryHero quantitativeCount={reports.length} investmentCount={investmentReports.length} />
+      <ReportLibraryHero
+        quantitativeCount={reports.length}
+        investmentCount={investmentReports.length}
+        comparisonCount={comparisons.length}
+        visibleCount={visibleLibraryReportsCount}
+        activeFiltersCount={activeInvestmentFiltersCount}
+        showArchived={showArchived}
+        selectedComparisonCount={selectedReports.length}
+      />
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'quantitative' | 'investment' | 'comparisons')} className="w-full">
         <ReportLibraryTabs isMobile={isMobile} />
