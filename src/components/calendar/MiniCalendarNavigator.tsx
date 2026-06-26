@@ -53,17 +53,17 @@ export function MiniCalendarNavigator({
           aria-label="Previous mini calendar month"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
+          className="h-9 w-9 rounded-xl border border-border text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
           onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
-        <span className="text-sm font-semibold tracking-tight text-white">{format(currentMonth, 'MMM yyyy')}</span>
+        <span className="text-sm font-semibold tracking-tight text-foreground">{format(currentMonth, 'MMM yyyy')}</span>
         <Button
           aria-label="Next mini calendar month"
           variant="ghost"
           size="icon"
-          className="h-9 w-9 rounded-xl border border-white/10 text-zinc-400 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
+          className="h-9 w-9 rounded-xl border border-border text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 active:translate-y-0 active:scale-95"
           onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -71,9 +71,9 @@ export function MiniCalendarNavigator({
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-7 gap-1 rounded-xl border border-white/10 bg-black/30 p-1">
+      <div className="grid grid-cols-7 gap-1 rounded-xl border border-border bg-muted/60 p-1">
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-          <div key={i} className="py-1 text-center text-[10px] font-semibold text-zinc-500">
+          <div key={i} className="py-1 text-center text-[10px] font-semibold text-muted-foreground">
             {day}
           </div>
         ))}
@@ -98,8 +98,8 @@ export function MiniCalendarNavigator({
                 'relative flex h-7 w-full items-center justify-center rounded-xl border text-[10px] font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                 isSelected && 'border-primary/70 bg-primary/20 text-primary shadow-[0_8px_20px_hsl(var(--primary)/0.14)]',
                 !isSelected && isTodayDate && 'border-primary/45 bg-primary/10 text-primary',
-                !isSelected && !isTodayDate && 'border-transparent text-zinc-300 hover:border-primary/25 hover:bg-primary/10 hover:text-primary',
-                !isCurrentMonth && 'text-zinc-600 hover:text-zinc-400'
+                !isSelected && !isTodayDate && 'border-transparent text-muted-foreground hover:border-primary/25 hover:bg-primary/10 hover:text-primary',
+                !isCurrentMonth && 'text-zinc-600 hover:text-muted-foreground'
               )}
             >
               {format(day, 'd')}
