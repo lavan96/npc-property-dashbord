@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import base64
 import io
+import importlib.metadata as importlib_metadata
 import json
 import logging
 import os
@@ -87,7 +88,8 @@ LOG = logging.getLogger("pdf-parse-service")
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
 SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
 SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest+phase4j-capability-activation"
+DOCLING_CAPABILITY_ACTIVATION_VERSION = "docling-capability-activation-v1"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 # Phase 3 raster artifact config.
 RASTER_ARTIFACT_MODE = os.environ.get("DOCLING_RASTER_ARTIFACT_MODE", "manifest").lower()
@@ -133,6 +135,7 @@ OCR_LANGS = [s.strip() for s in os.environ.get("DOCLING_OCR_LANGS", "en,fr,de,es
 # Lower bitmap threshold = OCR runs even on lightly-bitmapped regions.
 BITMAP_AREA_THRESHOLD = float(os.environ.get("DOCLING_BITMAP_AREA_THRESHOLD", "0.05"))
 IMAGES_SCALE = float(os.environ.get("DOCLING_IMAGES_SCALE", "2.0"))
+TABLE_MODE = os.environ.get("DOCLING_TABLE_MODE", "ACCURATE").strip().upper() or "ACCURATE"
 LAYOUT_MODEL = os.environ.get("DOCLING_LAYOUT_MODEL", "").strip() or None
 # Accelerator: AUTO lets Docling pick CUDA / MPS / CPU as available.
 ACCEL_DEVICE = os.environ.get("DOCLING_ACCEL_DEVICE", "AUTO").strip().upper()
@@ -156,34 +159,56 @@ def _safe_set(options: object, attr: str, value: Any) -> bool:
         return False
 
 
-def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
+def _resolve_table_former_mode(mode: Optional[str]) -> Any:
+    requested = (mode or TABLE_MODE or "ACCURATE").strip().upper()
+    if requested in {"ACCURATE", "PRECISE", "HIGH"}:
+        return getattr(TableFormerMode, "ACCURATE", TableFormerMode.FAST)
+    if requested in {"FAST", "QUICK"}:
+        return TableFormerMode.FAST
+    LOG.warning("Unknown DOCLING_TABLE_MODE=%s; falling back to ACCURATE", requested)
+    return getattr(TableFormerMode, "ACCURATE", TableFormerMode.FAST)
+
+
+def _converter_key(*, enable_picture_description: bool, force_full_page_ocr: Optional[bool], table_mode: Optional[str]) -> tuple[bool, bool, str]:
+    effective_force_ocr = bool(force_full_page_ocr if force_full_page_ocr is not None else (FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK))
+    effective_table_mode = (table_mode or TABLE_MODE or "ACCURATE").strip().upper()
+    return (bool(enable_picture_description), effective_force_ocr, effective_table_mode)
+
+
+def _build_converter(
+    *,
+    enable_picture_description: bool,
+    force_full_page_ocr: Optional[bool] = None,
+    table_mode: Optional[str] = None,
+) -> DocumentConverter:
+    effective_force_ocr = bool(force_full_page_ocr if force_full_page_ocr is not None else (FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK))
+    effective_table_mode = (table_mode or TABLE_MODE or "ACCURATE").strip().upper()
+
     pipeline = PdfPipelineOptions()
     pipeline.do_ocr = True
     pipeline.do_table_structure = True
-    pipeline.table_structure_options.mode = TableFormerMode.ACCURATE
+    pipeline.table_structure_options.mode = _resolve_table_former_mode(effective_table_mode)
     pipeline.table_structure_options.do_cell_matching = True
     pipeline.generate_page_images = False
     pipeline.generate_picture_images = True
     _safe_set(pipeline, "images_scale", IMAGES_SCALE)
+
     if ENABLE_PICTURE_CLASSIFICATION:
         _safe_set(pipeline, "do_picture_classification", True)
     if enable_picture_description:
         _safe_set(pipeline, "do_picture_description", True)
-    if ENABLE_FORMULA_ENRICHMENT:
-        _safe_set(pipeline, "do_formula_enrichment", True)
-    if ENABLE_CODE_ENRICHMENT:
-        _safe_set(pipeline, "do_code_enrichment", True)
+
+    formula_supported = _safe_set(pipeline, "do_formula_enrichment", True) if ENABLE_FORMULA_ENRICHMENT else False
+    code_supported = _safe_set(pipeline, "do_code_enrichment", True) if ENABLE_CODE_ENRICHMENT else False
 
     ocr_opts = getattr(pipeline, "ocr_options", None)
     if ocr_opts is not None:
-        if FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK:
-            _safe_set(ocr_opts, "force_full_page_ocr", True)
+        _safe_set(ocr_opts, "force_full_page_ocr", effective_force_ocr)
         if OCR_LANGS:
             _safe_set(ocr_opts, "lang", OCR_LANGS)
         _safe_set(ocr_opts, "bitmap_area_threshold", BITMAP_AREA_THRESHOLD)
     else:
-        if FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK:
-            _safe_set(pipeline, "force_full_page_ocr", True)
+        _safe_set(pipeline, "force_full_page_ocr", effective_force_ocr)
 
     try:
         from docling.datamodel.pipeline_options import AcceleratorOptions, AcceleratorDevice  # type: ignore
@@ -191,8 +216,11 @@ def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
             device = getattr(AcceleratorDevice, ACCEL_DEVICE, AcceleratorDevice.AUTO)
         except Exception:
             device = AcceleratorDevice.AUTO
-        _safe_set(pipeline, "accelerator_options",
-                  AcceleratorOptions(num_threads=ACCEL_THREADS, device=device))
+        _safe_set(
+            pipeline,
+            "accelerator_options",
+            AcceleratorOptions(num_threads=ACCEL_THREADS, device=device),
+        )
     except Exception as exc:  # pragma: no cover
         LOG.info("AcceleratorOptions not available in this Docling build: %s", exc)
 
@@ -202,22 +230,54 @@ def _build_converter(*, enable_picture_description: bool) -> DocumentConverter:
             if layout_opts is not None:
                 _safe_set(layout_opts, "model", LAYOUT_MODEL)
 
+    LOG.info(
+        "Building Docling converter variant picture_description=%s force_full_page_ocr=%s table_mode=%s formula_enrichment_supported=%s code_enrichment_supported=%s",
+        enable_picture_description,
+        effective_force_ocr,
+        effective_table_mode,
+        formula_supported,
+        code_supported,
+    )
+
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline)}
     )
 
 
-CONVERTER = _build_converter(enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT)
-_CONVERTER_VARIANTS: dict[bool, DocumentConverter] = {ENABLE_PICTURE_DESCRIPTION_DEFAULT: CONVERTER}
+CONVERTER = _build_converter(
+    enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+    force_full_page_ocr=FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
+    table_mode=TABLE_MODE,
+)
+_CONVERTER_VARIANTS: dict[tuple[bool, bool, str], DocumentConverter] = {
+    _converter_key(
+        enable_picture_description=ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+        force_full_page_ocr=FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
+        table_mode=TABLE_MODE,
+    ): CONVERTER
+}
 
 
-def _get_converter(enable_picture_description: bool) -> DocumentConverter:
-    cached = _CONVERTER_VARIANTS.get(enable_picture_description)
+def _get_converter(
+    enable_picture_description: bool,
+    *,
+    force_full_page_ocr: Optional[bool] = None,
+    table_mode: Optional[str] = None,
+) -> DocumentConverter:
+    key = _converter_key(
+        enable_picture_description=enable_picture_description,
+        force_full_page_ocr=force_full_page_ocr,
+        table_mode=table_mode,
+    )
+    cached = _CONVERTER_VARIANTS.get(key)
     if cached is not None:
         return cached
-    LOG.info("Building Docling converter variant (picture_description=%s)", enable_picture_description)
-    built = _build_converter(enable_picture_description=enable_picture_description)
-    _CONVERTER_VARIANTS[enable_picture_description] = built
+    built = _build_converter(
+        enable_picture_description=enable_picture_description,
+        force_full_page_ocr=force_full_page_ocr,
+        table_mode=table_mode,
+    )
+    _CONVERTER_VARIANTS[key] = built
     return built
 
 
@@ -533,13 +593,26 @@ def _summarise_doc(doc_dict: dict) -> dict:
     }
 
 
-def _do_parse(pdf_bytes: bytes, *, use_description: bool, include_doctags: bool, include_markdown: bool, redact_pii: bool) -> dict:
+def _do_parse(
+    pdf_bytes: bytes,
+    *,
+    use_description: bool,
+    include_doctags: bool,
+    include_markdown: bool,
+    redact_pii: bool,
+    force_full_page_ocr: Optional[bool] = None,
+    table_mode: Optional[str] = None,
+) -> dict:
     """Synchronous Docling parse — shared by /parse sync path and async background path."""
     from docling.datamodel.base_models import DocumentStream
 
     t0 = time.monotonic()
     stream = DocumentStream(name="source.pdf", stream=io.BytesIO(pdf_bytes))
-    converter = _get_converter(use_description)
+    converter = _get_converter(
+        use_description,
+        force_full_page_ocr=force_full_page_ocr,
+        table_mode=table_mode,
+    )
     try:
         result = converter.convert(stream)
     except Exception as exc:
@@ -593,6 +666,15 @@ def _do_parse(pdf_bytes: bytes, *, use_description: bool, include_doctags: bool,
         "outline": outline,
         "page_languages": page_languages,
         "summary": summary,
+        "docling_capability_activation_version": DOCLING_CAPABILITY_ACTIVATION_VERSION,
+        "parse_options": {
+            "force_full_page_ocr": bool(force_full_page_ocr if force_full_page_ocr is not None else (FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK)),
+            "table_mode": (table_mode or TABLE_MODE or "ACCURATE").strip().upper(),
+            "picture_description": bool(use_description),
+            "ocr_langs": OCR_LANGS,
+            "bitmap_area_threshold": BITMAP_AREA_THRESHOLD,
+            "images_scale": IMAGES_SCALE,
+        },
         "docling_document": doc_dict,
         **extras,
     }
@@ -927,6 +1009,8 @@ LANE_PROFILES: dict[str, dict[str, Any]] = {
         "use_picture_description": ENABLE_PICTURE_DESCRIPTION_DEFAULT,
         "include_doctags": True,
         "include_markdown": True,
+        "force_full_page_ocr": FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
+        "table_mode": TABLE_MODE,
     },
     "fast_native": {
         "force_mode": None,
@@ -935,6 +1019,8 @@ LANE_PROFILES: dict[str, dict[str, Any]] = {
         "use_picture_description": False,
         "include_doctags": False,
         "include_markdown": False,
+        "force_full_page_ocr": False,
+        "table_mode": "FAST",
     },
     "accurate_table": {
         "force_mode": None,
@@ -943,6 +1029,8 @@ LANE_PROFILES: dict[str, dict[str, Any]] = {
         "use_picture_description": False,
         "include_doctags": True,
         "include_markdown": True,
+        "force_full_page_ocr": False,
+        "table_mode": "ACCURATE",
     },
     "ocr_scanned": {
         "force_mode": None,
@@ -951,6 +1039,8 @@ LANE_PROFILES: dict[str, dict[str, Any]] = {
         "use_picture_description": False,
         "include_doctags": True,
         "include_markdown": True,
+        "force_full_page_ocr": True,
+        "table_mode": "ACCURATE",
     },
     "design_heavy": {
         "force_mode": None,
@@ -959,6 +1049,8 @@ LANE_PROFILES: dict[str, dict[str, Any]] = {
         "use_picture_description": True,
         "include_doctags": True,
         "include_markdown": True,
+        "force_full_page_ocr": FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK,
+        "table_mode": "ACCURATE",
     },
     "pixel_raster_only": {
         "force_mode": "pixel_perfect",
@@ -967,6 +1059,8 @@ LANE_PROFILES: dict[str, dict[str, Any]] = {
         "use_picture_description": False,
         "include_doctags": False,
         "include_markdown": False,
+        "force_full_page_ocr": False,
+        "table_mode": "FAST",
     },
 }
 
@@ -1304,6 +1398,8 @@ async def _run_async_job(req: ParseRequest) -> None:
         parse_result = _do_parse(
             pdf_bytes,
             use_description=use_description,
+            force_full_page_ocr=bool(lane_policy.get("force_full_page_ocr", FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK)),
+            table_mode=str(lane_policy.get("table_mode") or TABLE_MODE),
             include_doctags=include_doctags,
             include_markdown=include_markdown,
             redact_pii=req.redact_pii,
@@ -1486,6 +1582,68 @@ async def _run_async_job(req: ParseRequest) -> None:
             })
 
 
+def _pkg_version(name: str) -> Optional[str]:
+    try:
+        return importlib_metadata.version(name)
+    except Exception:
+        return None
+
+
+def _docling_capabilities() -> dict[str, Any]:
+    converter_keys = [
+        {
+            "picture_description": key[0],
+            "force_full_page_ocr": key[1],
+            "table_mode": key[2],
+        }
+        for key in _CONVERTER_VARIANTS.keys()
+    ]
+    return {
+        "version": DOCLING_CAPABILITY_ACTIVATION_VERSION,
+        "engine_version": ENGINE_VERSION,
+        "packages": {
+            "docling": _pkg_version("docling"),
+            "docling_core": _pkg_version("docling-core") or _pkg_version("docling_core"),
+            "docling_ibm_models": _pkg_version("docling-ibm-models") or _pkg_version("docling_ibm_models"),
+            "docling_parse": _pkg_version("docling-parse") or _pkg_version("docling_parse"),
+            "pypdfium2": _pkg_version("pypdfium2"),
+            "easyocr": _pkg_version("easyocr"),
+            "torch": _pkg_version("torch"),
+        },
+        "runtime": {
+            "accelerator_device": ACCEL_DEVICE,
+            "accelerator_threads": ACCEL_THREADS,
+            "prewarm_on_startup": PREWARM_ON_STARTUP,
+        },
+        "ocr": {
+            "do_ocr": True,
+            "global_force_full_page_ocr": FORCE_FULL_PAGE_OCR,
+            "global_ocr_fallback": ENABLE_OCR_FALLBACK,
+            "lane_aware_ocr": True,
+            "ocr_langs": OCR_LANGS,
+            "bitmap_area_threshold": BITMAP_AREA_THRESHOLD,
+        },
+        "tables": {
+            "do_table_structure": True,
+            "default_table_mode": TABLE_MODE,
+            "cell_matching": True,
+            "lane_aware_table_mode": True,
+        },
+        "pictures": {
+            "picture_classification_enabled": ENABLE_PICTURE_CLASSIFICATION,
+            "picture_description_default": ENABLE_PICTURE_DESCRIPTION_DEFAULT,
+            "images_scale": IMAGES_SCALE,
+        },
+        "enrichment": {
+            "formula_configured": ENABLE_FORMULA_ENRICHMENT,
+            "code_configured": ENABLE_CODE_ENRICHMENT,
+            "support_is_best_effort": True,
+        },
+        "converter_variants": converter_keys,
+        "lanes": LANE_PROFILES,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -1495,6 +1653,7 @@ def healthz() -> dict:
         "ok": True,
         "engine_version": ENGINE_VERSION,
         "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
+        "docling_capability_activation_version": DOCLING_CAPABILITY_ACTIVATION_VERSION,
         "callback_upload_configured": bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY),
     }
 
@@ -1505,7 +1664,13 @@ def root() -> dict:
         "service": "pdf-parse-service",
         "engine_version": ENGINE_VERSION,
         "lane_enforcement_version": LANE_ENFORCEMENT_VERSION,
+        "docling_capability_activation_version": DOCLING_CAPABILITY_ACTIVATION_VERSION,
     }
+
+
+@app.get("/capabilities")
+def capabilities() -> dict:
+    return _docling_capabilities()
 
 
 @app.post("/parse")
@@ -1693,6 +1858,8 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
         parse_result = _do_parse(
             chunk_pdf,
             use_description=use_description,
+            force_full_page_ocr=bool(lane_policy.get("force_full_page_ocr", FORCE_FULL_PAGE_OCR or ENABLE_OCR_FALLBACK)),
+            table_mode=str(lane_policy.get("table_mode") or TABLE_MODE),
             include_doctags=include_doctags,
             include_markdown=include_markdown,
             redact_pii=req.redact_pii,
