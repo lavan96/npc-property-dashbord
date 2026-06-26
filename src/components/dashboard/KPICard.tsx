@@ -38,7 +38,7 @@ export function KPICard({
         </CardTitle>
         {icon && (
           <div className={cn(
-            "text-muted-foreground",
+            "dashboard-kpi-icon text-muted-foreground",
             compact ? "h-3.5 w-3.5" : "h-4 w-4"
           )}>
             {icon}

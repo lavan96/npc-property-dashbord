@@ -94,7 +94,7 @@ export function ReportConfigModal({ onGenerateReport, isGenerating, progress = 0
       }
     }}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
+        <Button className="gap-2 rounded-full bg-primary px-5 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-primary/30 focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 active:translate-y-0">
           <Download className="h-4 w-4" />
           Generate Report
         </Button>
