@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfidenceBadge } from '@/components/dashboard/ConfidenceBadge';
 import { OverviewFilters } from '@/components/overview/OverviewFilters';
 import { DataIntegrityPanel } from '@/components/debug/DataIntegrityPanel';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { UpcomingRemindersWidget } from '@/components/overview/UpcomingRemindersWidget';
 import { CommercialPortfolioWidget } from '@/components/commercial/CommercialPortfolioWidget';
 import { IndustrialPortfolioWidget } from '@/components/industrial/IndustrialPortfolioWidget';
@@ -86,7 +87,6 @@ const chartGridProps = {
 };
 
 const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
-const SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25';
 const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
 const EXECUTIVE_KPI_CARD = 'group relative min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
 const EXECUTIVE_KPI_WARNING_CARD = 'border-amber-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-amber-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-amber-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-amber-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-amber-300/15 [&_.dashboard-kpi-title]:text-amber-900/80 dark:[&_.dashboard-kpi-title]:text-amber-100/80 [&_.dashboard-kpi-title+div]:border-amber-400/35 [&_.dashboard-kpi-title+div]:bg-amber-500/15 [&_.dashboard-kpi-title+div]:text-amber-600 dark:[&_.dashboard-kpi-title+div]:text-amber-300';
@@ -115,7 +115,7 @@ function OverviewSection({
   className?: string;
 }) {
   return (
-    <section className={`${SECTION_SURFACE} ${accent ? 'border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-card/75 to-card dark:from-amber-400/10 dark:via-slate-950/45 dark:to-slate-950/75' : ''} ${className}`}>
+    <DashboardThemeFrame as="section" variant={accent ? 'sectionAccent' : 'section'} className={className}>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-5">
         <div className="max-w-3xl">
           <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
@@ -136,7 +136,7 @@ function OverviewSection({
         </div>
       </div>
       {children}
-    </section>
+    </DashboardThemeFrame>
   );
 }
 
@@ -418,15 +418,14 @@ export default function Overview() {
   if (error) {
     return (
       <div className={`${OVERVIEW_SHELL} space-y-6`}>
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 sm:rounded-[2rem] md:p-7">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+        <DashboardThemeFrame variant="hero" className="p-5 md:p-7">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
             <RadioTower className="h-3.5 w-3.5" />
             Command Centre
           </div>
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
-        </div>
+        </DashboardThemeFrame>
         <Card className="overflow-hidden rounded-[1.5rem] border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-card to-card shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:border-amber-400/25 dark:from-amber-400/10 dark:via-slate-950/80 dark:to-slate-950">
           <CardContent className="p-5 md:p-6">
             <div className="mb-3 flex items-center gap-3 text-amber-700 dark:text-amber-300">
@@ -455,12 +454,11 @@ export default function Overview() {
   if (isLoading) {
     return (
       <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-5 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 sm:rounded-[2rem] md:p-7">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
+        <DashboardThemeFrame variant="hero" className="p-5 md:p-7">
           <div className="mb-3 h-7 w-40 rounded-full bg-amber-500/10" />
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
-        </div>
+        </DashboardThemeFrame>
         <div className="grid gap-3 min-[520px]:grid-cols-2 md:gap-5 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className={EXECUTIVE_KPI_CARD}>
@@ -489,9 +487,7 @@ export default function Overview() {
 
   return (
     <div className={`${OVERVIEW_SHELL} space-y-7 md:space-y-9`}>
-      <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-gradient-to-br from-card via-card to-muted/35 p-4 shadow-sm shadow-black/5 dark:border-white/10 dark:from-slate-950 dark:via-slate-950/90 dark:to-slate-900/70 sm:rounded-[2rem] sm:p-5 md:p-7">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/70 to-transparent" />
-        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
+      <DashboardThemeFrame variant="hero">
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
@@ -503,7 +499,7 @@ export default function Overview() {
               Property intake dashboard overview and key metrics
             </p>
           </div>
-          <div className="flex w-full flex-wrap items-stretch gap-2 rounded-2xl border border-border/50 bg-background/55 p-2 shadow-sm shadow-black/5 backdrop-blur sm:items-center lg:w-auto lg:justify-end dark:border-white/10 dark:bg-slate-950/40 [&>button]:min-w-[44px] [&>button]:flex-1 sm:[&>button]:flex-none">
+          <DashboardThemeFrame variant="toolbar" className="lg:w-auto lg:justify-end [&>button]:min-w-[44px] [&>button]:flex-1 sm:[&>button]:flex-none">
             <Button variant="outline" size="sm" onClick={handleExportSnapshot} disabled={isExporting || isLoading} className={OVERVIEW_SECONDARY_ACTION}>
               {isExporting ? (
                 <>
@@ -528,9 +524,9 @@ export default function Overview() {
               setFilters={setFilters}
               uniqueValues={uniqueValues}
             />
-          </div>
+          </DashboardThemeFrame>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       <OverviewSection eyebrow="Executive snapshot" title="Intake performance" description="Headline operating metrics for the filtered property pipeline." icon={<Activity className="h-4 w-4" />} accent>
         {/* KPI Cards */}
