@@ -5905,7 +5905,6 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
           </div>
-        </div>
       </CashFlowModalShell>
     </Dialog>
 
