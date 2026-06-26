@@ -167,37 +167,38 @@ export default function Reports() {
 
   return (
     <div className="ci-foundation ci-page-shell reports-page-premium">
-      <Card className="ci-suite-header overflow-hidden">
-        <CardContent className="relative z-10 p-5 md:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-start gap-4">
-            <span className="ci-header-icon"><BarChart3 className="h-6 w-6" /></span>
-            <div>
-              <p className="ci-tab-eyebrow">NPC reporting command centre</p>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Reports</h1>
-              <p className="mt-1 max-w-2xl text-sm md:text-base text-muted-foreground">Generate property analysis and investment reports</p>
-            </div>
-          </div>
-        </div>
-          </div>
-      </CardContent>
-      </Card>
-
       <Tabs defaultValue="quantitative" className="w-full space-y-6">
-        <div className="ci-tab-rail">
-        <TabsList className="grid w-full grid-cols-2 h-auto bg-background/60 p-1.5 border border-border/70 rounded-2xl">
-          <TabsTrigger value="quantitative" className="flex items-center gap-1.5 rounded-xl py-3 text-xs font-semibold sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden xs:inline">Quantitative</span>
-            <span className="xs:hidden">Quant</span>
-          </TabsTrigger>
-          <TabsTrigger value="investment" className="flex items-center gap-1.5 rounded-xl py-3 text-xs font-semibold sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/25">
-            <TrendingUp className="h-4 w-4" />
-            <span>Investment</span>
-          </TabsTrigger>
-        </TabsList>
-        </div>
+        <Card className="ci-suite-header overflow-hidden reports-top-command">
+          <CardContent className="relative z-10 space-y-5 p-5 md:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex items-start gap-4">
+                <span className="ci-header-icon reports-header-icon"><BarChart3 className="h-6 w-6" /></span>
+                <div>
+                  <p className="ci-tab-eyebrow">NPC reporting command centre</p>
+                  <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">Reports</h1>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">Generate property analysis and investment reports</p>
+                </div>
+              </div>
+              <div className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary shadow-sm">
+                Quantitative insights · Investment analysis
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-border/70 bg-background/55 p-1.5 shadow-inner shadow-black/10 backdrop-blur">
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-transparent p-0">
+                <TabsTrigger value="quantitative" className="reports-primary-tab">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden xs:inline">Quantitative</span>
+                  <span className="xs:hidden">Quant</span>
+                </TabsTrigger>
+                <TabsTrigger value="investment" className="reports-primary-tab">
+                  <TrendingUp className="h-4 w-4" />
+                  <span>Investment</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </CardContent>
+        </Card>
 
         <TabsContent value="quantitative" className="space-y-5 md:space-y-7 mt-0">
           <Card className="ci-card-premium">
