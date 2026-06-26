@@ -21,16 +21,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageUpload } from '@/hooks/useSecureStorage';
 import { SendToClientModal } from '@/components/reports/SendToClientModal';
-import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer, ChevronDown, ChevronRight, Send, Search, Check, ChevronsUpDown } from 'lucide-react';
+import { Calculator, Download, TrendingUp, DollarSign, Percent, Home, Save, RotateCcw, BarChart3, Image, GitCompare, X, FileText, Target, Zap, Building, Award, Printer, ChevronDown, ChevronRight, Send, Search, Check } from 'lucide-react';
 import { ComposedChart, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { CashFlowCommandHeader } from '@/components/cash-flow/modal/CashFlowCommandHeader';
+import { CashFlowComparisonBar } from '@/components/cash-flow/modal/CashFlowComparisonBar';
 import { CashFlowExportMenu } from '@/components/cash-flow/modal/CashFlowExportMenu';
 import { CashFlowMetricsGrid } from '@/components/cash-flow/modal/CashFlowMetricsGrid';
 import { CashFlowModalShell } from '@/components/cash-flow/modal/CashFlowModalShell';
@@ -3967,99 +3966,22 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             formatCurrency={formatCurrency}
           />
 
-            {/* Comparison Mode Toggle & Land Tax Exclusion */}
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant={comparisonMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setComparisonMode(!comparisonMode)}
-                  className="gap-2"
-                >
-                  <GitCompare className="h-4 w-4" />
-                  {comparisonMode ? "Exit Comparison" : "Compare Reports"}
-                </Button>
-                {comparisonMode && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">Select up to 4 reports:</span>
-                    {selectedComparisonReportIds.length > 0 && (
-                      <div className="flex gap-1 flex-wrap">
-                        {selectedComparisonReportIds.map((id) => {
-                          const r = availableReports.find(rep => rep.id === id);
-                          return r ? (
-                            <Badge key={id} variant="secondary" className="text-xs flex items-center gap-1">
-                              {r.property_address.split(',')[0].substring(0, 20)}
-                              <X 
-                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                                onClick={() => handleToggleComparisonReport(id)}
-                              />
-                            </Badge>
-                          ) : null;
-                        })}
-                      </div>
-                    )}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className="w-[300px] justify-between text-sm font-normal"
-                          disabled={loadingReports || selectedComparisonReportIds.length >= 4}
-                        >
-                          {loadingReports ? "Loading..." : `Add property (${selectedComparisonReportIds.length}/4)`}
-                          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[350px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search properties..." />
-                          <CommandList>
-                            <CommandEmpty>No properties found.</CommandEmpty>
-                            <CommandGroup>
-                              {availableReports
-                                .filter(r => !selectedComparisonReportIds.includes(r.id))
-                                .map((r) => (
-                                  <CommandItem
-                                    key={r.id}
-                                    value={r.property_address}
-                                    onSelect={() => handleToggleComparisonReport(r.id)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Building className="mr-2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span className="truncate">
-                                      {r.property_address.length > 50
-                                        ? r.property_address.substring(0, 50) + '...'
-                                        : r.property_address}
-                                    </span>
-                                  </CommandItem>
-                                ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
-              </div>
-              
-              {/* Land Tax Exclusion Toggle */}
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="excludeLandTax"
-                  checked={excludeLandTaxFromCashFlow}
-                  onCheckedChange={(checked) => {
-                    setExcludeLandTaxFromCashFlow(checked === true);
-                    setHasChanges(true);
-                  }}
-                />
-                <label 
-                  htmlFor="excludeLandTax" 
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  Exclude Land Tax from analysis
-                </label>
-              </div>
-            </div>
+            <CashFlowComparisonBar
+              comparisonMode={comparisonMode}
+              onComparisonModeChange={setComparisonMode}
+              selectedComparisonReportIds={selectedComparisonReportIds}
+              availableReports={availableReports}
+              onToggleComparisonReport={handleToggleComparisonReport}
+              loadingReports={loadingReports}
+              investorProfile={investorProfile}
+              onInvestorProfileChange={setInvestorProfile}
+              excludeLandTaxFromCashFlow={excludeLandTaxFromCashFlow}
+              onExcludeLandTaxChange={(checked) => {
+                setExcludeLandTaxFromCashFlow(checked);
+                setHasChanges(true);
+              }}
+              hasChanges={hasChanges}
+            />
 
             {/* Cash Flow Trends Chart */}
             <Card>
@@ -5905,6 +5827,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
           </div>
+        </div>
       </CashFlowModalShell>
     </Dialog>
 
