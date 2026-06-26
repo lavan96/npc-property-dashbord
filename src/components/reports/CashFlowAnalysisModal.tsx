@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { fetchGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawJsPDFDisclaimerPage } from '@/utils/pdfDisclaimerPage';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
+import { CashFlowCommandHeader } from '@/components/cash-flow/modal/CashFlowCommandHeader';
+import { CashFlowExportMenu } from '@/components/cash-flow/modal/CashFlowExportMenu';
+import { CashFlowMetricsGrid } from '@/components/cash-flow/modal/CashFlowMetricsGrid';
+import { CashFlowModalShell } from '@/components/cash-flow/modal/CashFlowModalShell';
 import { 
   get10YearLoanProjection, 
   type MortgageInput, 
@@ -3925,192 +3929,43 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <div className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4">
-          <DialogHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
-                <DialogTitle className="text-lg md:text-xl flex items-center gap-2 flex-wrap">
-                  <Calculator className="h-5 w-5 shrink-0" />
-                  <span className="hidden sm:inline">10-Year Cash Flow Analysis</span>
-                  <span className="sm:hidden">Cash Flow Analysis</span>
-                  <Badge 
-                    variant={isNewBuild ? "default" : "secondary"}
-                    className="ml-2 text-xs"
-                  >
-                    {isNewBuild ? "New Build" : "Existing Property"}
-                  </Badge>
-                </DialogTitle>
-                <DialogDescription className="mt-1">
-                  {report.property_address}
-                </DialogDescription>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {hasChanges && (
-                  <Badge variant="outline" className="text-orange-600 border-orange-300">
-                    Unsaved Changes
-                  </Badge>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowResetConfirm(true)}
-                  disabled={Object.keys(yearlyOverrides).length === 0}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset All
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleSaveOverrides}
-                  disabled={isSaving || !hasChanges}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportExcel}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Excel
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export PDF
-                      <ChevronDown className="h-3 w-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64 bg-background border">
-                    <div className="p-3 space-y-3">
-                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Chart Export Options</div>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={includeAllChartsInExport}
-                            onCheckedChange={(checked) => handleGlobalChartsToggle(checked === true)}
-                          />
-                          <span className="text-sm font-medium">Include All Charts</span>
-                        </label>
-                        <Separator className="my-2" />
-                        <label className="flex items-center gap-2 cursor-pointer pl-4">
-                          <Checkbox
-                            checked={chartExportToggles.cashFlowTrends}
-                            onCheckedChange={(checked) => handleChartToggle('cashFlowTrends', checked === true)}
-                          />
-                          <span className="text-sm">Cash Flow Trends</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer pl-4">
-                          <Checkbox
-                            checked={chartExportToggles.yieldChart}
-                            onCheckedChange={(checked) => handleChartToggle('yieldChart', checked === true)}
-                          />
-                          <span className="text-sm">Yield Percentages</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer pl-4">
-                          <Checkbox
-                            checked={chartExportToggles.comparisonChart}
-                            onCheckedChange={(checked) => handleChartToggle('comparisonChart', checked === true)}
-                          />
-                          <span className="text-sm">Property Comparison</span>
-                        </label>
-                      </div>
-                      <Separator className="my-2" />
-                      <Button size="sm" className="w-full" onClick={() => exportSingleReportPDF()}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Generate PDF
-                      </Button>
-                      <FlattenPdfIconButton
-                        inline
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        label="Generate Flattened PDF"
-                        getPdfBlob={async () => {
-                          const b = await exportSingleReportPDF({ returnBlob: true });
-                          if (!b) throw new Error('Failed to generate cash flow PDF');
-                          return b;
-                        }}
-                        filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
-                      />
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="outline" size="sm" onClick={openPrintView}>
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print View
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setSendToClientOpen(true)}>
-                  <Send className="h-4 w-4 mr-2" />
-                  Send to Client
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-        </div>
-
-        <Separator />
-
-        <div className="flex-1 overflow-auto px-4 md:px-6 py-4">
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Home className="h-4 w-4" />
-                    <span className="text-xs font-medium">Property Value</span>
-                  </div>
-                  <p className="text-2xl font-bold">{formatCurrency(baseFinancialData.marketValueNow)}</p>
-                  <p className="text-xs text-muted-foreground">Current market value</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-xs font-medium">Purchase Price</span>
-                  </div>
-                  <p className="text-2xl font-bold">{formatCurrency(baseFinancialData.purchasePrice)}</p>
-                  <p className="text-xs text-muted-foreground">Original purchase price</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="text-xs font-medium">10-Year Value</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600">
-                    {projections.length > 0 ? formatCurrency(projections[10]?.propertyMarketValue || 0) : '-'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Projected property value</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <DollarSign className="h-4 w-4" />
-                    <span className="text-xs font-medium">Year 10 Cash Flow</span>
-                  </div>
-                  <p className={`text-2xl font-bold ${(projections[10]?.afterTaxCashFlowPA || 0) < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                    {projections.length > 0 ? formatCurrency(projections[10]?.afterTaxCashFlowPA || 0) : '-'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">After-tax annual cash flow</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Percent className="h-4 w-4" />
-                    <span className="text-xs font-medium">Year 10 Equity</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-600">
-                    {projections.length > 0 ? formatCurrency(projections[10]?.equityInProperty || 0) : '-'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Equity in property</p>
-                </CardContent>
-              </Card>
-            </div>
+      <CashFlowModalShell
+        header={(
+          <CashFlowCommandHeader
+            propertyAddress={report.property_address}
+            isNewBuild={isNewBuild}
+            hasChanges={hasChanges}
+            hasOverrides={Object.keys(yearlyOverrides).length > 0}
+            isSaving={isSaving}
+            onResetAll={() => setShowResetConfirm(true)}
+            onSaveChanges={handleSaveOverrides}
+            onExportExcel={handleExportExcel}
+            onPrintView={openPrintView}
+            onSendToClient={() => setSendToClientOpen(true)}
+            pdfExportMenu={(
+              <CashFlowExportMenu
+                includeAllChartsInExport={includeAllChartsInExport}
+                chartExportToggles={chartExportToggles}
+                onGlobalChartsToggle={handleGlobalChartsToggle}
+                onChartToggle={handleChartToggle}
+                onExportPdf={exportSingleReportPDF}
+                filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
+              />
+            )}
+          />
+        )}
+        footer={(
+          <div className="px-6 py-4 flex justify-end gap-2">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </div>
+        )}
+      >
+        <div className="space-y-6">
+          <CashFlowMetricsGrid
+            baseFinancialData={baseFinancialData}
+            projections={projections}
+            formatCurrency={formatCurrency}
+          />
 
             {/* Comparison Mode Toggle & Land Tax Exclusion */}
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -6051,13 +5906,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             </Card>
           </div>
         </div>
-
-        <Separator />
-
-        <div className="px-6 py-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </div>
-      </DialogContent>
+      </CashFlowModalShell>
     </Dialog>
 
     {/* Reset Confirmation Dialog */}
