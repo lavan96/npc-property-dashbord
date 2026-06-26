@@ -57,9 +57,11 @@ interface Props {
   filteredCount: number;
   investmentReports: InvestmentReport[];
   getGradeColor: (grade: string) => string;
+  viewMode: ReportLibraryViewMode;
+  setViewMode: (mode: ReportLibraryViewMode) => void;
 }
 
-type ViewMode = 'cards' | 'table';
+export type ReportLibraryViewMode = 'cards' | 'table';
 
 const scopeOptions = [
   { value: 'all', label: 'All Reports', icon: ListFilter },
@@ -120,9 +122,10 @@ export function ReportLibraryToolbar(props: Props) {
     filteredCount,
     investmentReports,
     getGradeColor,
+    viewMode,
+    setViewMode,
   } = props;
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   const updateFilter = (setter: (v: string) => void) => (value: string) => {
     setter(value);
