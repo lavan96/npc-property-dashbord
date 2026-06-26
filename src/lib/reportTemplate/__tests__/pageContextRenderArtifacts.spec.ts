@@ -58,6 +58,10 @@ describe('PageContext render artifact manifest', () => {
       importId: 'import_123',
       pageContexts: [makeContext(2), makeContext(1)],
       guardrail,
+      signedUrls: {
+        '1:source': 'https://signed.example/page-001.png',
+        '2:source': 'https://signed.example/page-002.png',
+      },
       now: () => new Date('2026-01-01T00:00:00.000Z'),
     });
 
@@ -71,6 +75,7 @@ describe('PageContext render artifact manifest', () => {
     expect(manifest.pages.map((page) => page.pageNumber)).toEqual([1, 2]);
     expect(manifest.pages[0].pageId).toBe('docling-page-1');
     expect(manifest.pages[0].sourceRasterPath).toContain('page-001.png');
+    expect(manifest.pages[0].sourceRasterSignedUrl).toBe('https://signed.example/page-001.png');
   });
 
   it('turns source raster refs into import review artifacts', () => {
@@ -78,6 +83,9 @@ describe('PageContext render artifact manifest', () => {
       importId: 'import_123',
       pageContexts: [makeContext(1)],
       guardrail: { ...guardrail, expected_page_count: 1, observed_page_count: 1, parent_global_context_count: 1 },
+      signedUrls: {
+        '1:source': 'https://signed.example/page-001.png',
+      },
       now: () => new Date('2026-01-01T00:00:00.000Z'),
     });
 
@@ -86,7 +94,9 @@ describe('PageContext render artifact manifest', () => {
     expect(artifacts).toHaveLength(1);
     expect(artifacts[0].kind).toBe('source-raster');
     expect(artifacts[0].pageId).toBe('docling-page-1');
+    expect(artifacts[0].url).toBe('https://signed.example/page-001.png');
     expect(artifacts[0].meta?.storagePath).toBe('job/rasters/page-001.png');
+    expect(artifacts[0].meta?.signedUrlAvailable).toBe(true);
     expect(artifacts[0].meta?.doclingPath).toContain('/docling.json');
   });
 

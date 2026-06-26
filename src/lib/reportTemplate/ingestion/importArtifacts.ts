@@ -47,6 +47,9 @@ export interface ImportArtifactsPayload {
   pdfPageManifestSummary?: unknown | null;
   pdfPageContexts?: unknown[] | null;
   pdfPageContextSummary?: PdfPageContextSummary | null;
+  pdfDiagnosticsSignedByPath?: Record<string, string> | null;
+  pdfPageArtifactSignedUrls?: Record<string, string> | null;
+  pdfDiagnosticsSignedUrlTtlSeconds?: number | null;
   pageContextEntrypoint?: PageContextEntrypoint | null;
   artifactPaths?: {
     cdir?: string | null;
@@ -148,6 +151,7 @@ export async function loadImportReviewDraft(options: LoadImportReviewDraftOption
     importId: data.record.id,
     pageContexts: pageContextSelection.pageContexts,
     guardrail: pageContextGuardrail,
+    signedUrls: data.pdfPageArtifactSignedUrls ?? {},
   });
   const pageContextReviewArtifacts = pageContextRenderManifestToReviewArtifacts(renderArtifactManifest);
 

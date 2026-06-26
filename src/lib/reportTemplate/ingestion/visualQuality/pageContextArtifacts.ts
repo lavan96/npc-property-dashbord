@@ -7,6 +7,7 @@ export interface PageContextSourceRenderArtifact {
   pageId: string;
   pageNumber: number;
   sourceRasterPath: string | null;
+  sourceRasterSignedUrl: string | null;
   doclingPath: string | null;
   blocksPath: string | null;
   tablesPath: string | null;
@@ -45,6 +46,7 @@ export function buildPageContextRenderArtifactManifest(options: {
   importId: string;
   pageContexts: PdfPageContext[];
   guardrail: PdfPageContextConsumerGuardrail;
+  signedUrls?: Record<string, string> | null;
   now?: () => Date;
 }): PageContextRenderArtifactManifest {
   const problems: string[] = [];
@@ -59,10 +61,15 @@ export function buildPageContextRenderArtifactManifest(options: {
       continue;
     }
 
+    const sourceRasterPath = ctx.artifacts.raster_path ?? null;
     const page: PageContextSourceRenderArtifact = {
       pageId: pageIdFor(pageNumber),
       pageNumber,
-      sourceRasterPath: ctx.artifacts.raster_path ?? null,
+      sourceRasterPath,
+      sourceRasterSignedUrl: options.signedUrls?.[`${pageNumber}:source`]
+        ?? options.signedUrls?.[`${pageNumber}:raster`]
+        ?? (sourceRasterPath ? options.signedUrls?.[sourceRasterPath] : undefined)
+        ?? null,
       doclingPath: ctx.artifacts.docling_path ?? null,
       blocksPath: ctx.artifacts.blocks_path ?? null,
       tablesPath: ctx.artifacts.tables_path ?? null,
@@ -115,11 +122,13 @@ export function pageContextRenderManifestToReviewArtifacts(
       id: `source-raster-page-${page.pageNumber}`,
       kind: 'source-raster',
       pageId: page.pageId,
+      url: page.sourceRasterSignedUrl ?? undefined,
       meta: {
         version: manifest.version,
         importId: manifest.importId,
         pageNumber: page.pageNumber,
         storagePath: page.sourceRasterPath,
+        signedUrlAvailable: Boolean(page.sourceRasterSignedUrl),
         doclingPath: page.doclingPath,
         blocksPath: page.blocksPath,
         tablesPath: page.tablesPath,
