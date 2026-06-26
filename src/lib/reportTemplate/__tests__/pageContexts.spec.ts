@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildPdfPageContextConsumerGuardrail,
   getPreferredPdfPageContextSource,
   shouldBlockPdfPageContextImport,
   validatePdfPageContexts,
@@ -30,24 +31,36 @@ const makeContext = (pageNo: number) => ({
   },
 });
 
-describe('Phase 4F PDF page context consumer', () => {
+describe('Phase 4F/4G PDF page context consumer', () => {
   it('prefers parent per-page Docling contexts when entrypoint and validation are valid', () => {
     const selected = getPreferredPdfPageContextSource({
-      pageContextEntrypoint: { available: true, page_count: 2 },
+      pageContextEntrypoint: {
+        available: true,
+        page_count: 2,
+        manifest_path: 'job/pages-manifest.json',
+      },
       pageContexts: [makeContext(2), makeContext(1)],
       pageContextSummary: {
         ok: true,
         expected_page_count: 2,
         observed_page_count: 2,
+        parent_global_context_count: 2,
         problems: [],
       },
     });
+
+    const guardrail = buildPdfPageContextConsumerGuardrail(selected);
 
     expect(selected.source).toBe('per_page_docling');
     expect(selected.pageContextValidation.ok).toBe(true);
     expect(shouldBlockPdfPageContextImport(selected)).toBe(false);
     expect(selected.pageContexts.map((ctx) => ctx.page_no)).toEqual([1, 2]);
-    expect(selected.pageContexts[0].artifacts.docling_path).toContain('/pages/page-001/docling.json');
+    expect(guardrail.version).toBe('pdf-page-context-consumer-guardrail-v1');
+    expect(guardrail.selected_source).toBe('per_page_docling');
+    expect(guardrail.page_context_source_used).toBe(true);
+    expect(guardrail.legacy_fallback_used).toBe(false);
+    expect(guardrail.manifest_path).toBe('job/pages-manifest.json');
+    expect(guardrail.parent_global_context_count).toBe(2);
   });
 
   it('keeps legacy imports compatible when no PageContext entrypoint exists', () => {
@@ -57,11 +70,16 @@ describe('Phase 4F PDF page context consumer', () => {
       pageContextSummary: null,
     });
 
+    const guardrail = buildPdfPageContextConsumerGuardrail(selected);
+
     expect(selected.source).toBe('legacy_docling');
     expect(selected.pageContexts).toEqual([]);
     expect(selected.pageContextValidation.ok).toBe(false);
     expect(selected.pageContextValidation.problems).toContain('page_context_entrypoint_unavailable');
     expect(shouldBlockPdfPageContextImport(selected)).toBe(false);
+    expect(guardrail.legacy_fallback_used).toBe(true);
+    expect(guardrail.fallback_allowed).toBe(true);
+    expect(guardrail.should_block_import).toBe(false);
   });
 
   it('allows explicit unavailable entrypoints to use legacy fallback', () => {
@@ -71,8 +89,11 @@ describe('Phase 4F PDF page context consumer', () => {
       pageContextSummary: null,
     });
 
+    const guardrail = buildPdfPageContextConsumerGuardrail(selected);
+
     expect(selected.source).toBe('legacy_docling');
     expect(shouldBlockPdfPageContextImport(selected)).toBe(false);
+    expect(guardrail.fallback_allowed).toBe(true);
   });
 
   it('blocks corrupt Phase 4 imports when an available entrypoint fails validation', () => {
@@ -91,11 +112,16 @@ describe('Phase 4F PDF page context consumer', () => {
       },
     });
 
+    const guardrail = buildPdfPageContextConsumerGuardrail(selected);
+
     expect(selected.source).toBe('legacy_docling');
     expect(selected.pageContexts).toEqual([]);
     expect(selected.pageContextValidation.ok).toBe(false);
     expect(selected.pageContextValidation.problems).toContain('page_1_summary_path_missing');
     expect(shouldBlockPdfPageContextImport(selected)).toBe(true);
+    expect(guardrail.should_block_import).toBe(true);
+    expect(guardrail.fallback_allowed).toBe(false);
+    expect(guardrail.validation_problem_count).toBeGreaterThan(0);
   });
 
   it('fails validation when page coverage is not continuous', () => {
