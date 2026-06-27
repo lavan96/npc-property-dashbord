@@ -202,7 +202,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
   return (
     <div className="flex h-[600px] min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-zinc-950/90 shadow-xl shadow-black/25">
-      <div className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-white/[0.03] to-transparent px-4 py-3.5">
+      <div className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-emerald-300/[0.04] to-transparent px-4 py-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar className="h-10 w-10 shrink-0 border border-amber-300/25 bg-amber-300/10">
@@ -213,7 +213,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
                 <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-                <Badge variant="outline" className="shrink-0 rounded-full border-amber-300/25 bg-amber-300/10 px-2 text-[10px] text-amber-100">
+                <Badge variant="outline" className="shrink-0 rounded-full border-emerald-300/25 bg-emerald-300/10 px-2 text-[10px] text-emerald-100">
                   Client Portal
                 </Badge>
               </div>
@@ -235,8 +235,9 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
-            No messages yet. Send a message to start the conversation.
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+            <MessageCircle className="mx-auto mb-3 h-9 w-9 text-amber-200/65" />
+            <p>No messages yet. Send a message to start the conversation.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -247,7 +248,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                   <Avatar className="h-7 w-7 shrink-0">
                     <AvatarFallback className={cn(
                       'text-[10px] font-semibold',
-                      mine ? 'bg-primary/10 text-primary' : 'bg-muted text-foreground',
+                      mine ? 'bg-amber-300/10 text-amber-100' : 'bg-emerald-300/10 text-emerald-100',
                     )}>
                       {mine ? <Headphones className="h-3.5 w-3.5" /> : getInitials(m.sender_name || clientName)}
                     </AvatarFallback>
@@ -259,7 +260,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                         ? 'border-dashed border-amber-300/45 bg-amber-300/10 text-foreground rounded-br-md'
                         : mine
                           ? 'border-amber-300/30 bg-gradient-to-br from-amber-300 to-yellow-600 text-black rounded-br-md'
-                          : 'border-white/10 bg-zinc-900/95 text-foreground rounded-bl-md',
+                          : 'border-emerald-300/20 bg-zinc-900/95 text-foreground rounded-bl-md',
                     )}>
                       {!mine && (
                         <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">

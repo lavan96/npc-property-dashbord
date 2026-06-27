@@ -292,8 +292,11 @@ export default function Messages() {
           <TabsContent value="client" className="mt-0">
             <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[75vh] lg:grid-cols-[330px_1fr]">
               <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
-              <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/12 via-white/[0.03] to-transparent px-4 py-3">
-                <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients</CardTitle>
+              <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/12 via-emerald-300/[0.04] to-transparent px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients</CardTitle>
+                  <Badge variant="outline" className="rounded-full border-emerald-300/25 bg-emerald-300/10 px-2 text-[10px] text-emerald-100">Client Portal</Badge>
+                </div>
               </CardHeader>
               <CardContent className="min-h-0 flex-1 p-0">
                 {loadingClient ? (
@@ -301,8 +304,9 @@ export default function Messages() {
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : filteredClientThreads.length === 0 ? (
-                  <div className="m-4 rounded-2xl border border-dashed border-white/10 bg-black/30 px-4 py-10 text-center text-sm text-muted-foreground">
-                    No client portal messages yet.
+                  <div className="m-4 rounded-3xl border border-dashed border-amber-300/15 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
+                    <MessageSquare className="mx-auto mb-3 h-8 w-8 text-amber-200/60" />
+                    <p>No client portal messages yet.</p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)] lg:min-h-0">
