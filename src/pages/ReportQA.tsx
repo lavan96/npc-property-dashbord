@@ -2042,15 +2042,20 @@ export default function ReportQA() {
             )}
 
             {/* Smart Suggestions — collapsible */}
-            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="report-qa-suggestions border-t pt-4 -mx-4 px-4">
-              <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group">
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3" />
-                  Smart suggestions
+            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="report-qa-suggestions group rounded-2xl border px-3 py-3 shadow-sm data-[state=closed]:bg-muted/20 data-[state=open]:shadow-md">
+              <CollapsibleTrigger className="report-qa-suggestions-trigger flex w-full items-center justify-between gap-3 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="truncate">Smart suggestions</span>
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors group-data-[state=open]:border-primary/30 group-data-[state=open]:text-primary">
+                  <span className="hidden sm:inline group-data-[state=closed]:inline">Tips</span>
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                </span>
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-2">
+              <CollapsibleContent className="pt-3">
                 <SmartSuggestions
                   hasReports={uploadedReports.length > 0}
                   isComparison={uploadedReports.length > 1}
