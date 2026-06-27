@@ -1817,14 +1817,14 @@ export default function EmailCopilot() {
             <p className="text-xs md:text-sm text-muted-foreground/90 hidden sm:block">AI-powered email summaries & draft replies</p>
           </div>
         </div>
-        <div className="flex items-center gap-1 md:gap-2">
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-2 rounded-2xl border border-primary/10 bg-background/35 p-1.5 shadow-inner shadow-black/10 md:gap-2.5">
           {/* Notification toggles */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={toggleSoundNotifications}
             title={soundEnabled ? 'Disable sound notifications' : 'Enable sound notifications'}
-            className="h-8 w-8 md:h-9 md:w-9 rounded-xl hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+            className="h-9 w-9 rounded-xl border border-border/70 bg-background/65 shadow-sm hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
           >
             {soundEnabled ? (
               <Bell className="h-4 w-4 text-primary" />
@@ -1837,7 +1837,7 @@ export default function EmailCopilot() {
             size="icon" 
             onClick={toggleBrowserNotifications}
             title={browserNotificationsEnabled ? 'Disable browser notifications' : 'Enable browser notifications'}
-            className="h-8 w-8 md:h-9 md:w-9 rounded-xl hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+            className="h-9 w-9 rounded-xl border border-border/70 bg-background/65 shadow-sm hover:border-green-400/35 hover:bg-green-500/10 hover:text-green-400 focus-visible:ring-green-400/35"
           >
             {browserNotificationsEnabled ? (
               <Bell className="h-4 w-4 text-green-500" />
@@ -1852,7 +1852,7 @@ export default function EmailCopilot() {
               value={selectedMailbox}
               onValueChange={(value: 'admin' | 'personal') => setSelectedMailbox(value)}
             >
-              <SelectTrigger className="h-8 md:h-9 w-auto min-w-[120px] text-xs md:text-sm rounded-xl border-primary/20 bg-background/70 hover:border-primary/40 focus:ring-primary/30">
+              <SelectTrigger className="h-9 w-auto min-w-[138px] rounded-xl border-primary/25 bg-background/75 text-xs shadow-sm hover:border-primary/45 hover:bg-primary/5 focus:ring-primary/30 md:min-w-[156px] md:text-sm">
                 <Inbox className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <SelectValue placeholder="Select mailbox" />
               </SelectTrigger>
@@ -1871,22 +1871,22 @@ export default function EmailCopilot() {
             </Select>
           )}
 
-          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40" onClick={() => setShowScheduledList(true)} title="Scheduled sends">
+          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl border-border/70 bg-background/65 px-2.5 shadow-sm hover:border-amber-300/40 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:ring-amber-300/35" onClick={() => setShowScheduledList(true)} title="Scheduled sends">
             <Clock className="h-3.5 w-3.5" />
             {scheduledSends.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{scheduledSends.length}</Badge>}
           </Button>
-          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40" onClick={() => setShowSnippetManager(true)} title="Snippet library">
+          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl border-purple-400/20 bg-background/65 px-2.5 shadow-sm hover:border-purple-300/40 hover:bg-purple-500/10 hover:text-purple-200 focus-visible:ring-purple-300/35" onClick={() => setShowSnippetManager(true)} title="Snippet library">
             <Sparkles className="h-3.5 w-3.5" />
           </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40">
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/70 bg-background/65 shadow-sm hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35 md:w-auto md:px-3">
                 <MoreVertical className="h-4 w-4 md:mr-2" />
                 <span className="hidden md:inline">Options</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="rounded-xl border-primary/15 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur">
               {!personalMailbox && (
                 <>
                   <DropdownMenuItem onClick={() => setShowMailboxSettings(true)}>
@@ -1911,11 +1911,11 @@ export default function EmailCopilot() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40 disabled:opacity-70" onClick={handleSyncOutlook} disabled={isSyncing}>
+          <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-emerald-400/25 bg-background/65 shadow-sm transition-all hover:border-emerald-300/45 hover:bg-emerald-500/10 hover:text-emerald-200 focus-visible:ring-emerald-300/35 disabled:cursor-not-allowed disabled:border-amber-300/25 disabled:bg-amber-500/10 disabled:text-amber-100 disabled:opacity-80 md:w-auto md:px-3" onClick={handleSyncOutlook} disabled={isSyncing}>
             <RefreshCw className={`h-4 w-4 md:mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
           </Button>
-          <Button size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:brightness-110" onClick={() => setShowComposeModal(true)}>
+          <Button size="icon" className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40 hover:brightness-110 focus-visible:ring-primary/45 active:translate-y-0 md:w-auto md:px-4" onClick={() => setShowComposeModal(true)}>
             <Plus className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">Compose</span>
           </Button>
