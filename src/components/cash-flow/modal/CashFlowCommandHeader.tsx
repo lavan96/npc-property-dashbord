@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Calculator, Download, MoreHorizontal, Printer, RotateCcw, Save, Send } from 'lucide-react';
+import { Calculator, MoreHorizontal, RotateCcw, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,10 +13,7 @@ interface CashFlowCommandHeaderProps {
   isSaving: boolean;
   onResetAll: () => void;
   onSaveChanges: () => void;
-  onExportExcel: () => void;
-  onPrintView: () => void;
-  onSendToClient: () => void;
-  pdfExportMenu: ReactNode;
+  exportMenu: ReactNode;
 }
 
 export function CashFlowCommandHeader({
@@ -27,10 +24,7 @@ export function CashFlowCommandHeader({
   isSaving,
   onResetAll,
   onSaveChanges,
-  onExportExcel,
-  onPrintView,
-  onSendToClient,
-  pdfExportMenu,
+  exportMenu,
 }: CashFlowCommandHeaderProps) {
   return (
     <DialogHeader className="space-y-0">
@@ -84,16 +78,13 @@ export function CashFlowCommandHeader({
             </Button>
 
             <div className="hidden md:block">
-              {pdfExportMenu}
+              {exportMenu}
             </div>
 
             <HeaderMoreMenu
               hasOverrides={hasOverrides}
               onResetAll={onResetAll}
-              onExportExcel={onExportExcel}
-              onPrintView={onPrintView}
-              onSendToClient={onSendToClient}
-              pdfExportMenu={pdfExportMenu}
+              exportMenu={exportMenu}
             />
           </div>
         </div>
@@ -102,13 +93,10 @@ export function CashFlowCommandHeader({
   );
 }
 
-function HeaderMoreMenu({ hasOverrides, onResetAll, onExportExcel, onPrintView, onSendToClient, pdfExportMenu }: {
+function HeaderMoreMenu({ hasOverrides, onResetAll, exportMenu }: {
   hasOverrides: boolean;
   onResetAll: () => void;
-  onExportExcel: () => void;
-  onPrintView: () => void;
-  onSendToClient: () => void;
-  pdfExportMenu: ReactNode;
+  exportMenu: ReactNode;
 }) {
   return (
     <DropdownMenu>
@@ -124,23 +112,10 @@ function HeaderMoreMenu({ hasOverrides, onResetAll, onExportExcel, onPrintView, 
           <RotateCcw className="mr-2 h-4 w-4" />
           Reset All
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onExportExcel}>
-          <Download className="mr-2 h-4 w-4" />
-          Export Excel
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <div className="px-2 py-1.5 md:hidden">
-          {pdfExportMenu}
-        </div>
         <DropdownMenuSeparator className="md:hidden" />
-        <DropdownMenuItem onClick={onPrintView}>
-          <Printer className="mr-2 h-4 w-4" />
-          Print View
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onSendToClient}>
-          <Send className="mr-2 h-4 w-4" />
-          Send to Client
-        </DropdownMenuItem>
+        <div className="px-2 py-1.5 md:hidden">
+          {exportMenu}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

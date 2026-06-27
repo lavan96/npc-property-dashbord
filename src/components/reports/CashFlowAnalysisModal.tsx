@@ -3940,16 +3940,16 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             isSaving={isSaving}
             onResetAll={() => setShowResetConfirm(true)}
             onSaveChanges={handleSaveOverrides}
-            onExportExcel={handleExportExcel}
-            onPrintView={openPrintView}
-            onSendToClient={() => setSendToClientOpen(true)}
-            pdfExportMenu={(
+            exportMenu={(
               <CashFlowExportMenu
                 includeAllChartsInExport={includeAllChartsInExport}
                 chartExportToggles={chartExportToggles}
                 onGlobalChartsToggle={handleGlobalChartsToggle}
                 onChartToggle={handleChartToggle}
+                onExportExcel={handleExportExcel}
                 onExportPdf={exportSingleReportPDF}
+                onPrintView={openPrintView}
+                onSendToClient={() => setSendToClientOpen(true)}
                 filename={`Cash_Flow_10Year_${(report?.property_address || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`}
               />
             )}
@@ -5855,6 +5855,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
           </div>
+        </div>
       </CashFlowModalShell>
     </Dialog>
 
