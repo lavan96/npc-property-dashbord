@@ -38,6 +38,37 @@ const statusConfig: Record<string, { label: string; icon: typeof Clock; color: s
   declined: { label: 'Declined', icon: XCircle, color: 'text-red-300', badgeVariant: 'bg-red-500/15 text-red-200 border-red-300/30' },
 };
 
+const statusCardConfig: Record<string, { glow: string; iconWrap: string; edge: string; count: string; active: string }> = {
+  pending: {
+    glow: 'hover:shadow-[0_18px_48px_rgba(245,158,11,0.22)]',
+    iconWrap: 'border-amber-300/25 bg-amber-300/10 text-amber-200 group-hover:bg-amber-300/20',
+    edge: 'from-amber-300/0 via-amber-300/80 to-amber-300/0',
+    count: 'text-amber-50',
+    active: 'border-amber-300/55 ring-2 ring-amber-300/20 shadow-[0_18px_48px_rgba(245,158,11,0.2)]',
+  },
+  in_progress: {
+    glow: 'hover:shadow-[0_18px_48px_rgba(59,130,246,0.22)]',
+    iconWrap: 'border-blue-300/25 bg-blue-400/10 text-blue-200 group-hover:bg-blue-400/20',
+    edge: 'from-blue-300/0 via-blue-300/80 to-amber-200/30',
+    count: 'text-blue-50',
+    active: 'border-blue-300/55 ring-2 ring-blue-300/20 shadow-[0_18px_48px_rgba(59,130,246,0.2)]',
+  },
+  completed: {
+    glow: 'hover:shadow-[0_18px_48px_rgba(16,185,129,0.2)]',
+    iconWrap: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200 group-hover:bg-emerald-400/20',
+    edge: 'from-emerald-300/0 via-emerald-300/80 to-teal-200/30',
+    count: 'text-emerald-50',
+    active: 'border-emerald-300/55 ring-2 ring-emerald-300/20 shadow-[0_18px_48px_rgba(16,185,129,0.18)]',
+  },
+  declined: {
+    glow: 'hover:shadow-[0_18px_48px_rgba(248,113,113,0.18)]',
+    iconWrap: 'border-red-300/25 bg-red-400/10 text-red-200 group-hover:bg-red-400/20',
+    edge: 'from-red-300/0 via-red-300/70 to-red-300/0',
+    count: 'text-red-50',
+    active: 'border-red-300/50 ring-2 ring-red-300/20 shadow-[0_18px_48px_rgba(248,113,113,0.16)]',
+  },
+};
+
 interface ReportRequest {
   id: string;
   client_id: string;
@@ -210,28 +241,34 @@ export default function ReportRequests() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {(['pending', 'in_progress', 'completed', 'declined'] as const).map((status) => {
             const conf = statusConfig[status];
+            const tile = statusCardConfig[status];
             const Icon = conf.icon;
             return (
               <Card
                 key={status}
                 className={cn(
-                  'group cursor-pointer overflow-hidden border-white/10 bg-zinc-950/80 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-amber-950/30',
-                  statusFilter === status && 'border-amber-300/50 ring-2 ring-amber-300/20 shadow-amber-950/40'
+                  'group relative cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35',
+                  tile.glow,
+                  statusFilter === status && tile.active
                 )}
                 onClick={() => setStatusFilter(statusFilter === status ? 'all' : status)}
               >
-                <CardContent className="relative p-4">
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-3xl font-bold tabular-nums text-white">{counts[status]}</p>
-                      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">{conf.label}</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition-colors group-hover:border-amber-300/25 group-hover:bg-amber-300/10">
+                <CardContent className="relative flex min-h-[132px] flex-col justify-between p-4 sm:p-5">
+                  <div className={cn('absolute inset-x-0 top-0 h-px bg-gradient-to-r opacity-70 transition-opacity group-hover:opacity-100', tile.edge)} />
+                  <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full bg-white/5 blur-2xl transition-opacity group-hover:opacity-80" />
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">{conf.label}</p>
+                    <div className={cn('rounded-2xl border p-2.5 shadow-inner transition-all duration-300 group-hover:scale-105', tile.iconWrap)}>
                       <Icon className={cn('h-5 w-5', conf.color)} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className={cn('text-4xl font-semibold leading-none tracking-[-0.04em] tabular-nums sm:text-5xl', tile.count)}>{counts[status]}</p>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                      <div className={cn('h-full w-10 rounded-full bg-gradient-to-r transition-all duration-300 group-hover:w-16', tile.edge)} />
                     </div>
                   </div>
                 </CardContent>
