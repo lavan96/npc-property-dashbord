@@ -373,42 +373,42 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                 </TableHeader>
                 <TableBody>
                   {filteredReports.map((report) => (
-                    <TableRow key={report.id} className="border-white/10 transition-colors duration-200 hover:bg-amber-400/[0.06] data-[state=selected]:bg-amber-400/10">
+                    <TableRow key={report.id} className="group/row h-16 border-white/10 border-l-2 border-l-transparent transition-all duration-200 hover:border-l-amber-300/80 hover:bg-amber-400/[0.07] hover:shadow-[inset_0_1px_0_rgba(245,158,11,0.10),inset_0_-1px_0_rgba(245,158,11,0.08)] data-[state=selected]:border-l-amber-300 data-[state=selected]:bg-amber-400/10">
                       {!clientId && (
-                        <TableCell className="font-semibold text-slate-100">
+                        <TableCell className="px-4 py-4 font-semibold text-slate-100 transition-colors group-hover/row:text-amber-50">
                           {smartCapitalize(report.client_name)}
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell className="px-4 py-4">
                         <Badge variant={getHealthBadgeVariant(report.overall_health)} className={`rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition-all ${getHealthBadgeClassName(report.overall_health)}`}>
                           {report.overall_health || 'Unknown'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4 py-4 text-right tabular-nums">
                         <span className="font-semibold text-white">{report.health_score || '-'}</span>
                         <span className="text-slate-500 text-xs">/100</span>
                       </TableCell>
-                      <TableCell className="font-medium text-slate-200">{formatCurrency(Number(report.portfolio_value))}</TableCell>
-                      <TableCell className="font-medium text-slate-200">{formatCurrency(Number(report.total_equity))}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 font-medium">
+                      <TableCell className="px-4 py-4 text-right font-medium tabular-nums text-slate-200">{formatCurrency(Number(report.portfolio_value))}</TableCell>
+                      <TableCell className="px-4 py-4 text-right font-medium tabular-nums text-slate-200">{formatCurrency(Number(report.total_equity))}</TableCell>
+                      <TableCell className="px-4 py-4 text-right tabular-nums">
+                        <div className="flex items-center justify-end gap-2 font-medium">
                           {getCashflowIcon(Number(report.net_monthly_cashflow))}
                           <span className={Number(report.net_monthly_cashflow) < 0 ? 'text-red-300' : Number(report.net_monthly_cashflow) > 0 ? 'text-emerald-200' : 'text-slate-300'}>
                             {formatCurrency(Number(report.net_monthly_cashflow))}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-slate-200">{report.total_properties || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 text-sm text-slate-400">
+                      <TableCell className="px-4 py-4 text-center font-medium tabular-nums text-slate-200">{report.total_properties || '-'}</TableCell>
+                      <TableCell className="px-4 py-4">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-slate-400 transition-colors group-hover/row:text-slate-300">
                           <Calendar className="h-3.5 w-3.5 text-amber-200/70" />
                           {format(new Date(report.created_at), 'dd MMM yyyy')}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="px-4 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="rounded-xl text-slate-300 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-amber-300/30">
+                            <Button variant="ghost" size="icon" className="rounded-xl text-slate-300 transition-colors group-hover/row:bg-white/[0.03] group-hover/row:text-amber-100 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-amber-300/30">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
