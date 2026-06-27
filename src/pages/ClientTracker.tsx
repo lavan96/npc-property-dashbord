@@ -1437,58 +1437,61 @@ export default function ClientTracker() {
 
           {/* Pipeline List View */}
           <TabsContent value="pipeline" className="mt-4">
-            <Card className="overflow-hidden border-border/70 bg-background/70 shadow-lg shadow-black/10">
+            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
               <CardContent className="p-0">
                 {isLoading ? (
                   <div className="p-8 text-center text-muted-foreground">Loading clients...</div>
                 ) : filteredClients.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">No clients found</div>
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-border/60">
                     {filteredClients.map(client => {
                       const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                       const isOverdue = client.follow_up_date && new Date(client.follow_up_date) < new Date();
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       
                       return (
-                        <div key={client.id} className="p-4 transition-all duration-200 hover:bg-primary/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.75)]">
+                        <div key={client.id} className="group relative p-4 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:bg-primary/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.75)] hover:before:bg-primary md:p-5">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-medium text-foreground">
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                <h3
+                                  className="min-w-0 max-w-full truncate text-base font-semibold text-foreground transition-colors group-hover:text-primary"
+                                  title={formatFullName(client.primary_first_name, client.primary_surname)}
+                                >
                                   {formatFullName(client.primary_first_name, client.primary_surname)}
                                 </h3>
                                 {pipeline && (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
                                     {pipeline.name}
                                   </Badge>
                                 )}
                                 <Badge 
-                                  className="text-xs text-white"
+                                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
                                   style={{ backgroundColor: stageInfo.color }}
                                 >
                                   {stageInfo.name}
                                 </Badge>
                                 {isOverdue && (
-                                  <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                                  <Badge variant="destructive" className="rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm shadow-red-500/15">Overdue</Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                                 {client.primary_email && (
-                                  <span className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3" />
-                                    {client.primary_email}
+                                  <span className="flex min-w-0 items-center gap-1.5" title={client.primary_email}>
+                                    <Mail className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                                    <span className="max-w-[18rem] truncate">{client.primary_email}</span>
                                   </span>
                                 )}
                                 {client.primary_mobile && (
-                                  <span className="flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    {client.primary_mobile}
+                                  <span className="flex min-w-0 items-center gap-1.5" title={client.primary_mobile}>
+                                    <Phone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                                    <span className="truncate">{client.primary_mobile}</span>
                                   </span>
                                 )}
                               </div>
                               {client.follow_up_date && (
-                                <div className="flex items-center gap-1 mt-1 text-sm">
+                                <div className="mt-2 flex items-center gap-1.5 text-sm">
                                   <CalendarIcon className="h-3 w-3 shrink-0" />
                                   <span className={isOverdue ? 'text-red-500' : 'text-muted-foreground'}>
                                     Follow-up: {format(new Date(client.follow_up_date), 'MMM d, yyyy')}
@@ -1498,20 +1501,20 @@ export default function ClientTracker() {
                               {(client.borrowing_capacity || client.equity_release) && (
                                 <div className="flex items-center gap-4 mt-2 text-sm">
                                   {client.borrowing_capacity && (
-                                    <span className="flex items-center gap-1 text-green-600">
+                                    <span className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-500">
                                       <DollarSign className="h-3 w-3" />
                                       BC: {formatCurrency(client.borrowing_capacity)}
                                     </span>
                                   )}
                                   {client.equity_release && (
-                                    <span className="text-blue-600">
+                                    <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 font-semibold text-blue-500">
                                       Equity: {formatCurrency(client.equity_release)}
                                     </span>
                                   )}
                                 </div>
                               )}
                               {client.pipeline_notes && (
-                                <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                   {client.pipeline_notes}
                                 </p>
                               )}
@@ -1522,6 +1525,7 @@ export default function ClientTracker() {
                                   variant="ghost" 
                                   size="icon"
                                   onClick={() => setEditingClient(client)}
+                                  className="h-9 w-9 rounded-xl border border-border/60 bg-background/70 text-muted-foreground opacity-80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary group-hover:opacity-100"
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
