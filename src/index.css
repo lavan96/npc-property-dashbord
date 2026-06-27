@@ -2942,13 +2942,76 @@ html {
   }
 
   .report-qa-hero {
+    position: relative;
+    overflow: hidden;
     border: 1px solid hsl(43 45% 38% / 0.28);
     border-radius: 1.25rem;
     background:
-      linear-gradient(135deg, hsl(0 0% 100% / 0.07), hsl(0 0% 100% / 0.025)),
-      linear-gradient(90deg, hsl(43 74% 49% / 0.11), transparent 45%);
+      radial-gradient(circle at 8% 0%, hsl(43 84% 58% / 0.2), transparent 18rem),
+      linear-gradient(135deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.026)),
+      linear-gradient(90deg, hsl(43 74% 49% / 0.12), transparent 45%);
     box-shadow: 0 18px 50px hsl(0 0% 0% / 0.32), inset 0 1px 0 hsl(0 0% 100% / 0.08);
     backdrop-filter: blur(16px);
+  }
+
+  .report-qa-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(43 84% 62% / 0.78), transparent);
+    pointer-events: none;
+  }
+
+  .report-qa-eyebrow {
+    border: 1px solid hsl(43 74% 49% / 0.22);
+    background: hsl(43 74% 49% / 0.1);
+    color: hsl(43 92% 78%);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+  }
+
+  .report-qa-subtitle {
+    color: hsl(43 18% 82% / 0.72);
+  }
+
+  .report-qa-header-actions {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-new-chat {
+    border: 1px solid hsl(43 86% 66% / 0.5) !important;
+    background: linear-gradient(135deg, hsl(43 86% 58%), hsl(34 88% 43%)) !important;
+    color: hsl(30 26% 8%) !important;
+    box-shadow: 0 14px 32px hsl(43 74% 20% / 0.32), inset 0 1px 0 hsl(0 0% 100% / 0.28);
+  }
+
+  .report-qa-new-chat:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 42px hsl(43 74% 20% / 0.42), 0 0 0 1px hsl(43 86% 72% / 0.32), inset 0 1px 0 hsl(0 0% 100% / 0.32);
+  }
+
+  .report-qa-history-button,
+  .report-qa-icon-button {
+    border-color: hsl(43 36% 42% / 0.34) !important;
+    background: hsl(0 0% 100% / 0.045) !important;
+    color: hsl(43 18% 88% / 0.9) !important;
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+  }
+
+  .report-qa-history-button:hover,
+  .report-qa-icon-button:hover {
+    border-color: hsl(43 74% 49% / 0.55) !important;
+    background: hsl(43 74% 49% / 0.1) !important;
+    color: hsl(43 92% 80%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px hsl(43 74% 20% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-history-badge {
+    border: 1px solid hsl(43 86% 66% / 0.36);
+    background: hsl(43 86% 58% / 0.18) !important;
+    color: hsl(43 92% 78%) !important;
   }
 
   .report-qa-panel {
@@ -2973,6 +3036,19 @@ html {
   .report-qa-chat-header {
     border-bottom: 1px solid hsl(43 24% 38% / 0.22);
     background: linear-gradient(180deg, hsl(43 74% 49% / 0.08), transparent);
+  }
+
+  .report-qa-toolbar {
+    border: 1px solid hsl(43 24% 38% / 0.16);
+    border-radius: 999px;
+    padding: 0.2rem;
+    background: hsl(0 0% 100% / 0.026);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  }
+
+  .report-qa-toolbar button:hover,
+  .report-qa-toolbar [role="button"]:hover {
+    transform: translateY(-1px);
   }
 
   .report-qa-reports-panel {

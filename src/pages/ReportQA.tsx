@@ -1783,11 +1783,20 @@ export default function ReportQA() {
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <div className="report-qa-hero flex items-center justify-between px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start sm:gap-3 md:flex-row md:items-center">
-        <div className="flex items-center gap-2 min-w-0">
-          <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
+      <div className="report-qa-hero flex items-start justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start md:flex-row md:items-center">
+        <div className="min-w-0 space-y-1.5">
+          <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
+            <Sparkles className="h-3 w-3" />
+            AI Report Intelligence
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
+          </div>
+          <p className="report-qa-subtitle max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
+            Upload investment reports and ask questions to generate summaries, comparisons and citation-backed insights.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 md:justify-end">
+        <div className="report-qa-header-actions flex flex-wrap items-center gap-2 sm:gap-2.5 md:justify-end">
           <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} className="report-qa-icon-button h-9 w-9 rounded-full sm:h-10 sm:w-10" />
           <Button onClick={handleNewChat} className="report-qa-new-chat gap-1.5 h-9 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <Plus className="h-3.5 w-3.5" />
@@ -1853,7 +1862,7 @@ export default function ReportQA() {
                 onAdd={handleLibraryAdd}
                 existingNames={uploadedReports.map((r) => r.name)}
                 disabled={isUploading}
-                className="report-qa-library-button h-8 shrink-0 rounded-xl border-primary/30 bg-primary/10 px-3 text-xs text-primary hover:bg-primary/15 hover:text-primary"
+                className="report-qa-library-button h-9 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
               />
             </div>
           </CardHeader>
@@ -2180,7 +2189,7 @@ export default function ReportQA() {
                 )}
               </div>
               
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="report-qa-toolbar flex items-center gap-1 flex-shrink-0">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
                 <Separator orientation="vertical" className="h-6 mx-1" />
                 {conversationId && (
