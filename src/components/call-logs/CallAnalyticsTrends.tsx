@@ -6,6 +6,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts';
 import { format, subDays, startOfDay, eachDayOfInterval, parseISO, isWithinInterval } from 'date-fns';
 import { TrendingUp, TrendingDown, Clock, Phone, CheckCircle, Activity } from 'lucide-react';
+import { callLogBadgeTone } from './badgeStyles';
 
 interface CallLog {
   id: string;
@@ -95,7 +96,7 @@ export const CallAnalyticsTrends = ({ calls }: CallAnalyticsTrendsProps) => {
     const isPositive = inverse ? value < 0 : value > 0;
     const Icon = isPositive ? TrendingUp : TrendingDown;
     return (
-      <Badge className={`${isPositive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'} gap-1`}>
+      <Badge className={callLogBadgeTone(isPositive ? 'success' : 'danger', 'gap-1')}>
         <Icon className="w-3 h-3" />
         {Math.abs(value)}%
       </Badge>
