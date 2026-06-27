@@ -4942,83 +4942,117 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* AI-Powered Comparison Analysis */}
             {comparisonMode && comparisonReports.length > 0 && (
-              <Card className="border-blue-500/30 bg-blue-500/5">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-blue-600" />
-                      AI-Powered Cash Flow Analysis
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      {isLoadingAnalysis && (
-                        <Badge variant="outline" className="text-xs gap-1">
-                          <RotateCcw className="h-3 w-3 animate-spin" />
-                          Loading...
-                        </Badge>
-                      )}
-                      {savedAnalysisId && (
-                        <Badge variant="secondary" className="text-xs gap-1">
-                          <Save className="h-3 w-3" />
-                          Saved
-                        </Badge>
-                      )}
-                      {aiAnalysis && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={saveAiAnalysis}
-                            disabled={isSavingAnalysis}
-                            className="gap-1"
-                          >
-                            {isSavingAnalysis ? (
-                              <RotateCcw className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Save className="h-3 w-3" />
-                            )}
-                            {savedAnalysisId ? 'Update' : 'Save'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => exportAiAnalysisPDF()}
-                            className="gap-1"
-                          >
-                            <Download className="h-3 w-3" />
-                            Export PDF
-                          </Button>
-                          <FlattenPdfIconButton
-                            getPdfBlob={async () => {
-                              const b = await exportAiAnalysisPDF({ returnBlob: true });
-                              if (!b) throw new Error('Failed to generate AI analysis PDF');
-                              return b;
-                            }}
-                            filename={`ai-cash-flow-analysis-${new Date().toISOString().split('T')[0]}.pdf`}
-                          />
-                        </>
-                      )}
-                      <Button
-                        size="sm"
-                        onClick={generateAiAnalysis}
-                        disabled={isGeneratingAiAnalysis || isLoadingAnalysis}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {isGeneratingAiAnalysis ? (
+              <Card className="overflow-hidden border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-background shadow-sm">
+                <CardHeader className="border-b bg-blue-500/5 pb-4">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <span className="rounded-xl bg-blue-500/10 p-2 text-blue-600">
+                          <Zap className="h-4 w-4" />
+                        </span>
+                        AI Cash Flow Decision Support
+                      </CardTitle>
+                      <p className="max-w-2xl text-xs text-muted-foreground">
+                        Generate a profile-aware comparison analysis across selected properties, rankings, and recommendations.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge variant="outline" className="text-xs">{comparisonReports.length + 1} properties selected</Badge>
+                        {isLoadingAnalysis && (
+                          <Badge variant="outline" className="text-xs gap-1">
+                            <RotateCcw className="h-3 w-3 animate-spin" />
+                            Loading analysis
+                          </Badge>
+                        )}
+                        {savedAnalysisId ? (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <Save className="h-3 w-3" />
+                            Saved analysis
+                          </Badge>
+                        ) : aiAnalysis ? (
+                          <Badge variant="outline" className="border-orange-300 text-orange-600 text-xs">Unsaved analysis</Badge>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 xl:items-end">
+                      <Select value={investorProfile} onValueChange={(v) => setInvestorProfile(v as any)}>
+                        <SelectTrigger className="h-9 w-full sm:w-[190px]">
+                          <SelectValue placeholder="Investor profile" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="growth">Growth focused</SelectItem>
+                          <SelectItem value="income">Income focused</SelectItem>
+                          <SelectItem value="balanced">Balanced</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap justify-start gap-2 xl:justify-end">
+                        {aiAnalysis && (
                           <>
-                            <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
-                            Analyzing...
-                          </>
-                        ) : (
-                          <>
-                            <Zap className="h-3 w-3 mr-1" />
-                            {aiAnalysis ? 'Regenerate' : 'Generate AI Analysis'}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={saveAiAnalysis}
+                              disabled={isSavingAnalysis}
+                              className="gap-1"
+                            >
+                              {isSavingAnalysis ? (
+                                <RotateCcw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Save className="h-3 w-3" />
+                              )}
+                              {savedAnalysisId ? 'Update' : 'Save'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => exportAiAnalysisPDF()}
+                              className="gap-1"
+                            >
+                              <Download className="h-3 w-3" />
+                              Export PDF
+                            </Button>
+                            <FlattenPdfIconButton
+                              getPdfBlob={async () => {
+                                const b = await exportAiAnalysisPDF({ returnBlob: true });
+                                if (!b) throw new Error('Failed to generate AI analysis PDF');
+                                return b;
+                              }}
+                              filename={`ai-cash-flow-analysis-${new Date().toISOString().split('T')[0]}.pdf`}
+                            />
                           </>
                         )}
-                      </Button>
+                        <Button
+                          size="sm"
+                          onClick={generateAiAnalysis}
+                          disabled={isGeneratingAiAnalysis || isLoadingAnalysis}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          {isGeneratingAiAnalysis ? (
+                            <>
+                              <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="h-3 w-3 mr-1" />
+                              {aiAnalysis ? 'Regenerate' : 'Generate AI Analysis'}
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 p-4">
+                  <div className="grid gap-2 rounded-2xl border bg-background/80 p-3 text-xs text-muted-foreground md:grid-cols-2">
+                    <div>
+                      <span className="font-medium text-foreground">Primary:</span> {report.property_address}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Comparing:</span> {comparisonReports.map(r => r.property_address.split(',')[0]).join(' • ')}
+                    </div>
+                  </div>
+
                   {!aiAnalysis && !isGeneratingAiAnalysis && (
                     <p className="text-sm text-muted-foreground">
                       Click "Generate AI Analysis" to get an in-depth AI-powered comparison of cash flow projections, 
@@ -5039,19 +5073,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     <div className="space-y-4">
                       {/* Executive Summary */}
                       {aiAnalysis.executiveSummary && (
-                        <div className="p-3 rounded-lg bg-muted/50">
-                          <h4 className="font-semibold text-sm mb-2">Executive Summary</h4>
+                        <div className="rounded-2xl border bg-background p-4 shadow-sm">
+                          <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-blue-600" />Executive Summary</h4>
                           <p className="text-sm text-muted-foreground whitespace-pre-line">{aiAnalysis.executiveSummary}</p>
                         </div>
                       )}
                       
                       {/* Final Rankings */}
                       {aiAnalysis.finalRankings && aiAnalysis.finalRankings.length > 0 && (
-                        <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20">
-                          <h4 className="font-semibold text-sm mb-3">Final Rankings</h4>
+                        <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-500/10 to-transparent p-4 shadow-sm">
+                          <h4 className="font-semibold text-sm mb-3">Property Rankings</h4>
                           <div className="space-y-2">
                             {aiAnalysis.finalRankings.map((ranking: any, idx: number) => (
-                              <div key={idx} className={`p-2 rounded ${idx === 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/30'}`}>
+                              <div key={idx} className={`rounded-xl p-3 ${idx === 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/30 border'}`}>
                                 <div className="flex items-center gap-2 mb-1">
                                   <Badge variant={idx === 0 ? 'default' : 'outline'} className="text-xs">
                                     #{ranking.rank}
@@ -5080,9 +5114,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Investor Recommendations */}
                       {aiAnalysis.investorRecommendations && (
-                        <div className="p-3 rounded-lg bg-muted/30">
+                        <div className="rounded-2xl border bg-muted/20 p-4">
                           <h4 className="font-semibold text-sm mb-2">Investor Profile Recommendations</h4>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="grid gap-2 text-xs md:grid-cols-2">
                             {aiAnalysis.investorRecommendations.growthFocused && (
                               <div className="p-2 bg-blue-500/10 rounded">
                                 <span className="font-medium text-blue-600">Growth Focused:</span>
@@ -5113,7 +5147,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Overall Recommendation */}
                       {aiAnalysis.overallRecommendation?.bestProperty && (
-                        <div className="p-3 rounded-lg border-2 border-green-500/40 bg-green-500/5">
+                        <div className="rounded-2xl border-2 border-green-500/40 bg-green-500/5 p-4">
                           <h4 className="font-semibold text-sm text-green-600 mb-1">Best Overall Property</h4>
                           <p className="text-sm">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
                         </div>
