@@ -1308,7 +1308,8 @@ export default function ClientTracker() {
                     >
                       <Card className={cn(
                         "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
-                        isDragOver && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
+                        draggedClient && isDragDropEnabled && !isDragOver && "border-primary/20 bg-primary/[0.03]",
+                        isDragOver && isDragDropEnabled && "scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                       )}>
                         <CardHeader className={cn(
                           "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.58),hsl(var(--background)/0.42))] px-4 py-3.5 transition-colors",
@@ -1332,7 +1333,8 @@ export default function ClientTracker() {
                         <CardContent className="flex-1 px-3 pb-3 pt-3">
                           <div className={cn(
                             "client-tracker-kanban-scroll min-h-[500px] max-h-[58vh] space-y-2 overflow-y-auto rounded-xl pr-1",
-                            isDragOver && isDragDropEnabled && "bg-primary/5 ring-1 ring-primary/20"
+                            draggedClient && isDragDropEnabled && !isDragOver && "ring-1 ring-primary/10",
+                            isDragOver && isDragDropEnabled && "bg-primary/10 ring-2 ring-primary/30"
                           )}>
                             {stageClients.length === 0 ? (
                               <div className={cn(
@@ -1374,7 +1376,8 @@ export default function ClientTracker() {
                   >
                     <Card className={cn(
                       "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-black/15 transition-all duration-300 hover:border-primary/25",
-                      dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
+                      draggedClient && isDragDropEnabled && dragOverStageId !== 'unassigned' && "border-primary/20 bg-primary/[0.03]",
+                      dragOverStageId === 'unassigned' && isDragDropEnabled && "scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                     )}>
                       <CardHeader className={cn(
                         "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.48),hsl(var(--background)/0.34))] px-4 py-3.5 transition-colors",
@@ -1395,7 +1398,8 @@ export default function ClientTracker() {
                       <CardContent className="flex-1 px-3 pb-3 pt-3">
                         <div className={cn(
                           "client-tracker-kanban-scroll min-h-[500px] max-h-[58vh] space-y-2 overflow-y-auto rounded-xl pr-1",
-                          dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/5 ring-1 ring-primary/20"
+                          draggedClient && isDragDropEnabled && dragOverStageId !== 'unassigned' && "ring-1 ring-primary/10",
+                          dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/10 ring-2 ring-primary/30"
                         )}>
                           {!groupedByStage['unassigned']?.length ? (
                             <div className={cn(
@@ -1824,7 +1828,7 @@ function KanbanCard({
       className={cn(
         "group relative overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.72))] p-3.5 shadow-md shadow-black/15 transition-all duration-300 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:-translate-y-1 hover:border-primary/40 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/15 hover:before:bg-primary/80",
         isDraggable && "cursor-grab active:cursor-grabbing",
-        isDragging && "scale-[0.98] border-primary/70 bg-primary/10 opacity-85 shadow-2xl shadow-primary/25 ring-2 ring-primary/55 before:bg-primary"
+        isDragging && "z-20 -rotate-1 scale-[1.02] cursor-grabbing border-primary/80 bg-primary/12 opacity-90 shadow-2xl shadow-primary/30 ring-2 ring-primary/60 before:bg-primary"
       )}
       onClick={onEdit}
       draggable={isDraggable}
