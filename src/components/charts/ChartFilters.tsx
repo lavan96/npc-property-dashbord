@@ -36,7 +36,7 @@ export function ChartFilters({
   reports,
 }: ChartFiltersProps) {
   return (
-    <div className="space-y-3">
+    <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-xl shadow-black/10 backdrop-blur sm:p-4 space-y-3">
       {/* Search + filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
@@ -45,10 +45,10 @@ export function ChartFilters({
             placeholder="Search charts by title, report, or analysis..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 h-9"
+            className="h-10 border-border/60 bg-background/70 pl-9 transition-all focus-visible:border-primary/50 focus-visible:ring-primary/30"
           />
           {searchQuery && (
-            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => onSearchChange('')}>
+            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 hover:bg-primary/10 hover:text-primary" onClick={() => onSearchChange('')}>
               <X className="h-3 w-3" />
             </Button>
           )}
@@ -56,7 +56,7 @@ export function ChartFilters({
 
         <div className="flex gap-2 flex-wrap">
           <Select value={chartTypeFilter} onValueChange={onChartTypeChange}>
-            <SelectTrigger className="w-[120px] h-9">
+            <SelectTrigger className="h-10 w-[120px] border-border/60 bg-background/70 hover:border-primary/40">
               <SelectValue placeholder="Chart type" />
             </SelectTrigger>
             <SelectContent>
@@ -68,7 +68,7 @@ export function ChartFilters({
           </Select>
 
           <Select value={reportFilter} onValueChange={onReportChange}>
-            <SelectTrigger className="w-[150px] h-9">
+            <SelectTrigger className="h-10 w-[150px] border-border/60 bg-background/70 hover:border-primary/40">
               <SelectValue placeholder="All reports" />
             </SelectTrigger>
             <SelectContent>
@@ -83,7 +83,7 @@ export function ChartFilters({
 
           {/* Date range filter (Enhancement #5) */}
           <Select value={dateRange} onValueChange={onDateRangeChange}>
-            <SelectTrigger className="w-[130px] h-9">
+            <SelectTrigger className="h-10 w-[130px] border-border/60 bg-background/70 hover:border-primary/40">
               <CalendarDays className="h-3.5 w-3.5 mr-1.5 shrink-0" />
               <SelectValue placeholder="Date range" />
             </SelectTrigger>
@@ -98,7 +98,7 @@ export function ChartFilters({
           </Select>
 
           <Select value={sortBy} onValueChange={onSortChange}>
-            <SelectTrigger className="w-[120px] h-9">
+            <SelectTrigger className="h-10 w-[120px] border-border/60 bg-background/70 hover:border-primary/40">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -114,11 +114,11 @@ export function ChartFilters({
 
       {/* Action row */}
       <div className="flex items-center gap-2">
-        <div className="flex border rounded-md overflow-hidden">
+        <div className="flex overflow-hidden rounded-lg border border-border/60 bg-background/70 shadow-inner">
           <Button
             variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
             size="sm"
-            className="h-8 rounded-none px-2.5"
+            className="h-9 rounded-none px-3 data-[state=on]:bg-primary/20"
             onClick={() => onViewModeChange('grid')}
             title="Grid view"
           >
@@ -127,7 +127,7 @@ export function ChartFilters({
           <Button
             variant={viewMode === 'list' ? 'secondary' : 'ghost'}
             size="sm"
-            className="h-8 rounded-none px-2.5"
+            className="h-9 rounded-none px-3 data-[state=on]:bg-primary/20"
             onClick={() => onViewModeChange('list')}
             title="List view"
           >
@@ -136,7 +136,7 @@ export function ChartFilters({
           <Button
             variant={viewMode === 'grouped' ? 'secondary' : 'ghost'}
             size="sm"
-            className="h-8 rounded-none px-2.5"
+            className="h-9 rounded-none px-3 data-[state=on]:bg-primary/20"
             onClick={() => onViewModeChange('grouped')}
             title="Group by report"
           >
@@ -147,7 +147,7 @@ export function ChartFilters({
         <Button
           variant={selectionMode ? 'default' : 'outline'}
           size="sm"
-          className="h-8 gap-1.5 text-xs"
+          className="h-9 gap-1.5 border-primary/25 text-xs hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
           onClick={onToggleSelectionMode}
         >
           <CheckSquare className="h-3.5 w-3.5" />

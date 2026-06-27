@@ -99,11 +99,11 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`group overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-primary/30 ${isSelected ? 'ring-2 ring-primary border-primary/50' : ''}`}>
-      <CardHeader className="pb-2 space-y-2">
+    <Card className={`group overflow-hidden border-border/60 bg-card/85 shadow-xl shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 ${isSelected ? 'ring-2 ring-primary border-primary/60 shadow-primary/15' : ''}`}>
+      <CardHeader className="space-y-2 border-b border-border/40 bg-gradient-to-b from-muted/20 to-transparent pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-sm font-semibold leading-tight line-clamp-2">
+            <CardTitle className="line-clamp-2 text-sm font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
               {chart.title}
             </CardTitle>
           </div>
@@ -127,7 +127,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="flex items-center gap-1 truncate max-w-[160px] hover:text-primary transition-colors"
+                    className="flex max-w-[160px] items-center gap-1 truncate rounded-md outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
                     onClick={() => navigate(`/report/${chart.report_id}`)}
                   >
                     <FileText className="h-3 w-3 shrink-0" />
@@ -146,16 +146,16 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 pb-3 px-3 space-y-2">
+      <CardContent className="space-y-3 px-3 pb-3 pt-3">
         <div
-          className="relative bg-background border rounded-lg overflow-hidden cursor-pointer group/img"
+          className="group/img relative cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-background/80 shadow-inner transition-all duration-300 hover:border-primary/35 hover:bg-background"
           onClick={() => onExpand(chart)}
         >
-          <div className="w-full h-52 p-2">
+          <div className="h-52 w-full p-3 transition-transform duration-300 group-hover/img:scale-[1.015]">
             {renderChartImage(chart)}
           </div>
-          <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover/img:opacity-100">
-            <div className="bg-background/90 backdrop-blur-sm rounded-full p-2 shadow-md">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-black/10 group-hover/img:opacity-100">
+            <div className="rounded-full border border-primary/25 bg-background/90 p-2 shadow-lg shadow-primary/10 backdrop-blur-sm">
               <Maximize2 className="h-4 w-4 text-foreground" />
             </div>
           </div>
@@ -165,14 +165,14 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         {chart.analysis_text && (
           <Collapsible open={showAnalysis} onOpenChange={setShowAnalysis}>
             <CollapsibleTrigger asChild>
-              <button className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors w-full text-left">
+              <button className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-amber-500/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/30">
                 <Sparkles className="h-3 w-3 text-amber-500 shrink-0" />
                 <span className="truncate">{showAnalysis ? 'Hide Analysis' : 'View Analysis'}</span>
                 <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="mt-1.5 p-2 bg-amber-500/5 border border-amber-500/15 rounded-md">
+              <div className="mt-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 shadow-inner">
                 <p className="text-[11px] text-muted-foreground leading-relaxed">{chart.analysis_text}</p>
               </div>
             </CollapsibleContent>
@@ -187,7 +187,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               </Button>
             )}
           </div>
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => onExport(chart)}>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs hover:bg-primary/10 hover:text-primary" onClick={() => onExport(chart)}>
             <Download className="h-3 w-3" /> Export
           </Button>
         </div>
