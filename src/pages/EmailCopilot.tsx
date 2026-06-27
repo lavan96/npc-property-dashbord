@@ -1953,32 +1953,32 @@ export default function EmailCopilot() {
         >
           {/* Inbox/Sent Tabs */}
           <div className="px-3 pt-3 border-b border-border/70 bg-background/30">
-            <div className="flex gap-1 rounded-xl border border-border/60 bg-muted/50 p-1 mb-3 shadow-inner">
+            <div className="mb-3 flex gap-1.5 rounded-2xl border border-primary/10 bg-background/45 p-1.5 shadow-inner shadow-black/10">
               <button
                 onClick={() => { setViewMode('inbox'); setSelectedSentReply(null); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'inbox' 
-                    ? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/30'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                className={`flex-1 flex items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                  viewMode === 'inbox'
+                    ? 'bg-primary/15 text-primary shadow-md shadow-primary/10 ring-1 ring-primary/35'
+                    : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
                 }`}
               >
-                <Inbox className="h-4 w-4" />
-                Inbox
+                <Inbox className="h-4 w-4 shrink-0" />
+                <span>Inbox</span>
                 {unreadCount > 0 && (
-                  <Badge variant="secondary" className="text-xs h-5 px-1.5">{unreadCount}</Badge>
+                  <Badge variant="secondary" className="h-5 rounded-full border border-primary/25 bg-primary/15 px-2 text-[11px] font-semibold tabular-nums text-primary">{unreadCount}</Badge>
                 )}
               </button>
               <button
                 onClick={() => { setViewMode('sent'); setSelectedEmail(null); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'sent' 
-                    ? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/30'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                className={`flex-1 flex items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                  viewMode === 'sent'
+                    ? 'bg-primary/15 text-primary shadow-md shadow-primary/10 ring-1 ring-primary/35'
+                    : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
                 }`}
               >
-                <Send className="h-4 w-4" />
-                Sent
-                <Badge variant="outline" className="text-xs h-5 px-1.5">{sentCount}</Badge>
+                <Send className="h-4 w-4 shrink-0" />
+                <span>Sent</span>
+                <Badge variant="outline" className="h-5 rounded-full border-border/70 bg-background/70 px-2 text-[11px] font-semibold tabular-nums text-muted-foreground">{sentCount}</Badge>
               </button>
             </div>
           </div>
