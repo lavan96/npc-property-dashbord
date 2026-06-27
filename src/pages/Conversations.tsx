@@ -62,6 +62,7 @@ import { GHLExportDialog } from "@/components/shared/GHLExportDialog";
 import { format, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 
 // ── Channel helpers ──────────────────────────────────────────
 function normalizeChannel(ch: string | undefined): string {
@@ -849,9 +850,13 @@ export default function Conversations() {
   // RENDER
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.12),transparent_30%),linear-gradient(135deg,hsl(220_20%_5%),hsl(222_18%_8%)_45%,hsl(220_16%_6%))] p-3 text-foreground md:p-5">
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] min-h-0 max-w-none flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_30%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--background))_45%,hsl(var(--muted)/0.18))] p-3 text-foreground md:p-5"
+    >
       {/* Page header */}
-      <header className="relative z-10 flex shrink-0 flex-col gap-4 overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(10,10,10,0.88),rgba(24,24,27,0.78)_48%,rgba(120,53,15,0.18))] px-4 py-4 shadow-2xl shadow-black/35 backdrop-blur-xl md:flex-row md:items-center md:justify-between md:px-5">
+      <DashboardThemeFrame as="header" variant="hero" className="relative z-10 flex shrink-0 flex-col gap-4 overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.78)_48%,hsl(var(--primary)/0.12))] px-4 py-4 shadow-2xl shadow-black/35 md:flex-row md:items-center md:justify-between md:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
         <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
         <div className="relative flex min-w-0 flex-1 items-center gap-3">
@@ -970,7 +975,7 @@ export default function Conversations() {
                 : "Sync"}
           </Button>
         </div>
-      </header>
+      </DashboardThemeFrame>
 
       {exportJobStatus && (
         <div
@@ -1151,8 +1156,10 @@ export default function Conversations() {
       />
 
       {/* Main content area */}
-      <div
-        className="mt-3 flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-hidden rounded-[2rem] lg:flex-row lg:gap-0 border border-white/10 bg-[linear-gradient(135deg,rgba(9,9,11,0.92),rgba(24,24,27,0.72))] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl"
+      <DashboardThemeFrame
+        as="section"
+        variant="section"
+        className="mt-3 flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-hidden rounded-[2rem] border-white/10 bg-[linear-gradient(135deg,hsl(var(--background)/0.92),hsl(var(--card)/0.72))] p-1.5 shadow-2xl shadow-black/40 lg:flex-row lg:gap-0"
         onMouseMove={(e) => {
           if (!isDraggingConvRef.current) return;
           const delta = e.clientX - dragStartXConvRef.current;
@@ -1931,7 +1938,7 @@ export default function Conversations() {
             </>
           ) : null}
         </div>
-      </div>
-    </div>
+      </DashboardThemeFrame>
+    </DashboardThemeFrame>
   );
 }
