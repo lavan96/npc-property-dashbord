@@ -54,3 +54,14 @@ export {
   type RepairFallbackMode,
   type VisualRepairEligibility,
 } from './repairEligibility';
+
+export {
+  REPAIR_LOOP_BRIDGE_VERSION,
+  buildCdirSelfExpectations,
+  buildRepairLoopBridgeInput,
+  generatedRastersToRenderedPageRasters,
+  sourceRenderRastersToVisualDiffSourceRasters,
+  type BuildRepairLoopBridgeOptions,
+  type RepairExpectationStrategy,
+  type RepairLoopBridgeInput,
+} from './repairBridge';
