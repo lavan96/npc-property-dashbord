@@ -767,33 +767,37 @@ export default function ClientManagement() {
           />
 
           {/* Search & Filters */}
-          <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/70 p-3 shadow-inner flex-wrap">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(24,24,27,0.76),rgba(3,7,18,0.62))] p-3 shadow-inner shadow-black/25 backdrop-blur">
+            <div className="relative min-w-[240px] flex-1 md:max-w-md">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
               <Input
                 placeholder="Search clients..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 border-border/70 bg-background/70 transition-all focus-visible:border-amber-400/60 focus-visible:ring-amber-400/30"
+                className="h-11 rounded-xl border-amber-500/20 bg-background/75 pl-10 pr-4 text-sm shadow-sm shadow-black/20 placeholder:text-muted-foreground/75 transition-all focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-400/30"
               />
             </div>
             <Button
               variant={showActiveOnly ? "default" : "outline"}
               size="sm"
               onClick={() => setShowActiveOnly(!showActiveOnly)}
-              className="gap-2 transition-all hover:-translate-y-0.5 hover:border-amber-400/50"
+              className={`h-11 gap-2 rounded-xl px-4 font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/50 ${
+                showActiveOnly
+                  ? 'border-amber-300/40 bg-amber-400 text-black shadow-amber-500/20 hover:bg-amber-300 hover:text-black'
+                  : 'border-amber-500/25 bg-background/70 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-100'
+              }`}
             >
               <Star className={`h-4 w-4 ${showActiveOnly ? 'fill-current' : ''}`} />
               Active Clients
               {activeClientCount > 0 && (
-                <Badge variant={showActiveOnly ? "secondary" : "default"} className="ml-1">
+                <Badge variant={showActiveOnly ? "secondary" : "default"} className={`ml-1 rounded-full px-2 font-bold ${showActiveOnly ? 'bg-black/15 text-black' : 'bg-amber-500/15 text-amber-100 border border-amber-500/25'}`}>
                   {activeClientCount}
                 </Badge>
               )}
             </Button>
             <ClientFilters filters={filters} onFiltersChange={setFilters} />
             {filteredClients.length > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/55 px-3 text-sm shadow-sm transition-colors hover:border-amber-500/25 hover:bg-amber-500/5">
                 <Checkbox
                   checked={allSelected}
                   ref={(ref) => {
@@ -802,8 +806,9 @@ export default function ClientManagement() {
                     }
                   }}
                   onCheckedChange={handleSelectAll}
+                  className="border-amber-500/40 data-[state=checked]:bg-amber-500 data-[state=checked]:text-black"
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-medium text-muted-foreground">
                   Select all ({filteredClients.length})
                 </span>
               </div>
