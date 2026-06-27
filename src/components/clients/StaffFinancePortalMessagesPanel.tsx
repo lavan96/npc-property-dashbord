@@ -179,7 +179,7 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-100">
             Threads ({sortedThreads.length})
           </span>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-violet-100 hover:bg-violet-300/10 hover:text-violet-50 focus-visible:ring-violet-300/40" onClick={() => loadThreads(true)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-violet-100 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-300/10 hover:text-violet-50 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] focus-visible:ring-violet-300/40" onClick={() => loadThreads(true)}>
             <RefreshCcw className="h-3 w-3" />
           </Button>
         </div>
@@ -196,7 +196,7 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
                     'group relative w-full overflow-hidden rounded-2xl border px-3.5 py-3 text-left transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/45',
                     isActive
                       ? 'border-violet-300/45 bg-violet-300/12 shadow-[inset_3px_0_0_rgba(196,181,253,0.95),0_14px_32px_rgba(0,0,0,0.24)] before:opacity-100'
-                      : 'border-white/5 bg-white/[0.025] hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-80',
+                      : 'border-white/5 bg-white/[0.025] hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-[0_14px_32px_rgba(0,0,0,0.24),0_0_0_1px_rgba(196,181,253,0.12)] hover:before:opacity-80',
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">

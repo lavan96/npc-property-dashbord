@@ -232,7 +232,7 @@ export default function Messages() {
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Button
                 size="sm"
-                className="h-10 justify-center rounded-full border border-amber-200/35 bg-gradient-to-r from-amber-300 to-yellow-600 px-5 font-semibold text-black shadow-[0_14px_34px_rgba(245,158,11,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-200 hover:to-amber-500 hover:shadow-[0_18px_42px_rgba(245,158,11,0.34)] focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
+                className="h-10 justify-center rounded-full border border-amber-200/35 bg-gradient-to-r from-amber-300 to-yellow-600 px-5 font-semibold text-black shadow-[0_14px_34px_rgba(245,158,11,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-200 hover:to-amber-500 hover:shadow-[0_0_0_1px_rgba(253,230,138,0.45),0_18px_42px_rgba(245,158,11,0.34)] focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
                 onClick={() => {
                   setNewOpen(true);
                   if (allClients.length === 0) loadAllClients();
@@ -246,7 +246,7 @@ export default function Messages() {
                 size="sm"
                 aria-busy={refreshing}
                 className={cn(
-                  'h-10 justify-center rounded-full border-amber-300/20 bg-black/35 px-5 text-amber-100 shadow-sm shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0',
+                  'h-10 justify-center rounded-full border-amber-300/20 bg-black/35 px-5 text-amber-100 shadow-sm shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-300/10 hover:text-amber-50 hover:shadow-[0_0_0_1px_rgba(251,191,36,0.18),0_14px_34px_rgba(245,158,11,0.14)] focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0',
                   refreshing && 'border-amber-300/45 bg-amber-300/10 shadow-[0_0_0_1px_rgba(251,191,36,0.18),0_14px_34px_rgba(245,158,11,0.12)]',
                 )}
                 onClick={() => {
@@ -270,19 +270,19 @@ export default function Messages() {
                   placeholder="Search by client, partner, or message…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-12 rounded-2xl border-amber-300/15 bg-black/45 pl-11 pr-4 text-sm text-foreground shadow-inner shadow-black/25 transition-all placeholder:text-muted-foreground/75 hover:border-amber-300/25 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  className="h-12 rounded-2xl border-amber-300/15 bg-black/45 pl-11 pr-4 text-sm text-foreground shadow-inner shadow-black/25 transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-amber-300/30 hover:bg-black/55 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                 />
               </div>
 
               <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-white/10 bg-black/55 p-1.5 shadow-lg shadow-black/20 xl:w-auto xl:min-w-[420px]">
-                <TabsTrigger value="client" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
+                <TabsTrigger value="client" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_28px_rgba(0,0,0,0.22)] focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   Client Portal
                   {totalClientUnread > 0 && (
                     <Badge variant="destructive" className="ml-1">{totalClientUnread}</Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="finance" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
+                <TabsTrigger value="finance" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_28px_rgba(0,0,0,0.22)] focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
                   <ShieldCheck className="h-4 w-4 shrink-0" />
                   Finance Portal
                   {totalFinanceUnread > 0 && (
@@ -325,7 +325,7 @@ export default function Messages() {
                           key={t.client_id}
                           onClick={() => setSelectedClientId(t.client_id)}
                           className={cn(
-                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
                             selectedClientId === t.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
@@ -408,7 +408,7 @@ export default function Messages() {
                           key={g.client_id}
                           onClick={() => setSelectedFinanceClientId(g.client_id)}
                           className={cn(
-                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(196,181,253,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50',
                             selectedFinanceClientId === g.client_id && 'border-violet-300/45 bg-violet-300/12 shadow-[inset_4px_0_0_rgba(196,181,253,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
@@ -481,7 +481,7 @@ export default function Messages() {
             <div className="space-y-2.5">
               <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">Scope</Label>
               <Select value={newScope} onValueChange={(v) => setNewScope(v as NewMessageScope)}>
-                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-black/35 px-4 text-sm shadow-inner shadow-black/20 focus:ring-2 focus:ring-amber-300/30"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-black/35 px-4 text-sm shadow-inner shadow-black/20 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/45 focus:ring-2 focus:ring-amber-300/30"><SelectValue /></SelectTrigger>
                 <SelectContent className="border-white/10 bg-zinc-950">
                   {SCOPE_OPTIONS.map((s) => (
                     <SelectItem key={s.value} value={s.value}>
@@ -503,7 +503,7 @@ export default function Messages() {
                   placeholder="Search clients…"
                   value={newClientSearch}
                   onChange={(e) => setNewClientSearch(e.target.value)}
-                  className="h-12 rounded-2xl border-white/10 bg-black/35 pl-11 text-sm shadow-inner shadow-black/20 placeholder:text-muted-foreground/70 focus-visible:border-amber-300/50 focus-visible:ring-2 focus-visible:ring-amber-300/30"
+                  className="h-12 rounded-2xl border-white/10 bg-black/35 pl-11 text-sm shadow-inner shadow-black/20 transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-amber-300/30 hover:bg-black/45 focus-visible:border-amber-300/50 focus-visible:ring-2 focus-visible:ring-amber-300/30"
                 />
               </div>
               <ScrollArea className="h-64 rounded-2xl border border-white/10 bg-black/25 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
@@ -528,7 +528,7 @@ export default function Messages() {
                           key={c.id}
                           onClick={() => setNewClientId(c.id)}
                           className={cn(
-                            'w-full rounded-2xl border border-transparent px-3.5 py-3 text-left text-sm transition-all hover:border-amber-300/25 hover:bg-amber-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40',
+                            'w-full rounded-2xl border border-transparent px-3.5 py-3 text-left text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_12px_28px_rgba(0,0,0,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40',
                             newClientId === c.id && 'border-amber-300/40 bg-amber-300/12 shadow-[inset_3px_0_0_rgba(251,191,36,0.95)]',
                           )}
                         >
@@ -545,10 +545,10 @@ export default function Messages() {
           </div>
 
           <DialogFooter className="border-t border-white/10 bg-black/25 px-6 py-4 sm:justify-between">
-            <Button variant="outline" onClick={() => setNewOpen(false)} className="rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100">Cancel</Button>
+            <Button variant="outline" onClick={() => setNewOpen(false)} className="rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
             <Button
               disabled={!newClientId}
-              className="rounded-full bg-amber-300 px-6 font-semibold text-black shadow-lg shadow-amber-950/20 transition-all hover:bg-amber-200 focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+              className="rounded-full bg-amber-300 px-6 font-semibold text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
               onClick={() => {
                 const scopeMeta = SCOPE_OPTIONS.find((s) => s.value === newScope)!;
                 if (scopeMeta.group === 'client') {

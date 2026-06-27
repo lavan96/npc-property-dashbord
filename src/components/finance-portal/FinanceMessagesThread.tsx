@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Paperclip, Download, X, ShieldCheck, UserCircle2 } from 'lucide-react';
+import { Loader2, Send, Paperclip, Download, X, ShieldCheck } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -212,7 +212,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                   )}
                   <div className={cn('flex min-w-0 max-w-[min(82%,42rem)] flex-col', mine ? 'items-end' : 'items-start')}>
                   <div className={cn(
-                    'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15',
+                    'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
                     mine ? 'border-violet-300/30 bg-gradient-to-br from-violet-300 to-blue-500 text-black' : 'border-blue-300/15 bg-zinc-900/95 text-foreground'
                   )}>
                     {!mine && (
@@ -225,7 +225,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                       <button
                         onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
                         className={cn(
-                          'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 hover:underline',
+                          'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40',
                           mine ? 'text-primary-foreground/90' : 'text-foreground/80'
                         )}
                       >
@@ -236,7 +236,6 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                     )}
                   </div>
                   <div className="mt-1.5 px-1 text-[10px] text-muted-foreground/85">{formatStamp(m.created_at)}</div>
-                  </div>
                 </div>
               );
             })}
@@ -244,9 +243,9 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
         )}
       </ScrollArea>
 
-      <div className="shrink-0 space-y-2 border-t border-violet-300/15 bg-[linear-gradient(180deg,rgba(39,39,42,0.98),rgba(9,9,11,0.99))] p-3 shadow-[0_-22px_55px_rgba(0,0,0,0.35)]">
+      <div className="shrink-0 space-y-2 border-t border-violet-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
         {attachment && (
-          <div className="flex items-center gap-2 rounded-2xl border border-violet-300/20 bg-violet-300/8 px-3 py-2 text-xs text-zinc-300 shadow-inner shadow-black/20">
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-muted-foreground">
             <Paperclip className="h-3.5 w-3.5" />
             <span className="truncate flex-1">{attachment.name}</span>
             <span className="text-muted-foreground">{formatBytes(attachment.size)}</span>
@@ -254,8 +253,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
               className="rounded-full text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
-        <div className="relative flex items-end gap-2 overflow-hidden rounded-3xl border border-violet-300/20 bg-gradient-to-br from-zinc-900/95 via-black/60 to-zinc-950/95 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_45px_rgba(0,0,0,0.28)] transition-colors focus-within:border-amber-300/55 focus-within:ring-2 focus-within:ring-amber-300/25">
-          <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
+        <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
             ref={textareaRef}
             placeholder="Write a message..."
@@ -265,15 +263,15 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
             }}
             disabled={sending}
-            className="max-h-40 min-h-[76px] flex-1 resize-none overflow-y-auto rounded-2xl border border-white/5 bg-black/20 px-3.5 py-3 text-sm leading-6 text-foreground shadow-inner shadow-black/20 placeholder:text-zinc-400 focus-visible:border-amber-300/30 focus-visible:ring-0 disabled:cursor-not-allowed disabled:bg-zinc-900/70 disabled:text-zinc-400 disabled:placeholder:text-zinc-500"
+            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 transition-all placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-violet-300/30 disabled:cursor-not-allowed disabled:opacity-60"
             maxLength={5000}
           />
           <div className="flex flex-col gap-1.5">
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleAttach} />
-            <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} className="h-10 w-10 rounded-2xl border-violet-300/20 bg-violet-300/10 text-violet-100 shadow-sm shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-amber-300/40 disabled:translate-y-0 disabled:border-white/10 disabled:bg-zinc-900 disabled:text-zinc-500">
+            <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} className="h-9 w-9 rounded-xl border-white/10 bg-black/25 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:text-violet-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] focus-visible:ring-violet-300/40 disabled:opacity-50 disabled:hover:translate-y-0">
               <Paperclip className="h-4 w-4" />
             </Button>
-            <Button type="button" size="icon" onClick={send} disabled={sending || (!draft.trim() && !attachment)} className="h-10 w-10 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-300 to-yellow-500 text-zinc-950 shadow-[0_14px_32px_rgba(245,158,11,0.28)] transition-all hover:-translate-y-0.5 hover:from-amber-100 hover:to-yellow-400 focus-visible:ring-2 focus-visible:ring-amber-200 disabled:translate-y-0 disabled:bg-none disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none">
+            <Button type="button" size="icon" onClick={send} disabled={sending || (!draft.trim() && !attachment)} className="h-9 w-9 rounded-xl bg-violet-300 text-black shadow-lg shadow-violet-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-200 hover:shadow-[0_14px_32px_rgba(139,92,246,0.22)] focus-visible:ring-violet-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
               {sending || uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
