@@ -176,15 +176,31 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         {chart.analysis_text && (
           <Collapsible open={showAnalysis} onOpenChange={setShowAnalysis}>
             <CollapsibleTrigger asChild>
-              <button className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-amber-500/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/30">
-                <Sparkles className="h-3 w-3 text-amber-500 shrink-0" />
-                <span className="truncate">{showAnalysis ? 'Hide Analysis' : 'View Analysis'}</span>
-                <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
+              <button
+                className="group/analysis flex w-full items-center gap-2 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-background/70 to-primary/5 px-3 py-2 text-left text-xs font-semibold text-foreground shadow-sm shadow-amber-950/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/45 hover:from-amber-500/15 hover:to-primary/10 hover:shadow-md hover:shadow-amber-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/35 focus-visible:ring-offset-2"
+                aria-label={showAnalysis ? `Hide analysis for ${chart.title}` : `View analysis for ${chart.title}`}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/15 text-amber-600 shadow-inner transition-colors group-hover/analysis:bg-amber-500/25 dark:text-amber-300">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate leading-tight">{showAnalysis ? 'Hide Analysis' : 'View Analysis'}</span>
+                  <span className="block truncate text-[10px] font-medium leading-snug text-muted-foreground">
+                    {showAnalysis ? 'Collapse AI insight' : 'Expand AI insight'}
+                  </span>
+                </span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/75 text-muted-foreground shadow-sm transition-all duration-200 group-hover/analysis:border-amber-400/40 group-hover/analysis:text-amber-600 dark:group-hover/analysis:text-amber-300">
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showAnalysis ? 'rotate-180' : ''}`} />
+                </span>
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="mt-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 shadow-inner">
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{chart.analysis_text}</p>
+              <div className="mt-2 overflow-hidden rounded-2xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.36))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_12px_28px_rgba(15,23,42,0.08)] dark:bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.16))]">
+                <div className="max-h-72 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
+                  <p className="whitespace-pre-wrap break-words text-xs leading-6 text-muted-foreground [overflow-wrap:anywhere]">
+                    {chart.analysis_text}
+                  </p>
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
