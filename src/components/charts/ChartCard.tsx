@@ -35,6 +35,10 @@ interface ChartCardProps {
   selectionMode: boolean;
 }
 
+export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.24),0_0_34px_rgba(245,158,11,0.14)] focus-within:border-amber-300/70 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.24)] dark:ring-white/10';
+
+const DEFAULT_TYPE_BADGE = { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: 'Chart' };
+
 const CHART_TYPE_CONFIG: Record<string, { color: string; emoji: string; label: string }> = {
   bar: { color: 'border-blue-400/35 bg-gradient-to-r from-blue-500/12 to-violet-500/12 text-blue-700 shadow-blue-500/10 dark:text-blue-200', emoji: '📊', label: 'Bar' },
   pie: { color: 'border-emerald-400/35 bg-gradient-to-r from-emerald-500/12 to-teal-500/12 text-emerald-700 shadow-emerald-500/10 dark:text-emerald-200', emoji: '🥧', label: 'Pie' },
@@ -43,7 +47,33 @@ const CHART_TYPE_CONFIG: Record<string, { color: string; emoji: string; label: s
   scatter: { color: 'border-rose-400/35 bg-gradient-to-r from-rose-500/12 to-pink-500/12 text-rose-700 shadow-rose-500/10 dark:text-rose-200', emoji: '🔵', label: 'Scatter' },
   radar: { color: 'border-cyan-400/35 bg-gradient-to-r from-cyan-500/12 to-sky-500/12 text-cyan-700 shadow-cyan-500/10 dark:text-cyan-200', emoji: '🕸️', label: 'Radar' },
   area: { color: 'border-teal-400/35 bg-gradient-to-r from-teal-500/12 to-emerald-500/12 text-teal-700 shadow-teal-500/10 dark:text-teal-200', emoji: '📉', label: 'Area' },
+  distribution: { color: 'border-sky-400/35 bg-gradient-to-r from-sky-500/12 to-cyan-500/12 text-sky-700 shadow-sky-500/10 dark:text-sky-200', emoji: '📐', label: 'Distribution' },
+  pricing_trend: { color: 'border-violet-400/35 bg-gradient-to-r from-violet-500/12 to-fuchsia-500/12 text-violet-700 shadow-violet-500/10 dark:text-violet-200', emoji: '💹', label: 'Pricing Trend' },
+  suburb: { color: 'border-indigo-400/35 bg-gradient-to-r from-indigo-500/12 to-blue-500/12 text-indigo-700 shadow-indigo-500/10 dark:text-indigo-200', emoji: '🏘️', label: 'Suburb' },
+  property_type: { color: 'border-lime-400/35 bg-gradient-to-r from-lime-500/12 to-emerald-500/12 text-lime-700 shadow-lime-500/10 dark:text-lime-200', emoji: '🏢', label: 'Property Type' },
 };
+
+function normalizeChartType(type: string) {
+  return type.toLowerCase().trim().replace(/[\s-]+/g, '_');
+}
+
+export function getChartTypeConfig(type: string) {
+  const normalized = normalizeChartType(type);
+  const semanticKey = normalized.includes('distribution') ? 'distribution'
+    : normalized.includes('pricing') || normalized.includes('trend') ? 'pricing_trend'
+    : normalized.includes('suburb') ? 'suburb'
+    : normalized.includes('property') && normalized.includes('type') ? 'property_type'
+    : normalized.includes('doughnut') || normalized.includes('donut') ? 'doughnut'
+    : normalized.includes('scatter') ? 'scatter'
+    : normalized.includes('radar') ? 'radar'
+    : normalized.includes('area') ? 'area'
+    : normalized.includes('line') ? 'line'
+    : normalized.includes('pie') ? 'pie'
+    : normalized.includes('bar') ? 'bar'
+    : normalized;
+
+  return CHART_TYPE_CONFIG[semanticKey] || { ...DEFAULT_TYPE_BADGE, label: type.replace(/[_-]+/g, ' ') };
+}
 
 function renderChartImage(chart: ChartData) {
   if (!chart.image_data) {
@@ -94,12 +124,12 @@ function renderChartImage(chart: ChartData) {
 }
 
 export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
-  const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: chart.chart_type };
+  const cfg = getChartTypeConfig(chart.chart_type);
   const navigate = useNavigate();
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`group relative flex h-full min-h-[430px] overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-amber-300/70 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.28),0_0_34px_rgba(245,158,11,0.16)] dark:ring-white/10 ${selectionMode && isSelected ? 'border-amber-300/80 bg-gradient-to-b from-amber-500/10 via-card/95 to-card/85 ring-2 ring-amber-400/80 shadow-[0_22px_46px_hsl(43_74%_49%/0.18)]' : ''}`}>
+    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex h-full min-h-[430px] ${selectionMode && isSelected ? 'border-amber-300/80 bg-gradient-to-b from-amber-500/10 via-card/95 to-card/85 ring-2 ring-amber-400/80 shadow-[0_22px_46px_hsl(43_74%_49%/0.18)]' : ''}`}>
       {selectionMode && isSelected && (
         <div className="pointer-events-none absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
           <CheckCircle2 className="h-4 w-4" />
