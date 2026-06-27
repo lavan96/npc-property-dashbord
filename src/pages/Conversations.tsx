@@ -73,12 +73,28 @@ const channelIcons: Record<string, any> = {
 };
 
 const channelColors: Record<string, string> = {
-  sms: 'bg-blue-500/10 text-blue-300 border-blue-400/30 shadow-[0_0_22px_rgba(59,130,246,0.12)]',
-  email: 'bg-amber-500/10 text-amber-200 border-amber-400/30 shadow-[0_0_22px_rgba(245,158,11,0.12)]',
-  whatsapp: 'bg-emerald-500/10 text-emerald-200 border-emerald-400/30 shadow-[0_0_22px_rgba(16,185,129,0.12)]',
-  instagram: 'bg-pink-500/10 text-pink-200 border-pink-400/30 shadow-[0_0_22px_rgba(236,72,153,0.12)]',
-  facebook: 'bg-indigo-500/10 text-indigo-200 border-indigo-400/30 shadow-[0_0_22px_rgba(99,102,241,0.12)]',
-  live_chat: 'bg-purple-500/10 text-purple-200 border-purple-400/30 shadow-[0_0_22px_rgba(168,85,247,0.12)]',
+  sms: 'bg-blue-500/10 text-blue-200 border-blue-300/35 shadow-[0_0_24px_rgba(59,130,246,0.16)]',
+  email: 'bg-violet-500/10 text-violet-100 border-violet-300/35 shadow-[0_0_24px_rgba(139,92,246,0.16)]',
+  whatsapp: 'bg-emerald-500/10 text-emerald-100 border-emerald-300/35 shadow-[0_0_26px_rgba(16,185,129,0.18)]',
+  instagram: 'bg-pink-500/10 text-pink-100 border-pink-300/35 shadow-[0_0_24px_rgba(236,72,153,0.16)]',
+  facebook: 'bg-indigo-500/10 text-indigo-100 border-indigo-300/35 shadow-[0_0_24px_rgba(99,102,241,0.16)]',
+  live_chat: 'bg-purple-500/10 text-purple-100 border-purple-300/35 shadow-[0_0_24px_rgba(168,85,247,0.16)]',
+};
+
+const avatarBackgrounds: Record<string, string> = {
+  sms: 'from-blue-400/24 via-sky-400/13 to-zinc-950/72',
+  email: 'from-violet-400/24 via-purple-400/13 to-zinc-950/72',
+  whatsapp: 'from-emerald-400/26 via-teal-400/14 to-zinc-950/72',
+  instagram: 'from-pink-400/24 via-fuchsia-400/13 to-zinc-950/72',
+  facebook: 'from-indigo-400/24 via-blue-400/13 to-zinc-950/72',
+  live_chat: 'from-purple-400/24 via-cyan-400/12 to-zinc-950/72',
+};
+
+const getContactInitials = (name?: string | null) => {
+  const label = (name || '').trim();
+  if (!label || ['unknown', 'unknown contact', 'unlinked contact'].includes(label.toLowerCase())) return '?';
+  const parts = label.split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 };
 
 const channelToGhlType = (ch: string): string => {
@@ -161,10 +177,10 @@ export default function Conversations() {
   const [exportJobStatus, setExportJobStatus] = useState<ExportJobStatus | null>(null);
   
   // Resizable panel state
-  const [convPanelWidth, setConvPanelWidth] = useState(360);
+  const [convPanelWidth, setConvPanelWidth] = useState(390);
   const isDraggingConvRef = useRef(false);
   const dragStartXConvRef = useRef(0);
-  const dragStartWidthConvRef = useRef(360);
+  const dragStartWidthConvRef = useRef(390);
 
   // ── Sync from GHL API then refetch local data ──
   const handleSyncAndRefresh = async () => {
@@ -187,7 +203,7 @@ export default function Conversations() {
   };
 
   // ── Fetch ALL conversations via edge function ──
-  const { data: conversations = [], isLoading: loadingConversations, refetch: refetchConversations } = useQuery({
+  const { data: conversations = [], isLoading: loadingConversations, error: conversationsError, refetch: refetchConversations } = useQuery({
     queryKey: ['all-conversations'],
     queryFn: async () => {
       // Fetch all conversations through the secure edge function
@@ -761,11 +777,11 @@ export default function Conversations() {
       />
 
       {/* Main content area */}
-      <div className="mt-3 flex min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/55 shadow-2xl shadow-black/35 backdrop-blur-xl"
+      <div className="mt-3 flex min-h-0 flex-1 gap-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(9,9,11,0.92),rgba(24,24,27,0.72))] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl"
         onMouseMove={(e) => {
           if (!isDraggingConvRef.current) return;
           const delta = e.clientX - dragStartXConvRef.current;
-          const newWidth = Math.min(550, Math.max(260, dragStartWidthConvRef.current + delta));
+          const newWidth = Math.min(560, Math.max(300, dragStartWidthConvRef.current + delta));
           setConvPanelWidth(newWidth);
         }}
         onMouseUp={() => { isDraggingConvRef.current = false; }}
@@ -774,11 +790,15 @@ export default function Conversations() {
         {/* ─── LEFT PANEL: Conversation List ─── */}
         {showList && (
           <div 
-            className={cn('flex flex-col border-r border-white/10 bg-black/35', isMobile && 'w-full')}
-            style={!isMobile ? { width: convPanelWidth, minWidth: 260, maxWidth: 550, flexShrink: 0 } : undefined}
+            className={cn('flex min-h-0 flex-col overflow-hidden rounded-[1.55rem] border border-white/12 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,0.10),transparent_28%),linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.92)_48%,rgba(3,3,5,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_-1px_0_0_rgba(255,255,255,0.035),0_22px_60px_rgba(0,0,0,0.34)]', isMobile && 'w-full')}
+            style={!isMobile ? { width: convPanelWidth, minWidth: 300, maxWidth: 560, flexShrink: 0 } : undefined}
           >
             {/* Search & filter */}
-            <div className="shrink-0 space-y-3.5 border-b border-white/10 bg-gradient-to-b from-zinc-950/90 via-zinc-950/80 to-black/45 p-3.5 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)]">
+            <div className="shrink-0 space-y-3.5 border-b border-amber-100/10 bg-[linear-gradient(180deg,rgba(9,9,11,0.98),rgba(24,24,27,0.74))] p-4 shadow-[inset_0_-1px_0_rgba(255,255,255,0.045),0_10px_30px_rgba(0,0,0,0.22)]">
+              <div className="flex items-center justify-between gap-3 text-xs text-zinc-400">
+                <span className="font-semibold uppercase tracking-[0.22em] text-amber-100/70">Inbox</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">{filteredConversations.length} shown</span>
+              </div>
               <div className="relative group">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center">
                   <Search className="h-4 w-4 text-zinc-500 transition-colors duration-200 group-focus-within:text-amber-300" />
@@ -811,11 +831,11 @@ export default function Conversations() {
             </div>
 
             {/* Conversation list */}
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea className="min-h-0 flex-1 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.055),transparent_34%)] [scrollbar-color:rgba(113,113,122,0.65)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-zinc-600/80">
               {loadingConversations ? (
-                <div className="p-3 space-y-3">
+                <div className="space-y-3.5 p-4">
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="flex gap-3 items-center">
+                    <div key={i} className="flex items-center gap-3 rounded-2xl border border-white/[0.055] bg-white/[0.025] p-3.5">
                       <Skeleton className="h-10 w-10 rounded-full shrink-0" />
                       <div className="flex-1 space-y-1.5">
                         <Skeleton className="h-3.5 w-32" />
@@ -824,16 +844,22 @@ export default function Conversations() {
                     </div>
                   ))}
                 </div>
+              ) : conversationsError ? (
+                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-red-400/20 bg-red-500/[0.055] px-5 py-14 text-center shadow-inner shadow-black/20">
+                  <XCircle className="mb-3 h-8 w-8 text-red-300/80" />
+                  <p className="text-sm font-semibold text-red-100">Unable to load conversations</p>
+                  <p className="mt-1 max-w-[22rem] text-xs leading-5 text-red-100/60">Conversation data is unchanged. Try refreshing the inbox or syncing again.</p>
+                </div>
               ) : filteredConversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <MessageSquare className="h-8 w-8 mb-3 opacity-40" />
-                  <p className="text-sm font-medium">No conversations found</p>
-                  <p className="text-xs mt-1">
+                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-white/[0.08] bg-white/[0.025] px-5 py-14 text-center text-zinc-400 shadow-inner shadow-black/20">
+                  <MessageSquare className="mb-3 h-8 w-8 text-amber-100/45" />
+                  <p className="text-sm font-semibold text-zinc-100">No conversations found</p>
+                  <p className="mt-1 max-w-[22rem] text-xs leading-5 text-zinc-500">
                     {searchTerm || channelFilter !== 'all' ? 'Try adjusting your filters' : 'Conversations will appear when messages are synced'}
                   </p>
                 </div>
               ) : (
-                <div>
+                <div className="space-y-2.5 p-3">
                   {filteredConversations.map((conv) => {
                     const normalized = normalizeChannel(conv.channel_type);
                     const Icon = channelIcons[normalized] || MessageSquare;
@@ -843,33 +869,39 @@ export default function Conversations() {
                       <div
                         key={conv.id}
                         className={cn(
-                          'group relative flex cursor-pointer items-center gap-3 border-b border-white/[0.07] px-3 py-3 transition-all duration-200 focus-within:bg-amber-400/10 hover:bg-white/[0.055]',
-                          isActive ? 'bg-amber-400/10 shadow-[inset_3px_0_0_rgba(234,179,8,0.9)]' : '',
-                          conv.unread_count > 0 && !isActive && 'bg-amber-400/[0.045]'
+                          'group relative flex min-h-[5.6rem] cursor-pointer items-center gap-4 overflow-hidden rounded-[1.55rem] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,255,255,0.052),rgba(255,255,255,0.018)_55%,rgba(245,158,11,0.026))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_14px_30px_rgba(0,0,0,0.14)] outline-none transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-300 before:opacity-0 before:shadow-[0_0_18px_rgba(251,191,36,0.65)] before:transition-opacity after:absolute after:inset-x-6 after:-bottom-[6px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/[0.08] after:to-transparent last:after:hidden focus-visible:border-amber-200/55 focus-visible:bg-amber-300/[0.08] focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.075)_62%,rgba(255,255,255,0.028))] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_38px_rgba(0,0,0,0.28)] hover:before:opacity-100',
+                          isActive ? 'border-amber-200/65 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(255,255,255,0.045)_56%,rgba(245,158,11,0.10))] shadow-[inset_4px_0_0_rgba(251,191,36,0.95),0_0_0_1px_rgba(251,191,36,0.12),0_20px_42px_rgba(245,158,11,0.13)] before:opacity-100' : '',
+                          conv.unread_count > 0 && !isActive && 'border-amber-200/18 bg-[linear-gradient(135deg,rgba(245,158,11,0.085),rgba(255,255,255,0.026)_60%,rgba(255,255,255,0.018))]'
                         )}
                         onClick={() => handleSelectConversation(conv)}
+                        title={`${conv.client_name || 'Unknown contact'}${conv.last_message_body ? ` — ${conv.last_message_body}` : ' — No messages yet'}`}
                       >
-                        <div className={cn('h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-105', channelColors[normalized] || 'bg-muted')}>
-                          <Icon className="h-4 w-4" />
+                        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]', avatarBackgrounds[normalized] || 'from-zinc-500/18 via-zinc-600/12 to-zinc-950/72')}>
+                          <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-white drop-shadow">{getContactInitials(conv.client_name)}</span>
+                          <span className={cn('absolute -bottom-1.5 -right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-950/90 bg-zinc-950 shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-white/10', channelColors[normalized] || 'text-zinc-100')}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="absolute inset-0 rounded-[1.35rem] bg-gradient-to-br from-white/12 to-transparent opacity-60" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={cn('truncate text-sm text-zinc-100', conv.unread_count > 0 ? 'font-semibold' : 'font-medium')}>
+                        <div className="relative min-w-0 flex-1 space-y-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className={cn('min-w-0 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-zinc-50 transition-colors group-hover:text-white', conv.unread_count > 0 ? 'font-bold' : 'font-semibold')} title={conv.client_name || 'Unknown contact'}>
                               {conv.client_name}
                             </span>
-                            <span className="shrink-0 text-[11px] text-zinc-500">
+                            <span className="shrink-0 rounded-full border border-white/[0.07] bg-black/20 px-2 py-0.5 text-[10px] font-medium text-zinc-400 transition-colors group-hover:border-amber-200/20 group-hover:text-amber-100/80">
                               {formatConversationDate(conv.last_message_date)}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 mt-0.5">
-                            <p className={cn('truncate text-xs', conv.unread_count > 0 ? 'text-zinc-100' : 'text-zinc-500')}>
+                          <div className="flex min-w-0 items-center justify-between gap-2">
+                            <p className={cn('min-w-0 truncate text-[0.8rem] leading-5 transition-colors', conv.unread_count > 0 ? 'font-medium text-zinc-100' : 'text-zinc-400/85 group-hover:text-zinc-200/90')} title={conv.last_message_body || 'No messages yet'}>
                               {conv.last_message_direction === 'outbound' && (
-                                <span className="text-muted-foreground">You: </span>
+                                <span className="text-amber-100/55">You: </span>
                               )}
-                              {conv.last_message_body || 'No messages'}
+                              <span className={cn(!conv.last_message_body && 'rounded-full border border-dashed border-white/10 bg-white/[0.035] px-2 py-0.5 italic text-zinc-400/90')}>{conv.last_message_body || 'No messages yet'}</span>
                             </p>
                             {conv.unread_count > 0 && (
-                              <Badge className="h-5 min-w-[20px] rounded-full text-[10px] px-1.5 bg-primary shrink-0">
+                              <Badge className="h-6 min-w-[24px] shrink-0 rounded-full bg-amber-300 px-2 text-[10px] font-bold text-black shadow-[0_0_18px_rgba(251,191,36,0.28)]">
                                 {conv.unread_count}
                               </Badge>
                             )}
@@ -887,7 +919,7 @@ export default function Conversations() {
         {/* Resizable Drag Handle */}
         {!isMobile && showList && (
           <div
-            className="group relative w-1.5 flex-shrink-0 cursor-col-resize bg-transparent transition-all hover:w-2 hover:bg-amber-400/15"
+            className="group relative mx-1 w-2 flex-shrink-0 cursor-col-resize rounded-full bg-gradient-to-b from-white/5 via-white/10 to-white/5 transition-all hover:bg-amber-400/15"
             onMouseDown={(e) => {
               e.preventDefault();
               isDraggingConvRef.current = true;
@@ -895,59 +927,115 @@ export default function Conversations() {
               dragStartWidthConvRef.current = convPanelWidth;
             }}
           >
-            <div className="absolute inset-y-4 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-white/10 transition-colors group-hover:bg-amber-300/50" />
+            <div className="absolute inset-y-6 left-1/2 w-1 -translate-x-1/2 rounded-full bg-white/15 shadow-[0_0_18px_rgba(255,255,255,0.08)] transition-colors group-hover:bg-amber-300/60" />
           </div>
         )}
 
         {/* ─── RIGHT PANEL: Thread View ─── */}
         {(selectedId || !isMobile) && (
-          <div className={cn('flex min-w-0 flex-1 flex-col bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.08),transparent_28%)]', !selectedId && 'items-center justify-center')}>
+          <div className={cn('flex min-w-0 flex-1 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.10),transparent_30%),linear-gradient(180deg,rgba(24,24,27,0.84),rgba(9,9,11,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]', !selectedId && 'items-center justify-center p-6')}>
             {!selectedId ? (
-              <div className="rounded-3xl border border-amber-300/15 bg-black/35 p-10 text-center text-zinc-400 shadow-2xl shadow-black/25">
-                <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium">Select a conversation</p>
-                <p className="text-xs mt-1">Choose from the list to view messages</p>
+              <div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-[1.35rem] p-4 sm:p-8">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_12%_50%,rgba(250,204,21,0.07),transparent_18%),linear-gradient(135deg,rgba(255,255,255,0.035),transparent_38%,rgba(255,255,255,0.025))]" />
+                <div className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 items-center gap-2 rounded-full border border-amber-200/10 bg-black/20 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-amber-100/35 shadow-inner shadow-black/30 lg:flex">
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Inbox
+                </div>
+                <div className="pointer-events-none absolute inset-x-12 top-10 h-px bg-gradient-to-r from-transparent via-amber-100/16 to-transparent" />
+                <div className="relative w-full max-w-md overflow-hidden rounded-[2.25rem] border border-amber-200/18 bg-[linear-gradient(145deg,rgba(24,24,27,0.86),rgba(9,9,11,0.74)_52%,rgba(0,0,0,0.70))] p-8 text-center text-zinc-400 shadow-[0_28px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl sm:p-10">
+                  <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+                  <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-amber-300/10 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-20 left-1/2 h-32 w-56 -translate-x-1/2 rounded-full bg-white/[0.035] blur-3xl" />
+                  <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-100/22 bg-[radial-gradient(circle_at_35%_25%,rgba(254,243,199,0.18),rgba(245,158,11,0.09)_45%,rgba(24,24,27,0.66))] shadow-[0_0_55px_rgba(234,179,8,0.16),inset_0_1px_0_rgba(255,255,255,0.16)] ring-1 ring-white/[0.055]">
+                    <div className="absolute inset-2 rounded-[1.3rem] border border-white/[0.055] bg-black/10" />
+                    <MessageSquare className="relative h-9 w-9 text-amber-100/78 drop-shadow-[0_0_18px_rgba(251,191,36,0.22)]" strokeWidth={1.7} />
+                  </div>
+                  <p className="text-lg font-semibold tracking-[-0.02em] text-zinc-50 sm:text-xl">Select a conversation</p>
+                  <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-zinc-400/90">Choose from the list to view messages</p>
+                  <div className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-medium text-amber-100/55 shadow-inner shadow-black/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300/70 shadow-[0_0_14px_rgba(251,191,36,0.65)]" />
+                    Your message workspace is ready
+                  </div>
+                </div>
               </div>
             ) : selectedConversation ? (
               <>
                 {/* Thread header with client context */}
-                <div className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-zinc-950/70 px-4 py-3">
-                  {!isMobile && (
-                    <div className={cn('h-10 w-10 rounded-2xl flex items-center justify-center border shrink-0',
-                      channelColors[normalizeChannel(selectedConversation.channel_type)] || 'bg-muted'
-                    )}>
-                      {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-4 w-4" />; })()}
+                <div className="relative z-10 shrink-0 border-b border-white/10 bg-[linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.86))] px-4 py-4 shadow-[0_16px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:px-5">
+                  <div className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                      {!isMobile && (
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_18px_38px_rgba(0,0,0,0.34)] ring-1 ring-white/[0.055]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-zinc-500/18 via-zinc-600/12 to-zinc-950/72')}>
+                          <span className="relative z-10 text-base font-bold tracking-[-0.04em] text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
+                          <span className={cn('absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-950/90 bg-zinc-950 shadow-[0_10px_20px_rgba(0,0,0,0.38)] ring-1 ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-zinc-100')}>
+                            {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3.5 w-3.5" />; })()}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <h2 className="min-w-0 max-w-full truncate text-lg font-semibold tracking-[-0.035em] text-white sm:text-xl">{selectedConversation.client_name}</h2>
+                          {selectedConversation.unread_count > 0 && (
+                            <Badge className="shrink-0 rounded-full border border-amber-200/35 bg-amber-300/12 px-2.5 py-0.5 text-[11px] font-semibold text-amber-50 shadow-[0_0_20px_rgba(251,191,36,0.14)]">
+                              {selectedConversation.unread_count} unread
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-zinc-400">
+                          <span className={cn('inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold capitalize', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'border-white/10 bg-white/5 text-zinc-100')}>
+                            {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3 w-3 shrink-0" />; })()}
+                            <span className="truncate">{normalizeChannel(selectedConversation.channel_type).replace('_', ' ')}</span>
+                          </span>
+                          {selectedConversation.client_email && (
+                            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-zinc-300">
+                              <Mail className="h-3 w-3 shrink-0 text-zinc-500" />
+                              <span className="truncate">{selectedConversation.client_email}</span>
+                            </span>
+                          )}
+                          {selectedConversation.last_message_date && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-zinc-300">
+                              Last activity {formatConversationDate(selectedConversation.last_message_date)}
+                            </span>
+                          )}
+                          {selectedConversation.ghl_conversation_id && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 font-medium text-emerald-100">
+                              <ShieldCheck className="h-3 w-3" />
+                              GHL synced
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{selectedConversation.client_name}</p>
-                    <p className="text-[11px] text-muted-foreground capitalize">
-                      {normalizeChannel(selectedConversation.channel_type).replace('_', ' ')}
+
+                    <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
                       {selectedConversation.client_id && (
                         <Button
-                          variant="link"
+                          variant="outline"
                           size="sm"
-                          className="h-auto p-0 ml-2 text-[11px] text-primary"
+                          className="h-9 rounded-full border-amber-200/25 bg-amber-300/10 px-3 text-xs font-semibold text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-amber-200/50 hover:bg-amber-300/15"
                           onClick={() => window.open(`/clients?clientId=${selectedConversation.client_id}`, '_blank')}
                         >
-                          View Client <ExternalLink className="h-2.5 w-2.5 ml-0.5" />
+                          View Client <ExternalLink className="ml-1.5 h-3 w-3" />
                         </Button>
                       )}
-                    </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/[0.035] p-0 text-zinc-300 hover:bg-white/10 hover:text-white"
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] })}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 shrink-0"
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] })}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 min-h-0">
-                  <div className="px-4 py-4">
+                <ScrollArea className="min-h-0 flex-1 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.035),transparent_38%)]">
+                  <div className="mx-auto w-full max-w-5xl px-4 py-5 md:px-6">
                     {loadingMessages ? (
                       <div className="flex items-center justify-center py-16">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -994,7 +1082,7 @@ export default function Conversations() {
                                 return (
                                   <div key={msg.id} className={cn('flex', isOutbound ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
-                                      'max-w-[75%] rounded-2xl border px-3.5 py-2 text-sm shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl',
+                                      'max-w-[82%] rounded-2xl border px-3.5 py-2 text-sm shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl md:max-w-[72%]',
                                       isOutbound
                                         ? `${getOutboundBubbleClass()} border-white/10`
                                         : 'rounded-bl-md border-white/10 bg-zinc-900/90 text-zinc-100'
@@ -1036,7 +1124,7 @@ export default function Conversations() {
                 </ScrollArea>
 
                 {/* Reply composer */}
-                <div className="shrink-0 space-y-2 border-t border-white/10 bg-zinc-950/75 px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.25)]">
+                <div className="shrink-0 space-y-2 border-t border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground whitespace-nowrap">Send via:</span>
                     <DropdownMenu>
