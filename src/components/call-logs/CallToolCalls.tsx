@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CheckCircle, XCircle, Wrench, Clock, ChevronRight } from 'lucide-react';
+import { callLogBadgeTone } from './badgeStyles';
 
 interface ArtifactMessage {
   role: string;
@@ -129,18 +130,18 @@ export const CallToolCalls = ({ artifactMessages }: CallToolCallsProps) => {
     <div className="space-y-4">
       {/* Summary */}
       <div className="flex items-center gap-3">
-        <Badge variant="outline" className="gap-1">
+        <Badge variant="outline" className={callLogBadgeTone('neutral', 'gap-1')}>
           <Wrench className="w-3 h-3" />
           {toolCalls.length} Tool Call{toolCalls.length !== 1 ? 's' : ''}
         </Badge>
         {successCount > 0 && (
-          <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 gap-1">
+          <Badge className={callLogBadgeTone('success', 'gap-1')}>
             <CheckCircle className="w-3 h-3" />
             {successCount} Successful
           </Badge>
         )}
         {failCount > 0 && (
-          <Badge className="bg-red-500/15 text-red-500 border border-red-500/30 gap-1">
+          <Badge className={callLogBadgeTone('danger', 'gap-1')}>
             <XCircle className="w-3 h-3" />
             {failCount} Failed
           </Badge>
@@ -179,9 +180,9 @@ export const CallToolCalls = ({ artifactMessages }: CallToolCallsProps) => {
                   <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
                     <ChevronRight className="w-3 h-3" /> Response
                     {tc.success ? (
-                      <Badge className="bg-emerald-500/15 text-emerald-500 border-0 text-[10px] py-0 px-1.5 ml-1">OK</Badge>
+                      <Badge className={callLogBadgeTone('success', 'ml-1 px-1.5 py-0 text-[10px]')}>OK</Badge>
                     ) : (
-                      <Badge className="bg-red-500/15 text-red-500 border-0 text-[10px] py-0 px-1.5 ml-1">ERROR</Badge>
+                      <Badge className={callLogBadgeTone('danger', 'ml-1 px-1.5 py-0 text-[10px]')}>ERROR</Badge>
                     )}
                   </p>
                   <pre className="whitespace-pre-wrap break-all text-xs font-mono bg-muted p-3 rounded-lg overflow-auto max-h-60 w-full max-w-full">

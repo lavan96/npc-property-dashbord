@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
+import { callLogBadgeTone } from './badgeStyles';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Bell, 
@@ -492,7 +493,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
               )}
               Alerts
               {unreadCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                <Badge className={callLogBadgeTone('danger', 'absolute -top-2 -right-2 h-5 w-5 justify-center p-0 text-[10px]')}>
                   {unreadCount}
                 </Badge>
               )}
@@ -687,7 +688,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
                                   <p className="text-xs text-muted-foreground">
                                     {rule.condition_type} {rule.condition_operator.replace('_', ' ')} {rule.condition_value}
                                   </p>
-                                  <Badge variant="outline" className="text-[10px] h-4">
+                                  <Badge variant="outline" className={callLogBadgeTone('neutral', 'h-4 text-[10px]')}>
                                     {rule.notification_type === 'email' && <Mail className="w-3 h-3 mr-1" />}
                                     {rule.notification_type === 'both' && <Send className="w-3 h-3 mr-1" />}
                                     {getNotificationTypeLabel(rule.notification_type)}
@@ -756,7 +757,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium truncate">{alert.rule_name}</p>
                               {!alert.is_read && (
-                                <Badge variant="secondary" className="h-4 text-[10px]">New</Badge>
+                                <Badge variant="secondary" className={callLogBadgeTone('warning', 'h-4 text-[10px]')}>New</Badge>
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground">{alert.message}</p>

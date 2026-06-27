@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Users, GitBranch, Target, TrendingUp, CheckCircle, Clock } from 'lucide-react';
+import { callLogBadgeTone } from './badgeStyles';
 
 interface SquadAssistant {
   id: string;
@@ -396,13 +397,7 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
                         <p className="text-xs text-muted-foreground">{assistant.completed} completed</p>
                       </div>
                       <Badge 
-                        className={
-                          successRate >= 70 
-                            ? 'bg-emerald-500/20 text-emerald-400' 
-                            : successRate >= 40 
-                              ? 'bg-amber-500/20 text-amber-400' 
-                              : 'bg-red-500/20 text-red-400'
-                        }
+                        className={callLogBadgeTone(successRate >= 70 ? 'success' : successRate >= 40 ? 'warning' : 'danger')}
                       >
                         {successRate}%
                       </Badge>

@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, Users, Smile, Frown, Meh, MessageSquare } from 'lucide-react';
+import { TrendingUp, Users, Smile, Frown, Meh, MessageSquare, Activity } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CallLog {
   id: string;
@@ -32,6 +33,23 @@ const OUTCOME_COLORS = {
   failed: '#ef4444',
   cancelled: '#6b7280',
 };
+
+
+const analyticsPanel =
+  'relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-2xl shadow-black/30';
+const analyticsKpiCard =
+  'group relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br shadow-lg shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-amber-500/10';
+const analyticsChartCard =
+  'relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-xl shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:border-amber-300/30 hover:shadow-amber-500/10';
+const chartShell = 'rounded-2xl border border-white/10 bg-black/20 p-3';
+const tooltipContentStyle = {
+  backgroundColor: 'rgba(9, 9, 11, 0.96)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  borderRadius: '16px',
+  boxShadow: '0 24px 70px rgba(0,0,0,0.42)',
+  color: '#f4f4f5',
+};
+const tooltipLabelStyle = { color: '#f4f4f5' };
 
 export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) => {
   // Calculate sentiment distribution
@@ -149,56 +167,76 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
 
   return (
     <div className="space-y-6">
+      <Card className={analyticsPanel}>
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-emerald-500/10 blur-3xl" />
+        <CardHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.92),rgba(0,0,0,0.72),rgba(16,185,129,0.12))]">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+            <Activity className="h-3 w-3" />
+            Performance Intelligence
+          </div>
+          <CardTitle className="mt-3 flex items-center gap-3 text-2xl text-zinc-50">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-500/10 text-emerald-200 shadow-inner shadow-emerald-950/40">
+              <TrendingUp className="h-5 w-5" />
+            </span>
+            Call Performance Analytics
+          </CardTitle>
+          <CardDescription className="text-zinc-400">
+            Premium KPI, sentiment, outcome, and agent performance view for the filtered call set
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Card className={cn(analyticsKpiCard, 'from-emerald-500/15 via-zinc-950/85 to-black/95 hover:border-emerald-300/35 hover:shadow-emerald-500/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-emerald-500/20">
-                <Smile className="w-5 h-5 text-emerald-400" />
+              <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 shadow-inner shadow-emerald-950/40">
+                <Smile className="h-5 w-5 text-emerald-300" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Positive Sentiment</p>
-                <p className="text-2xl font-bold">{summaryStats.sentimentScore}%</p>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Positive Sentiment</p>
+                <p className="text-3xl font-bold text-zinc-50">{summaryStats.sentimentScore}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={cn(analyticsKpiCard, 'from-blue-500/15 via-zinc-950/85 to-black/95 hover:border-blue-300/35 hover:shadow-blue-500/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-500/20">
-                <TrendingUp className="w-5 h-5 text-blue-400" />
+              <div className="rounded-2xl border border-blue-300/25 bg-blue-500/10 p-3 shadow-inner shadow-blue-950/40">
+                <TrendingUp className="h-5 w-5 text-blue-300" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Success Rate</p>
-                <p className="text-2xl font-bold">{summaryStats.successRate}%</p>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Success Rate</p>
+                <p className="text-3xl font-bold text-zinc-50">{summaryStats.successRate}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={cn(analyticsKpiCard, 'from-purple-500/15 via-zinc-950/85 to-black/95 hover:border-purple-300/35 hover:shadow-purple-500/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-purple-500/20">
-                <Users className="w-5 h-5 text-purple-400" />
+              <div className="rounded-2xl border border-purple-300/25 bg-purple-500/10 p-3 shadow-inner shadow-purple-950/40">
+                <Users className="h-5 w-5 text-purple-300" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Active Agents</p>
-                <p className="text-2xl font-bold">{summaryStats.uniqueAgents}</p>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Active Agents</p>
+                <p className="text-3xl font-bold text-zinc-50">{summaryStats.uniqueAgents}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={cn(analyticsKpiCard, 'from-amber-500/15 via-zinc-950/85 to-black/95')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-amber-500/20">
-                <MessageSquare className="w-5 h-5 text-amber-400" />
+              <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-3 shadow-inner shadow-amber-950/40">
+                <MessageSquare className="h-5 w-5 text-amber-300" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">AI Analyzed</p>
-                <p className="text-2xl font-bold">{summaryStats.analyzedCalls}</p>
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">AI Analyzed</p>
+                <p className="text-3xl font-bold text-amber-200">{summaryStats.analyzedCalls}</p>
               </div>
             </div>
           </CardContent>
@@ -206,50 +244,46 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Sentiment Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Smile className="w-5 h-5" />
+        <Card className={analyticsChartCard}>
+          <CardHeader className="relative border-b border-white/10 bg-gradient-to-r from-emerald-500/10 via-transparent to-amber-500/10">
+            <CardTitle className="flex items-center gap-2 text-base text-zinc-50">
+              <Smile className="h-5 w-5 text-emerald-300" />
               Sentiment Distribution
             </CardTitle>
-            <CardDescription>Customer sentiment analysis across all calls</CardDescription>
+            <CardDescription className="text-zinc-400">Customer sentiment analysis across all calls</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             {sentimentData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={sentimentData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomizedLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {sentimentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className={chartShell}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={sentimentData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={renderCustomizedLabel}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {sentimentData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                    <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+              <div className="flex h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
                 <div className="text-center">
-                  <Meh className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No sentiment data available</p>
-                  <p className="text-sm">AI analysis runs on completed calls</p>
+                  <Meh className="mx-auto mb-3 h-12 w-12 text-zinc-500" />
+                  <p className="font-semibold text-zinc-100">No sentiment data available</p>
+                  <p className="text-sm text-zinc-500">AI analysis runs on completed calls</p>
                 </div>
               </div>
             )}
@@ -257,45 +291,44 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
         </Card>
 
         {/* Call Outcomes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
+        <Card className={analyticsChartCard}>
+          <CardHeader className="relative border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-emerald-500/10">
+            <CardTitle className="flex items-center gap-2 text-base text-zinc-50">
+              <TrendingUp className="h-5 w-5 text-blue-300" />
               Call Outcomes
             </CardTitle>
-            <CardDescription>Distribution of call results</CardDescription>
+            <CardDescription className="text-zinc-400">Distribution of call results</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             {outcomeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={outcomeData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={renderCustomizedLabel}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {outcomeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className={chartShell}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={outcomeData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={renderCustomizedLabel}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {outcomeData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                    <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                <p>No call outcome data available</p>
+              <div className="flex h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
+                <div className="text-center">
+                  <Frown className="mx-auto mb-3 h-12 w-12 text-zinc-500" />
+                  <p className="font-semibold text-zinc-100">No call outcome data available</p>
+                </div>
               </div>
             )}
           </CardContent>
@@ -303,44 +336,45 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
       </div>
 
       {/* Agent Performance */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
+      <Card className={analyticsChartCard}>
+        <CardHeader className="relative border-b border-white/10 bg-gradient-to-r from-purple-500/10 via-transparent to-amber-500/10">
+          <CardTitle className="flex items-center gap-2 text-base text-zinc-50">
+            <Users className="h-5 w-5 text-purple-300" />
             Agent Performance
           </CardTitle>
-          <CardDescription>Comparison of agent metrics and success rates</CardDescription>
+          <CardDescription className="text-zinc-400">Comparison of agent metrics and success rates</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           {agentPerformance.length > 0 ? (
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={agentPerformance} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="name" 
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                />
-                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
-                />
-                <Legend />
-                <Bar dataKey="Total Calls" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Completed" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Positive Sentiment" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className={chartShell}>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={agentPerformance} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fill: 'rgba(161,161,170,0.78)', fontSize: 12 }}
+                    tickLine={{ stroke: 'rgba(255,255,255,0.12)' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.12)' }}
+                  />
+                  <YAxis
+                    tick={{ fill: 'rgba(161,161,170,0.78)', fontSize: 12 }}
+                    tickLine={{ stroke: 'rgba(255,255,255,0.12)' }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.12)' }}
+                  />
+                  <Tooltip contentStyle={tooltipContentStyle} labelStyle={tooltipLabelStyle} />
+                  <Legend wrapperStyle={{ color: '#d4d4d8', fontSize: 12 }} />
+                  <Bar dataKey="Total Calls" fill="#60a5fa" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="Completed" fill="#34d399" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="Positive Sentiment" fill="#fbbf24" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           ) : (
-            <div className="flex items-center justify-center h-[350px] text-muted-foreground">
+            <div className="flex h-[350px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
               <div className="text-center">
-                <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No agent data available</p>
-                <p className="text-sm">Calls need agent information to display here</p>
+                <Users className="mx-auto mb-3 h-12 w-12 text-zinc-500" />
+                <p className="font-semibold text-zinc-100">No agent data available</p>
+                <p className="text-sm text-zinc-500">Calls need agent information to display here</p>
               </div>
             </div>
           )}
