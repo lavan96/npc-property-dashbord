@@ -509,8 +509,9 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
 
         {/* Notes List with Infinite Scroll */}
         {notesLoading ? (
-          <div className="flex items-center justify-center rounded-2xl border border-border/60 bg-card/35 py-5">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/35 py-5 text-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">Loading notes...</span>
           </div>
         ) : notes.length > 0 ? (
           <div className="space-y-2.5">
@@ -620,17 +621,19 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                   </div>
                 ))}
                 {isFetchingNextPage && (
-                  <div className="flex justify-center py-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Loading more notes...
                   </div>
                 )}
               </div>
             </ScrollArea>
           </div>
         ) : (
-          <p className="rounded-2xl border border-dashed border-border/60 bg-card/35 p-4 text-center text-sm italic text-muted-foreground">
-            No notes for this client
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 bg-card/35 p-4 text-center text-sm text-muted-foreground">
+            <FileText className="h-5 w-5 text-primary/60" />
+            <p className="font-medium italic">No notes for this client</p>
+          </div>
         )}
       </CardContent>
     </Card>

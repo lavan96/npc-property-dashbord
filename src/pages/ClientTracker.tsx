@@ -1230,14 +1230,16 @@ export default function ClientTracker() {
 
       {/* No pipelines synced message */}
       {!isLoading && pipelines.length === 0 && (
-        <Card className="border-dashed border-primary/25 bg-card/80 shadow-lg shadow-black/10">
-          <CardContent className="py-8 text-center">
-            <Layers className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Pipelines Synced</h3>
-            <p className="text-muted-foreground mb-4">
+        <Card className="overflow-hidden rounded-2xl border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.66))] shadow-xl shadow-black/15">
+          <CardContent className="py-10 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-inner">
+              <Layers className="h-7 w-7" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold tracking-tight">No Pipelines Synced</h3>
+            <p className="mx-auto mb-5 max-w-md text-sm leading-relaxed text-muted-foreground">
               Click "Sync from GHL" to fetch your GoHighLevel pipelines and opportunities.
             </p>
-            <Button onClick={handleSyncPipelines} disabled={isSyncingPipelines}>
+            <Button onClick={handleSyncPipelines} disabled={isSyncingPipelines} className="rounded-xl font-semibold shadow-md shadow-primary/20">
               {isSyncingPipelines ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
@@ -1365,10 +1367,12 @@ export default function ClientTracker() {
                           )}>
                             {stageClients.length === 0 ? (
                               <div className={cn(
-                                "flex min-h-[9rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
+                                "flex min-h-[9rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
                                 isDragOver && isDragDropEnabled && "border-primary/35 bg-primary/10 text-primary"
                               )}>
-                                {isDragOver && isDragDropEnabled ? 'Drop here' : 'No clients'}
+                                <Users className="h-5 w-5 text-muted-foreground/70" />
+                                <span>{isDragOver && isDragDropEnabled ? 'Drop here' : 'No clients'}</span>
+                                {!isDragOver && <span className="text-xs font-normal text-muted-foreground/70">This stage is ready for the next opportunity.</span>}
                               </div>
                             ) : (
                               stageClients.map(client => (
@@ -1430,10 +1434,12 @@ export default function ClientTracker() {
                         )}>
                           {!groupedByStage['unassigned']?.length ? (
                             <div className={cn(
-                              "flex min-h-[9rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
+                              "flex min-h-[9rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
                               dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/35 bg-primary/10 text-primary"
                             )}>
-                              {dragOverStageId === 'unassigned' && isDragDropEnabled ? 'Drop here' : 'No clients'}
+                              <Users className="h-5 w-5 text-muted-foreground/70" />
+                              <span>{dragOverStageId === 'unassigned' && isDragDropEnabled ? 'Drop here' : 'No clients'}</span>
+                              {dragOverStageId !== 'unassigned' && <span className="text-xs font-normal text-muted-foreground/70">Unassigned opportunities will appear here.</span>}
                             </div>
                           ) : (
                             groupedByStage['unassigned'].map(client => (
@@ -1467,9 +1473,21 @@ export default function ClientTracker() {
             <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
               <CardContent className="p-0">
                 {isLoading ? (
-                  <div className="p-8 text-center text-muted-foreground">Loading clients...</div>
+                  <div className="flex flex-col items-center justify-center gap-3 p-10 text-center text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Loading clients...</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Preparing your pipeline register.</p>
+                    </div>
+                  </div>
                 ) : filteredClients.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">No clients found</div>
+                  <div className="flex flex-col items-center justify-center gap-3 p-10 text-center text-muted-foreground">
+                    <Users className="h-7 w-7 text-primary/70" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">No clients found</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Adjust search, pipeline or stage filters to broaden the view.</p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="divide-y divide-border/60">
                     {filteredClients.map(client => {
@@ -1603,7 +1621,31 @@ export default function ClientTracker() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredClients.map(client => {
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="py-12 text-center">
+                          <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Loading clients...</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Building your client tracker table.</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredClients.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="py-12 text-center">
+                          <div className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                            <Users className="h-7 w-7 text-primary/70" />
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">No clients found</p>
+                              <p className="mt-1 text-xs text-muted-foreground">No rows match the current search and filters.</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredClients.map(client => {
                       const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       return (
@@ -1739,8 +1781,16 @@ export default function ClientTracker() {
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
                   {filteredActiveClients.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border/70 bg-card/35 py-10 text-center text-sm text-muted-foreground">
-                      {searchQuery ? 'No matching active clients found' : 'No active clients found'}
+                    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/70 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground">
+                      <UserCheck className="h-7 w-7 text-primary/70" />
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {searchQuery ? 'No matching active clients found' : 'No active clients found'}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {searchQuery ? 'Try clearing search terms or active-client filters.' : 'Favourite clients will appear here for note follow-up.'}
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <>
