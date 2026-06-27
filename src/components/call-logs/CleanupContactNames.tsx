@@ -31,7 +31,7 @@ interface CleanupResponse {
   results: CleanupResult[];
 }
 
-export const CleanupContactNames: React.FC<{ onComplete?: () => void }> = ({ onComplete }) => {
+export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerClassName?: string }> = ({ onComplete, triggerClassName }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(false);
@@ -151,8 +151,8 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void }> = ({ onC
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <UserCheck className="h-4 w-4" />
+        <Button variant="outline" size="sm" className={`gap-2 ${triggerClassName || ''}`}>
+          <UserCheck className="h-4 w-4 shrink-0" />
           Cleanup Names
         </Button>
       </DialogTrigger>
