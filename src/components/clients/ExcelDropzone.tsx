@@ -371,6 +371,9 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
         >
           <input {...getInputProps()} />
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            No file selected
+          </div>
           <div className="flex min-h-[220px] flex-col items-center justify-center">
             <div className={`mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border shadow-2xl transition-all duration-300 ${isDragActive ? 'border-amber-200/60 bg-amber-300 text-black shadow-amber-500/35 scale-105' : 'border-amber-300/25 bg-amber-300/10 text-amber-100 shadow-amber-950/25 group-hover:border-amber-200/50 group-hover:bg-amber-300/15'}`}>
               <FileSpreadsheet className="h-10 w-10" />
@@ -405,13 +408,21 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-amber-50">{fileName}</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="truncate font-semibold text-amber-50">{fileName}</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-100">
+                  {status === 'parsing' ? 'Parsing' : 'Importing'}
+                </span>
+              </div>
               <p className="mt-1 text-sm text-slate-400">
                 {status === 'parsing' ? 'Parsing spreadsheet...' : 'Importing clients...'}
               </p>
-              <div className="mt-4 space-y-2">
-                <Progress value={progress} className="h-3 border border-amber-300/15 bg-amber-950/60 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500" />
-                <p className="text-right text-xs font-semibold tabular-nums text-amber-100/70">{Math.round(progress)}%</p>
+              <div className="mt-4 rounded-2xl border border-amber-300/10 bg-black/20 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold text-amber-100/70">
+                  <span>{status === 'parsing' ? 'Reading workbook structure' : 'Creating client records'}</span>
+                  <span className="tabular-nums">{Math.round(progress)}%</span>
+                </div>
+                <Progress value={progress} className="h-3 border border-amber-300/15 bg-amber-950/60 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]" />
               </div>
             </div>
           </div>
@@ -426,7 +437,12 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-emerald-50">Import Complete</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-emerald-50">Import Complete</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100">
+                  Complete
+                </span>
+              </div>
               <p className="mt-1 truncate text-sm text-slate-400">{fileName}</p>
             </div>
           </div>
@@ -472,8 +488,16 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
               <XCircle className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-foreground">Import Failed</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-foreground">Import Failed</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-destructive">
+                  Error
+                </span>
+              </div>
               <p className="mt-1 truncate text-sm text-muted-foreground">{fileName}</p>
+              <p className="mt-3 rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive/90">
+                Import failed. Please review the file and try again.
+              </p>
             </div>
           </div>
           <Button onClick={resetState} variant="outline" className="mt-5 h-11 w-full rounded-2xl border-destructive/30 bg-white/[0.03] text-destructive hover:bg-destructive/10">
