@@ -1232,9 +1232,11 @@ html {
     position: fixed !important;
     inset: 0 !important;
     z-index: 50 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     padding: 1rem !important;
     background: hsl(var(--background)) !important;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .report-qa-fullscreen .lg\\:col-span-2,
