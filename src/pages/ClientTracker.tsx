@@ -144,6 +144,9 @@ const FALLBACK_STAGES = [
 
 const badgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
 const compactBadgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 shadow-sm";
+const actionIconButtonClass = "rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
+const actionMenuContentClass = "z-50 min-w-[12rem] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur-xl";
+const actionMenuItemClass = "cursor-pointer rounded-lg px-2.5 py-2 text-sm focus:bg-primary/10 focus:text-primary";
 
 const getStageBadgeStyle = (color: string) => ({
   backgroundColor: `${color}20`,
@@ -860,14 +863,14 @@ export default function ClientTracker() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/70 bg-background/80 text-xs hover:border-primary/30 hover:bg-primary/5">
+                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/70 bg-background/80 text-xs text-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35">
                   <Download className="h-3.5 w-3.5 mr-1" />
                   Export
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
-                  <FileText className="h-4 w-4 mr-2" />
+              <DropdownMenuContent align="end" className={actionMenuContentClass}>
+                <DropdownMenuItem className={actionMenuItemClass} onClick={() => setShowExportDialog(true)}>
+                  <FileText className="mr-2 h-4 w-4 text-primary" />
                   Export current view
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -940,14 +943,14 @@ export default function ClientTracker() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5">
+                <Button variant="outline" size="sm" className="rounded-xl border-border/70 bg-background/80 text-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35">
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
-                  <FileText className="h-4 w-4 mr-2" />
+              <DropdownMenuContent align="end" className={actionMenuContentClass}>
+                <DropdownMenuItem className={actionMenuItemClass} onClick={() => setShowExportDialog(true)}>
+                  <FileText className="mr-2 h-4 w-4 text-primary" />
                   Export current view
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1550,7 +1553,7 @@ export default function ClientTracker() {
                                   variant="ghost" 
                                   size="icon"
                                   onClick={() => setEditingClient(client)}
-                                  className="h-9 w-9 rounded-xl border border-border/60 bg-background/70 text-muted-foreground opacity-80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary group-hover:opacity-100"
+                                  className={cn("h-9 w-9 opacity-85 group-hover:opacity-100", actionIconButtonClass)}
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
@@ -1656,7 +1659,7 @@ export default function ClientTracker() {
                           <TableCell className="text-right">
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-xl border border-border/60 bg-background/70 p-0 text-muted-foreground shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary">
+                                <Button variant="ghost" size="sm" className={cn("h-8 w-8 p-0", actionIconButtonClass)}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
                               </DialogTrigger>

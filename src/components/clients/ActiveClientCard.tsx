@@ -89,6 +89,9 @@ type NoteType = typeof noteTypes[number]['value'];
 const NOTE_TRUNCATE_LENGTH = 150;
 const PAGE_SIZE = 10;
 const activeClientBadgeClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
+const activeClientActionButtonClass = "rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
+const activeClientMenuContentClass = "z-50 min-w-[10rem] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur-xl";
+const activeClientMenuItemClass = "cursor-pointer rounded-lg px-2.5 py-2 text-sm focus:bg-primary/10 focus:text-primary";
 
 const getActiveStageBadgeStyle = (color: string) => ({
   backgroundColor: `${color}20`,
@@ -395,7 +398,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground transition-all hover:bg-yellow-400/10 hover:text-yellow-400"
+              className={cn("h-8 w-8 shrink-0 hover:border-yellow-400/35 hover:bg-yellow-400/10 hover:text-yellow-400 focus-visible:ring-yellow-400/30", activeClientActionButtonClass)}
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
             >
@@ -470,7 +473,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="h-8 rounded-xl text-sm shadow-sm shadow-primary/15"
+                className="h-8 rounded-xl text-sm shadow-sm shadow-primary/15 focus-visible:ring-primary/35"
                 onClick={() => addNoteMutation.mutate()}
                 disabled={!newNoteContent.trim() || addNoteMutation.isPending}
               >
@@ -482,7 +485,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 rounded-xl text-sm text-muted-foreground hover:bg-background/80 hover:text-foreground"
+                className="h-8 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
                 onClick={() => {
                   setIsAddingNote(false);
                   setNewNoteContent('');
@@ -496,7 +499,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-full rounded-xl border-primary/25 bg-primary/5 text-sm font-semibold text-primary transition-all hover:border-primary/45 hover:bg-primary/10"
+            className="h-9 w-full rounded-xl border-primary/25 bg-primary/5 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/35"
             onClick={() => setIsAddingNote(true)}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -535,7 +538,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="h-8 rounded-xl text-sm"
+                            className="h-8 rounded-xl text-sm focus-visible:ring-primary/35"
                             onClick={() => updateNoteMutation.mutate(note.id)}
                             disabled={!editNoteContent.trim() || updateNoteMutation.isPending}
                           >
@@ -547,7 +550,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 rounded-xl text-sm text-muted-foreground"
+                            className="h-8 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
                             onClick={handleCancelEdit}
                           >
                             Cancel
@@ -571,21 +574,21 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 rounded-lg p-0 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                                className={cn("h-7 w-7 p-0", activeClientActionButtonClass)}
                               >
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleStartEdit(note)}>
-                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                            <DropdownMenuContent align="end" sideOffset={6} className={activeClientMenuContentClass}>
+                              <DropdownMenuItem className={activeClientMenuItemClass} onClick={() => handleStartEdit(note)}>
+                                <Pencil className="mr-2 h-3.5 w-3.5 text-primary" />
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => deleteNoteMutation.mutate(note.id)}
-                                className="text-destructive focus:text-destructive"
+                                className={cn(activeClientMenuItemClass, "text-destructive focus:bg-destructive/10 focus:text-destructive")}
                               >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
