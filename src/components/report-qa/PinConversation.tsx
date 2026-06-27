@@ -43,8 +43,10 @@ export function PinConversation({
     <Button
       variant={isPinned ? "secondary" : "ghost"}
       size="sm"
-      className="h-7 gap-1.5 text-xs"
+      className="report-qa-toolbar-control h-8 gap-1.5 px-3 text-xs font-medium"
+      data-active={isPinned ? 'true' : undefined}
       onClick={() => onTogglePin(conversationId)}
+      title={isPinned ? 'Unpin conversation' : 'Pin conversation'}
     >
       {isPinned ? (
         <>
