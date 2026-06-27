@@ -246,7 +246,7 @@ export default function ReportRequests() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-6rem)] overflow-hidden rounded-[2rem] border border-white/10 bg-[#050505] p-4 shadow-2xl shadow-black/40 sm:p-6 lg:p-8">
+    <div className="relative min-h-[calc(100vh-6rem)] overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505] p-3 shadow-2xl shadow-black/40 selection:bg-amber-300/20 selection:text-amber-50 sm:rounded-[2rem] sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.18),transparent_32%),radial-gradient(circle_at_85%_12%,rgba(59,130,246,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%)]" />
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
 
@@ -280,7 +280,7 @@ export default function ReportRequests() {
               <Card
                 key={status}
                 className={cn(
-                  'group relative cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/25 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20',
+                  'group relative cursor-pointer overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/25 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20',
                   tile.glow,
                   statusFilter === status && tile.active
                 )}
@@ -359,7 +359,7 @@ export default function ReportRequests() {
             </div>
           </div>
         ) : error ? (
-          <Card className="overflow-hidden border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.2),rgba(9,9,11,0.86))] shadow-xl shadow-black/25">
+          <Card className="overflow-hidden rounded-3xl border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.2),rgba(9,9,11,0.86))] shadow-xl shadow-black/25">
             <CardContent className="py-12 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-red-300/20 bg-red-400/10">
                 <XCircle className="h-7 w-7 text-red-200/80" />
@@ -369,7 +369,7 @@ export default function ReportRequests() {
             </CardContent>
           </Card>
         ) : filtered.length === 0 ? (
-          <Card className="overflow-hidden border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] shadow-xl shadow-black/25">
+          <Card className="overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] shadow-xl shadow-black/25">
             <CardContent className="py-14 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10">
                 <Inbox className="h-7 w-7 text-amber-200/50" />
@@ -383,7 +383,7 @@ export default function ReportRequests() {
             </CardContent>
           </Card>
         ) : (
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] p-3 shadow-xl shadow-black/25 sm:p-4">
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.84),rgba(9,9,11,0.8))] p-3 shadow-xl shadow-black/25 ring-1 ring-white/[0.03] sm:p-4">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
             <div className="space-y-3 sm:space-y-4">
               {filtered.map((req: ReportRequest) => {
@@ -393,7 +393,7 @@ export default function ReportRequests() {
                 return (
                   <Card
                     key={req.id}
-                    className="group cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/20 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)] active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20"
+                    className="group cursor-pointer overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/20 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)] active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20"
                     onClick={() => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); }}
                     onKeyDown={(event) => handleKeyboardActivate(event, () => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); })}
                     role="button"
@@ -444,7 +444,7 @@ export default function ReportRequests() {
       <Dialog open={!!selectedRequest} onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}>
         <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-amber-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-amber-300/40 [&>button:hover]:bg-amber-300/10 [&>button:hover]:text-amber-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-amber-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
-          <DialogHeader className="border-b border-white/10 bg-white/[0.02] px-6 pb-5 pt-6 text-left">
+          <DialogHeader className="border-b border-white/10 bg-white/[0.02] px-4 pb-5 pt-6 text-left sm:px-6">
             <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-white">
               <span className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-2 text-amber-200 shadow-inner shadow-black/20">
                 <Send className="h-4 w-4" />
@@ -453,7 +453,7 @@ export default function ReportRequests() {
             </DialogTitle>
             <DialogDescription className="pt-1 text-sm leading-6 text-zinc-400">Review and manage this client report request.</DialogDescription>
           </DialogHeader>
-          <div className="px-6 py-5">
+          <div className="px-4 py-5 sm:px-6">
 
           {selectedRequest && (() => {
             const typeConf = requestTypeConfig[selectedRequest.request_type] || requestTypeConfig.portfolio_review;
@@ -461,7 +461,7 @@ export default function ReportRequests() {
             const TypeIcon = typeConf.icon;
             return (
               <div className="space-y-4">
-                <div className="space-y-4 rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.58),rgba(9,9,11,0.42))] p-4 shadow-inner shadow-black/30">
+                <div className="space-y-4 rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.62),rgba(9,9,11,0.46))] p-4 shadow-inner shadow-black/30 ring-1 ring-white/[0.03]">
                   <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-center gap-3">
