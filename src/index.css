@@ -3476,16 +3476,85 @@ html {
   }
 
   .report-qa-composer {
-    border-color: hsl(43 24% 38% / 0.24) !important;
-    margin-inline: -0.15rem;
-    padding: 0.8rem 0.2rem 0;
-    background: linear-gradient(180deg, hsl(0 0% 100% / 0.025), hsl(0 0% 0% / 0.2));
+    position: relative;
+    border-color: hsl(43 34% 48% / 0.28) !important;
+    margin-inline: -0.35rem;
+    padding: 1rem 0.45rem 0.15rem;
+    background:
+      radial-gradient(circle at 12% 0%, hsl(43 82% 58% / 0.12), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.055), hsl(220 18% 7% / 0.28));
   }
 
-  .report-qa-composer textarea {
-    border-color: hsl(43 26% 42% / 0.24);
-    background: hsl(220 16% 9% / 0.88);
-    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 12px 28px hsl(0 0% 0% / 0.14);
+  .report-qa-composer::before {
+    content: '';
+    position: absolute;
+    inset: 0.55rem 0.25rem auto;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, hsl(43 78% 62% / 0.34), transparent);
+  }
+
+  .report-qa-composer textarea,
+  .report-qa-composer-input {
+    color: hsl(var(--foreground) / 0.96);
+    border: 1px solid hsl(43 28% 48% / 0.32);
+    background:
+      linear-gradient(180deg, hsl(220 16% 12% / 0.96), hsl(220 18% 8% / 0.94));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.08),
+      inset 0 -1px 0 hsl(0 0% 0% / 0.18),
+      0 16px 34px hsl(0 0% 0% / 0.18);
+    transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease, opacity 180ms ease;
+  }
+
+  .report-qa-composer textarea::placeholder,
+  .report-qa-composer-input::placeholder {
+    color: hsl(40 18% 78% / 0.68);
+    letter-spacing: 0.005em;
+  }
+
+  .report-qa-composer textarea:disabled,
+  .report-qa-composer-input:disabled {
+    cursor: not-allowed;
+    border-color: hsl(43 18% 38% / 0.2);
+    background: linear-gradient(180deg, hsl(220 12% 11% / 0.72), hsl(220 14% 8% / 0.7));
+    opacity: 0.72;
+  }
+
+  .report-qa-composer-control {
+    border-radius: 1rem;
+    border: 1px solid hsl(43 30% 48% / 0.28);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1), 0 12px 26px hsl(0 0% 0% / 0.16);
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease;
+  }
+
+  .report-qa-composer-control:not(:disabled):hover {
+    transform: translateY(-1px);
+    border-color: hsl(43 74% 58% / 0.52);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.14), 0 16px 32px hsl(0 0% 0% / 0.2), 0 0 18px hsl(43 74% 49% / 0.12);
+  }
+
+  .report-qa-mic-button,
+  .report-qa-composer-control-secondary {
+    color: hsl(43 72% 72% / 0.94);
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.035));
+  }
+
+  .report-qa-send-button {
+    color: hsl(0 0% 100%);
+    border-color: hsl(43 80% 64% / 0.58);
+    background: linear-gradient(135deg, hsl(43 78% 54%), hsl(35 88% 44%));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.28), 0 16px 34px hsl(43 74% 20% / 0.3), 0 0 24px hsl(43 74% 49% / 0.18);
+  }
+
+  .report-qa-send-button:disabled,
+  .report-qa-composer-control:disabled {
+    transform: none;
+    color: hsl(40 12% 72% / 0.42);
+    border-color: hsl(43 18% 38% / 0.18);
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.045), hsl(0 0% 100% / 0.02));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
+    opacity: 0.62;
   }
 
 
@@ -3670,7 +3739,13 @@ html {
     box-shadow: 0 12px 30px hsl(0 78% 24% / 0.14), inset 0 1px 0 hsl(0 0% 100% / 0.08);
   }
 
-  .report-qa-composer textarea:focus-visible {
-    box-shadow: 0 0 0 1px hsl(43 74% 49% / 0.45), 0 0 24px hsl(43 74% 49% / 0.12);
+  .report-qa-composer textarea:focus-visible,
+  .report-qa-composer-input:focus-visible {
+    border-color: hsl(43 82% 62% / 0.72);
+    box-shadow:
+      0 0 0 1px hsl(43 74% 49% / 0.52),
+      0 0 0 5px hsl(43 74% 49% / 0.1),
+      0 0 30px hsl(43 74% 49% / 0.18),
+      inset 0 1px 0 hsl(0 0% 100% / 0.1);
   }
 }
