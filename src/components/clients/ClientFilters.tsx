@@ -61,17 +61,17 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Filter className="h-4 w-4" />
+        <Button variant="outline" size="sm" className="h-11 gap-2 rounded-xl border-amber-500/25 bg-background/70 px-4 font-semibold text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-400/30">
+          <Filter className="h-4 w-4 text-amber-200/80" />
           Filters
           {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+            <Badge variant="secondary" className="flex h-5 min-w-5 items-center justify-center rounded-full border border-amber-300/25 bg-amber-400 px-1.5 text-xs font-bold text-black shadow-sm shadow-amber-500/20">
               {activeFilterCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80" align="start">
+      <PopoverContent className="w-80 rounded-2xl border-amber-500/20 bg-card/95 shadow-2xl shadow-black/30 backdrop-blur" align="start">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-medium">Filters</h4>
