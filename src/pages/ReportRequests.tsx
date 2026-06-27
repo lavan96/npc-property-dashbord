@@ -26,9 +26,9 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const requestTypeConfig: Record<string, { label: string; icon: typeof BarChart3; color: string }> = {
-  portfolio_review: { label: 'Portfolio Review', icon: BarChart3, color: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20' },
-  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20' },
-  investment_property: { label: 'Investment Property', icon: Building2, color: 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/20' },
+  portfolio_review: { label: 'Portfolio Review', icon: BarChart3, color: 'border border-emerald-300/25 bg-gradient-to-br from-emerald-400/20 via-emerald-500/10 to-teal-500/10 text-emerald-200 ring-1 ring-emerald-300/20' },
+  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'border border-amber-300/25 bg-gradient-to-br from-amber-300/20 via-amber-500/10 to-orange-500/10 text-amber-200 ring-1 ring-amber-300/20' },
+  investment_property: { label: 'Investment Property', icon: Building2, color: 'border border-blue-300/25 bg-gradient-to-br from-blue-400/20 via-blue-500/10 to-indigo-500/10 text-blue-200 ring-1 ring-blue-300/20' },
 };
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; badgeVariant: string }> = {
@@ -352,8 +352,8 @@ export default function ReportRequests() {
                       <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-300/0 transition-colors duration-300 group-hover:bg-amber-300/80" />
                       <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                       <div className="flex items-start gap-4">
-                        <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner transition-transform duration-300 group-hover:scale-105', typeConf.color)}>
-                          <TypeIcon className="h-5 w-5" />
+                        <div className={cn('shrink-0 rounded-2xl p-3.5 shadow-inner shadow-black/20 transition-transform duration-300 group-hover:scale-105', typeConf.color)}>
+                          <TypeIcon className="h-6 w-6" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -407,7 +407,7 @@ export default function ReportRequests() {
               <div className="space-y-4">
                 <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-inner">
                   <div className="flex items-center gap-3">
-                    <div className={cn('rounded-xl p-2.5', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
+                    <div className={cn('rounded-2xl p-3 shadow-inner shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
                     <div>
                       <p className="text-sm font-semibold text-white">{typeConf.label}</p>
                       <Badge variant="outline" className={cn('mt-0.5 text-[10px]', statConf.badgeVariant)}>{statConf.label}</Badge>
