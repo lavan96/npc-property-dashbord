@@ -2416,7 +2416,7 @@ export default function ReportQA() {
                     );
                     
                     return (
-                      <div key={message.id} id={`qa-msg-${message.id}`} className="report-qa-message-row w-full scroll-mt-24 transition-shadow rounded-lg">
+                      <div key={message.id} id={`qa-msg-${message.id}`} className="report-qa-message-row w-full scroll-mt-24 rounded-lg transition-shadow">
                         {showDateSep && <MessageDateSeparator date={message.timestamp} />}
                         <div className={cn(
                           "report-qa-message-frame flex gap-2 sm:gap-3 w-full",
@@ -2959,7 +2959,7 @@ export default function ReportQA() {
                         <div
                           key={conv.id}
                           className={cn(
-                            "group cursor-pointer rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md",
+                            "report-qa-history-row group cursor-pointer rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md",
                             conversationId === conv.id && "border-primary bg-primary/10 shadow-md ring-1 ring-primary/15",
                             pinnedIds.includes(conv.id) && "border-primary/40"
                           )}
