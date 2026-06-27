@@ -1924,10 +1924,13 @@ export default function EmailCopilot() {
 
       {/* Disclaimer - hidden on mobile to save space */}
       {!isMobile && (
-      <div className="mx-3 md:mx-6 mb-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 shadow-lg shadow-black/10">
-        <p className="text-xs text-amber-100/90 flex items-center gap-2">
-          <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
-          <span><strong>Human-in-the-loop:</strong> All AI outputs are drafts. Review before sending.</span>
+      <div className="relative mx-3 md:mx-6 mb-3 overflow-hidden rounded-2xl border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(10,10,10,0.72)_48%,rgba(24,24,27,0.64))] px-4 py-3 shadow-lg shadow-black/15 backdrop-blur">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+        <p className="flex items-center gap-3 text-xs leading-5 text-amber-50/85 md:text-sm">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-200/30 bg-amber-300/12 shadow-inner shadow-amber-950/20">
+            <AlertCircle className="h-4 w-4 text-amber-300" />
+          </span>
+          <span><strong className="font-semibold text-amber-100">Human-in-the-loop:</strong> All AI outputs are drafts. Review before sending.</span>
         </p>
       </div>
       )}
