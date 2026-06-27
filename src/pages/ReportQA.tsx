@@ -386,7 +386,7 @@ export default function ReportQA() {
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 300) + 'px';
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 112) + 'px';
     }
   }, [inputMessage]);
 
@@ -1841,7 +1841,7 @@ export default function ReportQA() {
         {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
         <Card className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[18rem] md:max-h-[46dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
-          <CardHeader className="report-qa-reports-header pb-4">
+          <CardHeader className="report-qa-reports-header pb-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
                 <CardTitle className="flex items-center gap-2 text-base tracking-tight">
@@ -1867,7 +1867,7 @@ export default function ReportQA() {
               />
             </div>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden px-4 pb-4">
+          <CardContent className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden px-4 pb-5 sm:px-5">
             <div className="report-qa-panel-section space-y-2">
               <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                 <span>Document intake</span>
@@ -1889,7 +1889,7 @@ export default function ReportQA() {
             {/* Premium Upload Zone */}
             <div
               className={cn(
-                "report-qa-dropzone group w-full rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-all cursor-pointer sm:px-5 sm:py-6",
+                "report-qa-dropzone group w-full rounded-[1.35rem] border-2 border-dashed px-5 py-7 text-center transition-all cursor-pointer sm:px-6 sm:py-8",
                 isDragOver ? 'is-drag-over border-primary' : 'border-primary/45 hover:border-primary/75',
                 isUploading && 'is-processing pointer-events-none',
                 isUploadComplete && !isUploading && !hasUploadError && 'is-ready',
@@ -2101,7 +2101,7 @@ export default function ReportQA() {
 
         {/* Chat Section */}
         <Card className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 border shadow-sm rounded-2xl", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="report-qa-chat-header pb-3 sm:pb-4 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
+          <CardHeader className="report-qa-chat-header pb-3 sm:pb-4 px-3 sm:px-5 py-3 sm:py-5 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
@@ -2681,7 +2681,7 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="report-qa-composer max-h-[min(14rem,38dvh)] shrink-0 space-y-2 overflow-hidden border-t pt-3 sm:pt-4">
+            <div className="report-qa-composer max-h-[min(12.5rem,32dvh)] shrink-0 space-y-2 overflow-hidden border-t pt-3 sm:pt-4">
               <div className="flex flex-wrap items-end gap-1.5 sm:flex-nowrap sm:gap-2">
                 <Textarea
                   ref={inputRef}
@@ -2696,7 +2696,7 @@ export default function ReportQA() {
                   onChange={(e) => {
                     setInputMessage(e.target.value);
                     e.target.style.height = 'auto';
-                    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 112) + 'px';
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -2705,7 +2705,7 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="report-qa-composer-input min-h-[52px] max-h-40 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6 sm:flex-1"
+                  className="report-qa-composer-input min-h-[52px] max-h-28 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6 sm:flex-1"
                   aria-label="Prompt message input"
                   rows={1}
                 />
