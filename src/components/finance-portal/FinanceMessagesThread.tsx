@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Paperclip, Download, X, ShieldCheck } from 'lucide-react';
+import { Loader2, Send, Paperclip, Download, X, ShieldCheck, UserCircle2 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
