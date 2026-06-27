@@ -1232,9 +1232,11 @@ html {
     position: fixed !important;
     inset: 0 !important;
     z-index: 50 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     padding: 1rem !important;
     background: hsl(var(--background)) !important;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .report-qa-fullscreen .lg\\:col-span-2,
@@ -3035,15 +3037,124 @@ html {
 
   .report-qa-chat-header {
     border-bottom: 1px solid hsl(43 24% 38% / 0.22);
-    background: linear-gradient(180deg, hsl(43 74% 49% / 0.08), transparent);
+    background:
+      radial-gradient(circle at 10% 0%, hsl(43 84% 58% / 0.16), transparent 18rem),
+      linear-gradient(180deg, hsl(43 74% 49% / 0.095), hsl(0 0% 100% / 0.018) 72%, transparent);
+  }
+
+  .report-qa-chat-panel {
+    border-color: hsl(43 42% 44% / 0.34) !important;
+    background:
+      radial-gradient(circle at 78% -12%, hsl(43 86% 58% / 0.13), transparent 22rem),
+      radial-gradient(circle at 4% 42%, hsl(43 74% 49% / 0.08), transparent 19rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.027)),
+      hsl(220 18% 7% / 0.97) !important;
+    box-shadow:
+      0 32px 90px hsl(0 0% 0% / 0.46),
+      0 0 0 1px hsl(43 74% 49% / 0.08),
+      inset 0 1px 0 hsl(0 0% 100% / 0.09) !important;
+  }
+
+  .report-qa-chat-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent, hsl(43 74% 49% / 0.08), transparent) 0 0 / 100% 1px no-repeat,
+      radial-gradient(circle at 50% 0%, hsl(43 90% 62% / 0.08), transparent 26rem);
+  }
+
+  .report-qa-chat-panel > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-chat-title-icon {
+    border: 1px solid hsl(43 74% 49% / 0.28);
+    background: linear-gradient(135deg, hsl(43 74% 49% / 0.22), hsl(43 74% 49% / 0.07));
+    color: hsl(var(--primary));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1), 0 12px 28px hsl(43 74% 20% / 0.18);
+  }
+
+  .report-qa-chat-title {
+    color: hsl(var(--foreground));
+    text-shadow: 0 1px 0 hsl(0 0% 0% / 0.28);
+  }
+
+  .report-qa-chat-subtitle {
+    color: hsl(var(--muted-foreground) / 0.92);
+    line-height: 1.45;
+  }
+
+  .report-qa-chat-content {
+    padding-top: 0.9rem;
+    background: linear-gradient(180deg, hsl(0 0% 0% / 0.06), transparent 7rem);
+  }
+
+  .report-qa-message-area {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid hsl(43 22% 38% / 0.18);
+    border-radius: 1.35rem;
+    padding: 0.85rem 0.25rem 0.85rem 0.85rem;
+    background:
+      radial-gradient(circle at 16% 0%, hsl(43 74% 49% / 0.08), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.04), hsl(0 0% 100% / 0.018));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.055),
+      inset 0 -1px 0 hsl(0 0% 0% / 0.18);
   }
 
   .report-qa-toolbar {
-    border: 1px solid hsl(43 24% 38% / 0.16);
-    border-radius: 999px;
-    padding: 0.2rem;
-    background: hsl(0 0% 100% / 0.026);
-    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+    max-width: min(100%, 62rem);
+    border: 1px solid hsl(43 30% 42% / 0.28);
+    border-radius: 1.25rem;
+    padding: 0.35rem;
+    background:
+      radial-gradient(circle at 8% 0%, hsl(43 86% 58% / 0.12), transparent 14rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.032));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.075),
+      0 14px 34px hsl(0 0% 0% / 0.16);
+  }
+
+  .report-qa-toolbar-control {
+    min-height: 2rem;
+    border: 1px solid hsl(43 24% 42% / 0.28) !important;
+    border-radius: 0.875rem !important;
+    background: hsl(220 14% 10% / 0.62) !important;
+    color: hsl(var(--foreground) / 0.88) !important;
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.055);
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  }
+
+  .report-qa-toolbar-control:hover {
+    border-color: hsl(43 74% 49% / 0.52) !important;
+    background: hsl(43 74% 49% / 0.12) !important;
+    color: hsl(43 92% 82%) !important;
+    box-shadow: 0 10px 24px hsl(43 74% 18% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-toolbar-control:focus-visible {
+    outline: 2px solid hsl(43 86% 66% / 0.78) !important;
+    outline-offset: 2px;
+  }
+
+  .report-qa-toolbar-control[data-active="true"],
+  .report-qa-toolbar-control[aria-pressed="true"] {
+    border-color: hsl(43 86% 58% / 0.62) !important;
+    background: linear-gradient(135deg, hsl(43 86% 58% / 0.24), hsl(43 86% 58% / 0.1)) !important;
+    color: hsl(43 94% 78%) !important;
+  }
+
+  .report-qa-toolbar-control:disabled {
+    cursor: not-allowed;
+    border-color: hsl(43 14% 34% / 0.18) !important;
+    background: hsl(220 10% 12% / 0.38) !important;
+    color: hsl(var(--muted-foreground) / 0.48) !important;
+    opacity: 1;
+    box-shadow: none;
   }
 
   .report-qa-toolbar button:hover,
@@ -3245,13 +3356,113 @@ html {
     box-shadow: 0 6px 14px hsl(43 74% 20% / 0.12), inset 0 1px 0 hsl(0 0% 100% / 0.08);
   }
 
-  .report-qa-empty-state > div {
-    max-width: 30rem;
-    border: 1px solid hsl(43 30% 38% / 0.26);
+  .report-qa-empty-state {
+    min-height: clamp(22rem, 48vh, 36rem);
+  }
+
+  .report-qa-empty-card {
+    position: relative;
+    width: min(100%, 32rem);
+    max-width: 32rem;
+    overflow: hidden;
+    border: 1px solid hsl(43 38% 48% / 0.34);
+    border-radius: clamp(1.5rem, 3vw, 2rem);
+    padding: clamp(1.5rem, 4vw, 2.75rem);
+    background:
+      radial-gradient(circle at 50% 0%, hsl(43 88% 61% / 0.18), transparent 42%),
+      radial-gradient(circle at 8% 88%, hsl(43 72% 48% / 0.09), transparent 30%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.035));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.1),
+      0 22px 58px hsl(0 0% 0% / 0.18);
+  }
+
+  .report-qa-empty-card::before {
+    content: '';
+    position: absolute;
+    inset: 0.75rem;
+    pointer-events: none;
+    border: 1px solid hsl(43 44% 58% / 0.12);
+    border-radius: calc(clamp(1.5rem, 3vw, 2rem) - 0.45rem);
+  }
+
+  .report-qa-empty-card::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 1.15rem;
+    width: 8rem;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, hsl(43 82% 62% / 0.5), transparent);
+    transform: translateX(-50%);
+  }
+
+  .report-qa-empty-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-empty-icon-wrap {
+    position: relative;
+    display: grid;
+    width: clamp(4.25rem, 12vw, 5.5rem);
+    height: clamp(4.25rem, 12vw, 5.5rem);
+    margin: 0 auto;
+    place-items: center;
+    border: 1px solid hsl(43 44% 54% / 0.3);
     border-radius: 1.5rem;
-    padding: 2rem;
-    background: radial-gradient(circle at top, hsl(43 74% 49% / 0.12), transparent 65%), hsl(0 0% 100% / 0.035);
-    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.07);
+    background:
+      radial-gradient(circle at 35% 25%, hsl(43 82% 64% / 0.32), transparent 46%),
+      linear-gradient(145deg, hsl(43 74% 49% / 0.15), hsl(0 0% 100% / 0.05));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.12),
+      0 16px 30px hsl(43 55% 20% / 0.18);
+  }
+
+  .report-qa-empty-icon {
+    width: clamp(2rem, 6vw, 2.6rem);
+    height: clamp(2rem, 6vw, 2.6rem);
+    color: hsl(43 82% 62% / 0.82);
+    filter: drop-shadow(0 8px 18px hsl(43 72% 34% / 0.22));
+  }
+
+  .report-qa-empty-sparkle {
+    position: absolute;
+    right: -0.35rem;
+    top: -0.3rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    color: hsl(43 86% 66% / 0.78);
+  }
+
+  .report-qa-empty-title {
+    color: hsl(var(--foreground));
+    font-size: clamp(1rem, 2.2vw, 1.2rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .report-qa-empty-helper {
+    max-width: 25rem;
+    margin: 0 auto;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .report-qa-empty-upload-cue {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 1px solid hsl(43 38% 48% / 0.28);
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
+    color: hsl(43 78% 62% / 0.9);
+    background: linear-gradient(180deg, hsl(43 74% 49% / 0.12), hsl(0 0% 100% / 0.035));
+    font-size: 0.75rem;
+    font-weight: 600;
   }
 
   .report-qa-chat-panel .qa-chat-bubble-assistant {
@@ -3266,7 +3477,197 @@ html {
 
   .report-qa-composer {
     border-color: hsl(43 24% 38% / 0.24) !important;
-    background: linear-gradient(180deg, transparent, hsl(0 0% 0% / 0.18));
+    margin-inline: -0.15rem;
+    padding: 0.8rem 0.2rem 0;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.025), hsl(0 0% 0% / 0.2));
+  }
+
+  .report-qa-composer textarea {
+    border-color: hsl(43 26% 42% / 0.24);
+    background: hsl(220 16% 9% / 0.88);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 12px 28px hsl(0 0% 0% / 0.14);
+  }
+
+
+  /* Phase 9 — premium chat message presentation for Report Q&A only. */
+  .report-qa-message-stack {
+    padding-right: 0.45rem;
+  }
+
+  .report-qa-message-row {
+    contain: inline-size;
+  }
+
+  .report-qa-message-frame {
+    align-items: flex-start;
+  }
+
+  .report-qa-message-avatar {
+    border: 1px solid hsl(43 44% 58% / 0.24);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1), 0 10px 24px hsl(0 0% 0% / 0.16);
+  }
+
+  .report-qa-message-avatar-user {
+    background: linear-gradient(135deg, hsl(43 72% 24% / 0.7), hsl(220 14% 13% / 0.86)) !important;
+    color: hsl(43 90% 82%);
+  }
+
+  .report-qa-message-bubble {
+    position: relative;
+    overflow: hidden;
+    line-height: 1.65;
+    letter-spacing: -0.003em;
+    box-shadow: 0 16px 38px hsl(0 0% 0% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-message-bubble::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.08), transparent 32%);
+    opacity: 0.7;
+  }
+
+  .report-qa-message-bubble > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-message-meta {
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+  }
+
+  .report-qa-chat-panel .qa-chat-bubble-assistant {
+    border-color: hsl(43 28% 48% / 0.32);
+    background:
+      radial-gradient(circle at 0% 0%, hsl(43 82% 58% / 0.08), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.034));
+  }
+
+  .report-qa-chat-panel .qa-chat-bubble-user {
+    border: 1px solid hsl(43 88% 70% / 0.34);
+    background:
+      radial-gradient(circle at 0% 0%, hsl(0 0% 100% / 0.22), transparent 14rem),
+      linear-gradient(135deg, hsl(43 78% 55%), hsl(34 86% 42%));
+    color: hsl(35 28% 8%);
+    box-shadow: 0 16px 34px hsl(43 74% 20% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.25);
+  }
+
+  .report-qa-assistant-content {
+    color: hsl(var(--foreground) / 0.92);
+    font-size: 0.92rem;
+    line-height: 1.72;
+  }
+
+  .report-qa-assistant-content :where(p, ul, ol, blockquote, table, pre) {
+    margin-block: 0.72rem;
+  }
+
+  .report-qa-assistant-content :where(p:first-child, ul:first-child, ol:first-child, blockquote:first-child, table:first-child, pre:first-child) {
+    margin-top: 0;
+  }
+
+  .report-qa-assistant-content :where(p:last-child, ul:last-child, ol:last-child, blockquote:last-child, table:last-child, pre:last-child) {
+    margin-bottom: 0;
+  }
+
+  .report-qa-assistant-content :where(ul, ol) {
+    padding-left: 1.25rem;
+  }
+
+  .report-qa-assistant-content :where(li) {
+    margin-block: 0.28rem;
+    padding-left: 0.08rem;
+  }
+
+  .report-qa-assistant-content :where(h1, h2, h3, h4) {
+    margin-top: 1rem;
+    margin-bottom: 0.45rem;
+    color: hsl(var(--foreground));
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  .report-qa-assistant-content :where(blockquote) {
+    border-left: 3px solid hsl(43 74% 49% / 0.55);
+    border-radius: 0.6rem;
+    padding: 0.55rem 0.8rem;
+    background: hsl(43 74% 49% / 0.08);
+    color: hsl(var(--foreground) / 0.82);
+  }
+
+  .report-qa-assistant-content :where(code) {
+    border: 1px solid hsl(43 24% 42% / 0.22);
+    border-radius: 0.4rem;
+    padding: 0.08rem 0.32rem;
+    background: hsl(220 14% 5% / 0.5);
+    font-size: 0.88em;
+  }
+
+  .report-qa-assistant-content :where(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid hsl(43 24% 42% / 0.22);
+    border-radius: 0.9rem;
+    padding: 0.85rem;
+    background: hsl(220 16% 5% / 0.72);
+  }
+
+  .report-qa-assistant-content :where(pre code) {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .report-qa-user-content {
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  .report-qa-citations {
+    border-color: hsl(43 28% 48% / 0.22);
+    border-radius: 0.95rem;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, hsl(43 74% 49% / 0.08), hsl(0 0% 100% / 0.025));
+  }
+
+  .report-qa-citations button,
+  .report-qa-citations a {
+    border-radius: 999px;
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-message-actions {
+    border-color: hsl(43 24% 42% / 0.2) !important;
+  }
+
+  .report-qa-streaming-state {
+    margin-top: 0.25rem;
+  }
+
+  .report-qa-streaming-state > div:last-child {
+    max-width: min(80%, 58rem);
+    border: 1px solid hsl(43 28% 48% / 0.28);
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 0% 0%, hsl(43 82% 58% / 0.09), transparent 15rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.032));
+    box-shadow: 0 14px 34px hsl(0 0% 0% / 0.16), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-streaming-state p {
+    max-height: min(44vh, 32rem);
+    overflow: auto;
+    line-height: 1.7;
+    color: hsl(var(--foreground) / 0.92);
+  }
+
+  .report-qa-chat-panel [class*='bg-destructive\/10'] {
+    border-color: hsl(0 78% 62% / 0.34) !important;
+    background: linear-gradient(135deg, hsl(0 78% 62% / 0.14), hsl(0 0% 100% / 0.035)) !important;
+    box-shadow: 0 12px 30px hsl(0 78% 24% / 0.14), inset 0 1px 0 hsl(0 0% 100% / 0.08);
   }
 
   .report-qa-composer textarea:focus-visible {
