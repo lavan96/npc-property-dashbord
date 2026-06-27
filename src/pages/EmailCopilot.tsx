@@ -1912,7 +1912,10 @@ export default function EmailCopilot() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-emerald-400/25 bg-background/65 shadow-sm transition-all hover:border-emerald-300/45 hover:bg-emerald-500/10 hover:text-emerald-200 focus-visible:ring-emerald-300/35 disabled:cursor-not-allowed disabled:border-amber-300/25 disabled:bg-amber-500/10 disabled:text-amber-100 disabled:opacity-80 md:w-auto md:px-3" onClick={handleSyncOutlook} disabled={isSyncing}>
-            <RefreshCw className={`h-4 w-4 md:mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span className="relative inline-flex">
+              {isSyncing && <span className="absolute -right-1 -top-1 h-2 w-2 animate-ping rounded-full bg-amber-300/70" />}
+              <RefreshCw className={`h-4 w-4 md:mr-2 ${isSyncing ? 'animate-spin text-amber-200' : ''}`} />
+            </span>
             <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
           </Button>
           <Button size="icon" className="h-9 w-9 rounded-xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary)/0.82))] text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40 hover:brightness-110 focus-visible:ring-primary/45 active:translate-y-0 md:w-auto md:px-4" onClick={() => setShowComposeModal(true)}>
@@ -2073,9 +2076,13 @@ export default function EmailCopilot() {
               // Inbox view
               <>
                 {isLoading ? (
-                  <div className="m-4 rounded-2xl border border-border/60 bg-card/55 p-8 text-center shadow-inner shadow-black/10">
-                    <RefreshCw className="mx-auto mb-3 h-6 w-6 animate-spin text-primary/70" />
-                    <p className="text-sm font-medium text-muted-foreground">Loading emails...</p>
+                  <div className="m-4 overflow-hidden rounded-[1.75rem] border border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.62))] p-8 text-center shadow-inner shadow-black/10">
+                    <span className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10">
+                      <span className="absolute inset-2 animate-ping rounded-2xl bg-primary/10" />
+                      <RefreshCw className="relative h-6 w-6 animate-spin text-primary/70" />
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">Loading emails...</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">Checking the selected mailbox for the latest messages.</p>
                   </div>
                 ) : filteredEmails.length === 0 ? (
                   <div className="m-4 rounded-[1.75rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-black/10">
@@ -2257,13 +2264,13 @@ export default function EmailCopilot() {
                       );
                     })}
                     {hasMoreEmails && (
-                      <div className="p-4 text-center border-t border-border">
+                      <div className="p-4 text-center">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={loadMoreEmails}
                           disabled={isLoadingMore}
-                          className="w-full"
+                          className="w-full rounded-full border-primary/20 bg-background/70 shadow-sm transition-all hover:border-primary/45 hover:bg-primary/5 disabled:bg-muted/40"
                         >
                           {isLoadingMore ? (
                             <>
@@ -2843,11 +2850,12 @@ export default function EmailCopilot() {
                       <Sparkles className="h-3 w-3 text-primary" /> Quick reply
                     </span>
                     {loadingQuickReplies ? (
-                      <>
-                        <div className="h-6 w-24 animate-pulse rounded-full bg-primary/10" />
-                        <div className="h-6 w-28 animate-pulse rounded-full bg-primary/10" />
-                        <div className="h-6 w-20 animate-pulse rounded-full bg-primary/10" />
-                      </>
+                      <div className="flex flex-wrap items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-2 py-1">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                        <span className="text-[11px] font-medium text-muted-foreground">Preparing reply options...</span>
+                        <div className="h-5 w-20 animate-pulse rounded-full bg-primary/10" />
+                        <div className="h-5 w-24 animate-pulse rounded-full bg-primary/10" />
+                      </div>
                     ) : (
                       quickReplies.map((q, i) => (
                         <button
@@ -3150,6 +3158,12 @@ export default function EmailCopilot() {
                     }
                   }}
                 />
+                {(isSendingEmail || isDrafting) && (
+                  <div className="mt-2 flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />
+                    <span>{isSendingEmail ? 'Sending only after confirmation...' : 'Generating a draft for human review...'}</span>
+                  </div>
+                )}
                 <div className="mt-2">
                   <RecipientSanityWarning
                     to={replyTo}
@@ -3606,7 +3620,7 @@ export default function EmailCopilot() {
                 {isComposing ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Sending...
+                    Sending safely...
                   </>
                 ) : (
                   <>
