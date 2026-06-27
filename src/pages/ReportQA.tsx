@@ -2071,7 +2071,7 @@ export default function ReportQA() {
 
         {/* Chat Section */}
         <Card className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 border shadow-sm rounded-2xl", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="report-qa-chat-header pb-2 sm:pb-3 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
+          <CardHeader className="report-qa-chat-header pb-3 sm:pb-4 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
@@ -2080,7 +2080,9 @@ export default function ReportQA() {
                 </Button>
               )}
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                <span className="report-qa-chat-title-icon flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl">
+                  <MessageSquare className="h-4 w-4" />
+                </span>
                 {isEditingMainTitle && conversationId ? (
                   <div className="flex items-center gap-1 flex-1">
                     <Input
@@ -2099,7 +2101,7 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <span 
-                    className="text-sm font-semibold truncate cursor-pointer"
+                    className="text-sm font-semibold tracking-tight truncate cursor-pointer"
                     onClick={() => {
                       if (conversationId) {
                         setMainTitleEdit(getCurrentTitle());
@@ -2170,7 +2172,9 @@ export default function ReportQA() {
                     <FileText className="h-4 w-4" />
                   </Button>
                 )}
-                <MessageSquare className="h-5 w-5" />
+                <span className="report-qa-chat-title-icon flex h-10 w-10 items-center justify-center rounded-2xl">
+                  <MessageSquare className="h-5 w-5" />
+                </span>
                 {isEditingMainTitle && conversationId ? (
                   <div className="flex items-center gap-2">
                     <Input value={mainTitleEdit} onChange={(e) => setMainTitleEdit(e.target.value)} className="h-7 w-48 text-sm" autoFocus
@@ -2184,7 +2188,7 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <CardTitle className="text-lg">{getCurrentTitle()}</CardTitle>
+                    <CardTitle className="report-qa-chat-title text-xl tracking-tight">{getCurrentTitle()}</CardTitle>
                     {conversationId && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); }}>
                         <Pencil className="h-3 w-3" />
@@ -2258,7 +2262,7 @@ export default function ReportQA() {
                 {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
               </div>
             </div>
-            <CardDescription className="hidden sm:block">
+            <CardDescription className="report-qa-chat-subtitle hidden sm:block pl-12 text-sm">
               {uploadedReports.length > 1 
                 ? `Comparing ${uploadedReports.length} reports` 
                 : 'Ask questions about the uploaded report'}
@@ -2270,9 +2274,9 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-2 sm:px-5">
+          <CardContent id="chat-main" className="report-qa-chat-content flex-1 flex flex-col min-h-0 overflow-hidden px-2 pb-2 sm:px-5 sm:pb-4">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className="flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className="report-qa-message-area flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
               {/* Load older messages button */}
               {hasOlderMessages && messages.length > 0 && (
                 <div className="flex justify-center py-2">
