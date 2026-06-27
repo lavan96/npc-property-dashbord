@@ -1936,7 +1936,7 @@ export default function EmailCopilot() {
       )}
 
       {/* Main Content */}
-      <div className="mx-3 md:mx-6 mb-3 md:mb-5 flex-1 flex overflow-hidden relative rounded-2xl border border-border/70 bg-card/70 shadow-2xl shadow-black/25 backdrop-blur"
+      <div className="relative mx-3 md:mx-6 mb-3 md:mb-5 flex min-h-0 flex-1 overflow-hidden rounded-3xl border border-primary/10 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.64))] shadow-2xl shadow-black/25 backdrop-blur"
         onMouseMove={(e) => {
           if (!isDraggingRef.current) return;
           const delta = e.clientX - dragStartXRef.current;
@@ -1948,7 +1948,7 @@ export default function EmailCopilot() {
       >
         {/* Email List Panel - full width on mobile, hidden when detail shown */}
         <div 
-          className={`${isMobile ? 'w-full' : ''} border-r border-border/70 flex flex-col bg-card/80 ${isMobile && showMobileDetail ? 'hidden' : ''}`}
+          className={`${isMobile ? 'w-full' : ''} min-h-0 border-r border-primary/10 flex flex-col bg-card/85 shadow-[inset_-1px_0_0_hsl(var(--primary)/0.04)] ${isMobile && showMobileDetail ? 'hidden' : ''}`}
           style={!isMobile ? { width: listPanelWidth, minWidth: 280, maxWidth: 600, flexShrink: 0 } : undefined}
         >
           {/* Inbox/Sent Tabs */}
@@ -2384,7 +2384,7 @@ export default function EmailCopilot() {
         {/* Resizable Drag Handle */}
         {!isMobile && (
           <div
-            className="w-1.5 hover:w-2 bg-transparent hover:bg-primary/20 cursor-col-resize transition-all flex-shrink-0 relative group"
+            className="group relative w-2 flex-shrink-0 cursor-col-resize bg-gradient-to-b from-transparent via-border/70 to-transparent transition-all hover:bg-primary/10"
             onMouseDown={(e) => {
               e.preventDefault();
               isDraggingRef.current = true;
@@ -2392,12 +2392,12 @@ export default function EmailCopilot() {
               dragStartWidthRef.current = listPanelWidth;
             }}
           >
-            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-border group-hover:bg-primary/40 transition-colors" />
+            <div className="absolute inset-y-4 left-1/2 w-px -translate-x-1/2 rounded-full bg-border/80 transition-colors group-hover:bg-primary/50" />
           </div>
         )}
 
         {/* Email Detail Panel - Full screen overlay on mobile */}
-        <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1'} flex flex-col bg-background/35 overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
+        <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1 min-w-0'} min-h-0 flex flex-col bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.08),transparent_34%),hsl(var(--background)/0.38)] overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
           {viewMode === 'sent' && selectedSentReply ? (
             // Sent Reply Detail View
             <>
@@ -2817,8 +2817,10 @@ export default function EmailCopilot() {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center p-6">
-              <div className="text-center rounded-3xl border border-dashed border-primary/25 bg-card/55 px-10 py-12 shadow-xl shadow-black/10">
-                <Mail className="h-16 w-16 mx-auto mb-4 text-primary/35" />
+              <div className="max-w-md text-center rounded-[2rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.56))] px-10 py-12 shadow-2xl shadow-black/15">
+                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/15 bg-primary/10 shadow-inner shadow-primary/10">
+                  <Mail className="h-10 w-10 text-primary/45" />
+                </div>
                 <p className="text-lg font-medium text-muted-foreground">
                   {viewMode === 'sent' ? 'Select a sent email' : 'Select an email'}
                 </p>
