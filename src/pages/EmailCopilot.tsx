@@ -1797,21 +1797,24 @@ export default function EmailCopilot() {
   const sentCount = sentEmails.length + sentReplies.length;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.18))]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b bg-background">
+      <div className="mx-3 md:mx-6 mt-3 md:mt-5 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.78))] px-4 md:px-5 py-3 md:py-4 shadow-2xl shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-card/70">
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="p-1.5 md:p-2 bg-primary/10 rounded-lg">
+          <div className="relative p-2 md:p-2.5 bg-primary/15 rounded-2xl ring-1 ring-primary/30 shadow-lg shadow-primary/10">
             <Mail className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+            <span className="absolute -right-1 -top-1 rounded-full border border-background bg-background p-0.5 shadow-sm">
+              <Sparkles className="h-2.5 w-2.5 text-primary" />
+            </span>
           </div>
           <div>
-            <h1 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
               Email Copilot
               {unreadCount > 0 && (
-                <Badge variant="secondary" className="text-xs">{unreadCount}</Badge>
+                <Badge variant="secondary" className="rounded-full border border-primary/30 bg-primary/15 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-primary shadow-sm" title={`${unreadCount} unread emails`}>{unreadCount}</Badge>
               )}
             </h1>
-            <p className="text-xs text-muted-foreground hidden sm:block">AI-powered email summaries & draft replies</p>
+            <p className="text-xs md:text-sm text-muted-foreground/90 hidden sm:block">AI-powered email summaries & draft replies</p>
           </div>
         </div>
         <div className="flex items-center gap-1 md:gap-2">
@@ -1821,7 +1824,7 @@ export default function EmailCopilot() {
             size="icon" 
             onClick={toggleSoundNotifications}
             title={soundEnabled ? 'Disable sound notifications' : 'Enable sound notifications'}
-            className="h-8 w-8 md:h-9 md:w-9"
+            className="h-8 w-8 md:h-9 md:w-9 rounded-xl hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
           >
             {soundEnabled ? (
               <Bell className="h-4 w-4 text-primary" />
@@ -1834,7 +1837,7 @@ export default function EmailCopilot() {
             size="icon" 
             onClick={toggleBrowserNotifications}
             title={browserNotificationsEnabled ? 'Disable browser notifications' : 'Enable browser notifications'}
-            className="h-8 w-8 md:h-9 md:w-9"
+            className="h-8 w-8 md:h-9 md:w-9 rounded-xl hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
           >
             {browserNotificationsEnabled ? (
               <Bell className="h-4 w-4 text-green-500" />
@@ -1849,7 +1852,7 @@ export default function EmailCopilot() {
               value={selectedMailbox}
               onValueChange={(value: 'admin' | 'personal') => setSelectedMailbox(value)}
             >
-              <SelectTrigger className="h-8 md:h-9 w-auto min-w-[120px] text-xs md:text-sm">
+              <SelectTrigger className="h-8 md:h-9 w-auto min-w-[120px] text-xs md:text-sm rounded-xl border-primary/20 bg-background/70 hover:border-primary/40 focus:ring-primary/30">
                 <Inbox className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <SelectValue placeholder="Select mailbox" />
               </SelectTrigger>
@@ -1868,17 +1871,17 @@ export default function EmailCopilot() {
             </Select>
           )}
 
-          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1" onClick={() => setShowScheduledList(true)} title="Scheduled sends">
+          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40" onClick={() => setShowScheduledList(true)} title="Scheduled sends">
             <Clock className="h-3.5 w-3.5" />
             {scheduledSends.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{scheduledSends.length}</Badge>}
           </Button>
-          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1" onClick={() => setShowSnippetManager(true)} title="Snippet library">
+          <Button variant="outline" size="sm" className="h-8 md:h-9 gap-1 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40" onClick={() => setShowSnippetManager(true)} title="Snippet library">
             <Sparkles className="h-3.5 w-3.5" />
           </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3">
+              <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40">
                 <MoreVertical className="h-4 w-4 md:mr-2" />
                 <span className="hidden md:inline">Options</span>
               </Button>
@@ -1908,11 +1911,11 @@ export default function EmailCopilot() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3" onClick={handleSyncOutlook} disabled={isSyncing}>
+          <Button variant="outline" size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3 rounded-xl border-primary/20 bg-background/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40 disabled:opacity-70" onClick={handleSyncOutlook} disabled={isSyncing}>
             <RefreshCw className={`h-4 w-4 md:mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
           </Button>
-          <Button size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3" onClick={() => setShowComposeModal(true)}>
+          <Button size="icon" className="h-8 w-8 md:h-9 md:w-auto md:px-3 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/35 hover:brightness-110" onClick={() => setShowComposeModal(true)}>
             <Plus className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">Compose</span>
           </Button>
@@ -1921,16 +1924,16 @@ export default function EmailCopilot() {
 
       {/* Disclaimer - hidden on mobile to save space */}
       {!isMobile && (
-      <div className="px-6 py-2 bg-muted/30 border-b">
-        <p className="text-xs text-muted-foreground flex items-center gap-2">
-          <AlertCircle className="h-3 w-3" />
+      <div className="mx-3 md:mx-6 mb-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 shadow-lg shadow-black/10">
+        <p className="text-xs text-amber-100/90 flex items-center gap-2">
+          <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
           <span><strong>Human-in-the-loop:</strong> All AI outputs are drafts. Review before sending.</span>
         </p>
       </div>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative"
+      <div className="mx-3 md:mx-6 mb-3 md:mb-5 flex-1 flex overflow-hidden relative rounded-2xl border border-border/70 bg-card/70 shadow-2xl shadow-black/25 backdrop-blur"
         onMouseMove={(e) => {
           if (!isDraggingRef.current) return;
           const delta = e.clientX - dragStartXRef.current;
@@ -1942,18 +1945,18 @@ export default function EmailCopilot() {
       >
         {/* Email List Panel - full width on mobile, hidden when detail shown */}
         <div 
-          className={`${isMobile ? 'w-full' : ''} border-r flex flex-col bg-background ${isMobile && showMobileDetail ? 'hidden' : ''}`}
+          className={`${isMobile ? 'w-full' : ''} border-r border-border/70 flex flex-col bg-card/80 ${isMobile && showMobileDetail ? 'hidden' : ''}`}
           style={!isMobile ? { width: listPanelWidth, minWidth: 280, maxWidth: 600, flexShrink: 0 } : undefined}
         >
           {/* Inbox/Sent Tabs */}
-          <div className="px-3 pt-3 border-b">
-            <div className="flex gap-1 bg-muted rounded-lg p-1 mb-3">
+          <div className="px-3 pt-3 border-b border-border/70 bg-background/30">
+            <div className="flex gap-1 rounded-xl border border-border/60 bg-muted/50 p-1 mb-3 shadow-inner">
               <button
                 onClick={() => { setViewMode('inbox'); setSelectedSentReply(null); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
                   viewMode === 'inbox' 
-                    ? 'bg-background text-foreground shadow-sm' 
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                 }`}
               >
                 <Inbox className="h-4 w-4" />
@@ -1966,8 +1969,8 @@ export default function EmailCopilot() {
                 onClick={() => { setViewMode('sent'); setSelectedEmail(null); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded-md text-sm font-medium transition-colors ${
                   viewMode === 'sent' 
-                    ? 'bg-background text-foreground shadow-sm' 
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                 }`}
               >
                 <Send className="h-4 w-4" />
@@ -1980,7 +1983,7 @@ export default function EmailCopilot() {
           {viewMode === 'inbox' ? (
             <>
               {/* Search and Filter Bar */}
-              <div className="px-3 py-3 border-b space-y-2">
+              <div className="px-3 py-3 border-b border-border/70 bg-background/20 space-y-2">
                 {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1988,7 +1991,7 @@ export default function EmailCopilot() {
                     placeholder="Search emails..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-8 h-9"
+                    className="pl-9 pr-8 h-9 rounded-xl border-border/70 bg-background/70 focus-visible:ring-primary/40 focus-visible:border-primary/50"
                   />
                   {searchQuery && (
                     <button
@@ -2003,7 +2006,7 @@ export default function EmailCopilot() {
                 {/* Filters */}
                 <div className="flex items-center gap-2">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectTrigger className="h-8 text-xs flex-1 rounded-xl bg-background/70 hover:border-primary/40 focus:ring-primary/30">
                       <Filter className="h-3 w-3 mr-1" />
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
@@ -2020,7 +2023,7 @@ export default function EmailCopilot() {
                   
                   <Badge 
                     variant={showArchived ? "default" : "outline"} 
-                    className="cursor-pointer text-xs h-8 px-3"
+                    className="cursor-pointer text-xs h-8 px-3 rounded-xl transition-colors hover:border-primary/40 hover:bg-primary/10"
                     onClick={() => setShowArchived(!showArchived)}
                   >
                     <Archive className="h-3 w-3 mr-1" />
@@ -2030,7 +2033,7 @@ export default function EmailCopilot() {
               </div>
               
               {/* Email List Header */}
-              <div className="px-4 py-2 border-b bg-muted/30">
+              <div className="px-4 py-2 border-b border-border/70 bg-muted/25">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Inbox className="h-4 w-4 text-muted-foreground" />
@@ -2078,7 +2081,7 @@ export default function EmailCopilot() {
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-border/60">
                     {sortedThreadKeys.map((threadKey) => {
                       const threadEmails = emailThreads.get(threadKey)!;
                       const isThreaded = threadEmails.length > 1;
@@ -2102,13 +2105,13 @@ export default function EmailCopilot() {
                                 handleSelectEmail(latestEmail);
                               }
                             }}
-                            className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
-                              selectedEmail?.id === latestEmail.id ? 'bg-muted border-l-2 border-l-primary' : ''
+                            className={`group px-4 py-3 cursor-pointer transition-all hover:bg-primary/5 hover:shadow-inner ${
+                              selectedEmail?.id === latestEmail.id ? 'bg-primary/10 border-l-4 border-l-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]' : ''
                             } ${hasUnread ? 'bg-primary/5' : ''}`}
                           >
                             <div className="flex items-start gap-2.5">
                               {/* Avatar */}
-                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <div className="w-8 h-8 rounded-full bg-primary/15 ring-1 ring-primary/25 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
                                 <span className="text-[11px] font-semibold text-primary">
                                   {getSenderInitials(latestEmail.sender)}
                                 </span>
@@ -2262,7 +2265,7 @@ export default function EmailCopilot() {
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-border/60">
                     {/* Show synced sent emails from Outlook */}
                     {filteredEmails.map((email) => (
                       <div
@@ -2391,7 +2394,7 @@ export default function EmailCopilot() {
         )}
 
         {/* Email Detail Panel - Full screen overlay on mobile */}
-        <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1'} flex flex-col bg-muted/20 overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
+        <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1'} flex flex-col bg-background/35 overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
           {viewMode === 'sent' && selectedSentReply ? (
             // Sent Reply Detail View
             <>
@@ -2477,7 +2480,7 @@ export default function EmailCopilot() {
                     </div>
                   )}
                   
-                  <div className="bg-background rounded-lg border p-6">
+                  <div className="bg-card/90 rounded-2xl border border-border/70 p-6 shadow-xl shadow-black/10">
                     <RichTextBody 
                       content={selectedSentReply.body}
                       className="prose prose-sm max-w-none dark:prose-invert"
@@ -2489,7 +2492,7 @@ export default function EmailCopilot() {
           ) : selectedEmail ? (
             <>
               {/* Email Header */}
-              <div className="px-4 md:px-6 py-3 md:py-4 bg-background border-b">
+              <div className="px-4 md:px-6 py-3 md:py-4 bg-card/90 border-b border-border/70 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 md:gap-4 min-w-0 flex-1">
                     {isMobile && (
@@ -2628,7 +2631,7 @@ export default function EmailCopilot() {
                   />
 
                   {/* Email Body */}
-                  <div className="bg-background rounded-lg border p-6">
+                  <div className="bg-card/90 rounded-2xl border border-border/70 p-6 shadow-xl shadow-black/10">
                     <EmailBodyView
                       content={selectedEmail.body}
                       html={selectedEmail.body_html}
@@ -2643,8 +2646,8 @@ export default function EmailCopilot() {
 
                   {/* AI Summary */}
                   {selectedEmail.summary && (
-                    <div className="bg-background rounded-lg border overflow-hidden">
-                      <div className="px-4 py-3 bg-primary/5 border-b flex items-center justify-between">
+                    <div className="bg-card/90 rounded-2xl border border-primary/20 overflow-hidden shadow-xl shadow-primary/5 transition-all hover:border-primary/35">
+                      <div className="px-4 py-3 bg-primary/10 border-b border-primary/15 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-primary" />
                           <span className="text-sm font-medium">AI Summary</span>
@@ -2690,7 +2693,7 @@ export default function EmailCopilot() {
 
                   {/* Draft Reply Preview */}
                   {selectedEmail.draft_reply && (
-                    <div className="bg-background rounded-lg border overflow-hidden">
+                    <div className="bg-card/90 rounded-2xl border border-purple-500/20 overflow-hidden shadow-xl shadow-purple-950/10 transition-all hover:border-purple-500/35">
                       <div className="px-4 py-3 bg-purple-500/5 border-b flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <MessageSquare className="h-4 w-4 text-purple-600" />
@@ -2715,7 +2718,7 @@ export default function EmailCopilot() {
               </ScrollArea>
 
               {/* Action Bar */}
-              <div className="px-4 md:px-6 py-3 md:py-4 bg-background border-t flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
+              <div className="px-4 md:px-6 py-3 md:py-4 bg-card/90 border-t border-border/70 flex flex-col md:flex-row md:items-center gap-3 md:justify-between shadow-[0_-12px_30px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center gap-2 md:gap-3">
                   <Button 
                     onClick={handleSummarize} 
@@ -2810,9 +2813,9 @@ export default function EmailCopilot() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <Mail className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+            <div className="flex-1 flex items-center justify-center p-6">
+              <div className="text-center rounded-3xl border border-dashed border-primary/25 bg-card/55 px-10 py-12 shadow-xl shadow-black/10">
+                <Mail className="h-16 w-16 mx-auto mb-4 text-primary/35" />
                 <p className="text-lg font-medium text-muted-foreground">
                   {viewMode === 'sent' ? 'Select a sent email' : 'Select an email'}
                 </p>
@@ -3098,7 +3101,7 @@ export default function EmailCopilot() {
           
           <DialogFooter className="flex-col gap-2 sm:gap-3 sm:flex-row sm:justify-between border-t pt-3 sm:pt-4">
             <p className="hidden sm:flex text-xs text-muted-foreground items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
+              <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
               Review carefully before sending
             </p>
             <div className="flex gap-1.5 sm:gap-2 flex-wrap justify-end w-full sm:w-auto">
@@ -3496,7 +3499,7 @@ export default function EmailCopilot() {
           
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
+              <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
               Review carefully before sending
             </p>
             <div className="flex gap-2 flex-wrap">
@@ -3618,7 +3621,7 @@ export default function EmailCopilot() {
           </ScrollArea>
           
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-2">
+            <p className="text-xs text-amber-100/90 flex items-center gap-2">
               <span>{editableDraft.length} characters</span>
               {replyTo && <span className="text-green-600">• Ready to send</span>}
             </p>
@@ -3788,7 +3791,7 @@ export default function EmailCopilot() {
           
           <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
             <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <AlertCircle className="h-3 w-3" />
+              <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
               Forwarding with {forwardAttachments.length} attachment(s)
             </p>
             <div className="flex gap-2">
