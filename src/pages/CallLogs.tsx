@@ -456,11 +456,11 @@ const CallLogs = () => {
   };
 
   const getOutcomeBadge = (outcome: string | null) => {
-    if (!outcome) return <Badge variant="outline">Unknown</Badge>;
+    if (!outcome) return <Badge variant="outline" className="rounded-full border-white/15 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">Unknown</Badge>;
     const display = OUTCOME_DISPLAY[outcome];
     if (display) {
       const Icon = display.icon;
-      return <Badge className={display.color}><Icon className="w-3 h-3 mr-1" /> {display.label}</Badge>;
+      return <Badge className={cn("rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm", display.color)}><Icon className="w-3 h-3 mr-1" /> {display.label}</Badge>;
     }
     // Fallback for any VAPI reason not explicitly mapped - format nicely
     const category = getOutcomeCategory(outcome);
@@ -470,19 +470,19 @@ const CallLogs = () => {
     };
     const color = fallbackColors[category] || fallbackColors['other'];
     const label = outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    return <Badge className={color}><XCircle className="w-3 h-3 mr-1" /> {label}</Badge>;
+    return <Badge className={cn("rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm", color)}><XCircle className="w-3 h-3 mr-1" /> {label}</Badge>;
   };
 
   const getSentimentBadge = (sentiment: string | null) => {
     switch (sentiment) {
       case 'positive':
-        return <Badge className="bg-emerald-500/20 text-emerald-400">Positive</Badge>;
+        return <Badge className="rounded-full border border-emerald-300/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300 shadow-sm shadow-emerald-500/10">Positive</Badge>;
       case 'negative':
-        return <Badge className="bg-red-500/20 text-red-400">Negative</Badge>;
+        return <Badge className="rounded-full border border-red-400/35 bg-red-500/15 px-2.5 py-1 text-xs font-medium text-red-300 shadow-sm shadow-red-500/10">Negative</Badge>;
       case 'neutral':
-        return <Badge className="bg-gray-500/20 text-gray-400">Neutral</Badge>;
+        return <Badge className="rounded-full border border-zinc-500/30 bg-zinc-500/15 px-2.5 py-1 text-xs font-medium text-zinc-300">Neutral</Badge>;
       case 'mixed':
-        return <Badge className="bg-amber-500/20 text-amber-400">Mixed</Badge>;
+        return <Badge className="rounded-full border border-amber-300/30 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 shadow-sm shadow-amber-500/10">Mixed</Badge>;
       default:
         return null;
     }
@@ -1022,24 +1022,34 @@ const CallLogs = () => {
 
       <div className="mt-4 md:mt-6">
       {/* Call List */}
-      <Card className={cn(premiumPanel, "rounded-3xl overflow-hidden")}>
-        <CardHeader className="pb-4 border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-purple-500/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-amber-300" />
+      <Card className={cn(premiumPanel, "relative overflow-hidden rounded-[2rem] border-amber-300/15 bg-gradient-to-br from-zinc-950/95 via-black/80 to-zinc-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]")}>
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl" />
+        <CardHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_32%),linear-gradient(90deg,rgba(24,24,27,0.94),rgba(0,0,0,0.68),rgba(88,28,135,0.18))] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100 shadow-sm shadow-amber-500/10">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
+                Voice Activity Register
+              </div>
+              <CardTitle className="flex items-center gap-3 text-xl tracking-tight text-zinc-50 md:text-2xl">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/10 text-amber-200 shadow-inner shadow-amber-950/40">
+                  <BarChart3 className="h-5 w-5" />
+                </span>
                 Call History
               </CardTitle>
-              <CardDescription className="mt-1">
-                {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
+              <CardDescription className="mt-3 flex flex-wrap items-center gap-2 text-sm text-zinc-400">
+                <span className="rounded-full border border-amber-300/25 bg-black/35 px-3 py-1 font-medium text-amber-100 shadow-inner shadow-black/30">
+                  {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
+                </span>
                 {calls.length !== filteredCalls.length && (
-                  <span className="text-muted-foreground"> (filtered from {calls.length})</span>
+                  <span className="text-zinc-500">filtered from {calls.length}</span>
                 )}
               </CardDescription>
             </div>
             {/* Active filters summary */}
             {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedSquad !== 'all' || selectedIntent !== 'all' || searchQuery || dateRange) && (
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner shadow-black/30 lg:justify-end">
                 {searchQuery && (
                   <Badge variant="secondary" className={premiumActiveFilterBadge}>
                     Search: "{searchQuery}"
@@ -1067,7 +1077,7 @@ const CallLogs = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="h-6 px-2 text-xs"
+                  className="h-7 rounded-full px-3 text-xs text-zinc-300 transition-colors hover:bg-amber-300/10 hover:text-amber-100"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1084,19 +1094,24 @@ const CallLogs = () => {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative p-0">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <RefreshCw className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading call logs...</p>
+            <div className="mx-4 my-5 flex flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 bg-black/30 px-6 py-16 text-center shadow-inner shadow-black/30 sm:mx-6">
+              <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-4 text-amber-200 shadow-lg shadow-amber-500/10">
+                <RefreshCw className="h-8 w-8 animate-spin" />
+              </div>
+              <div>
+                <p className="font-semibold text-zinc-100">Loading call logs...</p>
+                <p className="mt-1 text-sm text-zinc-500">Refreshing the voice activity register.</p>
+              </div>
             </div>
           ) : filteredCalls.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-                <Phone className="w-8 h-8 text-muted-foreground" />
+            <div className="mx-4 my-5 rounded-3xl border border-white/10 bg-black/30 px-6 py-16 text-center shadow-inner shadow-black/30 sm:mx-6">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 shadow-lg shadow-amber-500/10">
+                <Phone className="h-8 w-8 text-amber-200" />
               </div>
-              <p className="font-medium text-foreground mb-1">No call logs found</p>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              <p className="mb-1 font-semibold text-zinc-100">No call logs found</p>
+              <p className="mx-auto max-w-sm text-sm text-zinc-500">
                 {calls.length > 0 
                   ? 'Try adjusting your filters to see more results'
                   : 'Calls will appear here once your Vapi agents start making calls'}
@@ -1105,7 +1120,7 @@ const CallLogs = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="mt-4"
+                  className={cn("mt-4", premiumSecondaryAction)}
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1121,78 +1136,84 @@ const CallLogs = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="max-h-[calc(100vh-17rem)] space-y-3 overflow-y-auto px-4 py-5 [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.35)] [scrollbar-width:thin] sm:px-6">
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
-                  className={`group relative p-4 rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/90 via-zinc-900/75 to-black/80 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 focus-within:ring-2 focus-within:ring-amber-400/60 ${
+                  className={`group relative cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-zinc-950/95 via-zinc-900/85 to-black/90 p-4 shadow-sm shadow-black/30 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-amber-200/0 before:to-transparent after:pointer-events-none after:absolute after:inset-0 after:bg-gradient-to-r after:from-amber-300/10 after:via-transparent after:to-transparent after:opacity-0 after:transition-opacity after:duration-300 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 hover:before:via-amber-200/90 hover:after:opacity-100 focus-within:ring-2 focus-within:ring-amber-400/60 sm:p-5 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
                   onClick={() => openCallDetail(call)}
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="relative z-10 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     {/* Left section */}
-                    <div className="flex items-start gap-4 flex-1">
+                    <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
                       {/* Direction icon */}
-                      <div className={`p-2.5 rounded-xl ${
+                      <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg sm:h-14 sm:w-14 ${
                         call.call_direction === 'inbound' 
-                          ? 'bg-emerald-500/10 text-emerald-500' 
-                          : 'bg-blue-500/10 text-blue-500'
+                          ? 'border-emerald-300/25 bg-emerald-500/10 text-emerald-300 group-hover:shadow-emerald-500/10' 
+                          : 'border-sky-300/25 bg-sky-500/10 text-sky-300 group-hover:shadow-sky-500/10'
                       }`}>
+                        <span className={`absolute right-2 top-2 h-2 w-2 rounded-full ${
+                          call.call_direction === 'inbound' ? 'bg-emerald-300' : 'bg-sky-300'
+                        } shadow-[0_0_10px_currentColor]`} />
                         {call.call_direction === 'inbound' ? (
-                          <PhoneIncoming className="w-5 h-5" />
+                          <PhoneIncoming className="h-5 w-5" />
                         ) : (
-                          <PhoneOutgoing className="w-5 h-5" />
+                          <PhoneOutgoing className="h-5 w-5" />
                         )}
                       </div>
                       
                       {/* Main content */}
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         {/* Header row */}
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="font-semibold text-foreground">
+                        <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="min-w-0 max-w-full truncate text-base font-semibold tracking-tight text-zinc-50 sm:text-lg">
                             {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
                           
                           {/* Squad badge with name */}
                           {call.is_squad_call && (
-                            <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs font-medium">
-                              <Users className="w-3 h-3 mr-1" />
-                              {call.squad_name || 'Squad Call'}
+                            <Badge className="max-w-[220px] rounded-full border border-purple-300/35 bg-purple-500/15 px-2.5 py-1 text-xs font-medium text-purple-200 shadow-sm shadow-purple-500/10">
+                              <Users className="mr-1 h-3 w-3 shrink-0" />
+                              <span className="truncate">{call.squad_name || 'Squad Call'}</span>
                             </Badge>
                           )}
                           
                           {/* Intent badge */}
                           {call.call_intent && (
-                            <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-xs">
-                              <Target className="w-3 h-3 mr-1" />
-                              {call.call_intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            <Badge className="max-w-[220px] rounded-full border border-emerald-300/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300 shadow-sm shadow-emerald-500/10">
+                              <Target className="mr-1 h-3 w-3 shrink-0" />
+                              <span className="truncate">{call.call_intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                             </Badge>
                           )}
                           
                           {/* Agent badge for non-squad calls */}
                           {call.agent_name && !call.is_squad_call && (
-                            <Badge className="bg-muted text-foreground border border-border text-xs">{call.agent_name}</Badge>
+                            <Badge className="max-w-[220px] rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-medium text-sky-200 shadow-sm shadow-sky-500/10">
+                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-300" />
+                              <span className="truncate">{call.agent_name}</span>
+                            </Badge>
                           )}
                         </div>
                         
                         {/* Handoff flow visualization for squad calls */}
                         {call.is_squad_call && call.assistants_involved && call.assistants_involved.length > 0 && (
-                          <div className="flex items-center gap-1 mb-2 flex-wrap">
+                          <div className="mb-3 flex flex-wrap items-center gap-1.5">
                             {call.assistants_involved.map((assistant, i) => (
                               <div key={assistant.id} className="flex items-center">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                                  {assistant.name || `Agent ${i + 1}`}
+                                <span className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-purple-300/20 bg-purple-400/10 px-2.5 py-1 text-xs font-medium text-purple-200">
+                                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-purple-300" />
+                                  <span className="truncate">{assistant.name || `Agent ${i + 1}`}</span>
                                 </span>
                                 {i < call.assistants_involved!.length - 1 && (
-                                  <ArrowRight className="w-3 h-3 text-muted-foreground mx-1" />
+                                  <ArrowRight className="mx-1 h-3 w-3 text-zinc-500" />
                                 )}
                               </div>
                             ))}
                             {call.handoff_sequence && call.handoff_sequence.length > 0 && (
-                              <Badge variant="secondary" className="text-xs ml-2">
-                                <GitBranch className="w-3 h-3 mr-1" />
+                              <Badge variant="secondary" className="ml-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+                                <GitBranch className="mr-1 h-3 w-3" />
                                 {call.handoff_sequence.length} handoff{call.handoff_sequence.length > 1 ? 's' : ''}
                               </Badge>
                             )}
@@ -1200,43 +1221,55 @@ const CallLogs = () => {
                         )}
                         
                         {/* Meta info row */}
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
                           {call.phone_number && call.customer_name && (
-                            <span className="font-mono text-xs">{call.phone_number}</span>
+                            <span className="rounded-full border border-white/10 bg-black/25 px-2.5 py-1 font-mono text-xs text-zinc-300">{call.phone_number}</span>
                           )}
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                          <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-2.5 py-1">
+                            <Clock className="h-3.5 w-3.5 text-zinc-500" />
                             {call.started_at 
                               ? format(new Date(call.started_at), 'MMM d, h:mm a')
                               : call.created_at 
-                                ? <span className="text-muted-foreground/70">{format(new Date(call.created_at), 'MMM d, h:mm a')} (initiated)</span>
+                                ? <span className="text-zinc-500">{format(new Date(call.created_at), 'MMM d, h:mm a')} (initiated)</span>
                                 : '-'
                             }
                           </span>
-                          <span className="flex items-center gap-1 font-medium">
+                          <span className="flex items-center gap-1 rounded-full border border-zinc-400/15 bg-zinc-400/10 px-2.5 py-1 font-mono text-xs font-semibold text-zinc-100">
                             {formatDuration(call.duration_seconds)}
                           </span>
                           {call.cost !== null && call.cost > 0 && (
-                            <span className="flex items-center gap-1 text-amber-500">
-                              <DollarSign className="w-3 h-3" />
+                            <span className="flex items-center gap-1 rounded-full border border-amber-300/25 bg-amber-400/10 px-2.5 py-1 font-mono text-xs font-semibold text-amber-200 shadow-sm shadow-amber-500/10">
+                              <DollarSign className="h-3 w-3" />
                               ${call.cost.toFixed(3)}
                             </span>
                           )}
                         </div>
+                        {call.tags && call.tags.length > 0 && (
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                            {call.tags.map(tag => (
+                              <Badge key={tag} className="max-w-[180px] rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-100">
+                                <Tag className="mr-1 h-3 w-3 shrink-0" />
+                                <span className="truncate">{tag}</span>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     
                     {/* Right section - badges */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <CallQualityBadge
-                        sentiment={call.sentiment}
-                        durationSeconds={call.duration_seconds}
-                        outcome={call.call_outcome}
-                        cost={call.cost}
-                        hasTranscript={!!call.transcript}
-                      />
-                      {getSentimentBadge(call.sentiment)}
-                      {getOutcomeBadge(call.call_outcome)}
+                    <div className="flex shrink-0 flex-wrap items-center gap-2 xl:max-w-[380px] xl:justify-end">
+                      <span className="rounded-full border border-white/10 bg-black/25 p-0.5 shadow-inner shadow-black/30">
+                        <CallQualityBadge
+                          sentiment={call.sentiment}
+                          durationSeconds={call.duration_seconds}
+                          outcome={call.call_outcome}
+                          cost={call.cost}
+                          hasTranscript={!!call.transcript}
+                        />
+                      </span>
+                      <span className="transition-transform duration-200 group-hover:-translate-y-0.5">{getSentimentBadge(call.sentiment)}</span>
+                      <span className="transition-transform duration-200 group-hover:-translate-y-0.5">{getOutcomeBadge(call.call_outcome)}</span>
                     </div>
                   </div>
                 </div>
