@@ -345,12 +345,17 @@ export default function Messages() {
                       <ClientPortalMessagesPanel clientId={selectedClientId} />
                   </div>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center p-8 text-center text-sm text-muted-foreground">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-300/20 bg-amber-300/10 text-amber-200 shadow-lg shadow-amber-950/20">
-                      <MessageSquare className="h-8 w-8" />
+                  <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground">
+                    <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-amber-300/25 to-transparent" />
+                    <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
+                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-300/25 bg-gradient-to-br from-amber-300/15 to-white/[0.03] text-amber-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+                      <MessageSquare className="h-9 w-9 opacity-90" />
                     </div>
-                    <p className="font-medium text-foreground">Select a client to view portal messages.</p>
-                    <p className="mt-1 max-w-xs text-xs">Choose a thread from the left pane to open the portal conversation workspace.</p>
+                    <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
+                      <p className="text-base font-semibold text-foreground">Select a client to view portal messages.</p>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a thread from the left pane to open the portal conversation workspace.</p>
+                      <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -422,12 +427,17 @@ export default function Messages() {
                     <StaffFinancePortalMessagesPanel clientId={selectedFinanceClientId} />
                   </div>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center p-8 text-center text-sm text-muted-foreground">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200 shadow-lg shadow-emerald-950/20">
-                      <ShieldCheck className="h-8 w-8" />
+                  <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground">
+                    <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-emerald-300/20 to-transparent" />
+                    <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
+                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/15 to-white/[0.03] text-emerald-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+                      <ShieldCheck className="h-9 w-9 opacity-90" />
                     </div>
-                    <p className="font-medium text-foreground">Select a client to view finance portal threads.</p>
-                    <p className="mt-1 max-w-xs text-xs">Choose a finance-linked client to review partner-visible thread activity.</p>
+                    <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
+                      <p className="text-base font-semibold text-foreground">Select a client to view finance portal threads.</p>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a finance-linked client to review partner-visible thread activity.</p>
+                      <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent" />
+                    </div>
                   </div>
                 )}
               </CardContent>
