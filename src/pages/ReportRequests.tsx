@@ -409,23 +409,25 @@ export default function ReportRequests() {
             const TypeIcon = typeConf.icon;
             return (
               <div className="space-y-4">
-                <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-inner">
-                  <div className="flex items-center gap-3">
-                    <div className={cn('rounded-2xl p-3 shadow-inner shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{typeConf.label}</p>
-                      <Badge variant="outline" className={cn('mt-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
+                <div className="space-y-4 rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.58),rgba(9,9,11,0.42))] p-4 shadow-inner shadow-black/30">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn('rounded-2xl p-3 shadow-inner shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
+                      <div>
+                        <p className="text-base font-semibold tracking-tight text-white">{typeConf.label}</p>
+                      </div>
                     </div>
+                    <Badge variant="outline" className={cn('w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                   </div>
 
-                  <div className="grid gap-2 text-sm">
-                    <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-amber-200/70" /><span className="text-zinc-400">Client:</span><span className="font-medium capitalize text-white">{selectedRequest.client_name}</span></div>
-                    {selectedRequest.client_email && <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-zinc-500" /><span className="text-zinc-400">Email:</span><span className="font-medium text-white">{selectedRequest.client_email}</span></div>}
-                    {selectedRequest.client_phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-zinc-500" /><span className="text-zinc-400">Phone:</span><span className="font-medium text-white">{selectedRequest.client_phone}</span></div>}
-                    {selectedRequest.client_address && <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 text-zinc-500" /><span className="text-zinc-400">Address:</span><span className="font-medium text-white">{selectedRequest.client_address}</span></div>}
-                    <div className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-zinc-500" /><span className="text-zinc-400">Requested:</span><span className="font-medium text-white">{format(new Date(selectedRequest.created_at), 'dd MMM yyyy, HH:mm')}</span></div>
-                    {selectedRequest.property_address && <div className="flex items-start gap-2"><Building2 className="mt-0.5 h-3.5 w-3.5 text-zinc-500" /><span className="text-zinc-400">Property:</span><span className="font-medium text-white">{selectedRequest.property_address}</span></div>}
-                    {selectedRequest.notes && <div className="flex items-start gap-2"><MessageSquare className="mt-0.5 h-3.5 w-3.5 text-zinc-500" /><span className="text-zinc-400">Client notes:</span><span className="text-white">{selectedRequest.notes}</span></div>}
+                  <div className="grid gap-2.5 text-sm">
+                    <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-zinc-500">Client:</span><span className="min-w-0 font-semibold capitalize text-white">{selectedRequest.client_name}</span></div>
+                    {selectedRequest.client_email && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Email:</span><span className="min-w-0 break-all font-medium text-white">{selectedRequest.client_email}</span></div>}
+                    {selectedRequest.client_phone && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Phone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Phone:</span><span className="min-w-0 font-medium text-white">{selectedRequest.client_phone}</span></div>}
+                    {selectedRequest.client_address && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Address:</span><span className="min-w-0 break-words font-medium text-white">{selectedRequest.client_address}</span></div>}
+                    <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Requested:</span><span className="min-w-0 font-medium text-white">{format(new Date(selectedRequest.created_at), 'dd MMM yyyy, HH:mm')}</span></div>
+                    {selectedRequest.property_address && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Property:</span><span className="min-w-0 break-words font-medium text-white">{selectedRequest.property_address}</span></div>}
+                    {selectedRequest.notes && <div className="flex items-start gap-3 rounded-2xl border border-amber-300/10 bg-amber-300/5 px-3 py-3"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-zinc-500">Client notes:</span><span className="min-w-0 whitespace-pre-wrap break-words leading-5 text-white">{selectedRequest.notes}</span></div>}
                   </div>
                 </div>
 
