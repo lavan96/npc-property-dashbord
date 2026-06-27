@@ -1915,7 +1915,7 @@ export default function EmailCopilot() {
             <RefreshCw className={`h-4 w-4 md:mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
           </Button>
-          <Button size="icon" className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40 hover:brightness-110 focus-visible:ring-primary/45 active:translate-y-0 md:w-auto md:px-4" onClick={() => setShowComposeModal(true)}>
+          <Button size="icon" className="h-9 w-9 rounded-xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary)/0.82))] text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40 hover:brightness-110 focus-visible:ring-primary/45 active:translate-y-0 md:w-auto md:px-4" onClick={() => setShowComposeModal(true)}>
             <Plus className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">Compose</span>
           </Button>
@@ -2947,15 +2947,17 @@ export default function EmailCopilot() {
           setReplyBcc('');
         }
       }}>
-        <DialogContent className="w-[calc(100vw-1rem)] sm:w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-6 lg:p-7 gap-3 sm:gap-4">
-          <DialogHeader className="pr-10">
+        <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-3 overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(43_74%_49%/0.045))] p-3 shadow-[0_24px_80px_hsl(var(--background)/0.35)] sm:max-h-[90vh] sm:w-full sm:p-6 lg:max-w-4xl lg:p-7 xl:max-w-5xl">
+          <DialogHeader className="border-b border-primary/10 pb-3 pr-10">
             <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
               <div className="flex-1 min-w-0">
                 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <MessageSquare className="h-5 w-5 text-purple-600 shrink-0" />
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/10">
+                    <MessageSquare className="h-4 w-4 text-amber-600" />
+                  </span>
                   <span className="truncate">Compose Reply</span>
                 </DialogTitle>
-                <DialogDescription className="text-xs sm:text-sm">
+                <DialogDescription className="mt-1 text-xs sm:text-sm">
                   Review recipients, edit your message, then send or copy
                 </DialogDescription>
               </div>
@@ -2980,50 +2982,50 @@ export default function EmailCopilot() {
           <ScrollArea className="flex-1 -mr-2 pr-2 sm:pr-4">
             <div className="space-y-3 sm:space-y-4">
               {/* Email Recipients Section */}
-              <div className="space-y-2 sm:space-y-3 p-2 sm:p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-2 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm sm:space-y-3 sm:p-4">
                 {/* From Field - Non-editable */}
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-xs sm:text-sm text-muted-foreground">From:</Label>
-                  <div className="h-8 px-3 flex items-center bg-muted/50 border rounded-md text-xs sm:text-sm text-muted-foreground truncate">
+                  <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm">From:</Label>
+                  <div className="flex h-9 items-center truncate rounded-xl border border-border/70 bg-muted/40 px-3 text-xs text-muted-foreground sm:text-sm">
                     {selectedMailbox === 'personal' && personalMailbox 
                       ? personalMailbox 
                       : 'Admin Mailbox'}
                   </div>
                 </div>
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-xs sm:text-sm text-muted-foreground">To:</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm">To:</Label>
                   <Input
                     value={replyTo}
                     onChange={(e) => setReplyTo(e.target.value)}
                     placeholder="recipient@example.com"
-                    className="h-8 text-xs sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-xs sm:text-sm text-muted-foreground">Subject:</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm">Subject:</Label>
                   <Input
                     value={replySubject}
                     onChange={(e) => setReplySubject(e.target.value)}
                     placeholder="Email subject"
-                    className="h-8 text-xs sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-xs sm:text-sm text-muted-foreground">CC:</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm">CC:</Label>
                   <Input
                     value={replyCc}
                     onChange={(e) => setReplyCc(e.target.value)}
                     placeholder="cc@example.com"
-                    className="h-8 text-xs sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-xs sm:text-sm text-muted-foreground">BCC:</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:text-sm">BCC:</Label>
                   <Input
                     value={replyBcc}
                     onChange={(e) => setReplyBcc(e.target.value)}
                     placeholder="bcc@example.com"
-                    className="h-8 text-xs sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
                   />
                 </div>
               </div>
@@ -3061,7 +3063,7 @@ export default function EmailCopilot() {
               
               {/* Attachments Section with Drag & Drop */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Attachments</Label>
+                <Label className="text-sm font-semibold">Attachments</Label>
                 <input
                   type="file"
                   ref={replyFileInputRef}
@@ -3074,13 +3076,13 @@ export default function EmailCopilot() {
                   onDragLeave={(e) => handleDragLeave(e, setReplyDragActive)}
                   onDrop={(e) => handleDrop(e, (files) => setReplyAttachments(prev => [...prev, ...files]), setReplyDragActive)}
                   onClick={() => replyFileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                  className={`cursor-pointer rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
                     replyDragActive 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                      ? 'border-primary bg-primary/10 shadow-inner' 
+                      : 'border-muted-foreground/25 bg-background/45 hover:border-primary/35 hover:bg-primary/5'
                   }`}
                 >
-                  <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <Upload className="mx-auto mb-2 h-6 w-6 text-primary/70" />
                   <p className="text-sm text-muted-foreground">
                     Drag & drop files here or click to browse
                   </p>
@@ -3089,9 +3091,9 @@ export default function EmailCopilot() {
                   </p>
                 </div>
                 {replyAttachments.length > 0 && (
-                  <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
+                  <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-2">
                     {replyAttachments.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm p-2 bg-background rounded">
+                      <div key={index} className="flex items-center justify-between rounded-xl bg-background p-2 text-sm">
                         <div className="flex items-center gap-2 min-w-0">
                           <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <span className="truncate">{file.name}</span>
@@ -3119,7 +3121,7 @@ export default function EmailCopilot() {
               {/* Draft Content */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-sm font-medium">Message Body</Label>
+                  <Label className="text-sm font-semibold">Message Body</Label>
                   <span className="text-[10px] text-muted-foreground">
                     {currentDraft.trim() ? `${currentDraft.trim().split(/\s+/).length} words` : 'Tip: select text then use Improve'}
                   </span>
@@ -3130,7 +3132,7 @@ export default function EmailCopilot() {
                   onChange={setCurrentDraft}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[250px] lg:h-[340px] xl:h-[400px] resize-none font-sans text-sm"
+                  className="h-[250px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/45 focus-visible:ring-primary/35 lg:h-[340px] xl:h-[400px]"
                   placeholder="Draft reply will appear here..."
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -3154,20 +3156,20 @@ export default function EmailCopilot() {
             </div>
           </ScrollArea>
           
-          <DialogFooter className="flex-col gap-2 sm:gap-3 sm:flex-row sm:justify-between border-t pt-3 sm:pt-4">
-            <p className="hidden sm:flex text-xs text-muted-foreground items-center gap-1">
+          <DialogFooter className="flex-col gap-2 border-t border-primary/10 pt-3 sm:flex-row sm:justify-between sm:gap-3 sm:pt-4">
+            <p className="hidden items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200 sm:flex">
               <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
               Review carefully before sending
             </p>
             <div className="flex gap-1.5 sm:gap-2 flex-wrap justify-end w-full sm:w-auto">
-              <Button variant="outline" size="sm" onClick={() => setShowDraftModal(false)}>
+              <Button variant="outline" size="sm" className="rounded-full" onClick={() => setShowDraftModal(false)}>
                 Cancel
               </Button>
-              <Button variant="outline" size="sm" onClick={handleCopyDraft}>
+              <Button variant="outline" size="sm" className="rounded-full" onClick={handleCopyDraft}>
                 <Copy className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Copy</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowFollowUp(true)}>
+              <Button variant="outline" size="sm" className="rounded-full" onClick={() => setShowFollowUp(true)}>
                 <Bell className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">Remind me</span>
               </Button>
@@ -3372,10 +3374,12 @@ export default function EmailCopilot() {
           setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
         }
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] shadow-[0_24px_80px_hsl(var(--background)/0.35)]">
+          <DialogHeader className="border-b border-primary/10 pb-3">
             <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <Mail className="h-4 w-4 text-primary" />
+              </span>
               Compose New Email
             </DialogTitle>
             <DialogDescription>
@@ -3386,48 +3390,48 @@ export default function EmailCopilot() {
           <ScrollArea className="flex-1 pr-4">
             <div className="space-y-4">
               {/* Email Recipients Section */}
-              <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+              <div className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-4 shadow-sm">
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">To: *</Label>
+                  <Label className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">To: *</Label>
                   <Input
                     value={composeEmail.to}
                     onChange={(e) => setComposeEmail({ ...composeEmail, to: e.target.value })}
                     placeholder="recipient@example.com"
-                    className="h-8"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
                   />
                 </div>
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">Subject:</Label>
+                  <Label className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">Subject:</Label>
                   <Input
                     value={composeEmail.subject}
                     onChange={(e) => setComposeEmail({ ...composeEmail, subject: e.target.value })}
                     placeholder="Email subject"
-                    className="h-8"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
                   />
                 </div>
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">CC:</Label>
+                  <Label className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">CC:</Label>
                   <Input
                     value={composeEmail.cc}
                     onChange={(e) => setComposeEmail({ ...composeEmail, cc: e.target.value })}
                     placeholder="cc@example.com, another@example.com"
-                    className="h-8"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
                   />
                 </div>
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
-                  <Label className="text-sm text-muted-foreground">BCC:</Label>
+                  <Label className="text-sm font-semibold uppercase tracking-[0.12em] text-muted-foreground">BCC:</Label>
                   <Input
                     value={composeEmail.bcc}
                     onChange={(e) => setComposeEmail({ ...composeEmail, bcc: e.target.value })}
                     placeholder="bcc@example.com"
-                    className="h-8"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
                   />
                 </div>
               </div>
               
               {/* Attachments Section with Drag & Drop */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Attachments</Label>
+                <Label className="text-sm font-semibold">Attachments</Label>
                 <input
                   type="file"
                   ref={composeFileInputRef}
@@ -3440,13 +3444,13 @@ export default function EmailCopilot() {
                   onDragLeave={(e) => handleDragLeave(e, setComposeDragActive)}
                   onDrop={(e) => handleDrop(e, (files) => setComposeAttachments(prev => [...prev, ...files]), setComposeDragActive)}
                   onClick={() => composeFileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                  className={`cursor-pointer rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
                     composeDragActive 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                      ? 'border-primary bg-primary/10 shadow-inner' 
+                      : 'border-muted-foreground/25 bg-background/45 hover:border-primary/35 hover:bg-primary/5'
                   }`}
                 >
-                  <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <Upload className="mx-auto mb-2 h-6 w-6 text-primary/70" />
                   <p className="text-sm text-muted-foreground">
                     Drag & drop files here or click to browse
                   </p>
@@ -3456,10 +3460,10 @@ export default function EmailCopilot() {
                 </div>
                 {/* QA PDF Attachment Badge (from Report Q&A) */}
                 {qaPDFAttachment && (
-                  <div className="p-3 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
+                  <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 p-3 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/20 rounded-lg">
+                        <div className="rounded-xl bg-primary/20 p-2">
                           <FileIcon className="h-6 w-6 text-primary" />
                         </div>
                         <div>
@@ -3494,14 +3498,14 @@ export default function EmailCopilot() {
                 )}
                 {/* Other Attachments (excluding QA PDF if already shown above) */}
                 {composeAttachments.filter(f => !qaPDFAttachment || f.name !== qaPDFAttachment.fileName).length > 0 && (
-                  <div className="space-y-2 p-2 bg-muted/30 rounded-lg">
+                  <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-2">
                     {composeAttachments
                       .filter(f => !qaPDFAttachment || f.name !== qaPDFAttachment.fileName)
                       .map((file, index) => {
                         // Find the original index for removal
                         const originalIndex = composeAttachments.findIndex(f2 => f2 === file);
                         return (
-                          <div key={index} className="flex items-center justify-between text-sm p-2 bg-background rounded">
+                          <div key={index} className="flex items-center justify-between rounded-xl bg-background p-2 text-sm">
                             <div className="flex items-center gap-2 min-w-0">
                               <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                               <span className="truncate">{file.name}</span>
@@ -3527,13 +3531,13 @@ export default function EmailCopilot() {
               
               {/* Email Body */}
               <div>
-                <Label className="text-sm font-medium mb-2 block">Message Body *</Label>
+                <Label className="mb-2 block text-sm font-semibold">Message Body *</Label>
                 <ComposerTextarea
                   value={composeEmail.body}
                   onChange={(v) => setComposeEmail({ ...composeEmail, body: v })}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[300px] resize-none font-sans text-sm"
+                  className="h-[300px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/45 focus-visible:ring-primary/35"
                   placeholder="Type your email message here..."
                 />
                 <div className="mt-2">
@@ -3552,13 +3556,13 @@ export default function EmailCopilot() {
             </div>
           </ScrollArea>
           
-          <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between border-t pt-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <DialogFooter className="flex-col gap-3 border-t border-primary/10 pt-4 sm:flex-row sm:justify-between">
+            <p className="flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200">
               <AlertCircle className="h-3.5 w-3.5 text-amber-400" />
               Review carefully before sending
             </p>
             <div className="flex gap-2 flex-wrap">
-              <Button variant="outline" onClick={() => setShowComposeModal(false)}>
+              <Button variant="outline" className="rounded-full" onClick={() => setShowComposeModal(false)}>
                 Cancel
               </Button>
               <ScheduleSendButton
@@ -3588,7 +3592,7 @@ export default function EmailCopilot() {
               <Button 
                 onClick={handleSendComposedEmail} 
                 disabled={isComposing || !composeEmail.to || !composeEmail.body}
-                className="bg-green-600 hover:bg-green-700"
+                className="rounded-full bg-green-600 shadow-lg shadow-green-900/10 hover:bg-green-700"
               >
                 {isComposing ? (
                   <>
