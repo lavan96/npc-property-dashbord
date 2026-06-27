@@ -37,6 +37,8 @@ import {
   CheckCircle2,
   XCircle,
   ShieldCheck,
+  Clock3,
+  UserRound,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -961,39 +963,72 @@ export default function Conversations() {
             ) : selectedConversation ? (
               <>
                 {/* Thread header with client context */}
-                <div className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-zinc-950/80 px-4 py-3.5 shadow-[0_12px_34px_rgba(0,0,0,0.18)]">
-                  {!isMobile && (
-                    <div className={cn('relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.2rem] border border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_30px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-zinc-500/18 via-zinc-600/12 to-zinc-950/72')}>
-                      <span className="relative z-10 text-sm font-bold tracking-[-0.03em] text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
-                      <span className={cn('absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-950/90 bg-zinc-950 shadow-[0_8px_16px_rgba(0,0,0,0.34)] ring-1 ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-zinc-100')}>
-                        {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3 w-3" />; })()}
-                      </span>
+                <div className="relative shrink-0 overflow-hidden border-b border-amber-100/10 bg-[linear-gradient(135deg,rgba(9,9,11,0.96),rgba(24,24,27,0.90)_58%,rgba(120,53,15,0.12))] px-4 py-4 shadow-[0_14px_38px_rgba(0,0,0,0.24)] md:px-5">
+                  <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
+                  <div className="pointer-events-none absolute -right-12 -top-16 h-32 w-32 rounded-full bg-amber-300/10 blur-3xl" />
+                  <div className="relative flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 flex-1 items-start gap-3.5">
+                      {!isMobile && (
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-zinc-500/18 via-zinc-600/12 to-zinc-950/72')}>
+                          <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
+                          <span className={cn('absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-950/90 bg-zinc-950 shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-zinc-100')}>
+                            {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3.5 w-3.5" />; })()}
+                          </span>
+                          <span className="absolute inset-0 rounded-[1.35rem] bg-gradient-to-br from-white/12 to-transparent opacity-60" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <Badge className={cn('rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'border-white/10 bg-white/[0.04] text-zinc-100')}>
+                            {normalizeChannel(selectedConversation.channel_type).replace('_', ' ')}
+                          </Badge>
+                          <Badge variant="outline" className="rounded-full border-emerald-300/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.75)]" />
+                            {selectedConversation.unread_count > 0 ? `${selectedConversation.unread_count} unread` : 'Current'}
+                          </Badge>
+                          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-medium text-zinc-400">
+                            <ShieldCheck className="h-3 w-3 shrink-0 text-amber-100/60" />
+                            <span className="truncate">GHL source</span>
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="break-words text-xl font-semibold leading-tight tracking-[-0.035em] text-white md:text-2xl" title={selectedConversation.client_name || 'Unknown contact'}>{selectedConversation.client_name}</p>
+                          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-zinc-400">
+                            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-black/25 px-2.5 py-1">
+                              <Mail className="h-3 w-3 shrink-0 text-zinc-500" />
+                              <span className="truncate">{selectedConversation.client_email || 'No email on file'}</span>
+                            </span>
+                            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-white/10 bg-black/25 px-2.5 py-1">
+                              <Clock3 className="h-3 w-3 shrink-0 text-zinc-500" />
+                              <span className="truncate">Last activity {formatConversationDate(selectedConversation.last_message_date) || 'not available'}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-white">{selectedConversation.client_name}</p>
-                    <p className="text-[11px] text-muted-foreground capitalize">
-                      {normalizeChannel(selectedConversation.channel_type).replace('_', ' ')}
+                    <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
                       {selectedConversation.client_id && (
                         <Button
-                          variant="link"
+                          variant="outline"
                           size="sm"
-                          className="h-auto p-0 ml-2 text-[11px] text-primary"
+                          className="h-9 rounded-full border-amber-200/25 bg-zinc-950/70 px-3 text-xs font-semibold text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-amber-200/55 hover:bg-amber-300/10 hover:text-amber-50"
                           onClick={() => window.open(`/clients?clientId=${selectedConversation.client_id}`, '_blank')}
                         >
-                          View Client <ExternalLink className="h-2.5 w-2.5 ml-0.5" />
+                          <UserRound className="mr-1.5 h-3.5 w-3.5" />
+                          View Client <ExternalLink className="ml-1.5 h-3 w-3" />
                         </Button>
                       )}
-                    </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/[0.035] p-0 text-zinc-300 hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-amber-50"
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] })}
+                        aria-label="Refresh selected conversation messages"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 shrink-0"
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] })}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
 
                 {/* Messages */}
