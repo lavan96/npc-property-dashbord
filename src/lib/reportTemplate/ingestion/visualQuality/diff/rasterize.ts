@@ -1,9 +1,9 @@
 /**
  * Phase 4 — Visual diff harness: source rasterisation.
  *
- * Lazy-loads `pdfjs-dist` (no top-level import so the cost is paid only on
- * actual diff runs, and the rest of the visual-quality module stays usable
- * if the dependency isn't installed yet). Returns one `ImageData` per page,
+ * Lazy-loads PDF.js from a CDN (no top-level import so the cost is paid only
+ * on actual diff runs, and the rest of the visual-quality module avoids a
+ * bundled pdfjs-dist dependency). Returns one `ImageData` per page,
  * rendered at the requested DPI.
  *
  * Renderers that already produced their own raster (e.g. server-side
@@ -55,8 +55,8 @@ function makeCanvas(width: number, height: number): {
 
 /**
  * Rasterise every requested PDF page into `ImageData`. Lazy-imports
- * `pdfjs-dist` so the module remains importable without the dep. If the
- * import fails we return an empty array so the orchestrator can fall back
+ * PDF.js so the module remains importable without a bundled dependency. If
+ * the import fails we return an empty array so the orchestrator can fall back
  * to caller-supplied rasters / skip pixel metrics gracefully.
  */
 export async function rasterizePdfPages(
@@ -67,18 +67,21 @@ export async function rasterizePdfPages(
   const maxPixelDim = Math.max(256, opts.maxPixelDim ?? 1024);
   const scale = dpi / 72;
 
-  let pdfjs: typeof import('pdfjs-dist') | null = null;
+  const PDFJS_VERSION = '4.4.168';
+  const PDFJS_CDN_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+
+  type PdfJsModule = { getDocument: (source: unknown) => { promise: Promise<any> } };
+
+  let pdfjs: PdfJsModule | null = null;
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - optional dep; resolved at runtime
-    pdfjs = await import(/* @vite-ignore */ 'pdfjs-dist');
+    pdfjs = await import(/* @vite-ignore */ `${PDFJS_CDN_BASE}/pdf.min.mjs`) as PdfJsModule;
   } catch {
-    return []; // dep not installed → caller falls back
+    return []; // CDN unavailable → caller falls back
   }
   if (!pdfjs) return [];
 
   const data = pdfBlob instanceof Blob ? await pdfBlob.arrayBuffer() : pdfBlob;
-  const loadingTask = pdfjs.getDocument({ data, disableFontFace: false } as unknown as Parameters<typeof pdfjs.getDocument>[0]);
+  const loadingTask = pdfjs.getDocument({ data, disableFontFace: false });
   const doc = await loadingTask.promise;
 
   const pageFilter = opts.pageNumbers && opts.pageNumbers.length > 0
