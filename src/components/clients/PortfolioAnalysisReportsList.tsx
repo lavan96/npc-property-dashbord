@@ -300,7 +300,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
         <>
           {/* Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Total Reports</CardTitle>
@@ -314,7 +314,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </CardContent>
             </Card>
 
-            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Avg Health Score</CardTitle>
@@ -336,7 +336,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </CardContent>
             </Card>
 
-            <Card className="group relative overflow-hidden rounded-3xl border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_34%),linear-gradient(145deg,rgba(24,18,8,0.98),rgba(10,10,12,0.96)_55%,rgba(0,0,0,0.92))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:ring-1 hover:ring-amber-200/25 hover:shadow-[0_24px_70px_rgba(245,158,11,0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
+            <Card className="group relative overflow-hidden rounded-3xl border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_34%),linear-gradient(145deg,rgba(24,18,8,0.98),rgba(10,10,12,0.96)_55%,rgba(0,0,0,0.92))] shadow-xl shadow-black/25 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:ring-1 hover:ring-amber-200/25 hover:shadow-[0_24px_70px_rgba(245,158,11,0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent opacity-80" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/75">Combined Portfolio</CardTitle>
@@ -352,7 +352,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
           </div>
 
           {/* Search and Actions */}
-          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(0,0,0,0.42))] p-3 shadow-lg shadow-black/15 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(0,0,0,0.42))] p-3 shadow-lg shadow-black/15 backdrop-blur transition-all duration-300 hover:border-amber-300/20 sm:flex-row sm:items-center sm:justify-between sm:p-4">
             <div className="relative flex-1 sm:max-w-lg">
               <div className="pointer-events-none absolute left-3.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-300/10 text-amber-200/80">
                 <Search className="h-4 w-4" />
@@ -383,8 +383,8 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       <Card className="group/register overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(12,12,14,0.98),rgba(0,0,0,0.94))] shadow-2xl shadow-black/30 transition-all duration-300 hover:border-amber-300/30 hover:ring-1 hover:ring-amber-300/10 hover:shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
         <CardHeader className="relative border-b border-white/10 bg-white/[0.035] px-5 py-5 sm:px-6">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-60 transition-opacity duration-300 group-hover/register:opacity-100" />
-          <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-200 shadow-lg shadow-amber-950/20">
+          <CardTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight text-white">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-200 shadow-lg shadow-amber-950/20">
               <FileText className="h-5 w-5" />
             </span>
             {clientId ? 'Client Reports' : 'All Portfolio Analysis Reports'}
