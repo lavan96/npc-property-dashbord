@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, MessageSquare, RefreshCcw } from 'lucide-react';
+import { Loader2, MessageSquare, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { FinanceMessagesThread } from '@/components/finance-portal/FinanceMessagesThread';
@@ -144,16 +144,28 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
     [threads],
   );
 
+  const selectedThread = sortedThreads.find((thread) => thread.id === selectedThreadId) || null;
+  const selectedThreadLabel = selectedThread
+    ? THREAD_TYPE_LABEL[selectedThread.thread_type || ''] || (selectedThread.thread_type || 'Thread')
+    : 'Finance Portal thread';
+
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="mx-auto my-10 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center shadow-xl shadow-black/20">
+        <Loader2 className="mx-auto h-5 w-5 animate-spin text-violet-200/80" />
+        <p className="mt-3 text-sm font-medium text-foreground">Loading finance threads…</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">Preparing partner communication channels.</p>
+      </div>
+    );
   }
 
   if (error && threads.length === 0) {
     return (
-      <Card>
+      <Card className="rounded-3xl border-violet-300/15 bg-black/25 shadow-xl shadow-black/20">
         <CardContent className="py-12 text-center">
-          <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <MessageSquare className="mx-auto mb-3 h-10 w-10 text-violet-200/55" />
+          <p className="text-sm font-medium text-foreground">Finance messages could not load.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{error}</p>
         </CardContent>
       </Card>
     );
@@ -162,16 +174,16 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
   return (
     <div className="grid gap-4 md:grid-cols-[260px_1fr]">
       {/* Thread list */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="space-y-2 rounded-3xl border border-violet-300/15 bg-black/25 p-2 shadow-xl shadow-black/15">
+        <div className="flex items-center justify-between px-2 py-1">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-100">
             Threads ({sortedThreads.length})
           </span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => loadThreads(true)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-violet-100 hover:bg-violet-300/10 hover:text-violet-50 focus-visible:ring-violet-300/40" onClick={() => loadThreads(true)}>
             <RefreshCcw className="h-3 w-3" />
           </Button>
         </div>
-        <ScrollArea className="h-[480px] pr-2">
+        <ScrollArea className="h-[480px] pr-2 [scrollbar-color:rgba(139,92,246,0.4)_rgba(24,24,27,0.9)]">
           <div className="space-y-1.5">
             {sortedThreads.map((t) => {
               const isActive = t.id === selectedThreadId;
@@ -181,16 +193,16 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
                   key={t.id}
                   onClick={() => setSelectedThreadId(t.id)}
                   className={cn(
-                    'w-full rounded-lg border px-3 py-2 text-left transition-colors',
+                    'group relative w-full overflow-hidden rounded-2xl border px-3.5 py-3 text-left transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/45',
                     isActive
-                      ? 'border-primary/40 bg-primary/10'
-                      : 'border-border/60 bg-card hover:border-primary/20 hover:bg-primary/5',
+                      ? 'border-violet-300/45 bg-violet-300/12 shadow-[inset_3px_0_0_rgba(196,181,253,0.95),0_14px_32px_rgba(0,0,0,0.24)] before:opacity-100'
+                      : 'border-white/5 bg-white/[0.025] hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-80',
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-xs font-semibold text-foreground">{label}</span>
                     {t.unread_count_staff > 0 && (
-                      <Badge className="h-4 bg-primary px-1.5 text-[9px] text-primary-foreground">
+                      <Badge className="h-4 rounded-full border border-amber-200/50 bg-amber-300 px-1.5 text-[9px] text-black">
                         {t.unread_count_staff}
                       </Badge>
                     )}
@@ -198,7 +210,7 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
                   <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
                     {t.last_message_preview || 'No messages yet'}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+                  <p className="mt-1.5 inline-flex rounded-full border border-violet-300/15 bg-black/25 px-2 py-0.5 text-[10px] text-muted-foreground/80">
                     {t.last_message_at
                       ? formatDistanceToNow(new Date(t.last_message_at), { addSuffix: true })
                       : '—'}
@@ -211,19 +223,48 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
       </div>
 
       {/* Selected thread */}
-      <div className="min-h-[480px]">
+      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-violet-300/15 bg-zinc-950/90 shadow-xl shadow-black/20">
         {selectedThreadId ? (
-          <FinanceMessagesThread
-            threadId={selectedThreadId}
-            viewerSide="staff"
-            invoke={(fn, body) => invokeSecureFunction(fn, body)}
-            onMessageSent={() => loadThreads(true)}
-          />
+          <div className="flex h-full min-h-[480px] flex-col">
+            <div className="border-b border-violet-300/10 bg-gradient-to-r from-violet-300/12 via-blue-300/[0.04] to-transparent px-4 py-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-300/25 bg-violet-300/10 text-violet-100">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground">{selectedThreadLabel}</p>
+                    <Badge variant="outline" className="shrink-0 rounded-full border-blue-300/25 bg-blue-300/10 px-2 text-[10px] text-blue-100">
+                      Finance Portal
+                    </Badge>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>{selectedThread?.last_message_at ? formatDistanceToNow(new Date(selectedThread.last_message_at), { addSuffix: true }) : 'No activity yet'}</span>
+                      {selectedThread?.unread_count_staff ? (
+                        <Badge className="rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black">
+                          {selectedThread.unread_count_staff} unread
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <FinanceMessagesThread
+              threadId={selectedThreadId}
+              viewerSide="staff"
+              invoke={(fn, body) => invokeSecureFunction(fn, body)}
+              onMessageSent={() => loadThreads(true)}
+              className="h-full flex-1 rounded-none border-0 bg-transparent shadow-none"
+            />
+          </div>
         ) : (
-          <Card>
+          <Card className="rounded-3xl border-violet-300/15 bg-black/25 shadow-xl shadow-black/20">
             <CardContent className="py-12 text-center">
-              <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground opacity-50 mb-3" />
-              <p className="text-sm text-muted-foreground">Select a thread to view messages</p>
+              <MessageSquare className="mx-auto mb-3 h-10 w-10 text-violet-200/55" />
+              <p className="text-sm font-medium text-foreground">Select a thread to view messages</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose one of the governed finance channels from the thread list.</p>
             </CardContent>
           </Card>
         )}
