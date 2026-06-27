@@ -1310,16 +1310,21 @@ export default function ClientTracker() {
                         "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
                         isDragOver && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
                       )}>
-                        <CardHeader className="border-b border-border/60 px-4 py-3 bg-card/35">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="flex min-w-0 items-center gap-2 text-sm font-semibold">
-                              <span 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: stage.color }}
-                              />
-                              {stage.name}
+                        <CardHeader className={cn(
+                          "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.58),hsl(var(--background)/0.42))] px-4 py-3.5 transition-colors",
+                          isDragOver && isDragDropEnabled && "border-primary/40 bg-primary/10"
+                        )}>
+                          <div className="flex items-center justify-between gap-3">
+                            <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold tracking-tight text-foreground">
+                              <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/80 shadow-inner">
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full shadow-[0_0_14px_currentColor]"
+                                  style={{ backgroundColor: stage.color, color: stage.color }}
+                                />
+                              </span>
+                              <span className="truncate">{stage.name}</span>
                             </CardTitle>
-                            <Badge variant="secondary" className="rounded-full border border-border/70 bg-background/80 px-2.5 text-xs tabular-nums">
+                            <Badge variant="secondary" className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-bold tabular-nums text-primary shadow-inner">
                               {stageClients.length}
                             </Badge>
                           </div>
@@ -1331,8 +1336,8 @@ export default function ClientTracker() {
                           )}>
                             {stageClients.length === 0 ? (
                               <div className={cn(
-                                "rounded-xl border border-dashed border-border/70 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground",
-                                isDragOver && isDragDropEnabled && "text-primary font-medium"
+                                "flex min-h-[9rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
+                                isDragOver && isDragDropEnabled && "border-primary/35 bg-primary/10 text-primary"
                               )}>
                                 {isDragOver && isDragDropEnabled ? 'Drop here' : 'No clients'}
                               </div>
@@ -1371,13 +1376,18 @@ export default function ClientTracker() {
                       "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-black/15 transition-all duration-300 hover:border-primary/25",
                       dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
                     )}>
-                      <CardHeader className="border-b border-border/60 bg-card/30 px-4 py-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                            <span className="w-3 h-3 rounded-full bg-gray-400" />
-                            Unassigned
+                      <CardHeader className={cn(
+                        "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.48),hsl(var(--background)/0.34))] px-4 py-3.5 transition-colors",
+                        dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/40 bg-primary/10"
+                      )}>
+                        <div className="flex items-center justify-between gap-3">
+                          <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold tracking-tight text-muted-foreground">
+                            <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/80 shadow-inner">
+                              <span className="h-2.5 w-2.5 rounded-full bg-gray-400 shadow-[0_0_14px_rgba(156,163,175,0.55)]" />
+                            </span>
+                            <span className="truncate">Unassigned</span>
                           </CardTitle>
-                          <Badge variant="secondary" className="rounded-full border border-border/70 bg-background/80 px-2.5 text-xs tabular-nums">
+                          <Badge variant="secondary" className="shrink-0 rounded-full border border-border/70 bg-background/80 px-2.5 py-0.5 text-xs font-bold tabular-nums text-muted-foreground shadow-inner">
                             {groupedByStage['unassigned']?.length || 0}
                           </Badge>
                         </div>
@@ -1389,8 +1399,8 @@ export default function ClientTracker() {
                         )}>
                           {!groupedByStage['unassigned']?.length ? (
                             <div className={cn(
-                              "rounded-xl border border-dashed border-border/70 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground",
-                              dragOverStageId === 'unassigned' && isDragDropEnabled && "text-primary font-medium"
+                              "flex min-h-[9rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
+                              dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/35 bg-primary/10 text-primary"
                             )}>
                               {dragOverStageId === 'unassigned' && isDragDropEnabled ? 'Drop here' : 'No clients'}
                             </div>
