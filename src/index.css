@@ -3354,17 +3354,113 @@ html {
     box-shadow: 0 6px 14px hsl(43 74% 20% / 0.12), inset 0 1px 0 hsl(0 0% 100% / 0.08);
   }
 
-  .report-qa-empty-state > div {
-    max-width: 30rem;
-    border: 1px solid hsl(43 36% 46% / 0.32);
-    border-radius: 1.75rem;
-    padding: clamp(1.5rem, 4vw, 2.5rem);
+  .report-qa-empty-state {
+    min-height: clamp(22rem, 48vh, 36rem);
+  }
+
+  .report-qa-empty-card {
+    position: relative;
+    width: min(100%, 32rem);
+    max-width: 32rem;
+    overflow: hidden;
+    border: 1px solid hsl(43 38% 48% / 0.34);
+    border-radius: clamp(1.5rem, 3vw, 2rem);
+    padding: clamp(1.5rem, 4vw, 2.75rem);
     background:
-      radial-gradient(circle at top, hsl(43 84% 58% / 0.16), transparent 68%),
-      linear-gradient(180deg, hsl(0 0% 100% / 0.07), hsl(0 0% 100% / 0.03));
+      radial-gradient(circle at 50% 0%, hsl(43 88% 61% / 0.18), transparent 42%),
+      radial-gradient(circle at 8% 88%, hsl(43 72% 48% / 0.09), transparent 30%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.035));
     box-shadow:
-      inset 0 1px 0 hsl(0 0% 100% / 0.08),
-      0 18px 44px hsl(0 0% 0% / 0.16);
+      inset 0 1px 0 hsl(0 0% 100% / 0.1),
+      0 22px 58px hsl(0 0% 0% / 0.18);
+  }
+
+  .report-qa-empty-card::before {
+    content: '';
+    position: absolute;
+    inset: 0.75rem;
+    pointer-events: none;
+    border: 1px solid hsl(43 44% 58% / 0.12);
+    border-radius: calc(clamp(1.5rem, 3vw, 2rem) - 0.45rem);
+  }
+
+  .report-qa-empty-card::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 1.15rem;
+    width: 8rem;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, hsl(43 82% 62% / 0.5), transparent);
+    transform: translateX(-50%);
+  }
+
+  .report-qa-empty-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-empty-icon-wrap {
+    position: relative;
+    display: grid;
+    width: clamp(4.25rem, 12vw, 5.5rem);
+    height: clamp(4.25rem, 12vw, 5.5rem);
+    margin: 0 auto;
+    place-items: center;
+    border: 1px solid hsl(43 44% 54% / 0.3);
+    border-radius: 1.5rem;
+    background:
+      radial-gradient(circle at 35% 25%, hsl(43 82% 64% / 0.32), transparent 46%),
+      linear-gradient(145deg, hsl(43 74% 49% / 0.15), hsl(0 0% 100% / 0.05));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.12),
+      0 16px 30px hsl(43 55% 20% / 0.18);
+  }
+
+  .report-qa-empty-icon {
+    width: clamp(2rem, 6vw, 2.6rem);
+    height: clamp(2rem, 6vw, 2.6rem);
+    color: hsl(43 82% 62% / 0.82);
+    filter: drop-shadow(0 8px 18px hsl(43 72% 34% / 0.22));
+  }
+
+  .report-qa-empty-sparkle {
+    position: absolute;
+    right: -0.35rem;
+    top: -0.3rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    color: hsl(43 86% 66% / 0.78);
+  }
+
+  .report-qa-empty-title {
+    color: hsl(var(--foreground));
+    font-size: clamp(1rem, 2.2vw, 1.2rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .report-qa-empty-helper {
+    max-width: 25rem;
+    margin: 0 auto;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .report-qa-empty-upload-cue {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 1px solid hsl(43 38% 48% / 0.28);
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
+    color: hsl(43 78% 62% / 0.9);
+    background: linear-gradient(180deg, hsl(43 74% 49% / 0.12), hsl(0 0% 100% / 0.035));
+    font-size: 0.75rem;
+    font-weight: 600;
   }
 
   .report-qa-chat-panel .qa-chat-bubble-assistant {

@@ -2299,15 +2299,31 @@ export default function ReportQA() {
               )}
               {messages.length === 0 ? (
                 <div className="report-qa-empty-state h-full flex items-center justify-center text-center p-4 sm:p-8">
-                  <div className="space-y-4">
-                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                    <p className="text-muted-foreground">
-                      {uploadedReports.length > 0
-                        ? uploadedReports.length > 1 
-                          ? 'Ask a question to compare the reports'
-                          : 'Ask a question about the report'
-                        : 'Upload reports to start asking questions'}
-                    </p>
+                  <div className="report-qa-empty-card space-y-5">
+                    <div className="report-qa-empty-icon-wrap" aria-hidden="true">
+                      <MessageSquare className="report-qa-empty-icon" />
+                      <Sparkles className="report-qa-empty-sparkle" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="report-qa-empty-title">
+                        {uploadedReports.length > 0
+                          ? uploadedReports.length > 1 
+                            ? 'Ask a question to compare the reports'
+                            : 'Ask a question about the report'
+                          : 'Upload reports to start asking questions'}
+                      </p>
+                      <p className="report-qa-empty-helper">
+                        {uploadedReports.length > 0
+                          ? 'Use the chat below to surface insights, clarify details, and turn report data into next steps.'
+                          : 'Drop a PDF into the report panel, then Aurixa will keep the chat grounded in the uploaded report.'}
+                      </p>
+                    </div>
+                    {uploadedReports.length === 0 && (
+                      <div className="report-qa-empty-upload-cue" aria-hidden="true">
+                        <Upload className="h-3.5 w-3.5" />
+                        <span>Start with the upload area</span>
+                      </div>
+                    )}
                     {/* Mobile upload button - only shown on small screens */}
                     <div className="lg:hidden space-y-3">
                       <Button
