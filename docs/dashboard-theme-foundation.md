@@ -36,3 +36,15 @@ For every future UI redesign plan in this codebase, include a dedicated step cal
 `Global Theme Foundation / Cascading UI Subcomponent`
 
 That step must check whether the UI can use `DashboardThemeFrame` or existing dashboard CSS variables before creating new page-local styling.
+
+## CRM Conversations Page design source of truth
+
+This CRM-Conversations-specific prompt applies only to `/conversations` and CRM conversation surfaces. Do not cascade these instructions into unrelated dashboards, finance portal pages, reports, or admin surfaces unless a future request explicitly widens the scope.
+
+For CRM Conversations Page updates, review `dashboard-theme-foundation.md` as the primary design source of truth before implementation. Use it to understand and replicate the established visual identity, including the full colour palette, typography, font hierarchy, spacing, layout structure, button styles, imagery treatment, icon style, borders, shadows, and recurring UI/UX patterns.
+
+All new CRM Conversations Page sections, components, pages, and updates must follow the same format, theme, tone, and design system already established by this foundation. The goal is for new CRM conversation work to feel fully consistent and seamlessly cascaded from the existing brand and interface.
+
+Do not introduce conflicting colours, fonts, layouts, or styling patterns on the CRM Conversations Page unless clearly necessary. Where a detail is not explicitly defined, infer the closest matching style from this foundation and maintain consistency throughout the CRM conversation experience.
+
+For implementation plans and code changes on this page, include the `Global Theme Foundation / Cascading UI Subcomponent` step and first check whether `DashboardThemeFrame` variants or existing dashboard CSS variables can provide the required styling before adding page-local classes.
