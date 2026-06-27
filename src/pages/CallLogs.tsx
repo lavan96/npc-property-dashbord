@@ -1022,24 +1022,34 @@ const CallLogs = () => {
 
       <div className="mt-4 md:mt-6">
       {/* Call List */}
-      <Card className={cn(premiumPanel, "rounded-3xl overflow-hidden")}>
-        <CardHeader className="pb-4 border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-purple-500/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-amber-300" />
+      <Card className={cn(premiumPanel, "relative overflow-hidden rounded-[2rem] border-amber-300/15 bg-gradient-to-br from-zinc-950/95 via-black/80 to-zinc-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]")}>
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl" />
+        <CardHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_32%),linear-gradient(90deg,rgba(24,24,27,0.94),rgba(0,0,0,0.68),rgba(88,28,135,0.18))] px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100 shadow-sm shadow-amber-500/10">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
+                Voice Activity Register
+              </div>
+              <CardTitle className="flex items-center gap-3 text-xl tracking-tight text-zinc-50 md:text-2xl">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/10 text-amber-200 shadow-inner shadow-amber-950/40">
+                  <BarChart3 className="h-5 w-5" />
+                </span>
                 Call History
               </CardTitle>
-              <CardDescription className="mt-1">
-                {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
+              <CardDescription className="mt-3 flex flex-wrap items-center gap-2 text-sm text-zinc-400">
+                <span className="rounded-full border border-amber-300/25 bg-black/35 px-3 py-1 font-medium text-amber-100 shadow-inner shadow-black/30">
+                  {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
+                </span>
                 {calls.length !== filteredCalls.length && (
-                  <span className="text-muted-foreground"> (filtered from {calls.length})</span>
+                  <span className="text-zinc-500">filtered from {calls.length}</span>
                 )}
               </CardDescription>
             </div>
             {/* Active filters summary */}
             {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedSquad !== 'all' || selectedIntent !== 'all' || searchQuery || dateRange) && (
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner shadow-black/30 lg:justify-end">
                 {searchQuery && (
                   <Badge variant="secondary" className={premiumActiveFilterBadge}>
                     Search: "{searchQuery}"
@@ -1067,7 +1077,7 @@ const CallLogs = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="h-6 px-2 text-xs"
+                  className="h-7 rounded-full px-3 text-xs text-zinc-300 transition-colors hover:bg-amber-300/10 hover:text-amber-100"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1084,19 +1094,24 @@ const CallLogs = () => {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative p-0">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <RefreshCw className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading call logs...</p>
+            <div className="mx-4 my-5 flex flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 bg-black/30 px-6 py-16 text-center shadow-inner shadow-black/30 sm:mx-6">
+              <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-4 text-amber-200 shadow-lg shadow-amber-500/10">
+                <RefreshCw className="h-8 w-8 animate-spin" />
+              </div>
+              <div>
+                <p className="font-semibold text-zinc-100">Loading call logs...</p>
+                <p className="mt-1 text-sm text-zinc-500">Refreshing the voice activity register.</p>
+              </div>
             </div>
           ) : filteredCalls.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-                <Phone className="w-8 h-8 text-muted-foreground" />
+            <div className="mx-4 my-5 rounded-3xl border border-white/10 bg-black/30 px-6 py-16 text-center shadow-inner shadow-black/30 sm:mx-6">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 shadow-lg shadow-amber-500/10">
+                <Phone className="h-8 w-8 text-amber-200" />
               </div>
-              <p className="font-medium text-foreground mb-1">No call logs found</p>
-              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              <p className="mb-1 font-semibold text-zinc-100">No call logs found</p>
+              <p className="mx-auto max-w-sm text-sm text-zinc-500">
                 {calls.length > 0 
                   ? 'Try adjusting your filters to see more results'
                   : 'Calls will appear here once your Vapi agents start making calls'}
@@ -1105,7 +1120,7 @@ const CallLogs = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="mt-4"
+                  className={cn("mt-4", premiumSecondaryAction)}
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1121,11 +1136,11 @@ const CallLogs = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="max-h-[calc(100vh-17rem)] space-y-3 overflow-y-auto px-4 py-5 [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.35)] [scrollbar-width:thin] sm:px-6">
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
-                  className={`group relative p-4 rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/90 via-zinc-900/75 to-black/80 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 focus-within:ring-2 focus-within:ring-amber-400/60 ${
+                  className={`group relative cursor-pointer rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/95 via-zinc-900/80 to-black/90 p-4 shadow-sm shadow-black/30 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-gradient-to-b before:from-transparent before:via-amber-200/0 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 hover:before:via-amber-200/80 focus-within:ring-2 focus-within:ring-amber-400/60 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
                   onClick={() => openCallDetail(call)}
