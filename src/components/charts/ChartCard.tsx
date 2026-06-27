@@ -129,7 +129,12 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex h-full min-h-[430px] ${selectionMode && isSelected ? 'border-amber-300/80 bg-gradient-to-b from-amber-500/10 via-card/95 to-card/85 ring-2 ring-amber-400/80 shadow-[0_22px_46px_hsl(43_74%_49%/0.18)]' : ''}`}>
+    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex h-full min-h-[430px] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25 hover:ring-amber-300/45' : ''} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-b from-amber-500/12 via-card/95 to-card/85 ring-2 ring-amber-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
+      {selectionMode && (
+        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-amber-200/60 bg-background/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 shadow-lg shadow-amber-950/10 backdrop-blur-md dark:text-amber-200">
+          {isSelected ? 'Selected' : 'Selectable'}
+        </div>
+      )}
       {selectionMode && isSelected && (
         <div className="pointer-events-none absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
           <CheckCircle2 className="h-4 w-4" />
@@ -151,7 +156,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={() => onToggleSelect(chart.id)}
-                className="mr-1 border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground" aria-label={`Select ${chart.title}`}
+                className="mr-1 h-5 w-5 rounded-md border-2 border-amber-300/75 bg-background/90 shadow-[0_4px_12px_hsl(43_74%_49%/0.16)] ring-2 ring-background/80 data-[state=checked]:border-amber-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-amber-400 data-[state=checked]:to-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(43_96%_56%/0.20)]" aria-label={`Select ${chart.title}`}
               />
             )}
             <Badge variant="outline" className={`h-6 rounded-full px-2 py-0 text-[10px] font-semibold leading-none tracking-wide shadow-sm backdrop-blur-sm ${cfg.color}`}>
@@ -188,13 +193,19 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
 
       <CardContent className="flex flex-1 flex-col space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
         <div
-          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode && isSelected ? 'border-amber-300/70 ring-1 ring-amber-300/45' : 'border-border/60'}`}
+          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 ring-2 ring-amber-400/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_34px_rgba(245,158,11,0.22)]' : ''}`}
           onClick={() => onExpand(chart)}
         >
           <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
             {renderChartImage(chart)}
           </div>
           <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-slate-950/5 transition-all duration-300 group-hover/img:ring-amber-400/25 dark:ring-white/10" />
+          {selectionMode && (
+            <div className="pointer-events-none absolute inset-2 rounded-xl bg-gradient-to-br from-amber-500/10 via-transparent to-primary/10 opacity-100" />
+          )}
+          {selectionMode && isSelected && (
+            <div className="pointer-events-none absolute inset-2 rounded-xl bg-amber-950/10 ring-2 ring-inset ring-amber-300/70" />
+          )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-black/5 group-hover/img:opacity-100">
             <div className="rounded-full border border-primary/25 bg-background/90 p-2 shadow-lg shadow-primary/10 backdrop-blur-sm">
               <Maximize2 className="h-4 w-4 text-foreground" />

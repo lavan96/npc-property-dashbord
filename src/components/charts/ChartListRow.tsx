@@ -24,7 +24,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
 
   return (
     <div
-      className={`${PREMIUM_CHART_CARD_CLASS} flex cursor-pointer flex-col gap-3 p-3 sm:flex-row sm:flex-wrap sm:items-center ${selectionMode && isSelected ? 'border-amber-300/80 bg-amber-500/10 ring-2 ring-amber-400/70 shadow-[0_16px_34px_hsl(43_74%_49%/0.16)]' : 'border-border/60'}`}
+      className={`${PREMIUM_CHART_CARD_CLASS} flex cursor-pointer flex-col gap-3 p-3 sm:flex-row sm:flex-wrap sm:items-center ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-r from-amber-500/14 via-card/95 to-primary/8 ring-2 ring-amber-400/80 shadow-[0_18px_42px_hsl(43_74%_49%/0.22),0_0_34px_hsl(43_96%_56%/0.16)]' : ''}`}
       onClick={() => {
         if (selectionMode) {
           onToggleSelect(chart.id);
@@ -36,9 +36,14 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
           checked={isSelected}
           onCheckedChange={() => onToggleSelect(chart.id)}
           onClick={(e) => e.stopPropagation()}
-          className="border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground"
+          className="h-5 w-5 rounded-md border-2 border-amber-300/75 bg-background/90 shadow-[0_4px_12px_hsl(43_74%_49%/0.16)] ring-2 ring-background/80 data-[state=checked]:border-amber-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-amber-400 data-[state=checked]:to-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(43_96%_56%/0.20)]"
           aria-label={`Select ${chart.title}`}
         />
+      )}
+      {selectionMode && (
+        <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-full border border-amber-200/60 bg-background/90 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-amber-700 shadow-md shadow-amber-950/10 backdrop-blur-md dark:text-amber-200">
+          {isSelected ? 'Selected' : 'Selectable'}
+        </div>
       )}
       {selectionMode && isSelected && (
         <div className="pointer-events-none absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
