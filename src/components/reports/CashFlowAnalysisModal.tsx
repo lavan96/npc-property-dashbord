@@ -4956,7 +4956,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             </CashFlowChartsWorkspace>
 
-            <CashFlowAiPanel>
+            <CashFlowAiPanel active={comparisonMode && comparisonReports.length > 0}>
             {/* AI-Powered Comparison Analysis */}
             {comparisonMode && comparisonReports.length > 0 && (
               <Card className="overflow-hidden border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-background shadow-sm">
@@ -5455,7 +5455,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             </Collapsible>
 
-            <CashFlowConstructionPanel>
+            <CashFlowConstructionPanel active={isNewBuild && !!constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0}>
             {/* Construction Progress Payment Schedule - Collapsible (New Builds Only) */}
             {isNewBuild && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 && (
               <Collapsible open={constructionScheduleOpen} onOpenChange={setConstructionScheduleOpen}>
