@@ -775,14 +775,16 @@ export default function ClientTracker() {
   return (
     <div className="min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
       {/* Header */}
-      <div className="rounded-2xl border border-primary/15 bg-card/80 p-4 shadow-xl shadow-black/20 backdrop-blur md:p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-5">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary shadow-inner">
             <Target className="h-3.5 w-3.5" /> CRM Workspace
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">Client Tracker</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">Client Tracker</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-[15px]">
             Track clients through your GHL pipelines
             {pipelines.length > 0 && (
               <span className="ml-2 text-xs md:text-sm">
@@ -794,8 +796,8 @@ export default function ClientTracker() {
         
         {/* Mobile: Compact action bar */}
         {isMobile ? (
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/70 p-2 shadow-inner">
-            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-muted/50 border">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-background/70 p-2 shadow-inner">
+            <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
               {isAutoSyncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
               ) : (
@@ -812,7 +814,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
-              className="h-8 text-xs"
+              className="h-9 rounded-xl px-3 text-xs font-semibold shadow-md shadow-primary/20"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -828,13 +830,13 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
-              className="h-8"
+              className="h-9 rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs">
+                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/70 bg-background/80 text-xs hover:border-primary/30 hover:bg-primary/5">
                   <Download className="h-3.5 w-3.5 mr-1" />
                   Export
                 </Button>
@@ -848,12 +850,12 @@ export default function ClientTracker() {
             </DropdownMenu>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/70 bg-background/60 p-2 shadow-inner">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-background/65 p-2 shadow-inner lg:justify-end">
             {/* Auto-sync toggle */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/10 px-3 py-1.5 shadow-sm">
+                  <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
                     {isAutoSyncing ? (
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
@@ -890,6 +892,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
+              className="rounded-xl px-4 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -906,13 +909,14 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
+              className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5">
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -930,55 +934,59 @@ export default function ClientTracker() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Clients</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-foreground md:text-5xl">{stats.total}</p>
+              </div>
+              <div className="rounded-2xl border border-primary/25 bg-primary/10 p-3 shadow-inner transition-all duration-300 group-hover:border-primary/45 group-hover:bg-primary/15">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Clients</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">With Follow-ups</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-amber-100 md:text-5xl">{stats.withFollowUp}</p>
+              </div>
+              <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-amber-400/45 group-hover:bg-amber-400/15">
+                <Clock className="h-5 w-5 text-amber-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/35 hover:shadow-xl hover:shadow-amber-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-amber-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/10 rounded-lg">
-                <Clock className="h-5 w-5 text-amber-500" />
+        <Card className="group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-red-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overdue</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-red-300 md:text-5xl">{stats.overdue}</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.withFollowUp}</p>
-                <p className="text-sm text-muted-foreground">With Follow-ups</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-red-500/35 hover:shadow-xl hover:shadow-red-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-red-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.overdue}</p>
-                <p className="text-sm text-muted-foreground">Overdue</p>
+              <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-3 shadow-inner transition-all duration-300 group-hover:border-red-500/45 group-hover:bg-red-500/15">
+                <AlertCircle className="h-5 w-5 text-red-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/35 hover:shadow-xl hover:shadow-emerald-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-emerald-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/10 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
+        <Card className="group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">In Finance</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-emerald-300 md:text-5xl">{stats.financeStage}</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.financeStage}</p>
-                <p className="text-sm text-muted-foreground">In Finance</p>
+              <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-emerald-400/45 group-hover:bg-emerald-400/15">
+                <TrendingUp className="h-5 w-5 text-emerald-400" />
               </div>
             </div>
           </CardContent>
@@ -1087,15 +1095,16 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <div className="rounded-2xl border border-border/70 bg-card/75 p-3 shadow-lg shadow-black/10 backdrop-blur">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15 backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
+        <div className="relative flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="group relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
             <Input
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 border-border/70 bg-background/80 pl-10 transition-all focus-visible:ring-primary/40"
+              className="h-11 rounded-xl border-border/70 bg-background/85 pl-10 pr-4 text-sm shadow-inner transition-all placeholder:text-muted-foreground/70 hover:border-primary/25 hover:bg-background/95 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25"
             />
           </div>
           
@@ -1103,11 +1112,11 @@ export default function ClientTracker() {
           {isMobile ? (
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 shrink-0">
+                <Button variant="outline" size="sm" className="h-11 shrink-0 rounded-xl border-border/70 bg-background/85 px-3 shadow-inner hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-primary/25">
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="h-[60vh]">
+              <SheetContent side="bottom" className="h-[60vh] rounded-t-3xl border-border/70 bg-card/95">
                 <SheetHeader>
                   <SheetTitle>Filters</SheetTitle>
                 </SheetHeader>
@@ -1115,14 +1124,14 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Pipeline</label>
                     <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                      <SelectTrigger>
-                        <Layers className="h-4 w-4 mr-2" />
+                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5")}>
+                        <Layers className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Select Pipeline" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Pipelines</SelectItem>
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                        <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                         {pipelines.map(pipeline => (
-                          <SelectItem key={pipeline.id} value={pipeline.id}>
+                          <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
                             {pipeline.name}
                           </SelectItem>
                         ))}
@@ -1132,14 +1141,14 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Stage</label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger>
-                        <Filter className="h-4 w-4 mr-2" />
+                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", statusFilter !== 'all' && "border-primary/45 bg-primary/5")}>
+                        <Filter className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Filter by stage" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Stages</SelectItem>
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                        <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                         {stagesForPipeline.map(stage => (
-                          <SelectItem key={stage.id} value={stage.name}>
+                          <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
                             <div className="flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
                               {stage.name}
@@ -1156,14 +1165,14 @@ export default function ClientTracker() {
             <>
               {/* Desktop: Inline filters */}
               <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                <SelectTrigger className="w-[220px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
-                  <Layers className="h-4 w-4 mr-2" />
+                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[230px]", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                  <Layers className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Select Pipeline" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Pipelines</SelectItem>
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                  <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                   {pipelines.map(pipeline => (
-                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                    <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
                       {pipeline.name}
                     </SelectItem>
                   ))}
@@ -1171,14 +1180,14 @@ export default function ClientTracker() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[200px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[215px]", statusFilter !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                  <Filter className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Filter by stage" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stages</SelectItem>
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                  <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                   {stagesForPipeline.map(stage => (
-                    <SelectItem key={stage.id} value={stage.name}>
+                    <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
                         {stage.name}
