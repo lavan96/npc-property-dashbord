@@ -18,6 +18,7 @@ export function TokenBalanceBanner() {
   const isReportsPage = pathname === "/reports";
   const isReportQAPage = pathname === "/report-qa";
   const isReportRequestsPage = pathname === "/report-requests";
+  const isPortfolioReportsPage = pathname === "/portfolio-reports";
 
   if (!lowBalance || !balance) return null;
 

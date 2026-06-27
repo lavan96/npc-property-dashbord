@@ -3441,7 +3441,7 @@ export default function ReportQA() {
           reportNames={uploadedReports.map(r => r.name.replace('.pdf', ''))}
         />
       )}
-      </div>
+      </DashboardThemeFrame>
     </>
   );
 }
