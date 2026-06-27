@@ -248,31 +248,46 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled} className={className}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          className={cn(
+            'gap-1.5 rounded-full border-primary/20 bg-background/80 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-md',
+            className
+          )}
+        >
           <Library className="h-4 w-4 mr-1.5" />
           Pick from library
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl h-[85vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-3 border-b">
-          <DialogTitle className="flex items-center gap-2">
-            <Library className="h-5 w-5" />
-            Report Library
+      <DialogContent className="max-w-4xl h-[88vh] flex flex-col overflow-hidden p-0 sm:rounded-2xl">
+        <DialogHeader className="border-b bg-gradient-to-br from-primary/10 via-background to-background px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              <Library className="h-5 w-5" />
+            </span>
+            <span>
+              Report Library
+              <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                Trusted report context for this Q&A session
+              </span>
+            </span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="pt-2">
             Search and add existing investment reports as conversation context.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-3 space-y-3 border-b bg-muted/30">
+        <div className="space-y-3 border-b bg-muted/20 px-5 py-4 sm:px-6">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search address, tier, scope…"
-                className="pl-8"
+                className="h-10 rounded-xl bg-background pl-9 shadow-sm"
               />
             </div>
             <div className="w-full sm:w-64">
@@ -290,8 +305,8 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
               type="button"
               onClick={() => setScopeFilter('all')}
               className={cn(
-                'px-2 py-1 rounded-md border transition',
-                scopeFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                'rounded-full border px-3 py-1.5 font-medium transition',
+                scopeFilter === 'all' ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'border-border bg-background hover:border-primary/30 hover:bg-primary/5'
               )}
             >
               <FolderOpen className="h-3 w-3 inline mr-1" />
@@ -301,8 +316,8 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
               type="button"
               onClick={() => setScopeFilter('recent')}
               className={cn(
-                'px-2 py-1 rounded-md border transition',
-                scopeFilter === 'recent' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                'rounded-full border px-3 py-1.5 font-medium transition',
+                scopeFilter === 'recent' ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'border-border bg-background hover:border-primary/30 hover:bg-primary/5'
               )}
             >
               <Clock className="h-3 w-3 inline mr-1" />
@@ -313,8 +328,8 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
               type="button"
               onClick={() => setTierFilter('all')}
               className={cn(
-                'px-2 py-1 rounded-md border transition',
-                tierFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                'rounded-full border px-3 py-1.5 font-medium transition',
+                tierFilter === 'all' ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'border-border bg-background hover:border-primary/30 hover:bg-primary/5'
               )}
             >
               All tiers
@@ -325,8 +340,8 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
                 type="button"
                 onClick={() => setTierFilter(t)}
                 className={cn(
-                  'px-2 py-1 rounded-md border transition capitalize',
-                  tierFilter === t ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                  'rounded-full border px-3 py-1.5 font-medium capitalize transition',
+                  tierFilter === t ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'border-border bg-background hover:border-primary/30 hover:bg-primary/5'
                 )}
               >
                 {t}
@@ -347,15 +362,20 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
         </div>
 
         <ScrollArea className="flex-1 min-h-0">
-          <div className="px-3 py-2 space-y-1">
+          <div className="space-y-2 px-3 py-3 sm:px-4">
             {loading ? (
-              <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Loading library…
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-amber-500/25 bg-amber-500/10 p-8 text-center shadow-sm">
+                <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/15 text-amber-600 shadow-sm dark:text-amber-300">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </span>
+                <p className="font-semibold text-foreground">Loading report library…</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">Fetching available reports without changing your current selection.</p>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="text-center py-12 text-sm text-muted-foreground">
-                No reports match the current filters.
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
+                <FolderOpen className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
+                <p className="font-medium text-foreground">No reports match these filters</p>
+                <p className="mt-1 text-sm text-muted-foreground">Try broadening your search, client, tier, or recent report filter.</p>
               </div>
             ) : (
               filtered.map((r) => {
@@ -368,24 +388,24 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
                     onClick={() => toggle(r.id)}
                     disabled={isExisting}
                     className={cn(
-                      'w-full text-left rounded-md border px-3 py-2.5 flex items-start gap-3 transition',
-                      checked ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted',
+                      'w-full text-left rounded-xl border bg-card px-4 py-3.5 shadow-sm flex items-start gap-3 transition-all',
+                      checked ? 'border-primary bg-primary/10 shadow-md ring-1 ring-primary/15' : 'border-border hover:border-primary/30 hover:bg-primary/5 hover:shadow-md',
                       isExisting && 'opacity-50 cursor-not-allowed'
                     )}
                   >
                     <div
                       className={cn(
-                        'mt-0.5 h-4 w-4 rounded border flex items-center justify-center shrink-0',
-                        checked ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'
+                        'mt-0.5 h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition',
+                        checked ? 'bg-primary border-primary text-primary-foreground shadow-sm' : 'border-muted-foreground/40 bg-background'
                       )}
                     >
                       {checked && <Check className="h-3 w-3" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
+                      <div className="font-semibold text-sm leading-5 text-foreground sm:text-base sm:leading-6">
                         {r.property_address ?? 'Untitled report'}
                       </div>
-                      <div className="flex flex-wrap gap-1.5 mt-1">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
                         {r.report_tier && (
                           <Badge variant="secondary" className="capitalize text-[10px] px-1.5 py-0">
                             {r.report_tier}
@@ -404,7 +424,7 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
                         {isExisting && (
                           <Badge className="text-[10px] px-1.5 py-0">Already loaded</Badge>
                         )}
-                        <span className="text-[10px] text-muted-foreground ml-auto">
+                        <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                           {format(new Date(r.created_at), 'PP')}
                         </span>
                       </div>
