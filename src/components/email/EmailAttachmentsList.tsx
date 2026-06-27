@@ -65,7 +65,7 @@ function ImageThumb({
     <button
       type="button"
       onClick={onOpen}
-      className="group relative h-28 w-28 overflow-hidden rounded-md border bg-muted/30 transition hover:border-primary/50"
+      className="group relative h-32 w-32 overflow-hidden rounded-2xl border border-border/70 bg-muted/30 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
       title={`Preview ${attachment.name}`}
     >
       {!loaded && !errored && (
@@ -89,7 +89,7 @@ function ImageThumb({
           <ImageIcon className="h-6 w-6 text-muted-foreground" />
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 truncate bg-background/80 px-1.5 py-0.5 text-[10px] text-foreground backdrop-blur-sm">
+      <div className="absolute inset-x-0 bottom-0 truncate bg-background/85 px-2 py-1 text-[10px] font-medium text-foreground backdrop-blur-sm">
         {attachment.name}
       </div>
     </button>
@@ -108,19 +108,21 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
     a.contentType?.startsWith('image/') || a.contentType === 'application/pdf';
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-background">
-      <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-3">
-        <Paperclip className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">Attachments ({attachments.length})</span>
+    <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.16)]">
+      <div className="flex items-center gap-2 border-b border-border/55 bg-muted/20 px-5 py-3">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
+          <Paperclip className="h-4 w-4 text-primary" />
+        </span>
+        <span className="text-sm font-semibold text-foreground">Attachments ({attachments.length})</span>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-5 p-5">
         {images.length > 0 && (
           <div>
-            <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Images
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {images.map((att, i) => (
                 <ImageThumb
                   key={`img-${i}`}
@@ -137,15 +139,15 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
             {others.map((attachment, index) => (
               <div
                 key={`file-${index}`}
-                className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 p-3 transition-colors hover:bg-muted/40"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border/65 bg-muted/20 p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted/35 hover:shadow-md"
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <div className="rounded-md bg-primary/10 p-2">
+                  <div className="rounded-xl border border-primary/15 bg-primary/10 p-2.5 shadow-inner">
                     <AttachmentIcon contentType={attachment.contentType} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{attachment.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-sm font-semibold text-foreground" title={attachment.name}>{attachment.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {formatSize(attachment.size)}
                     </p>
                   </div>
@@ -155,7 +157,7 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                       onClick={() => setPreview(attachment)}
                       title="Preview"
                     >
@@ -165,7 +167,7 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                     onClick={() => downloadFile(attachment.storageUrl, attachment.name)}
                     title="Download"
                   >

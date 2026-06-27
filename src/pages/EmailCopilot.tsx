@@ -2655,12 +2655,20 @@ export default function EmailCopilot() {
                   />
 
                   {/* Email Body */}
-                  <div className="bg-card/90 rounded-2xl border border-border/70 p-6 shadow-xl shadow-black/10">
-                    <EmailBodyView
-                      content={selectedEmail.body}
-                      html={selectedEmail.body_html}
-                      className="prose prose-sm max-w-none dark:prose-invert"
-                    />
+                  <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.18)]">
+                    <div className="border-b border-border/55 bg-muted/20 px-5 py-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        <Mail className="h-3.5 w-3.5 text-primary/70" />
+                        Email body
+                      </div>
+                    </div>
+                    <div className="max-h-[min(68vh,56rem)] overflow-auto px-5 py-5 sm:px-7 sm:py-6">
+                      <EmailBodyView
+                        content={selectedEmail.body}
+                        html={selectedEmail.body_html}
+                        className="prose prose-sm max-w-none leading-7 text-foreground/90 dark:prose-invert prose-a:font-medium prose-a:text-primary prose-a:underline-offset-4 prose-a:break-words prose-p:my-3 prose-blockquote:rounded-2xl prose-blockquote:border-l-primary/45 prose-blockquote:bg-muted/35 prose-blockquote:px-4 prose-blockquote:py-3 prose-blockquote:text-muted-foreground prose-pre:whitespace-pre-wrap prose-pre:break-words prose-code:break-words prose-table:block prose-table:max-w-full prose-table:overflow-x-auto [&_*]:max-w-full [&_*]:break-words"
+                      />
+                    </div>
                   </div>
 
                   {/* Attachments Section */}

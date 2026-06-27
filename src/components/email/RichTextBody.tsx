@@ -702,28 +702,28 @@ export default function RichTextBody({ content, className = '' }: RichTextBodyPr
       <FormattedContent content={body} />
 
       {signature && (
-        <details className="mt-5 pt-3 border-t border-border/50">
-          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2 select-none">
+        <details className="mt-6 rounded-2xl border border-border/60 bg-muted/20 p-3">
+          <summary className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
             <span className="font-medium">Show signature</span>
           </summary>
-          <div className="mt-3 pl-3 border-l-2 border-border/30 text-muted-foreground">
+          <div className="mt-3 border-l-2 border-primary/25 pl-3 text-muted-foreground">
             <FormattedContent content={signature} isSmall />
           </div>
         </details>
       )}
 
       {threadHistory && (
-        <details className="mt-6 border-t pt-4">
-          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-2 select-none">
+        <details className="mt-6 rounded-2xl border border-border/60 bg-muted/20 p-3">
+          <summary className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
             </svg>
             <span className="font-medium">Show previous messages in thread</span>
           </summary>
-          <div className="mt-4 pl-4 border-l-2 border-muted text-muted-foreground">
+          <div className="mt-4 border-l-2 border-primary/25 pl-4 text-muted-foreground">
             <FormattedContent content={threadHistory} isSmall />
           </div>
         </details>
