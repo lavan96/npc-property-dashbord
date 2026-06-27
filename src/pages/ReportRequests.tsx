@@ -432,14 +432,17 @@ export default function ReportRequests() {
                 </div>
 
                 {/* Admin Notes */}
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-zinc-200">Admin Notes</Label>
+                <div className="space-y-2 rounded-3xl border border-white/10 bg-black/20 p-4 shadow-inner shadow-black/25">
+                  <Label className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+                    <MessageSquare className="h-3.5 w-3.5 text-amber-200/75" />
+                    Admin Notes
+                  </Label>
                   <Textarea
                     placeholder="Add internal notes or a response to the client..."
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
-                    rows={3}
-                    className="rounded-2xl border-white/10 bg-black/40 text-zinc-100 placeholder:text-zinc-600 transition-all focus-visible:border-amber-300/50 focus-visible:ring-amber-300/20"
+                    rows={4}
+                    className="max-h-44 min-h-28 resize-y rounded-2xl border-white/10 bg-zinc-950/70 text-sm leading-6 text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20"
                   />
                 </div>
 
