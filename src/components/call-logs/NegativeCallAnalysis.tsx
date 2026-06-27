@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
+import { cn } from '@/lib/utils';
+import { callLogBadgeBase, callLogBadgeTone } from './badgeStyles';
 import { format } from 'date-fns';
 import { 
   AlertTriangle,
@@ -97,11 +99,11 @@ const RESOLUTION_STATUS_CONFIG: Record<string, { label: string; color: string; b
 };
 
 const getSeverityColor = (severity: number | null) => {
-  if (!severity) return 'bg-gray-500';
-  if (severity <= 2) return 'bg-yellow-500';
-  if (severity <= 3) return 'bg-orange-500';
-  if (severity <= 4) return 'bg-red-500';
-  return 'bg-red-600';
+  if (!severity) return 'border-zinc-500/30 bg-zinc-500/15 text-zinc-300';
+  if (severity <= 2) return 'border-amber-300/30 bg-amber-500/15 text-amber-300';
+  if (severity <= 3) return 'border-orange-300/30 bg-orange-500/15 text-orange-300';
+  if (severity <= 4) return 'border-red-400/35 bg-red-500/15 text-red-300';
+  return 'border-red-400/45 bg-red-600/20 text-red-200';
 };
 
 const getSeverityLabel = (severity: number | null) => {
@@ -304,7 +306,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               <PhoneCall className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Recovery
               {recoveryQueue.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                <Badge variant="secondary" className={callLogBadgeTone('danger', 'ml-1 h-5 px-1.5')}>
                   {recoveryQueue.length}
                 </Badge>
               )}
@@ -427,12 +429,12 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                                 {call.customer_name || call.phone_number || 'Unknown Caller'}
                               </span>
                               {call.escalation_severity && (
-                                <Badge className={`${getSeverityColor(call.escalation_severity)} text-white text-xs`}>
+                                <Badge className={cn(callLogBadgeBase, getSeverityColor(call.escalation_severity))}>
                                   {getSeverityLabel(call.escalation_severity)}
                                 </Badge>
                               )}
                               {call.recovery_priority && call.recovery_priority >= 4 && (
-                                <Badge variant="outline" className="text-red-500 border-red-500/50 text-xs">
+                                <Badge variant="outline" className={callLogBadgeTone('danger')}>
                                   High Priority
                                 </Badge>
                               )}
@@ -464,7 +466,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                           </div>
                           <div className="flex flex-col items-end gap-2">
                             {call.resolution_status && RESOLUTION_STATUS_CONFIG[call.resolution_status] && (
-                              <Badge className={`${RESOLUTION_STATUS_CONFIG[call.resolution_status].bgColor} ${RESOLUTION_STATUS_CONFIG[call.resolution_status].color} border-0`}>
+                              <Badge className={cn(callLogBadgeBase, RESOLUTION_STATUS_CONFIG[call.resolution_status].bgColor, RESOLUTION_STATUS_CONFIG[call.resolution_status].color, 'border-white/10')}>
                                 {RESOLUTION_STATUS_CONFIG[call.resolution_status].label}
                               </Badge>
                             )}
@@ -515,7 +517,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                             <span className="font-medium">
                               {call.customer_name || call.phone_number || 'Unknown'}
                             </span>
-                            <Badge className={`${getSeverityColor(call.escalation_severity)} text-white text-xs`}>
+                            <Badge className={cn(callLogBadgeBase, getSeverityColor(call.escalation_severity))}>
                               Priority {call.recovery_priority}
                             </Badge>
                           </div>
@@ -650,17 +652,17 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               {/* Severity & Root Cause */}
               <div className="flex flex-wrap gap-3">
                 {selectedCall.escalation_severity && (
-                  <Badge className={`${getSeverityColor(selectedCall.escalation_severity)} text-white`}>
+                  <Badge className={cn(callLogBadgeBase, getSeverityColor(selectedCall.escalation_severity))}>
                     Severity: {selectedCall.escalation_severity}/5 - {getSeverityLabel(selectedCall.escalation_severity)}
                   </Badge>
                 )}
                 {selectedCall.recovery_priority && (
-                  <Badge variant="outline">
+                  <Badge variant="outline" className={callLogBadgeTone('danger')}>
                     Recovery Priority: {selectedCall.recovery_priority}/5
                   </Badge>
                 )}
                 {selectedCall.root_cause_category && ROOT_CAUSE_LABELS[selectedCall.root_cause_category] && (
-                  <Badge variant="secondary" className="gap-1">
+                  <Badge variant="secondary" className={callLogBadgeTone('neutral', 'gap-1')}>
                     {(() => {
                       const config = ROOT_CAUSE_LABELS[selectedCall.root_cause_category!];
                       const Icon = config.icon;

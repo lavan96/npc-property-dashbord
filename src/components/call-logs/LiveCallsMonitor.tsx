@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
+import { callLogBadgeTone } from './badgeStyles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -100,27 +101,27 @@ export const LiveCallsMonitor = () => {
     switch (status) {
       case 'in-progress':
         return (
-          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse">
+          <Badge className={callLogBadgeTone('success', 'animate-pulse')}>
             <Activity className="w-3 h-3 mr-1" />
             In Progress
           </Badge>
         );
       case 'ringing':
         return (
-          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse">
+          <Badge className={callLogBadgeTone('warning', 'animate-pulse')}>
             <Phone className="w-3 h-3 mr-1 animate-bounce" />
             Ringing
           </Badge>
         );
       case 'queued':
         return (
-          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+          <Badge className={callLogBadgeTone('info')}>
             <Loader2 className="w-3 h-3 mr-1 animate-spin" />
             Queued
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline" className={callLogBadgeTone('neutral')}>{status}</Badge>;
     }
   };
 
@@ -143,7 +144,7 @@ export const LiveCallsMonitor = () => {
             Live Calls
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="font-mono">
+            <Badge variant="outline" className={callLogBadgeTone('neutral', 'font-mono')}>
               {liveCalls.length} active
             </Badge>
             <Button variant="ghost" size="icon" onClick={fetchLiveCalls} className="h-8 w-8">
@@ -181,7 +182,7 @@ export const LiveCallsMonitor = () => {
                             {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
                           {call.is_squad_call && (
-                            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-xs">
+                            <Badge className={callLogBadgeTone('squad')}>
                               <Users className="w-3 h-3 mr-1" />
                               Squad
                             </Badge>
@@ -202,7 +203,7 @@ export const LiveCallsMonitor = () => {
                         </div>
 
                         {call.call_intent && (
-                          <Badge variant="secondary" className="text-xs capitalize">
+                          <Badge variant="secondary" className={callLogBadgeTone('info', 'capitalize')}>
                             {call.call_intent.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                           </Badge>
                         )}
