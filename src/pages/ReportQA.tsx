@@ -2165,8 +2165,8 @@ export default function ReportQA() {
             </div>
 
             {/* Desktop: full toolbar layout (unchanged) */}
-            <div className="hidden sm:flex sm:flex-row sm:items-center gap-2 sm:justify-between">
-              <div className="flex items-center gap-2">
+            <div className="hidden sm:flex sm:flex-row sm:flex-wrap sm:items-start gap-3 sm:justify-between">
+              <div className="flex min-w-0 flex-1 items-center gap-2 pt-1">
                 {!showReportsPanel && (
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleReportsPanel} title="Show reports panel (⌘B)">
                     <FileText className="h-4 w-4" />
@@ -2198,9 +2198,9 @@ export default function ReportQA() {
                 )}
               </div>
               
-              <div className="report-qa-toolbar flex items-center gap-1 flex-shrink-0">
+              <div className="report-qa-toolbar flex flex-wrap items-center justify-end gap-1.5 flex-shrink min-w-[18rem]">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
-                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 {conversationId && (
                   <>
                     <ConversationClientLinker
@@ -2219,7 +2219,7 @@ export default function ReportQA() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="report-qa-toolbar-control h-8 w-8"
                   onClick={() => setShowCitations((v) => !v)}
                   title={
                     showCitations
@@ -2228,6 +2228,7 @@ export default function ReportQA() {
                   }
                   aria-pressed={showCitations}
                   aria-label="Toggle citations"
+                  data-active={showCitations ? 'true' : undefined}
                 >
                   {showCitations ? (
                     <Quote className="h-4 w-4" />
@@ -2238,7 +2239,7 @@ export default function ReportQA() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="report-qa-toolbar-control h-8 w-8"
                   disabled={!agentModeSupported}
                   onClick={() => setAgentMode((v) => !v)}
                   title={
@@ -2250,6 +2251,7 @@ export default function ReportQA() {
                   }
                   aria-pressed={agentMode && agentModeSupported}
                   aria-label="Toggle agent mode"
+                  data-active={agentMode && agentModeSupported ? 'true' : undefined}
                 >
                   <Wrench
                     className={cn(
@@ -2259,7 +2261,7 @@ export default function ReportQA() {
                   />
                 </Button>
                 <AccessibilitySettings />
-                {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
+                {conversationId && <Badge variant="outline" className="ml-1 whitespace-nowrap border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] text-primary">Auto-saving</Badge>}
               </div>
             </div>
             <CardDescription className="report-qa-chat-subtitle hidden sm:block pl-12 text-sm">
