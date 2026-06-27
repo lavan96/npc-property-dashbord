@@ -817,10 +817,10 @@ export default function ClientManagement() {
 
           {/* Client List */}
           {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid items-stretch gap-5 sm:grid-cols-2 2xl:grid-cols-3">
               {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse border-border/70 bg-card/80">
-                  <CardContent className="h-48" />
+                <Card key={i} className="min-h-[22rem] animate-pulse rounded-2xl border-border/70 bg-card/80">
+                  <CardContent className="h-56" />
                 </Card>
               ))}
             </div>
@@ -835,7 +835,7 @@ export default function ClientManagement() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid items-stretch gap-5 sm:grid-cols-2 2xl:grid-cols-3">
               {displayClients.map((client) => (
               <ClientCard
                     key={client.id}

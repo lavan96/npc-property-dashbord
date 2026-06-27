@@ -152,10 +152,10 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     : null;
 
   return (
-    <Card className={`group relative overflow-hidden border-border/70 bg-card/85 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/40 hover:shadow-2xl hover:shadow-amber-950/30 ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''} ${isSelected ? 'border-amber-400/60 shadow-amber-950/30' : ''}`}>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-amber-400/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+    <Card className={`group relative flex h-full min-h-[22rem] overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.9),rgba(3,7,18,0.84))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-950/35 ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''} ${isSelected ? 'border-amber-400/60 shadow-amber-950/30' : ''}`}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-amber-400/75 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-      <CardHeader className="relative pb-3">
+      <CardHeader className="relative pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-1">
             <Button
@@ -179,7 +179,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
               size="sm"
             />
             <div className="space-y-1">
-              <h3 className="font-semibold text-foreground leading-tight">{fullName}</h3>
+              <h3 className="font-semibold leading-tight text-foreground">{fullName}</h3>
               {secondaryName && (
                 <p className="text-sm text-muted-foreground">& {secondaryName}</p>
               )}
@@ -249,17 +249,17 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
           </div>
         </div>
       </CardHeader>
-      <CardContent className="relative space-y-4">
+      <CardContent className="relative flex flex-1 flex-col space-y-4 pt-0">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1 rounded-xl border border-border/60 bg-background/45 p-3 transition-colors group-hover:border-amber-500/20">
+          <div className="min-h-[5rem] space-y-1 rounded-xl border border-border/60 bg-background/45 p-3 transition-colors group-hover:border-amber-500/20">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
               <span className="text-xs">Properties</span>
             </div>
             <p className="text-lg font-semibold">{propertyCount}</p>
           </div>
-          <div className="space-y-1 rounded-xl border border-border/60 bg-background/45 p-3 transition-colors group-hover:border-amber-500/20">
+          <div className="min-h-[5rem] space-y-1 rounded-xl border border-border/60 bg-background/45 p-3 transition-colors group-hover:border-amber-500/20">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <DollarSign className="h-3.5 w-3.5" />
               <span className="text-xs">Portfolio</span>
@@ -310,7 +310,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
         )}
 
         {/* GHL Status */}
-        <div className="flex items-center justify-between border-t border-border/60 pt-2">
+        <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-3">
           <span className="text-xs text-muted-foreground">GHL Status</span>
           {getGHLStatusBadge()}
         </div>
