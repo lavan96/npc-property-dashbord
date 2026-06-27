@@ -117,20 +117,18 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className={`rounded-lg p-2 ${summaryIconClass.info}`}>
-                <DollarSign className="h-5 w-5" />
-              </div>
-              <div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="group relative overflow-hidden rounded-3xl border-amber-400/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.95),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/45 hover:shadow-2xl hover:shadow-amber-950/25">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-3">
                 <div className="flex items-center gap-1">
-                  <p className="text-xs text-muted-foreground">Total Assets Under Management</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100/75">Total Assets Under Management</p>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 cursor-help text-muted-foreground/60" />
+                        <Info className="h-3 w-3 shrink-0 cursor-help text-amber-100/50 transition-colors hover:text-amber-100" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
                         Combined estimated value of all client properties across your portfolio.
@@ -138,57 +136,70 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <p className="text-xl font-bold">{formatCurrency(analytics.totalPortfolioValue)}</p>
+                <p className="break-words text-3xl font-bold tracking-[-0.04em] text-amber-50 sm:text-4xl xl:text-3xl 2xl:text-4xl">{formatCurrency(analytics.totalPortfolioValue)}</p>
+              </div>
+              <div className={`rounded-2xl border border-amber-300/25 p-3 shadow-lg shadow-amber-950/20 transition-colors group-hover:border-amber-200/45 group-hover:bg-amber-300/15 ${summaryIconClass.info}`}>
+                <DollarSign className="h-5 w-5" />
               </div>
             </div>
+            <div className="mt-5 h-px bg-gradient-to-r from-amber-300/70 via-amber-100/20 to-transparent" />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className={`rounded-lg p-2 ${summaryIconClass.success}`}>
+        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Total Properties</p>
+                <p className="text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl">{analytics.totalProperties}</p>
+              </div>
+              <div className={`rounded-2xl border border-emerald-300/20 p-3 shadow-lg shadow-emerald-950/15 transition-colors group-hover:border-emerald-200/35 group-hover:bg-emerald-300/12 ${summaryIconClass.success}`}>
                 <Building2 className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Properties</p>
-                <p className="text-xl font-bold">{analytics.totalProperties}</p>
-              </div>
             </div>
+            <div className="mt-5 h-px bg-gradient-to-r from-amber-300/55 via-amber-100/15 to-transparent" />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className={`rounded-lg p-2 ${analytics.totalCashFlow >= 0 ? 'bg-success/12 text-success' : 'bg-destructive/12 text-destructive'}`}>
+        <Card className={`group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl ${analytics.totalCashFlow >= 0 ? 'hover:shadow-emerald-950/20' : 'hover:shadow-red-950/20'}`}>
+          <div className={`pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent ${analytics.totalCashFlow >= 0 ? 'via-emerald-200/55' : 'via-red-200/55'} to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100`} />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Total Monthly Cash Flow</p>
+                <p className={`break-words text-3xl font-bold tracking-[-0.04em] sm:text-4xl xl:text-3xl 2xl:text-4xl ${analytics.totalCashFlow >= 0 ? 'text-emerald-200' : 'text-red-300'}`}>
+                  {formatCurrency(analytics.totalCashFlow)}
+                </p>
+              </div>
+              <div className={`rounded-2xl border p-3 shadow-lg transition-colors ${analytics.totalCashFlow >= 0 ? 'border-emerald-300/25 bg-emerald-400/12 text-emerald-200 shadow-emerald-950/20 group-hover:border-emerald-200/45 group-hover:bg-emerald-300/15' : 'border-red-300/25 bg-red-500/12 text-red-200 shadow-red-950/20 group-hover:border-red-200/45 group-hover:bg-red-500/15'}`}>
                 {analytics.totalCashFlow >= 0 ? (
                   <TrendingUp className="h-5 w-5" />
                 ) : (
                   <TrendingDown className="h-5 w-5" />
                 )}
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Monthly Cash Flow</p>
-                <p className={`text-xl font-bold ${analytics.totalCashFlow >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {formatCurrency(analytics.totalCashFlow)}
-                </p>
-              </div>
             </div>
+            <div className={`mt-5 h-px bg-gradient-to-r ${analytics.totalCashFlow >= 0 ? 'from-emerald-300/60' : 'from-red-300/60'} via-white/15 to-transparent`} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className={`rounded-lg p-2 ${summaryIconClass.accent}`}>
+        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Average LTV</p>
+                <div className="flex items-end gap-1.5">
+                  <p className="text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl">{analytics.avgLTV.toFixed(1)}</p>
+                  <span className="pb-1 text-lg font-semibold text-slate-400">%</span>
+                </div>
+              </div>
+              <div className={`rounded-2xl border border-amber-300/20 p-3 shadow-lg shadow-amber-950/15 transition-colors group-hover:border-amber-200/35 group-hover:bg-amber-300/12 ${summaryIconClass.accent}`}>
                 <Percent className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Average LTV</p>
-                <p className="text-xl font-bold">{analytics.avgLTV.toFixed(1)}%</p>
-              </div>
             </div>
+            <div className="mt-5 h-px bg-gradient-to-r from-amber-300/55 via-amber-100/15 to-transparent" />
           </CardContent>
         </Card>
       </div>
