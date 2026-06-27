@@ -471,6 +471,7 @@ export default function ReportRequests() {
                       </div>
                       <Badge variant="outline" className={cn('w-fit shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                     </div>
+                    <Badge variant="outline" className={cn('w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                   </div>
 
                   <div className="grid gap-2.5 text-sm">

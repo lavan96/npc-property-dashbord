@@ -26,7 +26,7 @@ export function KeyboardShortcutsHelp() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+        <Button variant="ghost" size="sm" className="report-qa-toolbar-control h-8 gap-1.5 px-3 text-xs font-medium" title="Keyboard shortcuts">
           <Keyboard className="h-3 w-3" />
           Shortcuts
         </Button>
