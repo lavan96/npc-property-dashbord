@@ -94,9 +94,12 @@ export function ModelSelector({ selectedModel, onModelChange, disabled }: ModelS
         <Button 
           variant="outline" 
           size="sm" 
-          className="report-qa-toolbar-control h-9 gap-2.5 px-3.5 text-xs font-semibold shadow-sm"
+          className="report-qa-toolbar-control h-11 min-w-11 max-w-full gap-2.5 px-3 text-xs font-semibold shadow-sm sm:h-9 sm:px-3.5"
           disabled={disabled}
           title={`Model: ${selected.name}`}
+          aria-label={`Select AI model. Current model: ${selected.name}`}
+          aria-haspopup="menu"
+          aria-expanded={open}
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/12 text-primary">
             <selected.Icon className="h-3.5 w-3.5" />
@@ -105,7 +108,7 @@ export function ModelSelector({ selectedModel, onModelChange, disabled }: ModelS
           <ChevronDown className="h-3.5 w-3.5 opacity-70" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 border-primary/20 bg-popover/95 p-1.5 shadow-xl backdrop-blur">
+      <DropdownMenuContent align="end" className="w-[min(18rem,calc(100vw-2rem))] border-primary/20 bg-popover/95 p-1.5 shadow-xl backdrop-blur">
         {MODEL_OPTIONS.map((model) => (
           <DropdownMenuItem
             key={model.id}

@@ -1777,14 +1777,14 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "report-qa-premium flex h-[calc(100dvh-8rem)] max-h-[calc(100dvh-8rem)] min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-2 pb-16 sm:h-[calc(100dvh-9rem)] sm:max-h-[calc(100dvh-9rem)] sm:gap-4 sm:p-4 sm:pb-20 md:h-[calc(100dvh-10rem)] md:max-h-[calc(100dvh-10rem)] md:gap-5 md:p-6 md:pb-0",
+          "report-qa-premium flex h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-2 pb-16 sm:h-[calc(100dvh-8rem)] sm:max-h-[calc(100dvh-8rem)] sm:gap-4 sm:p-4 sm:pb-20 md:h-[calc(100dvh-10rem)] md:max-h-[calc(100dvh-10rem)] md:gap-5 md:p-6 md:pb-0",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <div className="report-qa-hero flex shrink-0 items-start justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start md:flex-row md:items-center">
+      <div className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 md:flex-row md:items-center">
         <div className="min-w-0 space-y-1.5">
           <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
             <Sparkles className="h-3 w-3" />
@@ -1837,10 +1837,10 @@ export default function ReportQA() {
         </div>
       </div>
 
-      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-hidden sm:gap-4 md:gap-6 lg:grid-cols-3">
-        {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-4 md:gap-6 lg:grid-cols-3 lg:overflow-hidden lg:pr-0">
+        {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
-        <Card className="report-qa-panel report-qa-reports-panel hidden lg:flex lg:col-span-1 flex-col overflow-hidden min-h-0">
+        <Card className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[18rem] md:max-h-[46dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
           <CardHeader className="report-qa-reports-header pb-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
@@ -1889,7 +1889,7 @@ export default function ReportQA() {
             {/* Premium Upload Zone */}
             <div
               className={cn(
-                "report-qa-dropzone group w-full rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-all cursor-pointer sm:px-5",
+                "report-qa-dropzone group w-full rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-all cursor-pointer sm:px-5 sm:py-6",
                 isDragOver ? 'is-drag-over border-primary' : 'border-primary/45 hover:border-primary/75',
                 isUploading && 'is-processing pointer-events-none',
                 isUploadComplete && !isUploading && !hasUploadError && 'is-ready',
@@ -1897,7 +1897,7 @@ export default function ReportQA() {
               )}
               role="button"
               tabIndex={isUploading ? -1 : 0}
-              aria-label="Upload PDF reports"
+              aria-label="Upload PDF reports. Press Enter or Space to choose files."
               aria-busy={isUploading}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
@@ -2105,7 +2105,7 @@ export default function ReportQA() {
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={handleToggleReportsPanel}>
+                <Button variant="ghost" size="icon" className="h-11 w-11 flex-shrink-0" onClick={handleToggleReportsPanel}>
                   <FileText className="h-3.5 w-3.5" />
                 </Button>
               )}
@@ -2151,7 +2151,7 @@ export default function ReportQA() {
               {/* Mobile overflow menu for all toolbar actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                  <Button variant="ghost" size="icon" className="h-11 w-11 flex-shrink-0" aria-label="Open chat actions menu">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -2228,7 +2228,7 @@ export default function ReportQA() {
                 )}
               </div>
               
-              <div className="report-qa-toolbar flex flex-wrap items-center justify-end gap-1.5 flex-shrink min-w-[18rem]">
+              <div className="report-qa-toolbar flex min-w-0 flex-1 flex-wrap items-center justify-start gap-1.5 sm:justify-end xl:flex-initial">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
                 <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 {conversationId && (
@@ -2681,8 +2681,8 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="report-qa-composer max-h-[14rem] shrink-0 space-y-2 overflow-hidden border-t pt-3 sm:pt-4">
-              <div className="flex gap-1.5 sm:gap-2 items-end">
+            <div className="report-qa-composer max-h-[min(14rem,38dvh)] shrink-0 space-y-2 overflow-hidden border-t pt-3 sm:pt-4">
+              <div className="flex flex-wrap items-end gap-1.5 sm:flex-nowrap sm:gap-2">
                 <Textarea
                   ref={inputRef}
                   placeholder={
@@ -2705,7 +2705,8 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="report-qa-composer-input max-h-40 min-h-[52px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6"
+                  className="report-qa-composer-input min-h-[52px] max-h-40 min-w-0 flex-[1_1_100%] resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6 sm:flex-1"
+                  aria-label="Prompt message input"
                   rows={1}
                 />
               {/* Recording controls */}
@@ -2762,6 +2763,7 @@ export default function ReportQA() {
                   onClick={startRecording}
                   disabled={isProcessing || isTranscribing}
                   title="Start voice input"
+                  aria-label="Start voice input"
                   className="report-qa-composer-control report-qa-mic-button h-11 w-11 flex-shrink-0"
                 >
                   {isTranscribing ? (
@@ -2793,10 +2795,15 @@ export default function ReportQA() {
           {/* Upload area */}
           <div
             className={cn(
-              "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors",
+              "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               isDragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
             )}
             onClick={() => fileInputRef.current?.click()}
+            onKeyDown={handleDropzoneKeyDown}
+            role="button"
+            tabIndex={isUploading ? -1 : 0}
+            aria-label="Upload PDF reports. Press Enter or Space to choose files."
+            aria-busy={isUploading}
           >
             {isUploading ? (
               <div className="space-y-2">
@@ -2902,6 +2909,7 @@ export default function ReportQA() {
             <Search className="absolute left-8 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground sm:left-9" />
             <Input
               placeholder="Search conversations by title or report name..."
+              aria-label="Search conversation history"
               value={historySearchQuery}
               onChange={(e) => setHistorySearchQuery(e.target.value)}
               className="h-10 rounded-xl bg-background pl-9 pr-9 shadow-sm"
@@ -2994,7 +3002,19 @@ export default function ReportQA() {
                               </Button>
                             </div>
                           ) : (
-                            <div onClick={() => loadConversation(conv)}>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                              aria-label={`Load conversation ${conv.title}`}
+                              onClick={() => loadConversation(conv)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  loadConversation(conv);
+                                }
+                              }}
+                            >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">

@@ -3557,6 +3557,80 @@ html {
     opacity: 0.62;
   }
 
+  @media (max-width: 1023px) {
+    .report-qa-premium {
+      overscroll-behavior: contain;
+    }
+
+    .report-qa-hero {
+      border-radius: 1rem;
+    }
+
+    .report-qa-header-actions > button,
+    .report-qa-header-actions [role='button'] {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+
+    .report-qa-reports-panel {
+      flex-shrink: 0;
+    }
+
+    .report-qa-chat-panel {
+      min-height: min(52rem, 82dvh);
+    }
+
+    .report-qa-message-area {
+      max-height: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .report-qa-toolbar {
+      width: 100%;
+      justify-content: flex-start;
+      overflow-wrap: anywhere;
+    }
+
+    .report-qa-suggestions [class*='report-qa-suggestion'],
+    .report-qa-suggestion-chip {
+      white-space: normal;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .report-qa-premium {
+      border-radius: 0;
+    }
+
+    .report-qa-message-area {
+      padding: 0.65rem 0.15rem 0.65rem 0.65rem;
+      border-radius: 1rem;
+    }
+
+    .report-qa-message-stack {
+      padding-right: 0.15rem;
+    }
+
+    .report-qa-message-bubble {
+      max-width: 96% !important;
+    }
+
+    .report-qa-dropzone {
+      min-height: 9rem;
+    }
+
+    .report-qa-composer {
+      margin-inline: -0.15rem;
+      padding-inline: 0.25rem;
+      padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+    }
+
+    .report-qa-composer-control {
+      min-width: 2.75rem;
+      min-height: 2.75rem;
+    }
+  }
+
 
   /* Phase 9 — premium chat message presentation for Report Q&A only. */
   .report-qa-message-stack {
