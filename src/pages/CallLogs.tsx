@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
+
 import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
 import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDashboard';
 import { CallRecordingPlayer, CallRecordingPlayerHandle } from '@/components/call-logs/CallRecordingPlayer';
@@ -63,6 +64,13 @@ import {
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+
+
+const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_34%),radial-gradient(circle_at_80%_8%,rgba(124,58,237,0.10),transparent_28%),linear-gradient(135deg,hsl(222_47%_5%),hsl(220_34%_8%)_46%,hsl(0_0%_4%))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
+const premiumPanel = "border-white/10 bg-black/35 shadow-2xl shadow-black/30 backdrop-blur-xl";
+const premiumCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
+const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner shadow-black/20 transition-colors hover:border-amber-400/40 hover:bg-amber-400/5 focus-visible:ring-2 focus-visible:ring-amber-400/70";
+const premiumTabTrigger = "rounded-xl border border-transparent px-3 py-2 text-muted-foreground transition-all duration-200 hover:border-amber-400/25 hover:bg-amber-400/10 hover:text-amber-100 data-[state=active]:border-amber-400/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/25 data-[state=active]:to-yellow-300/10 data-[state=active]:text-amber-100 data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/10";
 
 interface SquadAssistant {
   id: string;
@@ -485,22 +493,24 @@ const CallLogs = () => {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+    <div className={premiumPageShell}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent" />
+      <div className="mx-auto max-w-[1800px] space-y-5 md:space-y-7 pb-20 md:pb-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className={cn("flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-3xl border p-5 md:p-6", premiumPanel)}>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+          <h1 className="text-2xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-amber-100 via-foreground to-amber-300 bg-clip-text text-transparent">
             Call Logs
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
+          <p className="text-sm text-zinc-400 mt-2 max-w-2xl">Voice intelligence command centre for call outcomes, QA signals, squad handoffs, costs, sentiment, and operational follow-up.</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap rounded-2xl border border-white/10 bg-black/25 p-2">
           {!isMobile && <WeeklyReportConfig />}
           {!isMobile && <CleanupTestCalls onComplete={fetchCalls} />}
           {!isMobile && <CleanupContactNames onComplete={fetchCalls} />}
           {!isMobile && <CallAlerts calls={filteredCalls} />}
           <CallLogsExport calls={filteredCalls} stats={stats} />
-          <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
+          <Button onClick={fetchCalls} variant="outline" size="sm" className={cn("gap-2", premiumControl)}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
@@ -510,29 +520,29 @@ const CallLogs = () => {
       {/* Main Tabs */}
       <Tabs defaultValue="logs" className="w-full">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className={isMobile ? "inline-flex w-auto" : ""}>
-            <TabsTrigger value="logs" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+          <TabsList className={cn("h-auto gap-1 rounded-2xl border border-white/10 bg-black/35 p-1.5 shadow-xl shadow-black/20", isMobile ? "inline-flex w-auto" : "")}>
+            <TabsTrigger value="logs" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
               <Phone className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Call</span> Logs
             </TabsTrigger>
-            <TabsTrigger value="issues" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+            <TabsTrigger value="issues" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
               <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Issues</span>
             </TabsTrigger>
-            <TabsTrigger value="live" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+            <TabsTrigger value="live" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
               <Radio className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Live
             </TabsTrigger>
-            <TabsTrigger value="trends" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+            <TabsTrigger value="trends" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
               <LineChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Trends
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
+            <TabsTrigger value="analytics" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
               <PieChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
             {!isMobile && (
-              <TabsTrigger value="squad-analytics" className="flex items-center gap-2">
+              <TabsTrigger value="squad-analytics" className={cn("flex items-center gap-2", premiumTabTrigger)}>
                 <Users className="w-4 h-4" />
                 Squad Analytics
               </TabsTrigger>
@@ -563,11 +573,11 @@ const CallLogs = () => {
         <TabsContent value="logs" className="mt-4 md:mt-6 space-y-0">
 
       {/* Sticky header: Stats + Filters */}
-      <div className="sticky top-0 z-20 bg-background pb-4 space-y-4 md:space-y-6">
+      <div className="sticky top-0 z-20 rounded-b-3xl border-x border-b border-white/10 bg-black/70 pb-4 pt-2 space-y-4 md:space-y-6 backdrop-blur-xl shadow-2xl shadow-black/30">
 
       {/* Stats Cards - Responsive grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 md:gap-3">
-        <Card className="bg-gradient-to-br from-card to-card/50">
+        <Card className={premiumCard}>
           <CardContent className="p-2 md:p-3">
             <div className="flex items-center gap-1.5 md:gap-2 mb-1">
               <div className="p-1 md:p-1.5 rounded-lg bg-muted">
@@ -578,7 +588,7 @@ const CallLogs = () => {
             <p className="text-lg md:text-xl font-bold">{stats.totalCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-emerald-500/5 to-card">
+        <Card className={cn(premiumCard, "from-emerald-500/10")}>
           <CardContent className="p-2 md:p-3">
             <div className="flex items-center gap-1.5 md:gap-2 mb-1">
               <div className="p-1 md:p-1.5 rounded-lg bg-emerald-500/10">
@@ -589,7 +599,7 @@ const CallLogs = () => {
             <p className="text-lg md:text-xl font-bold text-emerald-500">{stats.completedCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-500/5 to-card">
+        <Card className={cn(premiumCard, "from-blue-500/10")}>
           <CardContent className="p-2 md:p-3">
             <div className="flex items-center gap-1.5 md:gap-2 mb-1">
               <div className="p-1 md:p-1.5 rounded-lg bg-blue-500/10">
@@ -600,7 +610,7 @@ const CallLogs = () => {
             <p className="text-lg md:text-xl font-bold text-blue-500">{stats.successRate}%</p>
           </CardContent>
         </Card>
-        <Card className="hidden sm:block">
+        <Card className={cn(premiumCard, "hidden sm:block")}>
           <CardContent className="p-2 md:p-3">
             <div className="flex items-center gap-1.5 md:gap-2 mb-1">
               <div className="p-1 md:p-1.5 rounded-lg bg-muted">
@@ -611,7 +621,7 @@ const CallLogs = () => {
             <p className="text-lg md:text-xl font-bold">{formatDuration(stats.avgDuration)}</p>
           </CardContent>
         </Card>
-        <Card className="hidden md:block bg-gradient-to-br from-amber-500/5 to-card">
+        <Card className={cn(premiumCard, "hidden md:block from-amber-500/10")}>
           <CardContent className="p-2 md:p-3">
             <div className="flex items-center gap-1.5 md:gap-2 mb-1">
               <div className="p-1 md:p-1.5 rounded-lg bg-amber-500/10">
@@ -622,7 +632,7 @@ const CallLogs = () => {
             <p className="text-lg md:text-xl font-bold text-amber-500">${stats.totalCost.toFixed(2)}</p>
           </CardContent>
         </Card>
-        <Card className="hidden lg:block bg-gradient-to-br from-green-500/5 to-card">
+        <Card className={cn(premiumCard, "hidden lg:block from-green-500/10")}>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="p-1.5 rounded-lg bg-green-500/10">
@@ -633,7 +643,7 @@ const CallLogs = () => {
             <p className="text-xl font-bold text-green-500">{stats.inboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-sky-500/5 to-card">
+        <Card className={cn(premiumCard, "from-sky-500/10")}>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="p-1.5 rounded-lg bg-sky-500/10">
@@ -644,7 +654,7 @@ const CallLogs = () => {
             <p className="text-xl font-bold text-sky-500">{stats.outboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-orange-500/5 to-card">
+        <Card className={cn(premiumCard, "from-orange-500/10")}>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="p-1.5 rounded-lg bg-orange-500/10">
@@ -655,7 +665,7 @@ const CallLogs = () => {
             <p className="text-xl font-bold text-orange-500">{stats.voicemails}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-500/5 to-card">
+        <Card className={cn(premiumCard, "from-purple-500/10")}>
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="p-1.5 rounded-lg bg-purple-500/10">
@@ -678,7 +688,7 @@ const CallLogs = () => {
                 placeholder="Search calls..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className={cn("pl-9", premiumControl)}
               />
             </div>
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
@@ -824,9 +834,9 @@ const CallLogs = () => {
           )}
         </>
       ) : (
-        <Card>
+        <Card className={cn(premiumPanel, "rounded-2xl")}>
           <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[200px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -834,12 +844,12 @@ const CallLogs = () => {
                     placeholder="Search by phone, name, or summary..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
+                    className={cn("pl-9", premiumControl)}
                   />
                 </div>
               </div>
               <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className={cn("w-[180px]", premiumControl)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
@@ -851,7 +861,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className={cn("w-[180px]", premiumControl)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Outcomes" />
                 </SelectTrigger>
@@ -874,7 +884,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className={cn("w-[160px]", premiumControl)}>
                   <Users className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Call Type" />
                 </SelectTrigger>
@@ -886,7 +896,7 @@ const CallLogs = () => {
               </Select>
               {squads.length > 0 && (
                 <Select value={selectedSquad} onValueChange={setSelectedSquad}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className={cn("w-[200px]", premiumControl)}>
                     <GitBranch className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="All Squads" />
                   </SelectTrigger>
@@ -899,7 +909,7 @@ const CallLogs = () => {
                 </Select>
               )}
               <Select value={selectedIntent} onValueChange={setSelectedIntent}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className={cn("w-[160px]", premiumControl)}>
                   <Target className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Intent" />
                 </SelectTrigger>
@@ -919,7 +929,7 @@ const CallLogs = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal",
+                      "w-[240px] justify-start text-left font-normal", premiumControl,
                       !dateRange && "text-muted-foreground"
                     )}
                   >
@@ -994,12 +1004,12 @@ const CallLogs = () => {
 
       <div className="mt-4 md:mt-6">
       {/* Call List */}
-      <Card>
-        <CardHeader className="pb-4">
+      <Card className={cn(premiumPanel, "rounded-3xl overflow-hidden")}>
+        <CardHeader className="pb-4 border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-purple-500/10">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
+                <BarChart3 className="w-5 h-5 text-amber-300" />
                 Call History
               </CardTitle>
               <CardDescription className="mt-1">
@@ -1097,7 +1107,7 @@ const CallLogs = () => {
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
-                  className={`group relative p-4 rounded-xl border bg-card hover:bg-muted/30 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  className={`group relative p-4 rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/90 via-zinc-900/75 to-black/80 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 focus-within:ring-2 focus-within:ring-amber-400/60 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
                   onClick={() => openCallDetail(call)}
@@ -1224,7 +1234,7 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "flex flex-col",
+          "flex flex-col border-white/10 bg-zinc-950/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl",
           isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>
@@ -1649,6 +1659,7 @@ const CallLogs = () => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 };
