@@ -2511,26 +2511,26 @@ export default function EmailCopilot() {
           ) : selectedEmail ? (
             <>
               {/* Email Header */}
-              <div className="px-4 md:px-6 py-3 md:py-4 bg-card/90 border-b border-border/70 shadow-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 md:gap-4 min-w-0 flex-1">
+              <div className="border-b border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86)_56%,hsl(var(--primary)/0.045))] px-4 py-4 shadow-[0_14px_36px_hsl(var(--background)/0.16)] md:px-6">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex min-w-0 flex-1 items-start gap-3 md:gap-4">
                     {isMobile && (
-                      <Button variant="ghost" size="icon" onClick={handleMobileBack} className="-ml-1 shrink-0">
+                      <Button variant="ghost" size="icon" onClick={handleMobileBack} className="-ml-1 shrink-0 rounded-full border border-primary/10 bg-background/45">
                         <ArrowLeft className="h-5 w-5" />
                       </Button>
                     )}
                     {!isMobile && (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.26),hsl(var(--primary)/0.12)_58%,hsl(var(--card)/0.92))] shadow-[inset_0_1px_0_hsl(var(--background)/0.45),0_12px_28px_hsl(var(--primary)/0.13)] ring-1 ring-primary/20">
-                      <span className="text-base font-black uppercase tracking-[0.16em] text-primary drop-shadow-sm">
-                        {getSenderInitials(selectedEmail.sender)}
-                      </span>
-                    </div>
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.28),hsl(var(--primary)/0.12)_58%,hsl(var(--card)/0.92))] shadow-[inset_0_1px_0_hsl(var(--background)/0.45),0_14px_32px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20">
+                        <span className="text-base font-black uppercase tracking-[0.16em] text-primary drop-shadow-sm">
+                          {getSenderInitials(selectedEmail.sender)}
+                        </span>
+                      </div>
                     )}
-                    <div className="min-w-0 flex-1">
-                      <h2 className="text-base md:text-lg font-semibold text-foreground truncate">{selectedEmail.subject || '(No Subject)'}</h2>
-                      <div className="flex items-center gap-1 md:gap-2 mt-0.5 md:mt-1 flex-wrap">
-                        <span title={extractSenderName(selectedEmail.sender)} className="text-xs md:text-sm font-bold text-foreground">{extractSenderName(selectedEmail.sender)}</span>
-                        {!isMobile && <span title={selectedEmail.sender} className="truncate text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>}
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <h2 title={selectedEmail.subject || '(No Subject)'} className="line-clamp-2 text-lg font-bold leading-snug tracking-[-0.02em] text-foreground md:text-xl">{selectedEmail.subject || '(No Subject)'}</h2>
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 md:gap-2">
+                        <span title={extractSenderName(selectedEmail.sender)} className="min-w-0 truncate text-sm font-bold text-foreground md:text-[0.95rem]">{extractSenderName(selectedEmail.sender)}</span>
+                        {!isMobile && <span title={selectedEmail.sender} className="min-w-0 max-w-full truncate rounded-full border border-border/60 bg-background/45 px-2 py-0.5 text-xs text-muted-foreground md:max-w-[22rem]">&lt;{selectedEmail.sender}&gt;</span>}
                         {isNonEmptyArray(selectedEmail.attachments) && (
                           <Badge variant="outline" className="h-5 rounded-full border-primary/25 bg-primary/5 px-2 text-[10px] font-semibold text-primary">
                             <Paperclip className="mr-1 h-2.5 w-2.5" /> {selectedEmail.attachments.length}
@@ -2539,34 +2539,34 @@ export default function EmailCopilot() {
                       </div>
                       {/* To Recipients */}
                       {isNonEmptyArray(selectedEmail.to_recipients) && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground/70">To:</span>
-                          <span>{toStringArray(selectedEmail.to_recipients).join(', ')}</span>
+                        <div className="flex min-w-0 items-start gap-2 text-xs text-muted-foreground">
+                          <span className="shrink-0 font-semibold uppercase tracking-[0.12em] text-foreground/60">To:</span>
+                          <span className="min-w-0 truncate" title={toStringArray(selectedEmail.to_recipients).join(', ')}>{toStringArray(selectedEmail.to_recipients).join(', ')}</span>
                         </div>
                       )}
                       {/* CC Recipients */}
                       {isNonEmptyArray(selectedEmail.cc_recipients) && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground/70">CC:</span>
-                          <span>{toStringArray(selectedEmail.cc_recipients).join(', ')}</span>
+                        <div className="flex min-w-0 items-start gap-2 text-xs text-muted-foreground">
+                          <span className="shrink-0 font-semibold uppercase tracking-[0.12em] text-foreground/60">CC:</span>
+                          <span className="min-w-0 truncate" title={toStringArray(selectedEmail.cc_recipients).join(', ')}>{toStringArray(selectedEmail.cc_recipients).join(', ')}</span>
                         </div>
                       )}
                       {/* BCC Recipients */}
                       {isNonEmptyArray(selectedEmail.bcc_recipients) && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground/70">BCC:</span>
-                          <span>{toStringArray(selectedEmail.bcc_recipients).join(', ')}</span>
+                        <div className="flex min-w-0 items-start gap-2 text-xs text-muted-foreground">
+                          <span className="shrink-0 font-semibold uppercase tracking-[0.12em] text-foreground/60">BCC:</span>
+                          <span className="min-w-0 truncate" title={toStringArray(selectedEmail.bcc_recipients).join(', ')}>{toStringArray(selectedEmail.bcc_recipients).join(', ')}</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span>{formatFullDate(selectedEmail.received_at)}</span>
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                        <span className="text-foreground/70">{formatFullDate(selectedEmail.received_at)}</span>
                         <span className="text-muted-foreground/50">•</span>
                         <span>{formatDistanceToNow(new Date(selectedEmail.received_at), { addSuffix: true })}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 md:gap-2 shrink-0 flex-wrap justify-end">
+                  <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 rounded-2xl border border-border/55 bg-background/35 p-2 shadow-sm xl:max-w-[24rem] xl:justify-end">
                     <EmailClientAssignment
                       emailId={selectedEmail.id}
                       currentClientId={selectedEmail.client_id}
@@ -2594,7 +2594,7 @@ export default function EmailCopilot() {
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/60 bg-card/50 hover:bg-primary/10 hover:text-primary">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
