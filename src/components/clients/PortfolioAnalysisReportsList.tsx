@@ -115,6 +115,13 @@ const getCashflowIcon = (cashflow: number | null) => {
   return <Minus className="h-4 w-4 text-muted-foreground" />;
 };
 
+const getCashflowValueClassName = (cashflow: number | null) => {
+  if (cashflow === null) return 'text-slate-300';
+  if (cashflow > 0) return 'text-emerald-200';
+  if (cashflow < 0) return 'text-red-300';
+  return 'text-slate-300';
+};
+
 export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: PortfolioAnalysisReportsListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [reportToDelete, setReportToDelete] = useState<PortfolioAnalysisReport | null>(null);
@@ -408,12 +415,14 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-right font-medium tabular-nums text-slate-200">{formatCurrency(Number(report.portfolio_value))}</TableCell>
-                      <TableCell className="px-4 py-4 text-right font-medium tabular-nums text-slate-200">{formatCurrency(Number(report.total_equity))}</TableCell>
+                      <TableCell className="px-4 py-4 text-right font-semibold tabular-nums text-amber-50/95 transition-colors group-hover/row:text-amber-50">{formatCurrency(Number(report.portfolio_value))}</TableCell>
+                      <TableCell className="px-4 py-4 text-right font-semibold tabular-nums text-slate-100 transition-colors group-hover/row:text-white">{formatCurrency(Number(report.total_equity))}</TableCell>
                       <TableCell className="px-4 py-4 text-right tabular-nums">
-                        <div className="flex items-center justify-end gap-2 font-medium">
-                          {getCashflowIcon(Number(report.net_monthly_cashflow))}
-                          <span className={Number(report.net_monthly_cashflow) < 0 ? 'text-red-300' : Number(report.net_monthly_cashflow) > 0 ? 'text-emerald-200' : 'text-slate-300'}>
+                        <div className="flex items-center justify-end gap-2.5 font-semibold">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                            {getCashflowIcon(Number(report.net_monthly_cashflow))}
+                          </span>
+                          <span className={getCashflowValueClassName(Number(report.net_monthly_cashflow))}>
                             {formatCurrency(Number(report.net_monthly_cashflow))}
                           </span>
                         </div>
