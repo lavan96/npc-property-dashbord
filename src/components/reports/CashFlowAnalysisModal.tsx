@@ -110,7 +110,7 @@ type YearlyOverrides = {
 // chart-ref/data, print, or construction-schedule behavior. The imported
 // rule list keeps those constraints discoverable for future modal component
 // extraction while preserving all runtime logic below.
-void CASH_FLOW_NON_REGRESSION_RULES;
+
 
 const EDITABLE_FIELDS = [
   { key: 'capitalGrowthRate', label: 'Capital Growth %', type: 'percent', step: 0.1 },
