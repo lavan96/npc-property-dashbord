@@ -36,6 +36,7 @@ import {
   ExternalLink,
   CheckCircle2,
   XCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -626,29 +627,36 @@ export default function Conversations() {
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.12),transparent_30%),linear-gradient(135deg,hsl(220_20%_5%),hsl(222_18%_8%)_45%,hsl(220_16%_6%))] p-3 text-foreground md:p-5">
       {/* Page header */}
-      <div className="relative z-10 flex shrink-0 items-center justify-between rounded-2xl border border-amber-400/20 bg-black/45 px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-xl md:px-5">
-        <div className="flex items-center gap-2">
+      <div className="relative z-10 flex shrink-0 flex-col gap-4 overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(10,10,10,0.88),rgba(24,24,27,0.78)_48%,rgba(120,53,15,0.18))] px-4 py-4 shadow-2xl shadow-black/35 backdrop-blur-xl md:flex-row md:items-center md:justify-between md:px-5">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
+        <div className="relative flex min-w-0 flex-1 items-center gap-3">
           {isMobile && selectedId && (
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleBack}>
+            <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 rounded-full p-0 text-zinc-200 hover:bg-white/10 hover:text-white" onClick={handleBack}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 shadow-[0_0_30px_rgba(234,179,8,0.14)]">
-            <MessageSquare className="h-5 w-5 text-amber-300" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200/30 bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.32),rgba(245,158,11,0.10)_55%,rgba(0,0,0,0.25))] shadow-[0_0_36px_rgba(234,179,8,0.18)]">
+            <MessageSquare className="h-5 w-5 text-amber-200" />
           </div>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-white">Conversations</h1>
-            <p className="hidden text-xs text-zinc-400 sm:block">Premium CRM communications centre</p>
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-semibold tracking-[-0.03em] text-white md:text-3xl">Conversations</h1>
+              {!loadingConversations && (
+                <Badge variant="secondary" className="rounded-full border border-amber-200/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_22px_rgba(234,179,8,0.12)]">
+                  <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
+                  {conversations.length} total
+                </Badge>
+              )}
+            </div>
+            <p className="hidden text-sm text-zinc-400 sm:block">Premium CRM communications centre</p>
           </div>
-          {!loadingConversations && (
-            <Badge variant="secondary" className="border border-amber-300/25 bg-amber-400/10 text-xs text-amber-100 shadow-[0_0_18px_rgba(234,179,8,0.12)]">{conversations.length}</Badge>
-          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="relative flex flex-wrap items-center gap-2.5 md:justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={isExportingHistory} className="border-amber-300/25 bg-zinc-950/70 text-zinc-100 hover:border-amber-300/50 hover:bg-amber-400/10 hover:text-amber-100">
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+              <Button variant="outline" size="sm" disabled={isExportingHistory} className="h-10 rounded-full border-amber-200/25 bg-zinc-950/75 px-4 font-semibold text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 hover:border-amber-200/55 hover:bg-amber-300/10 hover:text-amber-50 disabled:translate-y-0 disabled:opacity-60">
+                {isExportingHistory ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
                 {isExportingHistory ? 'Exporting...' : 'Export'}
               </Button>
             </DropdownMenuTrigger>
@@ -673,11 +681,17 @@ export default function Conversations() {
           <Button
             variant="outline"
             size="sm"
-            className="border-amber-300/25 bg-zinc-950/70 text-zinc-100 hover:border-amber-300/50 hover:bg-amber-400/10 hover:text-amber-100 disabled:opacity-60"
+            className="group h-10 rounded-full border-emerald-300/25 bg-emerald-950/30 px-4 font-semibold text-emerald-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_24px_rgba(16,185,129,0.08)] transition-all hover:-translate-y-0.5 hover:border-emerald-200/55 hover:bg-emerald-400/10 hover:text-emerald-50 disabled:translate-y-0 disabled:opacity-65"
             onClick={handleSyncAndRefresh}
             disabled={isSyncing || loadingConversations}
           >
-            <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', (isSyncing || loadingConversations) && 'animate-spin')} />
+            <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full border border-emerald-200/25 bg-emerald-300/10">
+              {isSyncing || loadingConversations ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-200" />
+              ) : (
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-200 transition-transform group-hover:scale-110" />
+              )}
+            </span>
             {isSyncing ? 'Syncing...' : 'Sync'}
           </Button>
         </div>
