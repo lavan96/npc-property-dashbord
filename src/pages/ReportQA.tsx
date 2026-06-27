@@ -636,6 +636,13 @@ export default function ReportQA() {
     setIsDragOver(false);
   }, []);
 
+  const handleDropzoneKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      fileInputRef.current?.click();
+    }
+  }, []);
+
   const removeReport = (name: string) => {
     setUploadedReports(prev => prev.filter(r => r.name !== name));
   };
@@ -1760,6 +1767,9 @@ export default function ReportQA() {
     return chatTheme.accent;
   };
 
+  const hasUploadError = uploadProgress.some((item) => item.status === 'error');
+  const isUploadComplete = uploadedReports.length > 0 && uploadProgress.every((item) => item.status !== 'uploading' && item.status !== 'processing');
+
   return (
     <>
       <SkipToContent targetId="chat-main" />
@@ -1855,17 +1865,24 @@ export default function ReportQA() {
                   {isUploading ? 'Processing' : 'Ready'}
                 </span>
               </div>
-            {/* Compact Upload Zone */}
+            {/* Premium Upload Zone */}
             <div
               className={cn(
-                "report-qa-dropzone border border-dashed rounded-xl py-4 px-3 text-center transition-all cursor-pointer",
-                isDragOver ? 'is-drag-over border-primary bg-primary/10' : 'border-border/60 hover:border-primary/60 hover:bg-primary/5',
-                isUploading && 'pointer-events-none opacity-50'
+                "report-qa-dropzone group w-full rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-all cursor-pointer sm:px-5",
+                isDragOver ? 'is-drag-over border-primary' : 'border-primary/45 hover:border-primary/75',
+                isUploading && 'is-processing pointer-events-none',
+                isUploadComplete && !isUploading && !hasUploadError && 'is-ready',
+                hasUploadError && 'is-error'
               )}
+              role="button"
+              tabIndex={isUploading ? -1 : 0}
+              aria-label="Upload PDF reports"
+              aria-busy={isUploading}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
+              onKeyDown={handleDropzoneKeyDown}
             >
               <input
                 ref={fileInputRef}
@@ -1880,21 +1897,21 @@ export default function ReportQA() {
               />
               {isUploading ? (
                 <div className="flex flex-col items-center justify-center gap-2">
-                  <span className="report-qa-upload-icon flex h-10 w-10 items-center justify-center rounded-2xl">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="report-qa-upload-icon flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16">
+                    <Loader2 className="h-7 w-7 animate-spin text-amber-300" />
                   </span>
-                  <p className="text-xs font-medium text-foreground">Processing report…</p>
-                  <p className="text-[11px] text-muted-foreground">Extracting content for AI retrieval</p>
+                  <p className="text-sm font-semibold text-foreground sm:text-base">Processing report…</p>
+                  <p className="max-w-[16rem] text-xs leading-5 text-muted-foreground">Extracting content for AI retrieval</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2">
-                  <span className="report-qa-upload-icon flex h-10 w-10 items-center justify-center rounded-2xl">
-                    <Upload className="h-5 w-5 text-primary" />
+                  <span className="report-qa-upload-icon flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16">
+                    <Upload className="h-7 w-7 text-primary transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
                   </span>
-                  <p className="text-xs font-medium text-foreground">
-                    Drop PDFs here or click to upload
+                  <p className="text-sm font-semibold text-foreground sm:text-base">
+                    {isDragOver ? 'Drop PDF reports here' : 'Drop PDFs here or click to upload'}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">PDF reports stay connected to this chat workspace</p>
+                  <p className="max-w-[17rem] text-xs leading-5 text-muted-foreground">PDF reports stay connected to this chat workspace</p>
                 </div>
               )}
             </div>
