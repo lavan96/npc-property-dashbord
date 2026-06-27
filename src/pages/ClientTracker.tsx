@@ -1557,21 +1557,21 @@ export default function ClientTracker() {
 
           {/* Table View */}
           <TabsContent value="table" className="mt-4">
-            <Card className="overflow-hidden border-border/70 bg-background/70 shadow-lg shadow-black/10">
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Pipeline</TableHead>
-                      <TableHead>Stage</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Follow-up Date</TableHead>
-                      <TableHead>Last Updated</TableHead>
-                      <TableHead>Borrowing Capacity</TableHead>
-                      <TableHead>Rental Income</TableHead>
-                      <TableHead>Equity Release</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
+              <CardContent className="client-tracker-kanban-scroll overflow-x-auto p-0">
+                <Table className="min-w-[1120px]">
+                  <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-xl">
+                    <TableRow className="border-border/70 hover:bg-transparent">
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Client Name</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Pipeline</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Stage</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Status</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Follow-up Date</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Last Updated</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Borrowing Capacity</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Rental Income</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Equity Release</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1579,20 +1579,22 @@ export default function ClientTracker() {
                       const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       return (
-                        <TableRow key={client.id} className="transition-colors hover:bg-primary/5">
-                          <TableCell className="font-medium">
-                            {formatFullName(client.primary_first_name, client.primary_surname)}
+                        <TableRow key={client.id} className="border-border/55 transition-colors hover:bg-primary/5">
+                          <TableCell className="max-w-[220px] font-semibold text-foreground">
+                            <span className="block truncate" title={formatFullName(client.primary_first_name, client.primary_surname)}>
+                              {formatFullName(client.primary_first_name, client.primary_surname)}
+                            </span>
                           </TableCell>
                           <TableCell>
                             {pipeline ? (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
                                 {pipeline.name}
                               </Badge>
-                            ) : '-'}
+                            ) : <span className="text-muted-foreground/55">-</span>}
                           </TableCell>
                           <TableCell>
                             <Badge 
-                              className="text-xs text-white"
+                              className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
                               style={{ backgroundColor: stageInfo.color }}
                             >
                               {stageInfo.name}
@@ -1601,39 +1603,39 @@ export default function ClientTracker() {
                           <TableCell>
                             {client.opportunity_status ? (
                               <Badge variant="outline" className={cn(
-                                "text-xs",
+                                "rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-inner",
                                 client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600',
                                 client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500',
                                 client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600',
                               )}>
                                 {client.opportunity_status.charAt(0).toUpperCase() + client.opportunity_status.slice(1)}
                               </Badge>
-                            ) : '-'}
+                            ) : <span className="text-muted-foreground/55">-</span>}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap text-sm tabular-nums">
                             {client.follow_up_date 
                               ? format(new Date(client.follow_up_date), 'MMM d, yyyy')
-                              : '-'
+                              : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
                             {client.pipeline_updated_at
                               ? format(new Date(client.pipeline_updated_at), 'MMM d, yyyy')
-                              : '-'
+                              : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell>{formatCurrency(client.borrowing_capacity)}</TableCell>
-                          <TableCell>
+                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.borrowing_capacity ? "text-emerald-500" : "text-muted-foreground/55")}>{formatCurrency(client.borrowing_capacity)}</TableCell>
+                          <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
                             {client.proposed_rental_income 
-                              ? `$${client.proposed_rental_income}/wk`
-                              : '-'
+                              ? <span className="font-semibold text-emerald-500">${client.proposed_rental_income}/wk</span>
+                              : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell>{formatCurrency(client.equity_release)}</TableCell>
+                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.equity_release ? "text-emerald-500" : "text-muted-foreground/55")}>{formatCurrency(client.equity_release)}</TableCell>
                           <TableCell className="text-right">
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-xl border border-border/60 bg-background/70 p-0 text-muted-foreground shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary">
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
                               </DialogTrigger>
