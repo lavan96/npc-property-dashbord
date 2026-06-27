@@ -75,3 +75,11 @@ export {
   type DeterministicVisualRepairResult,
   type RunDeterministicVisualRepairOptions,
 } from './deterministicRepairRunner';
+
+export {
+  VISUAL_REPAIR_ORCHESTRATION_PIPELINE_VERSION,
+  runVisualRepairOrchestrationPipeline,
+  type RunVisualRepairOrchestrationPipelineOptions,
+  type VisualRepairOrchestrationPipelineResult,
+  type VisualRepairOrchestrationSummary,
+} from './repairOrchestrationPipeline';
