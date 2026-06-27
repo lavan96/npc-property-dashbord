@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Search, LayoutGrid, List, CheckSquare, X, FolderOpen, CalendarDays } from 'lucide-react';
+import { Search, LayoutGrid, List, CheckSquare, X, FolderOpen, CalendarDays, Sparkles } from 'lucide-react';
 
 interface ChartFiltersProps {
   searchQuery: string;
@@ -125,46 +125,45 @@ export function ChartFilters({
 
       {/* Action row */}
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
-        <div className="flex overflow-hidden rounded-xl border border-border/60 bg-background/75 p-1 shadow-inner shadow-black/5">
-          <Button
-            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-            size="sm"
-            className={cn('h-9 rounded-lg px-3 transition-all', viewMode === 'grid' && 'bg-amber-500/15 text-primary shadow-sm')}
-            onClick={() => onViewModeChange('grid')}
-            title="Grid view"
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-            size="sm"
-            className={cn('h-9 rounded-lg px-3 transition-all', viewMode === 'list' && 'bg-amber-500/15 text-primary shadow-sm')}
-            onClick={() => onViewModeChange('list')}
-            title="List view"
-          >
-            <List className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant={viewMode === 'grouped' ? 'secondary' : 'ghost'}
-            size="sm"
-            className={cn('h-9 rounded-lg px-3 transition-all', viewMode === 'grouped' && 'bg-amber-500/15 text-primary shadow-sm')}
-            onClick={() => onViewModeChange('grouped')}
-            title="Group by report"
-          >
-            <FolderOpen className="h-3.5 w-3.5" />
-          </Button>
+        <div className="flex items-center overflow-hidden rounded-2xl border border-amber-300/25 bg-gradient-to-b from-background/95 to-muted/35 p-1 shadow-[inset_0_1px_0_hsl(var(--background)),0_14px_34px_hsl(43_74%_49%/0.09)]" role="group" aria-label="Chart view mode">
+          {[
+            { mode: 'grid' as const, title: 'Grid view', icon: LayoutGrid },
+            { mode: 'list' as const, title: 'List view', icon: List },
+            { mode: 'grouped' as const, title: 'Group by report', icon: FolderOpen },
+          ].map(({ mode, title, icon: Icon }) => {
+            const active = viewMode === mode;
+            return (
+              <Button
+                key={mode}
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'relative h-9 min-w-10 rounded-xl px-3 text-muted-foreground transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-0',
+                  'hover:-translate-y-0.5 hover:bg-amber-500/10 hover:text-foreground hover:shadow-sm',
+                  active && 'bg-gradient-to-br from-amber-300 via-amber-400 to-primary text-primary-foreground shadow-[0_10px_24px_hsl(43_74%_49%/0.28)] hover:bg-amber-400 hover:text-primary-foreground'
+                )}
+                onClick={() => onViewModeChange(mode)}
+                title={title}
+                aria-pressed={active}
+              >
+                {active && <span className="absolute inset-x-2 top-0 h-px rounded-full bg-amber-50/90" />}
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            );
+          })}
         </div>
 
         <Button
           variant={selectionMode ? 'default' : 'outline'}
           size="sm"
           className={cn(
-            'h-10 gap-1.5 rounded-xl border-primary/25 px-3 text-xs font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary',
-            selectionMode && 'bg-gradient-to-r from-primary to-amber-500 text-primary-foreground shadow-[0_12px_26px_hsl(43_74%_49%/0.18)] hover:text-primary-foreground'
+            'group h-10 gap-1.5 rounded-2xl border-amber-300/35 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-0',
+            selectionMode && 'border-amber-300/70 bg-gradient-to-r from-primary via-amber-500 to-amber-400 text-primary-foreground shadow-[0_14px_30px_hsl(43_74%_49%/0.24)] hover:text-primary-foreground'
           )}
           onClick={onToggleSelectionMode}
+          aria-pressed={selectionMode}
         >
-          <CheckSquare className="h-3.5 w-3.5" />
+          {selectionMode ? <Sparkles className="h-3.5 w-3.5" /> : <CheckSquare className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />}
           {selectionMode ? `${selectedCount} selected` : 'Select'}
         </Button>
       </div>
