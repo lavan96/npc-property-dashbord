@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown } from 'lucide-react';
+import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -99,7 +99,12 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`group overflow-hidden border-border/60 bg-card/85 shadow-xl shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 ${isSelected ? 'ring-2 ring-primary border-primary/60 shadow-primary/15' : ''}`}>
+    <Card className={`group relative overflow-hidden border-border/60 bg-card/85 shadow-xl shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 ${selectionMode && isSelected ? 'border-amber-300/80 bg-gradient-to-b from-amber-500/10 via-card/95 to-card/85 ring-2 ring-amber-400/80 shadow-[0_22px_46px_hsl(43_74%_49%/0.18)]' : ''}`}>
+      {selectionMode && isSelected && (
+        <div className="pointer-events-none absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
+          <CheckCircle2 className="h-4 w-4" />
+        </div>
+      )}
       <CardHeader className="space-y-2 border-b border-border/40 bg-gradient-to-b from-muted/20 to-transparent pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -112,7 +117,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={() => onToggleSelect(chart.id)}
-                className="mr-1"
+                className="mr-1 border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground" aria-label={`Select ${chart.title}`}
               />
             )}
             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${cfg.color}`}>
@@ -148,7 +153,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
 
       <CardContent className="space-y-3 px-3 pb-3 pt-3">
         <div
-          className="group/img relative cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-background/80 shadow-inner transition-all duration-300 hover:border-primary/35 hover:bg-background"
+          className={`group/img relative cursor-pointer overflow-hidden rounded-xl border bg-background/80 shadow-inner transition-all duration-300 hover:border-primary/35 hover:bg-background ${selectionMode && isSelected ? 'border-amber-300/70 ring-1 ring-amber-300/45' : 'border-border/60'}`}
           onClick={() => onExpand(chart)}
         >
           <div className="h-52 w-full p-3 transition-transform duration-300 group-hover/img:scale-[1.015]">
