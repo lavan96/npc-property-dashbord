@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { format } from 'date-fns';
 import { 
   Search, 
@@ -800,9 +801,9 @@ export default function ClientTracker() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
+    <DashboardThemeFrame as="main" variant="page" className="min-h-screen max-w-none space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
       {/* Header */}
-      <div className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-5">
+      <DashboardThemeFrame as="header" variant="hero" className="client-tracker-gold-interaction border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 md:p-5">
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
         <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -958,7 +959,7 @@ export default function ClientTracker() {
           </div>
         )}
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1122,7 +1123,7 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <div className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15 backdrop-blur-xl">
+      <DashboardThemeFrame as="section" variant="section" className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.35rem] border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
         <div className="relative flex flex-col gap-3 md:flex-row md:items-center">
           <div className="group relative flex-1">
@@ -1227,7 +1228,7 @@ export default function ClientTracker() {
             </>
           )}
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* No pipelines synced message */}
       {!isLoading && pipelines.length === 0 && (
@@ -1875,7 +1876,7 @@ export default function ClientTracker() {
           </Dialog>
         )
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }
 
