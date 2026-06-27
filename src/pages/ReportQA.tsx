@@ -2649,7 +2649,7 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="report-qa-composer max-h-[13rem] shrink-0 space-y-1 overflow-hidden border-t pt-2 sm:pt-3">
+            <div className="report-qa-composer max-h-[14rem] shrink-0 space-y-2 overflow-hidden border-t pt-3 sm:pt-4">
               <div className="flex gap-1.5 sm:gap-2 items-end">
                 <Textarea
                   ref={inputRef}
@@ -2673,7 +2673,7 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="max-h-40 min-h-[44px] flex-1 resize-none overflow-y-auto rounded-2xl"
+                  className="report-qa-composer-input max-h-40 min-h-[52px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6"
                   rows={1}
                 />
               {/* Recording controls */}
@@ -2685,7 +2685,7 @@ export default function ReportQA() {
                     onClick={pauseRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Pause recording"
-                    className="h-10 w-10 flex-shrink-0"
+                    className="report-qa-composer-control report-qa-composer-control-secondary h-11 w-11 flex-shrink-0"
                   >
                     <Pause className="h-4 w-4" />
                   </Button>
@@ -2695,7 +2695,7 @@ export default function ReportQA() {
                     onClick={finalizeRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Stop and transcribe"
-                    className="h-10 w-10 flex-shrink-0"
+                    className="report-qa-composer-control h-11 w-11 flex-shrink-0"
                   >
                     <Square className="h-4 w-4" />
                   </Button>
@@ -2708,7 +2708,7 @@ export default function ReportQA() {
                     onClick={resumeRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Resume recording"
-                    className="h-10 w-10 flex-shrink-0 border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    className="report-qa-composer-control report-qa-composer-control-secondary h-11 w-11 flex-shrink-0 border-orange-500 text-orange-500 hover:bg-orange-500/10"
                   >
                     <Play className="h-4 w-4" />
                   </Button>
@@ -2718,7 +2718,7 @@ export default function ReportQA() {
                     onClick={finalizeRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Stop and transcribe"
-                    className="h-10 w-10 flex-shrink-0"
+                    className="report-qa-composer-control h-11 w-11 flex-shrink-0"
                   >
                     <Square className="h-4 w-4" />
                   </Button>
@@ -2730,7 +2730,7 @@ export default function ReportQA() {
                   onClick={startRecording}
                   disabled={isProcessing || isTranscribing}
                   title="Start voice input"
-                  className="h-10 w-10 flex-shrink-0"
+                  className="report-qa-composer-control report-qa-mic-button h-11 w-11 flex-shrink-0"
                 >
                   {isTranscribing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -2742,7 +2742,9 @@ export default function ReportQA() {
                 <Button
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH}
-                  className="h-10 flex-shrink-0"
+                  className="report-qa-composer-control report-qa-send-button h-11 w-11 flex-shrink-0 rounded-2xl"
+                  title="Send message"
+                  aria-label="Send message"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
