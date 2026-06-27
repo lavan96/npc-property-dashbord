@@ -88,6 +88,16 @@ type NoteType = typeof noteTypes[number]['value'];
 // Character limit for note truncation
 const NOTE_TRUNCATE_LENGTH = 150;
 const PAGE_SIZE = 10;
+const activeClientBadgeClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
+const activeClientActionButtonClass = "client-tracker-gold-interaction rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
+const activeClientMenuContentClass = "z-50 min-w-[10rem] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur-xl";
+const activeClientMenuItemClass = "cursor-pointer rounded-lg px-2.5 py-2 text-sm focus:bg-primary/10 focus:text-primary";
+
+const getActiveStageBadgeStyle = (color: string) => ({
+  backgroundColor: `${color}20`,
+  borderColor: `${color}80`,
+  color,
+});
 
 /**
  * Fetch notes with pagination for infinite scrolling
@@ -364,32 +374,32 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
   };
 
   return (
-    <Card className={cn("flex flex-col", client.is_favorite && "ring-2 ring-yellow-400/50")}>
-      <CardHeader className="pb-3">
+    <Card className={cn(
+      "client-tracker-gold-interaction group flex flex-col overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.74))] shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10",
+      client.is_favorite && "ring-2 ring-yellow-400/50"
+    )}>
+      <CardHeader className="border-b border-border/60 bg-card/35 pb-3">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge 
-              className="text-xs sm:text-sm max-w-full truncate"
-              style={{ 
-                backgroundColor: stageInfo.color + '20',
-                color: stageInfo.color,
-                borderColor: stageInfo.color 
-              }}
+              className={cn(activeClientBadgeClass, "truncate border")}
+              style={getActiveStageBadgeStyle(stageInfo.color)}
               variant="outline"
             >
               {stageInfo.name}
             </Badge>
             {client.deal_status === 'closed' && (
-              <Badge variant="default" className="text-xs bg-emerald-600 hover:bg-emerald-700">
+              <Badge variant="default" className={cn(activeClientBadgeClass, "border border-emerald-500/30 bg-emerald-500/15 text-emerald-100 shadow-emerald-500/15 hover:bg-emerald-500/20")}>
                 🏆 Deal Closed
               </Badge>
             )}
           </div>
-          <div className="flex items-start gap-1 min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0"
+              aria-label={client.is_favorite ? 'Remove from active clients' : 'Add to active clients'}
+              className={cn("h-10 w-10 shrink-0 hover:border-yellow-400/35 hover:bg-yellow-400/10 hover:text-yellow-400 focus-visible:ring-yellow-400/30", activeClientActionButtonClass)}
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
             >
@@ -408,19 +418,19 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               invalidateKeys={[['client-notes', client.id]]}
             />
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-lg truncate">
+              <CardTitle className="truncate text-lg font-semibold tracking-tight transition-colors group-hover:text-primary">
                 {formatFullName(client.primary_first_name, client.primary_surname)}
               </CardTitle>
-              <div className="flex flex-col gap-1.5 text-sm text-muted-foreground mt-1.5">
+              <div className="mt-2 flex flex-col gap-1.5 text-sm text-muted-foreground">
                 {client.primary_email && (
-                  <span className="flex items-center gap-1.5 truncate">
-                    <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="flex items-center gap-1.5 truncate" title={client.primary_email}>
+                    <Mail className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
                     <span className="truncate">{client.primary_email}</span>
                   </span>
                 )}
                 {client.primary_mobile && (
                   <span className="flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                    <Phone className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" />
                     {client.primary_mobile}
                   </span>
                 )}
@@ -429,16 +439,16 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 pt-0 space-y-4">
+      <CardContent className="flex-1 space-y-4 p-4">
         {/* Add Note Section */}
         {isAddingNote ? (
-          <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+          <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-3 shadow-inner shadow-black/10">
             <div className="flex items-center gap-2.5 flex-wrap">
               <Select value={newNoteType} onValueChange={(v: NoteType) => setNewNoteType(v)}>
-                <SelectTrigger className="w-32 h-8 text-sm">
+                <SelectTrigger className="h-8 w-32 rounded-xl border-border/70 bg-background/80 text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl border-border/70 bg-popover/95 shadow-xl">
                   {noteTypes.map(type => (
                     <SelectItem key={type.value} value={type.value}>
                       <div className="flex items-center gap-2">
@@ -459,12 +469,12 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               placeholder="Enter your note..."
               value={newNoteContent}
               onChange={(e) => setNewNoteContent(e.target.value)}
-              className="min-h-[72px] text-sm"
+              className="min-h-[88px] rounded-xl border-border/70 bg-background/85 text-sm focus-visible:ring-primary/35"
             />
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="h-8 text-sm"
+                className="h-8 rounded-xl text-sm shadow-sm shadow-primary/15 focus-visible:ring-primary/35"
                 onClick={() => addNoteMutation.mutate()}
                 disabled={!newNoteContent.trim() || addNoteMutation.isPending}
               >
@@ -476,7 +486,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 text-sm"
+                className="h-8 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
                 onClick={() => {
                   setIsAddingNote(false);
                   setNewNoteContent('');
@@ -490,7 +500,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="w-full h-8 text-sm"
+            className="client-tracker-gold-interaction h-10 w-full rounded-xl border-primary/25 bg-primary/5 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/35"
             onClick={() => setIsAddingNote(true)}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -500,16 +510,17 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
 
         {/* Notes List with Infinite Scroll */}
         {notesLoading ? (
-          <div className="flex items-center justify-center py-4">
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-border/60 bg-card/35 py-5 text-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">Loading notes...</span>
           </div>
         ) : notes.length > 0 ? (
           <div className="space-y-2.5">
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5" />
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+              <FileText className="h-3.5 w-3.5 text-primary/70" />
               Notes ({notes.length}{hasNextPage ? '+' : ''})
             </p>
-            <ScrollArea className="h-48" onScrollCapture={handleScrollCapture}>
+            <ScrollArea className="h-52 rounded-2xl border border-border/55 bg-background/45 p-2" onScrollCapture={handleScrollCapture}>
               <div 
                 ref={scrollRef}
                 className="space-y-2.5 pr-3"
@@ -517,19 +528,19 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                 {notes.map((note: ClientNote) => (
                   <div 
                     key={note.id} 
-                    className="bg-muted/50 rounded-lg p-3 text-sm group relative"
+                    className="client-tracker-gold-interaction relative rounded-2xl border border-border/60 bg-card/80 p-3 text-sm shadow-sm shadow-black/5 transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/10"
                   >
                     {editingNoteId === note.id ? (
                       <div className="space-y-2">
                         <Textarea
                           value={editNoteContent}
                           onChange={(e) => setEditNoteContent(e.target.value)}
-                          className="min-h-[72px] text-sm"
+                          className="min-h-[88px] rounded-xl border-border/70 bg-background/85 text-sm focus-visible:ring-primary/35"
                         />
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="h-7 text-sm"
+                            className="h-8 rounded-xl text-sm focus-visible:ring-primary/35"
                             onClick={() => updateNoteMutation.mutate(note.id)}
                             disabled={!editNoteContent.trim() || updateNoteMutation.isPending}
                           >
@@ -541,7 +552,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 text-sm"
+                            className="h-8 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
                             onClick={handleCancelEdit}
                           >
                             Cancel
@@ -550,14 +561,14 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className={getNoteTypeColor(note.note_type)}>
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className={cn("flex h-6 w-6 items-center justify-center rounded-full bg-background/80", getNoteTypeColor(note.note_type))}>
                             {getNoteTypeIcon(note.note_type)}
                           </span>
-                          <span className="capitalize text-xs text-muted-foreground">
+                          <span className="capitalize text-xs font-semibold text-muted-foreground">
                             {note.note_type}
                           </span>
-                          <span className="text-xs text-muted-foreground ml-auto">
+                          <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground/75">
                             {format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}
                           </span>
                           <DropdownMenu>
@@ -565,32 +576,33 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 hover:bg-muted"
+                                aria-label={`Open note actions for ${format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}`}
+                                className={cn("h-9 w-9 p-0", activeClientActionButtonClass)}
                               >
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleStartEdit(note)}>
-                                <Pencil className="h-3.5 w-3.5 mr-2" />
+                            <DropdownMenuContent align="end" sideOffset={6} className={activeClientMenuContentClass}>
+                              <DropdownMenuItem className={activeClientMenuItemClass} onClick={() => handleStartEdit(note)}>
+                                <Pencil className="mr-2 h-3.5 w-3.5 text-primary" />
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => deleteNoteMutation.mutate(note.id)}
-                                className="text-destructive focus:text-destructive"
+                                className={cn(activeClientMenuItemClass, "text-destructive focus:bg-destructive/10 focus:text-destructive")}
                               >
-                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        <p className="whitespace-pre-wrap">{getNoteDisplay(note)}</p>
+                        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground/90">{getNoteDisplay(note)}</p>
                         {isNoteTruncated(note.content) && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-1.5 text-xs text-primary hover:text-primary/80 mt-1.5"
+                            className="client-tracker-gold-interaction mt-2 h-7 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35"
                             onClick={() => toggleNoteExpansion(note.id)}
                           >
                             {expandedNotes.has(note.id) ? (
@@ -611,17 +623,19 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                   </div>
                 ))}
                 {isFetchingNextPage && (
-                  <div className="flex justify-center py-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Loading more notes...
                   </div>
                 )}
               </div>
             </ScrollArea>
           </div>
         ) : (
-        <p className="text-base text-muted-foreground italic">
-            No notes for this client
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 bg-card/35 p-4 text-center text-sm text-muted-foreground">
+            <FileText className="h-5 w-5 text-primary/60" />
+            <p className="font-medium italic">No notes for this client</p>
+          </div>
         )}
       </CardContent>
     </Card>
