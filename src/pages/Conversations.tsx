@@ -778,23 +778,30 @@ export default function Conversations() {
             style={!isMobile ? { width: convPanelWidth, minWidth: 260, maxWidth: 550, flexShrink: 0 } : undefined}
           >
             {/* Search & filter */}
-            <div className="shrink-0 space-y-3 border-b border-white/10 bg-zinc-950/70 p-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <div className="shrink-0 space-y-3.5 border-b border-white/10 bg-gradient-to-b from-zinc-950/90 via-zinc-950/80 to-black/45 p-3.5 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)]">
+              <div className="relative group">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex w-11 items-center justify-center">
+                  <Search className="h-4 w-4 text-zinc-500 transition-colors duration-200 group-focus-within:text-amber-300" />
+                </div>
                 <Input
                   placeholder="Search conversations..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-9 border-white/10 bg-black/45 pl-9 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:border-amber-300/50 focus-visible:ring-amber-300/25"
+                  className="h-11 rounded-2xl border-white/10 bg-black/55 pl-11 pr-4 text-sm font-medium text-zinc-100 shadow-inner shadow-black/30 outline-none transition-all duration-200 placeholder:font-normal placeholder:text-zinc-400/80 hover:border-white/20 hover:bg-black/65 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/25 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                 />
               </div>
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex flex-wrap gap-1.5 rounded-2xl border border-white/10 bg-black/35 p-1.5 shadow-inner shadow-black/30">
                 {['all', 'sms', 'email', 'whatsapp'].map(ch => (
                   <Button
                     key={ch}
                     variant={channelFilter === ch ? 'default' : 'outline'}
                     size="sm"
-                    className={cn("h-7 rounded-full px-3 text-xs transition-all", channelFilter === ch ? "bg-amber-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.25)] hover:bg-amber-300" : "border-white/10 bg-zinc-900/70 text-zinc-300 hover:border-amber-300/40 hover:bg-amber-400/10 hover:text-amber-100")}
+                    className={cn(
+                      "min-h-8 flex-1 basis-[calc(50%-0.375rem)] rounded-xl px-3 text-xs font-semibold tracking-wide transition-all duration-200 sm:basis-auto sm:flex-none focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
+                      channelFilter === ch
+                        ? "border border-amber-200/60 bg-gradient-to-b from-amber-300 to-amber-500 text-black shadow-[0_0_24px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.45)] hover:from-amber-200 hover:to-amber-400"
+                        : "border border-transparent bg-zinc-900/45 text-zinc-300/85 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-100"
+                    )}
                     onClick={() => setChannelFilter(ch)}
                   >
                     {ch === 'all' ? 'All' : ch === 'sms' ? 'SMS' : ch === 'whatsapp' ? 'WhatsApp' : 'Email'}
