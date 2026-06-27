@@ -164,6 +164,16 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
     ? Math.round(reports.reduce((acc, r) => acc + (r.health_score || 0), 0) / reports.length)
     : 0;
   const totalPortfolioValue = reports.reduce((acc, r) => acc + (Number(r.portfolio_value) || 0), 0);
+  const avgHealthAccent = avgHealthScore >= 75
+    ? 'from-emerald-300 to-teal-300 shadow-emerald-500/20'
+    : avgHealthScore >= 50
+      ? 'from-amber-300 to-yellow-300 shadow-amber-500/20'
+      : 'from-red-300 to-rose-300 shadow-red-500/20';
+  const avgHealthIconClass = avgHealthScore >= 75
+    ? 'text-emerald-200'
+    : avgHealthScore >= 50
+      ? 'text-amber-200'
+      : 'text-red-200';
 
   const handleViewPDF = async (report: PortfolioAnalysisReport) => {
     if (!report.pdf_file_path) {
@@ -230,24 +240,56 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       {showHeader && (
         <>
           {/* Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              { title: 'Total Reports', value: totalReports, icon: FileText, accent: 'text-amber-200' },
-              { title: 'Avg Health Score', value: `${avgHealthScore}/100`, icon: TrendingUp, accent: 'text-emerald-200' },
-              { title: 'Combined Portfolio', value: formatCurrency(totalPortfolioValue), icon: Building2, accent: 'text-amber-200' },
-            ].map((metric) => (
-              <Card key={metric.title} className="group overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-slate-950/90 via-zinc-950/85 to-black/80 shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-amber-950/25">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{metric.title}</CardTitle>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-2 transition-colors group-hover:border-amber-300/30 group-hover:bg-amber-400/10">
-                    <metric.icon className={`h-4 w-4 ${metric.accent}`} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold tracking-tight text-white">{metric.value}</div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Total Reports</CardTitle>
+                <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3 text-amber-200 shadow-lg shadow-amber-950/20 transition-colors group-hover:border-amber-200/40 group-hover:bg-amber-300/15">
+                  <FileText className="h-5 w-5" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-4xl font-bold tracking-[-0.04em] text-white sm:text-5xl">{totalReports}</div>
+                <div className="mt-5 h-px bg-gradient-to-r from-amber-300/70 via-amber-100/20 to-transparent" />
+              </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Avg Health Score</CardTitle>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 shadow-lg shadow-black/20 transition-colors group-hover:border-amber-200/35 group-hover:bg-white/10">
+                  <TrendingUp className={`h-5 w-5 ${avgHealthIconClass}`} />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-end gap-1">
+                  <span className="text-4xl font-bold tracking-[-0.04em] text-white sm:text-5xl">{avgHealthScore}</span>
+                  <span className="pb-1.5 text-lg font-semibold text-slate-500">/100</span>
+                </div>
+                <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/8">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${avgHealthAccent}`}
+                    style={{ width: `${Math.min(Math.max(avgHealthScore, 0), 100)}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden rounded-3xl border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_34%),linear-gradient(145deg,rgba(24,18,8,0.98),rgba(10,10,12,0.96)_55%,rgba(0,0,0,0.92))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:shadow-[0_24px_70px_rgba(245,158,11,0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent opacity-80" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/75">Combined Portfolio</CardTitle>
+                <div className="rounded-2xl border border-amber-200/30 bg-amber-300/15 p-3 text-amber-100 shadow-lg shadow-amber-950/30 transition-colors group-hover:border-amber-100/50 group-hover:bg-amber-300/20">
+                  <Building2 className="h-5 w-5" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="break-words text-4xl font-bold tracking-[-0.05em] text-amber-50 sm:text-5xl xl:text-4xl 2xl:text-5xl">{formatCurrency(totalPortfolioValue)}</div>
+                <div className="mt-5 h-px bg-gradient-to-r from-amber-200/80 via-amber-100/30 to-transparent" />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Search and Actions */}
