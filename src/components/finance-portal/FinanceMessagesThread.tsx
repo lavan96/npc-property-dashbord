@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Paperclip, Download, X } from 'lucide-react';
+import { Loader2, Send, Paperclip, Download, X, ShieldCheck } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -39,6 +39,7 @@ interface Props {
   /** Polling interval in ms, default 8s */
   pollMs?: number;
   className?: string;
+  fillContainer?: boolean;
 }
 
 const formatStamp = (iso: string) => {
@@ -55,7 +56,7 @@ const formatBytes = (n: number | null) => {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageSent, pollMs = 8000, className }: Props) {
+export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageSent, pollMs = 8000, className, fillContainer = false }: Props) {
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -63,6 +64,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
   const [attachment, setAttachment] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef(0);
 
@@ -89,8 +91,14 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
     load(true);
     const id = setInterval(() => load(true), pollMs);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+  }, [draft]);
 
   useEffect(() => {
     if (messages.length !== lastCountRef.current) {
@@ -178,23 +186,29 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
   };
 
   return (
-    <div className={cn('flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden', className)}>
-      <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.05),transparent_34%)] p-4 [scrollbar-color:rgba(16,185,129,0.32)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
+    <div className={cn('flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card', fillContainer ? 'h-full' : 'h-[600px]', className)}>
+      <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.07),transparent_34%)] p-4 [scrollbar-color:rgba(139,92,246,0.4)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-emerald-200/80" /></div>
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-violet-200/80" />
+            <p className="mt-3 font-medium text-foreground">Loading finance messages…</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Syncing the latest partner thread activity.</p>
+          </div>
         ) : messages.length === 0 ? (
-          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
-            No messages yet. Start the conversation below.
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+            <ShieldCheck className="mx-auto mb-3 h-9 w-9 text-violet-200/65" />
+            <p className="font-medium text-foreground">No messages yet. Start the conversation below.</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">This finance channel is ready for partner communication.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4 pb-1">
             {messages.map(m => {
               const mine = m.sender_type === viewerSide;
               return (
                 <div key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
                   <div className={cn(
-                    'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15',
-                    mine ? 'border-emerald-300/30 bg-gradient-to-br from-emerald-300 to-teal-600 text-black' : 'border-white/10 bg-zinc-900/95 text-foreground'
+                    'max-w-[92%] rounded-2xl sm:max-w-[82%] border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
+                    mine ? 'border-violet-300/30 bg-gradient-to-br from-violet-300 to-blue-500 text-black' : 'border-blue-300/15 bg-zinc-900/95 text-foreground'
                   )}>
                     {!mine && (
                       <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
@@ -205,8 +219,9 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                     {m.attachment_path && m.attachment_filename && (
                       <button
                         onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
+                        aria-label={`Download attachment ${m.attachment_filename}`}
                         className={cn(
-                          'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 hover:underline',
+                          'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40',
                           mine ? 'text-primary-foreground/90' : 'text-foreground/80'
                         )}
                       >
@@ -224,18 +239,20 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
         )}
       </ScrollArea>
 
-      <div className="shrink-0 space-y-2 border-t border-emerald-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
+      <div className="shrink-0 space-y-2 border-t border-violet-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
         {attachment && (
           <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-muted-foreground">
             <Paperclip className="h-3.5 w-3.5" />
             <span className="truncate flex-1">{attachment.name}</span>
             <span className="text-muted-foreground">{formatBytes(attachment.size)}</span>
-            <button onClick={() => { setAttachment(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+            <button aria-label="Remove selected attachment" onClick={() => { setAttachment(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
               className="rounded-full text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
         <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
+            ref={textareaRef}
+            aria-label="Compose Finance Portal message"
             placeholder="Write a message..."
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -243,15 +260,15 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); }
             }}
             disabled={sending}
-            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-emerald-300/30 disabled:cursor-not-allowed disabled:opacity-60"
+            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 transition-all placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-violet-300/30 disabled:cursor-not-allowed disabled:opacity-60"
             maxLength={5000}
           />
           <div className="flex flex-col gap-1.5">
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleAttach} />
-            <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} className="h-9 w-9 rounded-xl border-white/10 bg-black/25 text-muted-foreground transition-all hover:border-emerald-300/30 hover:bg-emerald-300/10 hover:text-emerald-100 focus-visible:ring-emerald-300/40 disabled:opacity-50">
+            <Button type="button" variant="outline" size="icon" aria-label="Attach file to Finance Portal message" onClick={() => fileInputRef.current?.click()} disabled={sending} className="h-9 w-9 rounded-xl border-white/10 bg-black/25 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:text-violet-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] focus-visible:ring-violet-300/40 disabled:opacity-50 disabled:hover:translate-y-0">
               <Paperclip className="h-4 w-4" />
             </Button>
-            <Button type="button" size="icon" onClick={send} disabled={sending || (!draft.trim() && !attachment)} className="h-9 w-9 rounded-xl bg-emerald-300 text-black shadow-lg shadow-emerald-950/20 transition-all hover:bg-emerald-200 focus-visible:ring-emerald-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none">
+            <Button type="button" size="icon" aria-label="Send Finance Portal message" onClick={send} disabled={sending || (!draft.trim() && !attachment)} className="h-9 w-9 rounded-xl bg-violet-300 text-black shadow-lg shadow-violet-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-200 hover:shadow-[0_14px_32px_rgba(139,92,246,0.22)] focus-visible:ring-violet-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
               {sending || uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
