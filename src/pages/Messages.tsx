@@ -312,21 +312,21 @@ export default function Messages() {
                           key={t.client_id}
                           onClick={() => setSelectedClientId(t.client_id)}
                           className={cn(
-                            'group relative w-full overflow-hidden rounded-2xl border border-transparent px-3.5 py-3 text-left transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
-                            selectedClientId === t.client_id && 'border-amber-300/40 bg-amber-300/12 shadow-[inset_3px_0_0_rgba(251,191,36,0.95),0_14px_34px_rgba(0,0,0,0.22)] before:opacity-100',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            selectedClientId === t.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-amber-50">{t.client_name}</div>
+                            <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-amber-50">{t.client_name}</div>
                             {t.unread_count > 0 && (
-                              <Badge variant="destructive" className="shrink-0">{t.unread_count}</Badge>
+                              <Badge variant="destructive" className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{t.unread_count}</Badge>
                             )}
                           </div>
-                          <div className={cn('mt-1 truncate text-xs leading-5 text-muted-foreground/85', !t.last_message_preview && 'italic text-muted-foreground/55')}>
+                          <div className={cn('mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground/85', !t.last_message_preview && 'italic text-muted-foreground/55')}>
                             {t.last_message_preview || '—'}
                           </div>
                           {t.last_message_at && (
-                            <div className="mt-2 inline-flex rounded-full border border-white/10 bg-black/25 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
                               {formatDistanceToNow(new Date(t.last_message_at), { addSuffix: true })}
                             </div>
                           )}
@@ -381,29 +381,29 @@ export default function Messages() {
                           key={g.client_id}
                           onClick={() => setSelectedFinanceClientId(g.client_id)}
                           className={cn(
-                            'group relative w-full overflow-hidden rounded-2xl border border-transparent px-3.5 py-3 text-left transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
-                            selectedFinanceClientId === g.client_id && 'border-amber-300/40 bg-amber-300/12 shadow-[inset_3px_0_0_rgba(251,191,36,0.95),0_14px_34px_rgba(0,0,0,0.22)] before:opacity-100',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-lg hover:shadow-black/20 hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            selectedFinanceClientId === g.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-amber-50">{g.client_name}</div>
+                            <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-amber-50">{g.client_name}</div>
                             {g.unread_total > 0 && (
-                              <Badge variant="destructive" className="shrink-0">{g.unread_total}</Badge>
+                              <Badge variant="destructive" className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{g.unread_total}</Badge>
                             )}
                           </div>
-                          <div className={cn('mt-1 truncate text-xs leading-5 text-muted-foreground/85', !g.last_message_preview && 'italic text-muted-foreground/55')}>
+                          <div className={cn('mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground/85', !g.last_message_preview && 'italic text-muted-foreground/55')}>
                             {g.last_message_preview || '—'}
                           </div>
-                          <div className="flex items-center justify-between mt-1">
+                          <div className="mt-2 flex items-center justify-between gap-2">
                             <div className="truncate text-[10px] text-muted-foreground/75">
                               {g.partner_emails.join(', ') || 'Unassigned'}
                             </div>
-                            <Badge variant="outline" className="text-[10px] shrink-0">
+                            <Badge variant="outline" className="shrink-0 rounded-full border-amber-300/20 bg-amber-300/10 px-2 text-[10px] text-amber-100">
                               {g.thread_count} {g.thread_count === 1 ? 'thread' : 'threads'}
                             </Badge>
                           </div>
                           {g.last_message_at && (
-                            <div className="mt-2 inline-flex rounded-full border border-white/10 bg-black/25 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
                               {formatDistanceToNow(new Date(g.last_message_at), { addSuffix: true })}
                             </div>
                           )}
