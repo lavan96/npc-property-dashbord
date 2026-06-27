@@ -197,25 +197,45 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
   const selectedPreset = ROUTING_PRESETS.find((preset) => preset.value === route) || ROUTING_PRESETS[0];
   const financeAllocatedToClient = route === 'client_finance';
+  const displayName = clientName || 'Client Portal';
 
 
   return (
-    <div className="flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">Messages</span>
+    <div className="flex h-[600px] min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-zinc-950/90 shadow-xl shadow-black/25">
+      <div className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-white/[0.03] to-transparent px-4 py-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="h-10 w-10 shrink-0 border border-amber-300/25 bg-amber-300/10">
+              <AvatarFallback className="bg-amber-300/10 text-xs font-semibold text-amber-100">
+                {getInitials(displayName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+                <Badge variant="outline" className="shrink-0 rounded-full border-amber-300/25 bg-amber-300/10 px-2 text-[10px] text-amber-100">
+                  Client Portal
+                </Badge>
+              </div>
+              <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                <MessageCircle className="h-3.5 w-3.5 text-amber-200/80" />
+                <span>{messages.length} message{messages.length === 1 ? '' : 's'}</span>
+              </div>
+            </div>
+          </div>
+          <Badge variant="outline" className="rounded-full border-white/10 bg-black/25 px-2.5 text-[10px] text-muted-foreground">
+            Command Centre visible
+          </Badge>
         </div>
-        <span className="text-xs text-muted-foreground">{messages.length} message{messages.length === 1 ? '' : 's'}</span>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
+      <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.05),transparent_34%)] p-4 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground py-12">
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
             No messages yet. Send a message to start the conversation.
           </div>
         ) : (
@@ -223,7 +243,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             {messages.map(m => {
               const mine = m.sender_type === 'advisor';
               return (
-                <div key={m.id} className={cn('flex items-end gap-2', mine ? 'flex-row-reverse' : 'flex-row')}>
+                <div key={m.id} className={cn('flex items-end gap-3', mine ? 'flex-row-reverse' : 'flex-row')}>
                   <Avatar className="h-7 w-7 shrink-0">
                     <AvatarFallback className={cn(
                       'text-[10px] font-semibold',
@@ -232,24 +252,24 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                       {mine ? <Headphones className="h-3.5 w-3.5" /> : getInitials(m.sender_name || clientName)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={cn('max-w-[78%] flex flex-col', mine ? 'items-end' : 'items-start')}>
+                  <div className={cn('max-w-[82%] flex flex-col', mine ? 'items-end' : 'items-start')}>
                     <div className={cn(
-                      'rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
+                      'rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15',
                       m.is_internal
-                        ? 'bg-amber-500/10 text-foreground border border-dashed border-amber-500/40 rounded-br-md'
+                        ? 'border-dashed border-amber-300/45 bg-amber-300/10 text-foreground rounded-br-md'
                         : mine
-                          ? 'bg-primary text-primary-foreground rounded-br-md'
-                          : 'bg-muted text-foreground rounded-bl-md',
+                          ? 'border-amber-300/30 bg-gradient-to-br from-amber-300 to-yellow-600 text-black rounded-br-md'
+                          : 'border-white/10 bg-zinc-900/95 text-foreground rounded-bl-md',
                     )}>
                       {!mine && (
-                        <div className="text-[10px] uppercase opacity-70 mb-1 flex items-center gap-1">
+                        <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
                           <UserIcon className="h-2.5 w-2.5" />
                           {m.sender_name || clientName || 'Client'}
                         </div>
                       )}
                       {m.message}
                     </div>
-                    <span className="text-[10px] text-muted-foreground mt-1 px-1 flex items-center gap-1">
+                    <span className="mt-1.5 flex items-center gap-1 px-1 text-[10px] text-muted-foreground/85">
                       {(m.is_internal || m.visibility_scope) && (
                         <Badge variant="outline" className={cn(
                           'text-[9px] px-1 py-0 h-3.5 gap-0.5',
@@ -278,9 +298,9 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
         )}
       </ScrollArea>
 
-      <div className="border-t border-border p-3 bg-card">
-        <div className="flex items-center gap-1 mb-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Route:</span>
+      <div className="shrink-0 border-t border-amber-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Route:</span>
           {ROUTING_PRESETS.map(preset => {
             const active = preset.value === route;
             return (
@@ -289,7 +309,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                 type="button"
                 size="sm"
                 variant={active ? 'default' : 'outline'}
-                className="h-auto min-h-7 px-2.5 py-1 text-xs"
+                className={cn('h-auto min-h-7 rounded-full px-3 py-1 text-xs transition-all focus-visible:ring-amber-300', active ? 'bg-amber-300 text-black hover:bg-amber-200' : 'border-white/10 bg-black/20 text-muted-foreground hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100')}
                 onClick={() => setRoute(preset.value)}
                 title={preset.description}
               >
@@ -298,16 +318,16 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             );
           })}
         </div>
-        <div className="mb-2 flex items-start gap-2 rounded-md border border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
-          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+        <div className="mb-2 flex items-start gap-2 rounded-2xl border border-white/10 bg-black/25 p-2.5 text-[11px] leading-5 text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/80" />
           <span>{selectedPreset.description}</span>
         </div>
 
         {financeAllocatedToClient && (
-          <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 p-2">
+          <div className="mb-2 rounded-2xl border border-amber-300/15 bg-amber-300/5 p-2.5">
             <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Finance action allocation</label>
             <Select value={financeAllocationStatus} onValueChange={(value) => setFinanceAllocationStatus(value as FinanceAllocationStatus)}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-9 rounded-xl border-white/10 bg-black/30 text-xs focus:ring-amber-300/40">
                 <SelectValue placeholder="Choose finance action" />
               </SelectTrigger>
               <SelectContent>
@@ -319,7 +339,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             <p className="mt-1 text-[10px] text-muted-foreground">Finance receives access only to this allocated client-facing thread.</p>
           </div>
         )}
-        <div className="flex gap-2 items-end">
+        <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
             placeholder={
               route === 'client_finance' ? 'Message the client and allocate this thread to Finance...'
@@ -336,14 +356,14 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
               }
             }}
             disabled={sending}
-            className="min-h-[60px] resize-none flex-1"
+            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-amber-300/30 disabled:cursor-not-allowed disabled:opacity-60"
             maxLength={5000}
           />
-          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()}>
+          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()} className="h-10 w-10 shrink-0 rounded-xl bg-amber-300 text-black shadow-lg shadow-amber-950/20 transition-all hover:bg-amber-200 focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5">
+        <p className="mt-2 text-[10px] text-muted-foreground/80">
           Press ⌘/Ctrl+Enter to send · Command Centre controls route, visibility, allocation and governance logging.
         </p>
       </div>

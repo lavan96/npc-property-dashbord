@@ -144,6 +144,11 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
     [threads],
   );
 
+  const selectedThread = sortedThreads.find((thread) => thread.id === selectedThreadId) || null;
+  const selectedThreadLabel = selectedThread
+    ? THREAD_TYPE_LABEL[selectedThread.thread_type || ''] || (selectedThread.thread_type || 'Thread')
+    : 'Finance Portal thread';
+
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   }
@@ -211,14 +216,37 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
       </div>
 
       {/* Selected thread */}
-      <div className="min-h-[480px]">
+      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-emerald-300/15 bg-zinc-950/90 shadow-xl shadow-black/20">
         {selectedThreadId ? (
-          <FinanceMessagesThread
-            threadId={selectedThreadId}
-            viewerSide="staff"
-            invoke={(fn, body) => invokeSecureFunction(fn, body)}
-            onMessageSent={() => loadThreads(true)}
-          />
+          <div className="flex h-full min-h-[480px] flex-col">
+            <div className="border-b border-emerald-300/10 bg-gradient-to-r from-emerald-300/10 via-white/[0.03] to-transparent px-4 py-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground">{selectedThreadLabel}</p>
+                    <Badge variant="outline" className="shrink-0 rounded-full border-emerald-300/25 bg-emerald-300/10 px-2 text-[10px] text-emerald-100">
+                      Finance Portal
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                    <span>{selectedThread?.last_message_at ? formatDistanceToNow(new Date(selectedThread.last_message_at), { addSuffix: true }) : 'No activity yet'}</span>
+                    {selectedThread?.unread_count_staff ? (
+                      <Badge className="rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black">
+                        {selectedThread.unread_count_staff} unread
+                      </Badge>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <FinanceMessagesThread
+              threadId={selectedThreadId}
+              viewerSide="staff"
+              invoke={(fn, body) => invokeSecureFunction(fn, body)}
+              onMessageSent={() => loadThreads(true)}
+              className="h-full flex-1 rounded-none border-0 bg-transparent shadow-none"
+            />
+          </div>
         ) : (
           <Card>
             <CardContent className="py-12 text-center">
