@@ -433,12 +433,13 @@ export default function ReportRequests() {
             return (
               <div className="space-y-4">
                 <div className="space-y-4 rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.58),rgba(9,9,11,0.42))] p-4 shadow-inner shadow-black/30">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={cn('rounded-2xl p-3 shadow-inner shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
-                      <div>
-                        <p className="text-base font-semibold tracking-tight text-white">{typeConf.label}</p>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
+                        <p className="min-w-0 truncate text-base font-semibold tracking-tight text-white">{typeConf.label}</p>
                       </div>
+                      <Badge variant="outline" className={cn('w-fit shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                     </div>
                     <Badge variant="outline" className={cn('w-fit rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                   </div>
