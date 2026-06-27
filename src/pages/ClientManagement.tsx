@@ -860,38 +860,48 @@ export default function ClientManagement() {
           <ClientComparison clients={clients} />
         </TabsContent>
 
-        <TabsContent value="portfolio-reports" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/70 p-4 shadow-inner">
-            <div>
-              <h2 className="text-lg font-semibold">Portfolio Performance Reports</h2>
-              <p className="text-sm text-muted-foreground">
+        <TabsContent value="portfolio-reports" className="space-y-5 rounded-2xl border border-amber-400/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.09),transparent_34%),linear-gradient(180deg,rgba(15,15,18,0.78),rgba(0,0,0,0.48))] p-3 shadow-2xl shadow-black/20 md:p-5">
+          <div className="relative overflow-hidden rounded-3xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-black/25">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
+                  Portfolio Intelligence
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight text-white">Portfolio Performance Reports</h2>
+                <p className="text-sm leading-6 text-slate-400">
                 Quick view of recent portfolio analysis reports — open the full page for search, stats, and bulk actions
-              </p>
+                </p>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => window.location.href = '/portfolio-reports'}
+                className="h-11 rounded-2xl bg-gradient-to-r from-amber-300 to-yellow-500 px-5 font-semibold text-black shadow-lg shadow-amber-950/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-200 hover:to-yellow-400 hover:shadow-amber-500/20 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Full Reports Page
+              </Button>
             </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => window.location.href = '/portfolio-reports'}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Full Reports Page
-            </Button>
           </div>
           <PortfolioAnalysisReportsList showHeader={false} />
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
-          <Card className="border-amber-500/20 bg-card/80 shadow-xl shadow-black/20 transition-colors hover:border-amber-400/40">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+          <Card className="relative overflow-hidden rounded-3xl border-amber-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] shadow-2xl shadow-black/25 transition-colors hover:border-amber-400/40">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+            <CardHeader className="border-b border-white/10 pb-4">
+              <CardTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-white sm:text-2xl">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/15 text-amber-100 shadow-lg shadow-amber-950/20">
+                  <Upload className="h-5 w-5" />
+                </span>
                 Import Clients from Excel
               </CardTitle>
-              <CardDescription>
-                Drag and drop your client intake form Excel file to import clients and their properties
+              <CardDescription className="max-w-2xl text-sm leading-6 text-slate-400">
+                Drag and drop your client intake form Excel file to import clients and their properties into the dashboard.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6">
               <ExcelDropzone onImportComplete={() => refetch()} />
             </CardContent>
           </Card>

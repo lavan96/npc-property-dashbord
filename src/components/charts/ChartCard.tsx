@@ -36,13 +36,13 @@ interface ChartCardProps {
 }
 
 const CHART_TYPE_CONFIG: Record<string, { color: string; emoji: string; label: string }> = {
-  bar: { color: 'bg-blue-500/10 text-blue-600 border-blue-500/20', emoji: '📊', label: 'Bar' },
-  pie: { color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', emoji: '🥧', label: 'Pie' },
-  line: { color: 'bg-violet-500/10 text-violet-600 border-violet-500/20', emoji: '📈', label: 'Line' },
-  doughnut: { color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', emoji: '🍩', label: 'Doughnut' },
-  scatter: { color: 'bg-rose-500/10 text-rose-600 border-rose-500/20', emoji: '🔵', label: 'Scatter' },
-  radar: { color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20', emoji: '🕸️', label: 'Radar' },
-  area: { color: 'bg-teal-500/10 text-teal-600 border-teal-500/20', emoji: '📉', label: 'Area' },
+  bar: { color: 'border-blue-400/35 bg-gradient-to-r from-blue-500/12 to-violet-500/12 text-blue-700 shadow-blue-500/10 dark:text-blue-200', emoji: '📊', label: 'Bar' },
+  pie: { color: 'border-emerald-400/35 bg-gradient-to-r from-emerald-500/12 to-teal-500/12 text-emerald-700 shadow-emerald-500/10 dark:text-emerald-200', emoji: '🥧', label: 'Pie' },
+  line: { color: 'border-violet-400/35 bg-gradient-to-r from-violet-500/12 to-blue-500/12 text-violet-700 shadow-violet-500/10 dark:text-violet-200', emoji: '📈', label: 'Line' },
+  doughnut: { color: 'border-amber-400/35 bg-gradient-to-r from-amber-500/12 to-orange-500/12 text-amber-700 shadow-amber-500/10 dark:text-amber-200', emoji: '🍩', label: 'Doughnut' },
+  scatter: { color: 'border-rose-400/35 bg-gradient-to-r from-rose-500/12 to-pink-500/12 text-rose-700 shadow-rose-500/10 dark:text-rose-200', emoji: '🔵', label: 'Scatter' },
+  radar: { color: 'border-cyan-400/35 bg-gradient-to-r from-cyan-500/12 to-sky-500/12 text-cyan-700 shadow-cyan-500/10 dark:text-cyan-200', emoji: '🕸️', label: 'Radar' },
+  area: { color: 'border-teal-400/35 bg-gradient-to-r from-teal-500/12 to-emerald-500/12 text-teal-700 shadow-teal-500/10 dark:text-teal-200', emoji: '📉', label: 'Area' },
 };
 
 function renderChartImage(chart: ChartData) {
@@ -71,7 +71,7 @@ function renderChartImage(chart: ChartData) {
         return (
           <div
             dangerouslySetInnerHTML={{ __html: svgContent }}
-            className="w-full h-full flex items-center justify-center"
+            className="h-full w-full overflow-hidden [&>svg]:block [&>svg]:h-full [&>svg]:max-h-full [&>svg]:w-full [&>svg]:max-w-full"
           />
         );
       }
@@ -85,7 +85,7 @@ function renderChartImage(chart: ChartData) {
     <img
       src={chart.image_data}
       alt={`${chart.title} chart`}
-      className="w-full h-full object-contain"
+      className="block h-full w-full object-contain"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = 'none';
       }}
@@ -94,21 +94,25 @@ function renderChartImage(chart: ChartData) {
 }
 
 export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
-  const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'bg-muted text-muted-foreground border-border', emoji: '📊', label: chart.chart_type };
+  const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: chart.chart_type };
   const navigate = useNavigate();
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`group relative overflow-hidden border-border/60 bg-card/85 shadow-xl shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 ${selectionMode && isSelected ? 'border-amber-300/80 bg-gradient-to-b from-amber-500/10 via-card/95 to-card/85 ring-2 ring-amber-400/80 shadow-[0_22px_46px_hsl(43_74%_49%/0.18)]' : ''}`}>
+    <Card className={`group relative flex h-full min-h-[430px] overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-amber-300/70 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.28),0_0_34px_rgba(245,158,11,0.16)] dark:ring-white/10 ${selectionMode && isSelected ? 'border-amber-300/80 bg-gradient-to-b from-amber-500/10 via-card/95 to-card/85 ring-2 ring-amber-400/80 shadow-[0_22px_46px_hsl(43_74%_49%/0.18)]' : ''}`}>
       {selectionMode && isSelected && (
         <div className="pointer-events-none absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
           <CheckCircle2 className="h-4 w-4" />
         </div>
       )}
-      <CardHeader className="space-y-2 border-b border-border/40 bg-gradient-to-b from-muted/20 to-transparent pb-3">
+      <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/0 to-transparent transition-all duration-300 group-hover:via-amber-300/80" />
+      <CardHeader className="space-y-3 border-b border-border/40 bg-gradient-to-b from-muted/25 to-transparent px-4 pb-4 pt-4 sm:px-5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className="line-clamp-2 text-sm font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+            <CardTitle
+              className="line-clamp-2 text-base font-semibold leading-snug tracking-[-0.01em] text-foreground transition-colors group-hover:text-primary sm:text-[17px]"
+              title={chart.title}
+            >
               {chart.title}
             </CardTitle>
           </div>
@@ -120,46 +124,48 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
                 className="mr-1 border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground" aria-label={`Select ${chart.title}`}
               />
             )}
-            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${cfg.color}`}>
-              {cfg.emoji} {cfg.label}
+            <Badge variant="outline" className={`h-6 rounded-full px-2 py-0 text-[10px] font-semibold leading-none tracking-wide shadow-sm backdrop-blur-sm ${cfg.color}`}>
+              <span className="text-[11px] leading-none" aria-hidden="true">{cfg.emoji}</span>
+              <span>{cfg.label}</span>
             </Badge>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+        <div className="flex min-h-[1rem] flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] font-medium text-muted-foreground">
           {chart.generated_reports && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="flex max-w-[160px] items-center gap-1 truncate rounded-md outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-1 outline-none transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
                     onClick={() => navigate(`/report/${chart.report_id}`)}
                   >
-                    <FileText className="h-3 w-3 shrink-0" />
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-primary/70" />
                     <span className="truncate">{chart.generated_reports.title}</span>
-                    <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover:opacity-100" />
+                    <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent><p>View report: {chart.generated_reports.title}</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
-          <span className="flex items-center gap-1 shrink-0">
-            <Calendar className="h-3 w-3" />
+          <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-border/45 bg-background/55 px-2 py-1 tabular-nums">
+            <Calendar className="h-3.5 w-3.5 text-primary/70" />
             {format(new Date(chart.created_at), 'dd MMM yyyy')}
           </span>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3 px-3 pb-3 pt-3">
+      <CardContent className="flex flex-1 flex-col space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
         <div
-          className={`group/img relative cursor-pointer overflow-hidden rounded-xl border bg-background/80 shadow-inner transition-all duration-300 hover:border-primary/35 hover:bg-background ${selectionMode && isSelected ? 'border-amber-300/70 ring-1 ring-amber-300/45' : 'border-border/60'}`}
+          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode && isSelected ? 'border-amber-300/70 ring-1 ring-amber-300/45' : 'border-border/60'}`}
           onClick={() => onExpand(chart)}
         >
-          <div className="h-52 w-full p-3 transition-transform duration-300 group-hover/img:scale-[1.015]">
+          <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
             {renderChartImage(chart)}
           </div>
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-black/10 group-hover/img:opacity-100">
+          <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-slate-950/5 transition-all duration-300 group-hover/img:ring-amber-400/25 dark:ring-white/10" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-black/5 group-hover/img:opacity-100">
             <div className="rounded-full border border-primary/25 bg-background/90 p-2 shadow-lg shadow-primary/10 backdrop-blur-sm">
               <Maximize2 className="h-4 w-4 text-foreground" />
             </div>
@@ -170,21 +176,37 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         {chart.analysis_text && (
           <Collapsible open={showAnalysis} onOpenChange={setShowAnalysis}>
             <CollapsibleTrigger asChild>
-              <button className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-amber-500/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/30">
-                <Sparkles className="h-3 w-3 text-amber-500 shrink-0" />
-                <span className="truncate">{showAnalysis ? 'Hide Analysis' : 'View Analysis'}</span>
-                <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
+              <button
+                className="group/analysis flex w-full items-center gap-2 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-background/70 to-primary/5 px-3 py-2 text-left text-xs font-semibold text-foreground shadow-sm shadow-amber-950/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/45 hover:from-amber-500/15 hover:to-primary/10 hover:shadow-md hover:shadow-amber-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/35 focus-visible:ring-offset-2"
+                aria-label={showAnalysis ? `Hide analysis for ${chart.title}` : `View analysis for ${chart.title}`}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/15 text-amber-600 shadow-inner transition-colors group-hover/analysis:bg-amber-500/25 dark:text-amber-300">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate leading-tight">{showAnalysis ? 'Hide Analysis' : 'View Analysis'}</span>
+                  <span className="block truncate text-[10px] font-medium leading-snug text-muted-foreground">
+                    {showAnalysis ? 'Collapse AI insight' : 'Expand AI insight'}
+                  </span>
+                </span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/75 text-muted-foreground shadow-sm transition-all duration-200 group-hover/analysis:border-amber-400/40 group-hover/analysis:text-amber-600 dark:group-hover/analysis:text-amber-300">
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showAnalysis ? 'rotate-180' : ''}`} />
+                </span>
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="mt-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 shadow-inner">
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{chart.analysis_text}</p>
+              <div className="mt-2 overflow-hidden rounded-2xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.36))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_12px_28px_rgba(15,23,42,0.08)] dark:bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.16))]">
+                <div className="max-h-72 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
+                  <p className="whitespace-pre-wrap break-words text-xs leading-6 text-muted-foreground [overflow-wrap:anywhere]">
+                    {chart.analysis_text}
+                  </p>
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
         )}
 
-        <div className="flex items-center justify-between gap-1 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <div className="mt-auto flex items-center justify-between gap-1 pt-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <div>
             {onDelete && (
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => onDelete(chart)}>
