@@ -263,7 +263,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
         <>
           {/* Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Total Reports</CardTitle>
@@ -277,7 +277,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </CardContent>
             </Card>
 
-            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Avg Health Score</CardTitle>
@@ -299,7 +299,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </CardContent>
             </Card>
 
-            <Card className="group relative overflow-hidden rounded-3xl border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_34%),linear-gradient(145deg,rgba(24,18,8,0.98),rgba(10,10,12,0.96)_55%,rgba(0,0,0,0.92))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:shadow-[0_24px_70px_rgba(245,158,11,0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
+            <Card className="group relative overflow-hidden rounded-3xl border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_34%),linear-gradient(145deg,rgba(24,18,8,0.98),rgba(10,10,12,0.96)_55%,rgba(0,0,0,0.92))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:ring-1 hover:ring-amber-200/25 hover:shadow-[0_24px_70px_rgba(245,158,11,0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent opacity-80" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/75">Combined Portfolio</CardTitle>
@@ -324,14 +324,14 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                 placeholder="Search by client name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-12 rounded-2xl border-white/10 bg-slate-950/80 pl-14 pr-4 text-sm font-medium text-slate-100 shadow-inner shadow-black/20 transition-all placeholder:text-slate-500 hover:border-amber-300/25 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/25 focus-visible:ring-offset-0"
+                className="h-12 rounded-2xl border-white/10 bg-slate-950/80 pl-14 pr-4 text-sm font-medium text-slate-100 shadow-inner shadow-black/20 transition-all placeholder:text-slate-500 hover:border-amber-300/25 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               />
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="h-12 justify-center rounded-2xl border-amber-300/25 bg-white/[0.03] px-5 font-semibold text-amber-100 shadow-sm shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-300/12 hover:text-amber-50 hover:shadow-[0_14px_34px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/30 active:translate-y-0 sm:min-w-[124px]"
+              className="h-12 justify-center rounded-2xl border-amber-300/25 bg-white/[0.03] px-5 font-semibold text-amber-100 shadow-sm shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-300/12 hover:text-amber-50 hover:shadow-[0_14px_34px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:translate-y-0 sm:min-w-[124px]"
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin text-amber-200' : 'text-amber-200/85'}`} />
               Refresh
@@ -341,7 +341,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       )}
 
       {/* Reports Table */}
-      <Card className="group/register overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(12,12,14,0.98),rgba(0,0,0,0.94))] shadow-2xl shadow-black/30 transition-all duration-300 hover:border-amber-300/25 hover:shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+      <Card className="group/register overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(12,12,14,0.98),rgba(0,0,0,0.94))] shadow-2xl shadow-black/30 transition-all duration-300 hover:border-amber-300/30 hover:ring-1 hover:ring-amber-300/10 hover:shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
         <CardHeader className="relative border-b border-white/10 bg-white/[0.035] px-5 py-5 sm:px-6">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-60 transition-opacity duration-300 group-hover/register:opacity-100" />
           <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
@@ -397,7 +397,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                         </TableCell>
                       )}
                       <TableCell className="px-4 py-4">
-                        <Badge variant={getHealthBadgeVariant(report.overall_health)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold leading-none tracking-wide shadow-sm transition-all ${getHealthBadgeClassName(report.overall_health)}`}>
+                        <Badge variant={getHealthBadgeVariant(report.overall_health)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold leading-none tracking-wide shadow-sm transition-all duration-200 group-hover/row:shadow-[0_0_18px_rgba(245,158,11,0.10)] ${getHealthBadgeClassName(report.overall_health)}`}>
                           {report.overall_health || 'Unknown'}
                         </Badge>
                       </TableCell>
@@ -422,7 +422,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
                             {getCashflowIcon(Number(report.net_monthly_cashflow))}
                           </span>
-                          <span className={getCashflowValueClassName(Number(report.net_monthly_cashflow))}>
+                          <span className={`${getCashflowValueClassName(Number(report.net_monthly_cashflow))} transition-colors group-hover/row:brightness-110`}>
                             {formatCurrency(Number(report.net_monthly_cashflow))}
                           </span>
                         </div>
@@ -441,14 +441,14 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                               variant="ghost"
                               size="icon"
                               aria-label={`Open actions for ${smartCapitalize(report.client_name)}`}
-                              className="rounded-xl border border-transparent text-slate-300 transition-all group-hover/row:border-amber-300/20 group-hover/row:bg-white/[0.04] group-hover/row:text-amber-100 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35"
+                              className="rounded-xl border border-transparent text-slate-300 transition-all group-hover/row:border-amber-300/20 group-hover/row:bg-white/[0.04] group-hover/row:text-amber-100 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" sideOffset={8} collisionPadding={16} className="min-w-[210px] rounded-2xl border-white/10 bg-zinc-950/95 p-1.5 text-slate-100 shadow-2xl shadow-black/45 backdrop-blur-xl">
                             <DropdownMenuItem
-                              className="rounded-xl focus:bg-amber-400/10 focus:text-amber-100"
+                              className="rounded-xl transition-colors focus:bg-amber-400/10 focus:text-amber-100"
                               disabled={!report.pdf_file_path}
                               onClick={() => handleViewPDF(report)}
                             >
@@ -456,7 +456,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                               View Report
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="rounded-xl focus:bg-amber-400/10 focus:text-amber-100"
+                              className="rounded-xl transition-colors focus:bg-amber-400/10 focus:text-amber-100"
                               disabled={!report.pdf_file_path}
                               onClick={() => handleDownloadPDF(report)}
                             >
@@ -473,7 +473,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                               filename={`Portfolio_Analysis_${smartCapitalize(report.client_name).replace(/\s+/g, '_')}.pdf`}
                             />
                             <DropdownMenuItem
-                              className="rounded-xl text-red-300 focus:bg-red-500/10 focus:text-red-200"
+                              className="rounded-xl text-red-300 transition-colors focus:bg-red-500/10 focus:text-red-200"
                               onClick={() => setReportToDelete(report)}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />

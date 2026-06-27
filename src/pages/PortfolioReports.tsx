@@ -38,7 +38,7 @@ export default function PortfolioReports() {
               variant="outline"
               size="sm"
               onClick={() => navigate('/portfolio-reports')}
-              className="border-amber-400/30 bg-black/30 text-amber-100 transition-all hover:border-amber-300 hover:bg-amber-400/10 hover:text-amber-50"
+              className="border-amber-400/30 bg-black/30 text-amber-100 transition-all hover:border-amber-300 hover:bg-amber-400/10 hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
             >
               <X className="mr-2 h-4 w-4" />
               Clear Filter
