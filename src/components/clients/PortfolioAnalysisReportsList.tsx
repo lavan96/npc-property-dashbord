@@ -358,17 +358,17 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
             <div className="p-4 sm:p-5">
               <ScrollArea className="h-[440px] rounded-2xl border border-white/10 bg-slate-950/45 shadow-inner shadow-black/25">
               <Table className="min-w-[980px]">
-                <TableHeader>
-                  <TableRow className="sticky top-0 z-10 border-white/10 bg-zinc-950/95 shadow-sm shadow-black/20 backdrop-blur hover:bg-zinc-950/95">
-                    {!clientId && <TableHead className="text-slate-300">Client</TableHead>}
-                    <TableHead className="text-slate-300">Health</TableHead>
-                    <TableHead className="text-slate-300">Score</TableHead>
-                    <TableHead className="text-slate-300">Portfolio Value</TableHead>
-                    <TableHead className="text-slate-300">Equity</TableHead>
-                    <TableHead className="text-slate-300">Cashflow</TableHead>
-                    <TableHead className="text-slate-300">Properties</TableHead>
-                    <TableHead className="text-slate-300">Generated</TableHead>
-                    <TableHead className="text-right text-slate-300">Actions</TableHead>
+                <TableHeader className="sticky top-0 z-20">
+                  <TableRow className="border-b border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.28)] backdrop-blur hover:bg-zinc-950/95">
+                    {!clientId && <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Client</TableHead>}
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Health</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Score</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Portfolio Value</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Equity</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Cashflow</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Properties</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Generated</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
