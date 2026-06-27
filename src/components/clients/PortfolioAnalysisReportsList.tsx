@@ -358,6 +358,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                 <Search className="h-4 w-4" />
               </div>
               <Input
+                aria-label="Search portfolio reports by client name"
                 placeholder="Search by client name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -367,6 +368,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
             <Button
               variant="outline"
               size="sm"
+              aria-label="Refresh portfolio analysis reports"
               onClick={() => refetch()}
               className="h-12 justify-center rounded-2xl border-amber-300/25 bg-white/[0.03] px-5 font-semibold text-amber-100 shadow-sm shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-300/12 hover:text-amber-50 hover:shadow-[0_14px_34px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:translate-y-0 sm:min-w-[124px]"
             >
@@ -411,9 +413,9 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </p>
             </div>
           ) : (
-            <div className="p-4 sm:p-5">
-              <ScrollArea className="h-[440px] rounded-2xl border border-white/10 bg-slate-950/45 shadow-inner shadow-black/25">
-              <Table className="min-w-[980px]">
+            <div className="max-w-full overflow-hidden p-3 sm:p-5">
+              <ScrollArea className="h-[440px] max-w-full rounded-2xl border border-white/10 bg-slate-950/45 shadow-inner shadow-black/25">
+              <Table aria-label="Portfolio analysis reports" className="min-w-[980px] text-sm">
                 <TableHeader className="sticky top-0 z-20">
                   <TableRow className="border-b border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.28)] backdrop-blur hover:bg-zinc-950/95">
                     {!clientId && <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Client</TableHead>}
@@ -429,7 +431,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                 </TableHeader>
                 <TableBody>
                   {filteredReports.map((report) => (
-                    <TableRow key={report.id} className="group/row h-16 border-white/10 border-l-2 border-l-transparent transition-all duration-200 hover:border-l-amber-300/80 hover:bg-amber-400/[0.07] hover:shadow-[inset_0_1px_0_rgba(245,158,11,0.10),inset_0_-1px_0_rgba(245,158,11,0.08)] data-[state=selected]:border-l-amber-300 data-[state=selected]:bg-amber-400/10">
+                    <TableRow key={report.id} className="group/row h-auto sm:h-16 border-white/10 border-l-2 border-l-transparent transition-all duration-200 hover:border-l-amber-300/80 hover:bg-amber-400/[0.07] hover:shadow-[inset_0_1px_0_rgba(245,158,11,0.10),inset_0_-1px_0_rgba(245,158,11,0.08)] data-[state=selected]:border-l-amber-300 data-[state=selected]:bg-amber-400/10">
                       {!clientId && (
                         <TableCell className="px-4 py-4 font-semibold text-slate-100 transition-colors group-hover/row:text-amber-50">
                           {smartCapitalize(report.client_name)}
@@ -480,7 +482,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                               variant="ghost"
                               size="icon"
                               aria-label={`Open actions for ${smartCapitalize(report.client_name)}`}
-                              className="rounded-xl border border-transparent text-slate-300 transition-all group-hover/row:border-amber-300/20 group-hover/row:bg-white/[0.04] group-hover/row:text-amber-100 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                              className="h-10 w-10 rounded-xl border border-transparent text-slate-300 transition-all group-hover/row:border-amber-300/20 group-hover/row:bg-white/[0.04] group-hover/row:text-amber-100 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
