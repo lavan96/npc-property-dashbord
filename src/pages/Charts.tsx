@@ -288,12 +288,13 @@ export default function Charts() {
   if (loading) {
     return (
       <div className="min-h-screen animate-fade-in space-y-6 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] p-4 sm:p-6">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20 ring-1 ring-primary/40">
+        <div className="flex items-center gap-4">
+          <div className="relative h-12 w-12 overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20 ring-1 ring-primary/40">
+            <div className="absolute inset-x-2 top-0 h-px bg-amber-100/80" />
             <BarChart3 className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Charts</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Charts</h1>
             <p className="text-sm text-muted-foreground">Loading chart data...</p>
           </div>
         </div>
@@ -319,31 +320,42 @@ export default function Charts() {
 
   return (
     <div className="min-h-screen animate-fade-in bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_32%),radial-gradient(circle_at_85%_10%,rgba(245,158,11,0.09),transparent_28%)] p-4 sm:p-6">
-      <div className="mx-auto max-w-[1700px] space-y-6">
+      <div className="mx-auto max-w-[1700px] space-y-7">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-2xl shadow-black/20 backdrop-blur sm:p-5">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/70 shadow-lg shadow-primary/20 ring-1 ring-primary/40">
-                <BarChart3 className="h-5 w-5 text-primary-foreground" />
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-card/85 p-5 shadow-2xl shadow-black/15 backdrop-blur-xl sm:p-6">
+          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
+          <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
+          <div className="pointer-events-none absolute -left-20 bottom-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-4">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-amber-200/45">
+                <div className="absolute inset-x-3 top-0 h-px bg-amber-100/90" />
+                <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-white/20 blur-md" />
+                <BarChart3 className="relative h-6 w-6 text-primary-foreground drop-shadow-sm" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-foreground">Charts</h1>
-                <p className="text-sm text-muted-foreground">Visual analytics generated from reports</p>
+              <div className="space-y-1.5">
+                <h1 className="text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">Charts</h1>
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Visual analytics generated from reports</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{charts.length} charts</Badge>
-          <Button variant="outline" size="sm" className="h-9 gap-1.5 border-primary/25 bg-background/60 hover:border-primary/50 hover:bg-primary/10 hover:text-primary" onClick={fetchCharts}>
-            <RefreshCw className="h-3.5 w-3.5" /> Refresh
-          </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+              <Badge variant="secondary" className="h-9 justify-center rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-500/15 via-primary/10 to-amber-500/10 px-4 text-xs font-semibold tracking-wide text-primary shadow-sm shadow-amber-950/5">
+                {charts.length} charts
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0"
+                onClick={fetchCharts}
+              >
+                <RefreshCw className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-45" /> Refresh
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Stats */}
-      {charts.length > 0 && <ChartStats charts={charts} />}
+      {charts.length > 0 && <div className="pt-1"><ChartStats charts={charts} /></div>}
 
         {/* Filters */}
       {charts.length > 0 && (
