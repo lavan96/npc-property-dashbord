@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -75,12 +75,44 @@ export function getChartTypeConfig(type: string) {
   return CHART_TYPE_CONFIG[semanticKey] || { ...DEFAULT_TYPE_BADGE, label: type.replace(/[_-]+/g, ' ') };
 }
 
+function ChartImageErrorState({ title = 'Chart preview unavailable', helper = 'The saved chart image could not be rendered.' }: { title?: string; helper?: string }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-amber-300/40 bg-amber-500/8 p-6 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-amber-500/12 text-amber-700 dark:text-amber-200">
+        <AlertTriangle className="h-5 w-5" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="max-w-xs text-xs leading-5 text-muted-foreground">{helper}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChartBitmapImage({ chart }: { chart: ChartData }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return <ChartImageErrorState helper="Try refreshing the gallery. If the issue persists, regenerate or re-export the source report chart." />;
+  }
+
+  return (
+    <img
+      src={chart.image_data}
+      alt={`${chart.title} chart`}
+      className="block h-full w-full object-contain"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 function renderChartImage(chart: ChartData) {
   if (!chart.image_data) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-        No chart data available
-      </div>
+      <ChartImageErrorState
+        title="No chart image saved"
+        helper="This chart record exists, but it does not include renderable image data."
+      />
     );
   }
 
@@ -108,19 +140,10 @@ function renderChartImage(chart: ChartData) {
     } catch (error) {
       console.error('SVG parsing error:', error);
     }
-    return <div className="w-full h-full flex items-center justify-center text-destructive text-sm">Chart rendering error</div>;
+    return <ChartImageErrorState helper="The chart SVG could not be parsed safely. Refresh or regenerate the report if this continues." />;
   }
 
-  return (
-    <img
-      src={chart.image_data}
-      alt={`${chart.title} chart`}
-      className="block h-full w-full object-contain"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = 'none';
-      }}
-    />
-  );
+  return <ChartBitmapImage chart={chart} />;
 }
 
 export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
