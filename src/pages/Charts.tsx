@@ -369,7 +369,7 @@ export default function Charts() {
               <Button
                 variant="outline"
                 size="sm"
-                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0"
+                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/45"
                 onClick={fetchCharts}
               >
                 <RefreshCw className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-45" /> Refresh
@@ -436,15 +436,15 @@ export default function Charts() {
             {selectedIds.size} selected
           </Badge>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 rounded-full border-amber-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/80 hover:bg-amber-500/10 hover:text-primary" onClick={selectAll}>
+            <Button variant="outline" size="sm" className="h-8 rounded-full border-amber-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/80 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={selectAll}>
               Select all ({filteredCharts.length})
             </Button>
-            <Button variant="outline" size="sm" className="h-8 gap-1 rounded-full border-amber-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary" onClick={() => setSelectedIds(new Set())}>
+            <Button variant="outline" size="sm" className="h-8 gap-1 rounded-full border-amber-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => setSelectedIds(new Set())}>
               <X className="h-3 w-3" /> Clear
             </Button>
           </div>
           <div className="flex-1" />
-          <Button size="sm" className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-primary via-amber-500 to-amber-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] hover:brightness-105" onClick={handleBulkExport}>
+          <Button size="sm" className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-primary via-amber-500 to-amber-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/55" onClick={handleBulkExport}>
             <Download className="h-3.5 w-3.5" /> Export selected
           </Button>
         </div>
@@ -485,7 +485,7 @@ export default function Charts() {
           {groupedByReport.map(group => (
             <Collapsible key={group.reportId} defaultOpen>
               <CollapsibleTrigger asChild>
-                <button className="group/trigger flex w-full items-center gap-2 rounded-xl border border-border/60 bg-card/80 p-3 text-left shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5">
+                <button className="group/trigger flex w-full items-center gap-2 rounded-xl border border-border/60 bg-card/80 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-500/10 hover:shadow-lg hover:shadow-amber-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/45">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="font-medium text-sm flex-1 truncate">{group.reportTitle}</span>
                   <Badge variant="secondary" className="text-[10px] shrink-0">{group.charts.length}</Badge>
@@ -522,7 +522,7 @@ export default function Charts() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 border-primary/25 bg-card/80 hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+            className="gap-2 border-primary/25 bg-card/80 hover:-translate-y-0.5 hover:border-amber-300/65 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_10px_26px_hsl(43_74%_49%/0.14)] focus-visible:ring-2 focus-visible:ring-amber-300/45"
             onClick={() => setVisibleCount(prev => prev + CHARTS_PER_PAGE)}
           >
             Load more ({filteredCharts.length - visibleCount} remaining)
@@ -551,7 +551,7 @@ export default function Charts() {
 
         {/* Delete confirmation dialog (Enhancement #4) */}
       <AlertDialog open={!!chartToDelete} onOpenChange={(open) => !open && setChartToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border-amber-300/25 shadow-[0_24px_70px_rgba(0,0,0,0.35),0_0_0_1px_rgba(245,158,11,0.10)]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete chart?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -559,8 +559,8 @@ export default function Charts() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogCancel className="rounded-full transition-all hover:border-amber-300/60 hover:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/45">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="rounded-full bg-destructive text-destructive-foreground transition-all hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-destructive/40">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
