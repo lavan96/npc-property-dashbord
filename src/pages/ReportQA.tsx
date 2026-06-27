@@ -1766,16 +1766,16 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "p-0 sm:p-3 md:p-6 sm:space-y-4 md:space-y-6 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0 min-w-0 overflow-hidden",
+          "report-qa-premium p-2 sm:p-4 md:p-6 sm:space-y-4 md:space-y-5 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0 min-w-0 overflow-hidden",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <div className="flex items-center justify-between px-3 py-2 sm:px-0 sm:py-0 sm:flex-col sm:items-start sm:gap-3 md:flex-row md:items-center border-b sm:border-b-0 border-border/50">
+      <div className="report-qa-hero flex items-center justify-between px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start sm:gap-3 md:flex-row md:items-center">
         <div className="flex items-center gap-2 min-w-0">
-          <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate">Report Q&A</h1>
+          <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
         </div>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} />
@@ -1820,34 +1820,49 @@ export default function ReportQA() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-4 md:gap-6 h-[calc(100%-3rem)] sm:h-[calc(100%-4rem)] md:h-[calc(100%-5rem)] min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 h-[calc(100%-4.5rem)] sm:h-[calc(100%-5.5rem)] md:h-[calc(100%-6rem)] min-w-0">
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
-        <Card className="hidden lg:flex lg:col-span-1 flex-col overflow-hidden min-h-0">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-4 w-4" />
-                Reports
-                {uploadedReports.length > 0 && (
-                  <span className="text-xs font-normal text-muted-foreground">
-                    ({uploadedReports.length})
+        <Card className="report-qa-panel report-qa-reports-panel hidden lg:flex lg:col-span-1 flex-col overflow-hidden min-h-0">
+          <CardHeader className="report-qa-reports-header pb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="flex items-center gap-2 text-base tracking-tight">
+                  <span className="report-qa-reports-icon flex h-8 w-8 items-center justify-center rounded-xl">
+                    <FileText className="h-4 w-4" />
                   </span>
-                )}
-              </CardTitle>
+                  <span>Reports</span>
+                  {uploadedReports.length > 0 && (
+                    <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                      {uploadedReports.length}
+                    </span>
+                  )}
+                </CardTitle>
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  Add PDFs or saved reports to ground the assistant in source material.
+                </p>
+              </div>
               <ReportLibraryPicker
                 onAdd={handleLibraryAdd}
                 existingNames={uploadedReports.map((r) => r.name)}
                 disabled={isUploading}
+                className="report-qa-library-button h-8 shrink-0 rounded-xl border-primary/30 bg-primary/10 px-3 text-xs text-primary hover:bg-primary/15 hover:text-primary"
               />
             </div>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col space-y-3 min-h-0 overflow-hidden px-4">
+          <CardContent className="flex-1 flex flex-col space-y-4 min-h-0 overflow-hidden px-4 pb-4">
+            <div className="report-qa-panel-section space-y-2">
+              <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                <span>Document intake</span>
+                <span className={cn("rounded-full px-2 py-0.5 normal-case tracking-normal", isUploading ? "bg-amber-500/10 text-amber-300" : "bg-emerald-500/10 text-emerald-300")}>
+                  {isUploading ? 'Processing' : 'Ready'}
+                </span>
+              </div>
             {/* Compact Upload Zone */}
             <div
               className={cn(
-                "border border-dashed rounded-md py-3 px-3 text-center transition-colors cursor-pointer",
-                isDragOver ? 'border-primary bg-primary/5' : 'border-border/60 hover:border-primary/50 hover:bg-muted/30',
+                "report-qa-dropzone border border-dashed rounded-xl py-4 px-3 text-center transition-all cursor-pointer",
+                isDragOver ? 'is-drag-over border-primary bg-primary/10' : 'border-border/60 hover:border-primary/60 hover:bg-primary/5',
                 isUploading && 'pointer-events-none opacity-50'
               )}
               onDrop={handleDrop}
@@ -1867,19 +1882,42 @@ export default function ReportQA() {
                 }}
               />
               {isUploading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <p className="text-xs text-muted-foreground">Processing…</p>
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <span className="report-qa-upload-icon flex h-10 w-10 items-center justify-center rounded-2xl">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </span>
+                  <p className="text-xs font-medium text-foreground">Processing report…</p>
+                  <p className="text-[11px] text-muted-foreground">Extracting content for AI retrieval</p>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-2">
-                  <Upload className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">
-                    Drop PDFs or click to upload
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <span className="report-qa-upload-icon flex h-10 w-10 items-center justify-center rounded-2xl">
+                    <Upload className="h-5 w-5 text-primary" />
+                  </span>
+                  <p className="text-xs font-medium text-foreground">
+                    Drop PDFs here or click to upload
                   </p>
+                  <p className="text-[11px] text-muted-foreground">PDF reports stay connected to this chat workspace</p>
                 </div>
               )}
             </div>
+            </div>
+
+            {uploadedReports.length === 0 && uploadProgress.length === 0 && (
+              <div className="report-qa-empty-docs rounded-2xl border p-3">
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-foreground">No report selected yet</p>
+                    <p className="text-[11px] leading-4 text-muted-foreground">
+                      Upload a PDF or pick from the library to unlock source-grounded Q&A, summaries and comparisons.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Upload Progress */}
             {uploadProgress.length > 0 && (
@@ -1898,6 +1936,11 @@ export default function ReportQA() {
 
             {/* Search across reports */}
             {uploadedReports.length > 0 && (
+              <div className="report-qa-panel-section space-y-2">
+                <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <span>Report library</span>
+                  <span className="normal-case tracking-normal text-primary">{uploadedReports.length} active</span>
+                </div>
               <ReportSearch
                 reports={uploadedReports}
                 onResultClick={(reportIndex) => {
@@ -1908,11 +1951,12 @@ export default function ReportQA() {
                   });
                 }}
               />
+              </div>
             )}
 
             {/* Uploaded Reports — compact list */}
             {uploadedReports.length > 0 && (
-              <ScrollArea className="flex-1 -mx-1 px-1">
+              <ScrollArea className="report-qa-report-list flex-1 -mx-1 px-1">
                 <div className="space-y-1.5">
                   {uploadedReports.map((report, index) => {
                     const isActive = activeReportIndex === index;
@@ -1926,7 +1970,7 @@ export default function ReportQA() {
                         key={report.name}
                         onClick={() => setActiveReportIndex(isActive ? null : index)}
                         className={cn(
-                          "group flex items-center gap-2.5 rounded-md border p-2 cursor-pointer transition-all",
+                          "group report-qa-report-item flex items-center gap-2.5 rounded-xl border p-2.5 cursor-pointer transition-all",
                           isActive
                             ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                             : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
@@ -1968,14 +2012,14 @@ export default function ReportQA() {
 
             {/* Comparison Badge */}
             {uploadedReports.length > 1 && activeReportIndex === null && (
-              <div className="flex items-center gap-2 px-2 py-1.5 bg-primary/10 rounded-md">
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-xl border border-primary/20">
                 <GitCompare className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs text-primary font-medium">Comparing all reports</span>
               </div>
             )}
 
             {/* Smart Suggestions — collapsible */}
-            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="border-t pt-3 -mx-4 px-4">
+            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="report-qa-suggestions border-t pt-4 -mx-4 px-4">
               <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group">
                 <span className="flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3" />
@@ -1998,8 +2042,8 @@ export default function ReportQA() {
 
 
         {/* Chat Section */}
-        <Card className={cn("flex flex-col overflow-hidden min-h-0 min-w-0 border-0 shadow-none sm:border sm:shadow-sm rounded-none sm:rounded-lg", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 py-2 sm:py-4 flex-shrink-0">
+        <Card className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 border shadow-sm rounded-2xl", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
+          <CardHeader className="report-qa-chat-header pb-2 sm:pb-3 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
@@ -2198,7 +2242,7 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-2 sm:px-6">
+          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-2 sm:px-5">
             {/* Messages */}
             <ScrollArea ref={scrollAreaRef} className="flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
               {/* Load older messages button */}
@@ -2220,7 +2264,7 @@ export default function ReportQA() {
                 </div>
               )}
               {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-center p-4 sm:p-8">
+                <div className="report-qa-empty-state h-full flex items-center justify-center text-center p-4 sm:p-8">
                   <div className="space-y-4">
                     <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
                     <p className="text-muted-foreground">
@@ -2305,7 +2349,7 @@ export default function ReportQA() {
                           )}
                           <div 
                             className={cn(
-                              "min-w-0 max-w-[92%] sm:max-w-[80%] rounded-lg sm:rounded-xl p-2 sm:p-3",
+                              "min-w-0 max-w-[92%] sm:max-w-[80%] rounded-2xl p-2.5 sm:p-3.5 shadow-sm",
                               message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
                               getMessageBgClass(message.role)
                             )}
@@ -2553,7 +2597,7 @@ export default function ReportQA() {
             )}
 
             {/* Input */}
-            <div className="space-y-1 pt-1.5 sm:pt-2 border-t flex-shrink-0">
+            <div className="report-qa-composer space-y-1 pt-2 sm:pt-3 border-t flex-shrink-0">
               <div className="flex gap-1.5 sm:gap-2 items-end">
                 <Textarea
                   ref={inputRef}
@@ -2577,7 +2621,7 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="flex-1 min-h-[40px] max-h-[300px] resize-none overflow-y-auto"
+                  className="flex-1 min-h-[44px] max-h-[300px] resize-none overflow-y-auto rounded-2xl"
                   rows={1}
                 />
               {/* Recording controls */}
