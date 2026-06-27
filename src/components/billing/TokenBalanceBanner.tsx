@@ -65,7 +65,7 @@ export function TokenBalanceBanner() {
         <AlertTriangle className="h-4 w-4 text-amber-200" />
         <AlertTitle className="text-sm font-semibold tracking-tight text-amber-100">Token balance low</AlertTitle>
         <AlertDescription className="flex flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <span className="max-w-3xl leading-6 text-amber-50/82">
+          <span className="max-w-3xl leading-6 text-amber-50/80">
             <span className="font-semibold tabular-nums text-amber-50">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
             Top up to avoid interrupted report generation.
           </span>

@@ -89,7 +89,6 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
     load(true);
     const id = setInterval(() => load(true), pollMs);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
   useEffect(() => {
@@ -193,11 +192,17 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
             <p className="mt-1 text-xs leading-5 text-muted-foreground">This finance channel is ready for partner communication.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4 pb-1">
             {messages.map(m => {
               const mine = m.sender_type === viewerSide;
               return (
-                <div key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
+                <div key={m.id} className={cn('flex w-full gap-3', mine ? 'justify-end' : 'justify-start')}>
+                  {!mine && (
+                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10 text-amber-100 shadow-sm shadow-black/20">
+                      {m.sender_type === 'staff' ? <ShieldCheck className="h-3.5 w-3.5" /> : <UserCircle2 className="h-3.5 w-3.5" />}
+                    </div>
+                  )}
+                  <div className={cn('flex min-w-0 max-w-[min(82%,42rem)] flex-col', mine ? 'items-end' : 'items-start')}>
                   <div className={cn(
                     'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15',
                     mine ? 'border-violet-300/30 bg-gradient-to-br from-violet-300 to-blue-500 text-black' : 'border-blue-300/15 bg-zinc-900/95 text-foreground'
@@ -207,7 +212,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                         {m.sender_name || (m.sender_type === 'staff' ? 'Staff' : m.sender_type === 'client' ? 'Client' : 'Finance Partner')}
                       </div>
                     )}
-                    <div>{m.body}</div>
+                    <div className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.body}</div>
                     {m.attachment_path && m.attachment_filename && (
                       <button
                         onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
@@ -217,7 +222,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                         )}
                       >
                         <Download className="h-3.5 w-3.5" />
-                        <span>{m.attachment_filename}</span>
+                        <span className="min-w-0 truncate">{m.attachment_filename}</span>
                         <span className="opacity-70">{formatBytes(m.attachment_size_bytes)}</span>
                       </button>
                     )}
