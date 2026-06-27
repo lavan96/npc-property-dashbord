@@ -1485,7 +1485,7 @@ export default function ClientTracker() {
                               </div>
                               {client.follow_up_date && (
                                 <div className="flex items-center gap-1 mt-1 text-sm">
-                                  <CalendarIcon className="h-3 w-3" />
+                                  <CalendarIcon className="h-3 w-3 shrink-0" />
                                   <span className={isOverdue ? 'text-red-500' : 'text-muted-foreground'}>
                                     Follow-up: {format(new Date(client.follow_up_date), 'MMM d, yyyy')}
                                   </span>
@@ -1822,32 +1822,35 @@ function KanbanCard({
   return (
     <Card 
       className={cn(
-        "group cursor-pointer border-border/70 bg-card/90 p-3 shadow-sm shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10",
+        "group relative overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.72))] p-3.5 shadow-md shadow-black/15 transition-all duration-300 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:-translate-y-1 hover:border-primary/40 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/15 hover:before:bg-primary/80",
         isDraggable && "cursor-grab active:cursor-grabbing",
-        isDragging && "scale-95 border-primary/60 bg-primary/10 opacity-70 shadow-xl shadow-primary/20 ring-2 ring-primary/50"
+        isDragging && "scale-[0.98] border-primary/70 bg-primary/10 opacity-85 shadow-2xl shadow-primary/25 ring-2 ring-primary/55 before:bg-primary"
       )}
       onClick={onEdit}
       draggable={isDraggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
           {isDraggable && (
-            <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+            <GripVertical className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
           )}
-          <h4 className="font-medium text-sm line-clamp-1">
+          <h4
+            className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary"
+            title={formatFullName(client.primary_first_name, client.primary_surname)}
+          >
             {formatFullName(client.primary_first_name, client.primary_surname)}
           </h4>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {isOverdue && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            <Badge variant="destructive" className="rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm shadow-red-500/15">
               Overdue
             </Badge>
           )}
           {client.deal_status === 'closed' && (
-            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-emerald-600">
+            <Badge variant="default" className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] shadow-sm shadow-emerald-500/15">
               🏆
             </Badge>
           )}
@@ -1855,27 +1858,33 @@ function KanbanCard({
       </div>
       
       {client.primary_email && (
-        <p className="text-xs text-muted-foreground mt-1 line-clamp-1 flex items-center gap-1">
-          <Mail className="h-3 w-3" />
-          {client.primary_email}
+        <p
+          className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+          title={client.primary_email}
+        >
+          <Mail className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+          <span className="truncate">{client.primary_email}</span>
         </p>
       )}
       
       {client.primary_mobile && (
-        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-          <Phone className="h-3 w-3" />
-          {client.primary_mobile}
+        <p
+          className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+          title={client.primary_mobile}
+        >
+          <Phone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+          <span className="truncate">{client.primary_mobile}</span>
         </p>
       )}
       
       {/* Status & Timestamp metadata */}
       {(client.opportunity_status || client.pipeline_updated_at) && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {client.opportunity_status && (
             <Badge 
               variant="outline" 
               className={cn(
-                "text-[10px] px-1.5 py-0",
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-inner",
                 client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10',
                 client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500 bg-red-500/10',
                 client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600 bg-blue-500/10',
@@ -1886,26 +1895,26 @@ function KanbanCard({
             </Badge>
           )}
           {client.pipeline_updated_at && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <Clock className="h-2.5 w-2.5" />
+            <span className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+              <Clock className="h-2.5 w-2.5 text-primary/70" />
               {format(new Date(client.pipeline_updated_at), 'MMM d')}
             </span>
           )}
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-2">
+      <div className="mt-3 flex items-center justify-between gap-2">
         {client.follow_up_date && (
           <p className={cn(
-            "text-xs flex items-center gap-1",
+            "flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-xs",
             isOverdue ? 'text-red-500' : 'text-muted-foreground'
           )}>
-            <CalendarIcon className="h-3 w-3" />
+            <CalendarIcon className="h-3 w-3 shrink-0" />
             {format(new Date(client.follow_up_date), 'MMM d')}
           </p>
         )}
         {client.borrowing_capacity && (
-          <p className="text-xs font-medium text-emerald-500">
+          <p className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-400 shadow-inner">
             {formatCurrency(client.borrowing_capacity)}
           </p>
         )}
@@ -1913,9 +1922,9 @@ function KanbanCard({
 
       {/* Upcoming appointment */}
       {upcomingAppointment && (
-        <div className="mt-2 flex items-center gap-1.5 border-t border-border/70 pt-2 text-xs">
-          <Video className="h-3 w-3 text-primary flex-shrink-0" />
-          <span className="text-muted-foreground truncate">
+        <div className="mt-3 flex items-center gap-1.5 border-t border-border/70 pt-2.5 text-xs">
+          <Video className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+          <span className="truncate text-muted-foreground">
             {format(new Date(upcomingAppointment.startTime), 'MMM d, h:mm a')}
           </span>
         </div>
@@ -1923,15 +1932,15 @@ function KanbanCard({
 
       {/* Other pipeline memberships */}
       {uniquePipelines.length > 1 && (
-        <div className="mt-2 border-t border-border/70 pt-2">
-          <div className="flex flex-wrap gap-1">
+        <div className="mt-3 border-t border-border/70 pt-2.5">
+          <div className="flex flex-wrap gap-1.5">
             {uniquePipelines.slice(0, 2).map(name => (
-              <Badge key={name} variant="outline" className="text-[9px] px-1 py-0">
+              <Badge key={name} variant="outline" className="rounded-full border-primary/20 bg-primary/5 px-1.5 py-0 text-[9px] text-muted-foreground">
                 {name && name.length > 15 ? name.substring(0, 13) + '...' : name}
               </Badge>
             ))}
             {uniquePipelines.length > 2 && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0">
+              <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 px-1.5 py-0 text-[9px] text-muted-foreground">
                 +{uniquePipelines.length - 2}
               </Badge>
             )}
@@ -1940,7 +1949,7 @@ function KanbanCard({
       )}
       
       {client.pipeline_notes && (
-        <p className="mt-2 line-clamp-2 border-t border-border/70 pt-2 text-xs text-muted-foreground">
+        <p className="mt-3 line-clamp-2 border-t border-border/70 pt-2.5 text-xs leading-relaxed text-muted-foreground">
           {client.pipeline_notes}
         </p>
       )}
