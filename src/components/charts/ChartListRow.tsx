@@ -24,7 +24,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
 
   return (
     <div
-      className={`${PREMIUM_CHART_CARD_CLASS} flex cursor-pointer flex-col gap-3 p-3 sm:flex-row sm:flex-wrap sm:items-center ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-r from-amber-500/14 via-card/95 to-primary/8 ring-2 ring-amber-400/80 shadow-[0_18px_42px_hsl(43_74%_49%/0.22),0_0_34px_hsl(43_96%_56%/0.16)]' : ''}`}
+      className={`${PREMIUM_CHART_CARD_CLASS} flex cursor-pointer flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-r from-amber-500/14 via-card/95 to-primary/8 ring-2 ring-amber-400/80 shadow-[0_18px_42px_hsl(43_74%_49%/0.22),0_0_34px_hsl(43_96%_56%/0.16)]' : ''}`}
       onClick={() => {
         if (selectionMode) {
           onToggleSelect(chart.id);
@@ -74,7 +74,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-semibold leading-snug tracking-[-0.01em] text-foreground" title={chart.title}>{chart.title}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-muted-foreground">
-          <Badge variant="outline" className={`h-5 rounded-full px-2 text-[10px] font-semibold leading-none shadow-sm ${cfg.color}`}>
+          <Badge variant="outline" className={`inline-flex h-5 items-center gap-1 rounded-full px-2 text-[10px] font-bold leading-none shadow-sm ${cfg.color}`}>
             <span className="text-[11px] leading-none" aria-hidden="true">{cfg.emoji}</span>
             <span>{cfg.label}</span>
           </Badge>
@@ -101,11 +101,12 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
           <Button
             variant="ghost"
             size="sm"
-            className="h-10 gap-1 rounded-full px-2 text-xs text-amber-700 transition-all hover:-translate-y-0.5 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:text-amber-300"
+            className="h-10 gap-1.5 rounded-full border border-amber-300/25 bg-amber-500/8 px-3 text-xs font-semibold text-amber-700 transition-all hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-500/14 hover:text-amber-700 hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.14)] focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:text-amber-300"
             onClick={(e) => { e.stopPropagation(); setShowAnalysis(prev => !prev); }}
             aria-label={showAnalysis ? `Hide analysis for ${chart.title}` : `View analysis for ${chart.title}`}
           >
             <Sparkles className="h-3.5 w-3.5" />
+            <span>Analysis</span>
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
           </Button>
         )}
@@ -124,7 +125,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
 
       {chart.analysis_text && showAnalysis && (
         <div className="w-full rounded-2xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.14),transparent_40%),linear-gradient(145deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.32))] p-3 shadow-inner sm:ml-[7.25rem] sm:w-[calc(100%-7.25rem)]" onClick={(e) => e.stopPropagation()}>
-          <p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words pr-1 text-xs leading-6 text-muted-foreground [overflow-wrap:anywhere] [scrollbar-width:thin]">
+          <p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words pr-1 text-xs leading-6 text-foreground/75 [overflow-wrap:anywhere] [scrollbar-width:thin]">
             {chart.analysis_text}
           </p>
         </div>
