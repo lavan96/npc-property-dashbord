@@ -51,6 +51,7 @@ import {
   Download,
   Quote,
   Wrench,
+  AlertCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -1870,8 +1871,19 @@ export default function ReportQA() {
             <div className="report-qa-panel-section space-y-2">
               <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                 <span>Document intake</span>
-                <span className={cn("rounded-full px-2 py-0.5 normal-case tracking-normal", isUploading ? "bg-amber-500/10 text-amber-300" : "bg-emerald-500/10 text-emerald-300")}>
-                  {isUploading ? 'Processing' : 'Ready'}
+                <span className={cn(
+                  "rounded-full border px-2 py-0.5 normal-case tracking-normal",
+                  hasUploadError
+                    ? "border-destructive/25 bg-destructive/10 text-destructive"
+                    : uploadProgress.some((item) => item.status === 'uploading' || item.status === 'processing')
+                      ? "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300"
+                      : "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                )}>
+                  {hasUploadError
+                    ? 'Needs attention'
+                    : uploadProgress.some((item) => item.status === 'uploading' || item.status === 'processing')
+                      ? 'Processing'
+                      : 'Ready'}
                 </span>
               </div>
             {/* Premium Upload Zone */}
@@ -1915,12 +1927,30 @@ export default function ReportQA() {
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2">
                   <span className="report-qa-upload-icon flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16">
-                    <Upload className="h-7 w-7 text-primary transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
+                    {hasUploadError ? (
+                      <AlertCircle className="h-7 w-7 text-destructive transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
+                    ) : isUploadComplete ? (
+                      <CheckCircle2 className="h-7 w-7 text-emerald-500 transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
+                    ) : (
+                      <Upload className="h-7 w-7 text-primary transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
+                    )}
                   </span>
                   <p className="text-sm font-semibold text-foreground sm:text-base">
-                    {isDragOver ? 'Drop PDF reports here' : 'Drop PDFs here or click to upload'}
+                    {isDragOver
+                      ? 'Drop PDF reports here'
+                      : hasUploadError
+                        ? 'Review upload error below'
+                        : isUploadComplete
+                          ? 'Report ready — add another PDF'
+                          : 'Drop PDFs here or click to upload'}
                   </p>
-                  <p className="max-w-[17rem] text-xs leading-5 text-muted-foreground">PDF reports stay connected to this chat workspace</p>
+                  <p className="max-w-[17rem] text-xs leading-5 text-muted-foreground">
+                    {hasUploadError
+                      ? 'Errors remain visible so you can retry with a valid PDF.'
+                      : isUploadComplete
+                        ? 'Loaded reports are available as source context.'
+                        : 'PDF reports stay connected to this chat workspace'}
+                  </p>
                 </div>
               )}
             </div>
@@ -2642,9 +2672,11 @@ export default function ReportQA() {
 
             {/* Indexing indicator */}
             {isIndexing && (
-              <div className="flex shrink-0 items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Indexing reports for intelligent retrieval… Chat will be available shortly.</span>
+              <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 shadow-sm dark:text-amber-200">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/15">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </span>
+                <span className="font-medium">Indexing reports for intelligent retrieval… <span className="font-normal text-muted-foreground">Chat will be available shortly.</span></span>
               </div>
             )}
 

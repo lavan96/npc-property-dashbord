@@ -364,10 +364,12 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
         <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-2 px-3 py-3 sm:px-4">
             {loading ? (
-              <div className="mx-auto my-10 max-w-sm rounded-2xl border bg-card p-8 text-center shadow-sm">
-                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
-                <p className="font-medium">Loading report library…</p>
-                <p className="mt-1 text-sm text-muted-foreground">Fetching available reports without changing your current selection.</p>
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-amber-500/25 bg-amber-500/10 p-8 text-center shadow-sm">
+                <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/15 text-amber-600 shadow-sm dark:text-amber-300">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </span>
+                <p className="font-semibold text-foreground">Loading report library…</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">Fetching available reports without changing your current selection.</p>
               </div>
             ) : filtered.length === 0 ? (
               <div className="mx-auto my-10 max-w-sm rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
