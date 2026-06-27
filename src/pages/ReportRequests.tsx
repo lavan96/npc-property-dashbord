@@ -273,7 +273,7 @@ export default function ReportRequests() {
               <Card
                 key={status}
                 className={cn(
-                  'group relative cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35',
+                  'group relative cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/25 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20',
                   tile.glow,
                   statusFilter === status && tile.active
                 )}
@@ -310,13 +310,13 @@ export default function ReportRequests() {
                 placeholder="Search by client, property, or notes..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-12 rounded-2xl border-white/10 bg-black/45 pl-11 pr-4 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20"
+                className="h-12 rounded-2xl border-white/10 bg-black/45 pl-11 pr-4 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger
                 className={cn(
-                  'h-12 w-full rounded-2xl border-white/10 bg-black/45 px-4 text-sm font-medium text-zinc-100 shadow-inner shadow-black/30 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus:border-amber-300/55 focus:ring-2 focus:ring-amber-300/20 lg:w-60',
+                  'h-12 w-full rounded-2xl border-white/10 bg-black/45 px-4 text-sm font-medium text-zinc-100 shadow-inner shadow-black/30 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/55 focus:border-amber-300/55 focus:ring-2 focus:ring-amber-300/20 focus:ring-offset-2 focus:ring-offset-zinc-950 data-[state=open]:border-amber-300/45 data-[state=open]:bg-amber-300/10 lg:w-60',
                   typeFilter !== 'all' && 'border-amber-300/35 bg-amber-300/10 text-amber-100'
                 )}
               >
@@ -324,10 +324,10 @@ export default function ReportRequests() {
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent className="overflow-hidden rounded-2xl border-white/10 bg-zinc-950/95 p-1 text-zinc-100 shadow-2xl shadow-black/50 backdrop-blur-xl">
-                <SelectItem className="rounded-xl font-medium focus:bg-amber-300/10 focus:text-amber-100" value="all">All Types</SelectItem>
-                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100" value="portfolio_review">Portfolio Review</SelectItem>
-                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100" value="borrowing_capacity">Borrowing Capacity</SelectItem>
-                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100" value="investment_property">Investment Property</SelectItem>
+                <SelectItem className="rounded-xl font-medium focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="all">All Types</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="portfolio_review">Portfolio Review</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="borrowing_capacity">Borrowing Capacity</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="investment_property">Investment Property</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -368,7 +368,7 @@ export default function ReportRequests() {
                 return (
                   <Card
                     key={req.id}
-                    className="group cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)]"
+                    className="group cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/20 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)] active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20"
                     onClick={() => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); }}
                   >
                     <CardContent className="relative p-4 sm:p-5">
@@ -383,7 +383,7 @@ export default function ReportRequests() {
                             <div className="min-w-0 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-sm font-semibold tracking-tight text-white sm:text-base">{typeConf.label}</p>
-                                <Badge variant="outline" className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>
+                                <Badge variant="outline" className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur transition-colors duration-200 group-hover:border-amber-300/35', statConf.badgeVariant)}>
                                   {statConf.label}
                                 </Badge>
                               </div>
@@ -413,7 +413,7 @@ export default function ReportRequests() {
 
       {/* Detail / Action Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}>
-        <DialogContent className="max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-amber-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-amber-300/40 [&>button:hover]:bg-amber-300/10 [&>button:hover]:text-amber-100 [&>button:focus-visible]:ring-amber-300/40">
+        <DialogContent className="max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-amber-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-amber-300/40 [&>button:hover]:bg-amber-300/10 [&>button:hover]:text-amber-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-amber-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
           <DialogHeader className="border-b border-white/10 bg-white/[0.02] px-6 pb-5 pt-6 text-left">
             <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-white">
@@ -466,7 +466,7 @@ export default function ReportRequests() {
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
                     rows={4}
-                    className="max-h-44 min-h-28 resize-y rounded-2xl border-white/10 bg-zinc-950/70 text-sm leading-6 text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20"
+                    className="max-h-44 min-h-28 resize-y rounded-2xl border-white/10 bg-zinc-950/70 text-sm leading-6 text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                   />
                 </div>
 
@@ -490,7 +490,8 @@ export default function ReportRequests() {
                             'min-h-10 rounded-full border-white/10 bg-zinc-950/60 px-3.5 text-xs font-semibold text-zinc-300 shadow-inner shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
                             buttonTone.idle,
                             isActive && buttonTone.active,
-                            isActive && 'pointer-events-none'
+                            isActive && 'pointer-events-none',
+                            updatingStatus && 'cursor-wait'
                           )}
                         >
                           {updatingStatus ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Icon className={cn('mr-1.5 h-3.5 w-3.5', buttonTone.icon)} />}
