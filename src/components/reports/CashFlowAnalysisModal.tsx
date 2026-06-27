@@ -29,11 +29,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/compon
 import { cn } from '@/lib/utils';
 import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { CashFlowCommandHeader } from '@/components/cash-flow/modal/CashFlowCommandHeader';
-import { CashFlowComparisonBar } from '@/components/cash-flow/modal/CashFlowComparisonBar';
+import { CashFlowControlPanel } from '@/components/cash-flow/modal/CashFlowControlPanel';
 import { CashFlowExportMenu } from '@/components/cash-flow/modal/CashFlowExportMenu';
-import { CashFlowMetricsGrid } from '@/components/cash-flow/modal/CashFlowMetricsGrid';
+import { CashFlowKpiStrip } from '@/components/cash-flow/modal/CashFlowKpiStrip';
 import { CashFlowModalShell } from '@/components/cash-flow/modal/CashFlowModalShell';
-import { CASH_FLOW_NON_REGRESSION_RULES } from '@/components/cash-flow/modal/CashFlowNonRegressionGuardrails';
+import { CashFlowChartsWorkspace } from '@/components/cash-flow/modal/CashFlowChartsWorkspace';
+import { CashFlowAiPanel } from '@/components/cash-flow/modal/CashFlowAiPanel';
+import { CashFlowConstructionPanel } from '@/components/cash-flow/modal/CashFlowConstructionPanel';
+import { CashFlowProjectionTable } from '@/components/cash-flow/modal/CashFlowProjectionTable';
 import { 
   get10YearLoanProjection, 
   type MortgageInput, 
@@ -3946,6 +3949,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             hasChanges={hasChanges}
             hasOverrides={Object.keys(yearlyOverrides).length > 0}
             isSaving={isSaving}
+            comparisonMode={comparisonMode}
+            comparisonCount={comparisonReports.length + 1}
             onResetAll={() => setShowResetConfirm(true)}
             onSaveChanges={handleSaveOverrides}
             exportMenu={(
@@ -3970,13 +3975,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
         )}
       >
         <div className="space-y-6">
-          <CashFlowMetricsGrid
+          <CashFlowKpiStrip
             baseFinancialData={baseFinancialData}
             projections={projections}
             formatCurrency={formatCurrency}
           />
 
-            <CashFlowComparisonBar
+            <CashFlowControlPanel
               comparisonMode={comparisonMode}
               onComparisonModeChange={setComparisonMode}
               selectedComparisonReportIds={selectedComparisonReportIds}
@@ -3993,6 +3998,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               hasChanges={hasChanges}
             />
 
+            <CashFlowChartsWorkspace>
             {/* Cash Flow Trends Chart */}
             <Card className="overflow-hidden border-slate-200/80 shadow-sm">
               <CardHeader className="border-b bg-muted/20 pb-4">
@@ -4948,6 +4954,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             )}
 
+            </CashFlowChartsWorkspace>
+
+            <CashFlowAiPanel>
             {/* AI-Powered Comparison Analysis */}
             {comparisonMode && comparisonReports.length > 0 && (
               <Card className="overflow-hidden border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-background shadow-sm">
@@ -5173,6 +5182,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </p>
               </CardContent>
             </Card>
+
+            </CashFlowAiPanel>
 
             {/* Inputs Summary Table - Collapsible */}
             <Collapsible open={inputsSummaryOpen} onOpenChange={setInputsSummaryOpen}>
@@ -5444,6 +5455,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             </Collapsible>
 
+            <CashFlowConstructionPanel>
             {/* Construction Progress Payment Schedule - Collapsible (New Builds Only) */}
             {isNewBuild && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 && (
               <Collapsible open={constructionScheduleOpen} onOpenChange={setConstructionScheduleOpen}>
@@ -5611,6 +5623,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Collapsible>
             )}
 
+            </CashFlowConstructionPanel>
+
+            <CashFlowProjectionTable>
             {/* 10-Year Projection Table with Inline Editing */}
             <Card className="overflow-hidden border-slate-200/80 shadow-sm">
               <CardHeader className="border-b bg-muted/20 pb-4">
@@ -5906,6 +5921,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardContent>
             </Card>
+            </CashFlowProjectionTable>
         </div>
       </CashFlowModalShell>
     </Dialog>
