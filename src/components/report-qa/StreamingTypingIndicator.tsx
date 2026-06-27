@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react';
+import { Bot, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StreamingTypingIndicatorProps {
@@ -16,16 +16,16 @@ export function StreamingTypingIndicator({
   
   return (
     <div className={cn("flex gap-3 justify-start", className)}>
-      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <Bot className="h-4 w-4 text-primary" />
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/10 shadow-sm">
+        <Bot className="h-4 w-4 text-amber-500" />
       </div>
-      <div className="bg-muted rounded-lg p-3 max-w-[80%]">
+      <div className="max-w-[80%] rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 shadow-sm">
         {hasContent ? (
           <div className="space-y-2">
             <p className="text-sm whitespace-pre-wrap">{streamingContent}</p>
-            <div className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              <span className="text-xs text-muted-foreground">Generating...</span>
+            <div className="flex items-center gap-2 rounded-full border border-amber-500/20 bg-background/60 px-2.5 py-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-xs font-medium text-amber-600 dark:text-amber-300">Generating...</span>
             </div>
           </div>
         ) : (
@@ -34,19 +34,20 @@ export function StreamingTypingIndicator({
             <div className="flex items-center gap-2">
               <div className="flex gap-1">
                 <span 
-                  className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" 
+                  className="w-2 h-2 rounded-full bg-amber-500/70 animate-bounce" 
                   style={{ animationDelay: '0ms', animationDuration: '0.8s' }} 
                 />
                 <span 
-                  className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" 
+                  className="w-2 h-2 rounded-full bg-amber-500/70 animate-bounce" 
                   style={{ animationDelay: '150ms', animationDuration: '0.8s' }} 
                 />
                 <span 
-                  className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" 
+                  className="w-2 h-2 rounded-full bg-amber-500/70 animate-bounce" 
                   style={{ animationDelay: '300ms', animationDuration: '0.8s' }} 
                 />
               </div>
-              <span className="text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-200">
+                <Sparkles className="h-3.5 w-3.5" />
                 {isMultiReport ? 'Analyzing reports...' : 'Thinking...'}
               </span>
             </div>
