@@ -350,19 +350,19 @@ export default function Charts() {
           <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
           <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-20 bottom-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
+          <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 flex-col gap-4 min-[420px]:flex-row min-[420px]:items-start">
               <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-amber-200/45">
                 <div className="absolute inset-x-3 top-0 h-px bg-amber-100/90" />
                 <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-white/20 blur-md" />
                 <BarChart3 className="relative h-6 w-6 text-primary-foreground drop-shadow-sm" />
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <h1 className="text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">Charts</h1>
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Visual analytics generated from reports</p>
               </div>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
               <Badge variant="secondary" className="h-9 justify-center rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-500/15 via-primary/10 to-amber-500/10 px-4 text-xs font-semibold tracking-wide text-primary shadow-sm shadow-amber-950/5">
                 {charts.length} charts
               </Badge>
@@ -371,6 +371,7 @@ export default function Charts() {
                 size="sm"
                 className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/45"
                 onClick={fetchCharts}
+                aria-label="Refresh chart gallery"
               >
                 <RefreshCw className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-45" /> Refresh
               </Button>
@@ -436,15 +437,15 @@ export default function Charts() {
             {selectedIds.size} selected
           </Badge>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 rounded-full border-amber-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/80 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={selectAll}>
+            <Button variant="outline" size="sm" className="h-10 rounded-full border-amber-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/80 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={selectAll} aria-label={`Select all ${filteredCharts.length} filtered charts`}>
               Select all ({filteredCharts.length})
             </Button>
-            <Button variant="outline" size="sm" className="h-8 gap-1 rounded-full border-amber-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => setSelectedIds(new Set())}>
+            <Button variant="outline" size="sm" className="h-10 gap-1 rounded-full border-amber-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => setSelectedIds(new Set())} aria-label="Clear selected charts">
               <X className="h-3 w-3" /> Clear
             </Button>
           </div>
           <div className="flex-1" />
-          <Button size="sm" className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-primary via-amber-500 to-amber-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/55" onClick={handleBulkExport}>
+          <Button size="sm" className="h-11 w-full gap-1.5 rounded-full bg-gradient-to-r sm:w-auto from-primary via-amber-500 to-amber-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/55" onClick={handleBulkExport} aria-label={`Export ${selectedIds.size} selected charts`}>
             <Download className="h-3.5 w-3.5" /> Export selected
           </Button>
         </div>
@@ -493,7 +494,7 @@ export default function Charts() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-4 min-[520px]:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-5 xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
                   {group.charts.map(chart => (
                     <ChartCard key={chart.id} {...cardProps(chart)} />
                   ))}
@@ -503,7 +504,7 @@ export default function Charts() {
           ))}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] 2xl:gap-6">
+        <div className="grid auto-rows-fr grid-cols-1 gap-4 min-[520px]:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-5 xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] 2xl:gap-6">
           {paginatedCharts.map(chart => (
             <ChartCard key={chart.id} {...cardProps(chart)} />
           ))}

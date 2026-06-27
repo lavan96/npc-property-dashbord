@@ -152,7 +152,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex h-full min-h-[430px] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25 hover:ring-amber-300/45' : ''} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-b from-amber-500/12 via-card/95 to-card/85 ring-2 ring-amber-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
+    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex h-full min-h-[410px] sm:min-h-[430px] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25 hover:ring-amber-300/45' : ''} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-b from-amber-500/12 via-card/95 to-card/85 ring-2 ring-amber-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
       {selectionMode && (
         <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-amber-200/60 bg-background/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 shadow-lg shadow-amber-950/10 backdrop-blur-md dark:text-amber-200">
           {isSelected ? 'Selected' : 'Selectable'}
@@ -165,7 +165,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
       )}
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/0 to-transparent transition-all duration-300 group-hover:via-amber-300/80" />
       <CardHeader className="space-y-3 border-b border-border/40 bg-gradient-to-b from-muted/25 to-transparent px-4 pb-4 pt-4 sm:px-5">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
           <div className="flex-1 min-w-0">
             <CardTitle
               className="line-clamp-2 text-base font-semibold leading-snug tracking-[-0.01em] text-foreground transition-colors group-hover:text-primary sm:text-[17px]"
@@ -174,7 +174,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               {chart.title}
             </CardTitle>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex shrink-0 items-center gap-1 self-start min-[420px]:self-auto">
             {selectionMode && (
               <Checkbox
                 checked={isSelected}
@@ -195,7 +195,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-1 outline-none transition-colors hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/55"
+                    className="flex min-h-9 max-w-full items-center sm:max-w-[180px] gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-1 outline-none transition-colors hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/55"
                     onClick={() => navigate(`/report/${chart.report_id}`)}
                   >
                     <FileText className="h-3.5 w-3.5 shrink-0 text-primary/70" />
@@ -218,8 +218,17 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         <div
           className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 ring-2 ring-amber-400/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_34px_rgba(245,158,11,0.22)]' : ''}`}
           onClick={() => onExpand(chart)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Open ${chart.title} chart preview`}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onExpand(chart);
+            }
+          }}
         >
-          <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
+          <div className="relative flex h-48 w-full min-[420px]:h-56 items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
             {renderChartImage(chart)}
           </div>
           <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-slate-950/5 transition-all duration-300 group-hover/img:ring-amber-400/25 dark:ring-white/10" />
@@ -241,7 +250,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
           <Collapsible open={showAnalysis} onOpenChange={setShowAnalysis}>
             <CollapsibleTrigger asChild>
               <button
-                className="group/analysis flex w-full items-center gap-2 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-background/70 to-primary/5 px-3 py-2 text-left text-xs font-semibold text-foreground shadow-sm shadow-amber-950/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/45 hover:from-amber-500/15 hover:to-primary/10 hover:shadow-md hover:shadow-amber-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/35 focus-visible:ring-offset-2"
+                className="group/analysis flex w-full items-center gap-2 rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-background/70 to-primary/5 px-3 py-2 text-left text-xs font-semibold text-foreground shadow-sm shadow-amber-950/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/45 hover:from-amber-500/15 hover:to-primary/10 hover:shadow-md hover:shadow-amber-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/55 focus-visible:ring-offset-2 min-h-11"
                 aria-label={showAnalysis ? `Hide analysis for ${chart.title}` : `View analysis for ${chart.title}`}
               >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/15 text-amber-600 shadow-inner transition-colors group-hover/analysis:bg-amber-500/25 dark:text-amber-300">
@@ -270,15 +279,15 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
           </Collapsible>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-1 pt-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <div>
             {onDelete && (
-              <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-destructive transition-all hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/35" onClick={() => onDelete(chart)}>
+              <Button variant="ghost" size="sm" className="h-10 gap-1 rounded-full text-xs text-destructive transition-all hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/35" onClick={() => onDelete(chart)}>
                 <Trash2 className="h-3 w-3" /> Delete
               </Button>
             )}
           </div>
-          <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs transition-all hover:border-amber-300/50 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onExport(chart)}>
+          <Button variant="ghost" size="sm" className="h-10 gap-1 rounded-full text-xs transition-all hover:border-amber-300/50 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onExport(chart)}>
             <Download className="h-3 w-3" /> Export
           </Button>
         </div>
