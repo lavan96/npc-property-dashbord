@@ -51,7 +51,8 @@ import {
   Video,
   User,
   MoreHorizontal,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Target
 } from 'lucide-react';
 import { ActiveClientCard } from '@/components/clients/ActiveClientCard';
 // Pagination imports removed - using infinite scroll now
@@ -772,12 +773,16 @@ export default function ClientTracker() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6 pb-20 md:pb-6">
+    <div className="min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
       {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center justify-between">
+      <div className="rounded-2xl border border-primary/15 bg-card/80 p-4 shadow-xl shadow-black/20 backdrop-blur md:p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">Client Tracker</h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+            <Target className="h-3.5 w-3.5" /> CRM Workspace
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">Client Tracker</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Track clients through your GHL pipelines
             {pipelines.length > 0 && (
               <span className="ml-2 text-xs md:text-sm">
@@ -789,7 +794,7 @@ export default function ClientTracker() {
         
         {/* Mobile: Compact action bar */}
         {isMobile ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/70 p-2 shadow-inner">
             <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-muted/50 border">
               {isAutoSyncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
@@ -843,12 +848,12 @@ export default function ClientTracker() {
             </DropdownMenu>
           </div>
         ) : (
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/70 bg-background/60 p-2 shadow-inner">
             {/* Auto-sync toggle */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/10 px-3 py-1.5 shadow-sm">
                     {isAutoSyncing ? (
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
@@ -921,12 +926,13 @@ export default function ClientTracker() {
             </DropdownMenu>
           </div>
         )}
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-4">
+        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10">
+          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary/70">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
                 <Users className="h-5 w-5 text-primary" />
@@ -938,11 +944,11 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4">
+        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/35 hover:shadow-xl hover:shadow-amber-500/10">
+          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-amber-500/70">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Clock className="h-5 w-5 text-blue-500" />
+              <div className="p-2 bg-amber-500/10 rounded-lg">
+                <Clock className="h-5 w-5 text-amber-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.withFollowUp}</p>
@@ -951,8 +957,8 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4">
+        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-red-500/35 hover:shadow-xl hover:shadow-red-500/10">
+          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-red-500/70">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-500/10 rounded-lg">
                 <AlertCircle className="h-5 w-5 text-red-500" />
@@ -964,11 +970,11 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4">
+        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/35 hover:shadow-xl hover:shadow-emerald-500/10">
+          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-emerald-500/70">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/10 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-green-500" />
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-emerald-500" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.financeStage}</p>
@@ -981,7 +987,7 @@ export default function ClientTracker() {
 
       {/* Upcoming Appointments from GHL Calendar */}
       {upcomingAppointments.length > 0 && (
-        <Card>
+        <Card className="border-border/70 bg-card/80 shadow-lg shadow-black/10">
           <CardHeader className="py-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -1002,7 +1008,7 @@ export default function ClientTracker() {
                 {upcomingAppointments.map(event => (
                   <Card 
                     key={event.id} 
-                    className="flex-shrink-0 w-72 bg-muted/30 cursor-pointer hover:bg-muted/50 hover:shadow-md transition-all"
+                    className="w-72 flex-shrink-0 cursor-pointer border-border/70 bg-background/70 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10"
                     onClick={() => handleEventClick(event)}
                   >
                     <CardContent className="p-4">
@@ -1081,15 +1087,15 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
+      <div className="rounded-2xl border border-border/70 bg-card/75 p-3 shadow-lg shadow-black/10 backdrop-blur">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-9 md:h-10"
+              className="h-10 border-border/70 bg-background/80 pl-10 transition-all focus-visible:ring-primary/40"
             />
           </div>
           
@@ -1150,7 +1156,7 @@ export default function ClientTracker() {
             <>
               {/* Desktop: Inline filters */}
               <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-[220px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
                   <Layers className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Select Pipeline" />
                 </SelectTrigger>
@@ -1165,7 +1171,7 @@ export default function ClientTracker() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[200px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Filter by stage" />
                 </SelectTrigger>
@@ -1188,7 +1194,7 @@ export default function ClientTracker() {
 
       {/* No pipelines synced message */}
       {!isLoading && pipelines.length === 0 && (
-        <Card className="border-dashed">
+        <Card className="border-dashed border-primary/25 bg-card/80 shadow-lg shadow-black/10">
           <CardContent className="py-8 text-center">
             <Layers className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No Pipelines Synced</h3>
@@ -1221,9 +1227,9 @@ export default function ClientTracker() {
 
       {/* Tabs for different views */}
       {(pipelines.length > 0 || clients.length > 0) && (
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-border/70 bg-card/55 p-3 shadow-xl shadow-black/15 backdrop-blur md:p-4">
           <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-            <TabsList className="inline-flex w-auto min-w-max">
+            <TabsList className="inline-flex h-11 w-auto min-w-max border border-border/70 bg-background/80 p-1 shadow-inner">
               {!isMobile && <TabsTrigger value="kanban">Kanban Board</TabsTrigger>}
               <TabsTrigger value="pipeline">
                 {isMobile ? 'Cards' : 'Pipeline View'}
@@ -1237,7 +1243,7 @@ export default function ClientTracker() {
           </div>
 
           {/* Kanban Board View */}
-          <TabsContent value="kanban" className="mt-4">
+          <TabsContent value="kanban" className="mt-5">
             {/* Drag and drop hint */}
             {isDragDropEnabled && (
               <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
@@ -1261,14 +1267,14 @@ export default function ClientTracker() {
                   return (
                     <div 
                       key={stage.id} 
-                      className="flex-shrink-0 w-80"
+                      className="w-80 flex-shrink-0"
                       onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, stage.id) : undefined}
                       onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
                       onDrop={isDragDropEnabled ? (e) => handleDrop(e, stage.id, stage.name) : undefined}
                     >
                       <Card className={cn(
-                        "h-full transition-all duration-200",
-                        isDragOver && isDragDropEnabled && "ring-2 ring-primary/50 bg-primary/5"
+                        "h-full border-border/70 bg-background/70 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
+                        isDragOver && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
                       )}>
                         <CardHeader className="py-3 px-4">
                           <div className="flex items-center justify-between">
@@ -1286,7 +1292,7 @@ export default function ClientTracker() {
                         </CardHeader>
                         <CardContent className="px-3 pb-3">
                           <div className={cn(
-                            "space-y-2 max-h-[500px] overflow-y-auto min-h-[100px]",
+                            "min-h-[100px] max-h-[560px] space-y-2 overflow-y-auto rounded-xl pr-1",
                             isDragOver && isDragDropEnabled && "bg-primary/5 rounded-md"
                           )}>
                             {stageClients.length === 0 ? (
@@ -1328,8 +1334,8 @@ export default function ClientTracker() {
                     onDrop={isDragDropEnabled ? (e) => handleDrop(e, null, 'Unassigned') : undefined}
                   >
                     <Card className={cn(
-                      "h-full border-dashed transition-all duration-200",
-                      dragOverStageId === 'unassigned' && isDragDropEnabled && "ring-2 ring-primary/50 bg-primary/5"
+                      "h-full border-dashed border-border/70 bg-background/60 shadow-lg shadow-black/10 transition-all duration-300 hover:border-primary/25",
+                      dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
                     )}>
                       <CardHeader className="py-3 px-4">
                         <div className="flex items-center justify-between">
@@ -1344,7 +1350,7 @@ export default function ClientTracker() {
                       </CardHeader>
                       <CardContent className="px-3 pb-3">
                         <div className={cn(
-                          "space-y-2 max-h-[500px] overflow-y-auto min-h-[100px]",
+                          "min-h-[100px] max-h-[560px] space-y-2 overflow-y-auto rounded-xl pr-1",
                           dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/5 rounded-md"
                         )}>
                           {!groupedByStage['unassigned']?.length ? (
@@ -1382,7 +1388,7 @@ export default function ClientTracker() {
 
           {/* Pipeline List View */}
           <TabsContent value="pipeline" className="mt-4">
-            <Card>
+            <Card className="overflow-hidden border-border/70 bg-background/70 shadow-lg shadow-black/10">
               <CardContent className="p-0">
                 {isLoading ? (
                   <div className="p-8 text-center text-muted-foreground">Loading clients...</div>
@@ -1396,7 +1402,7 @@ export default function ClientTracker() {
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       
                       return (
-                        <div key={client.id} className="p-4 hover:bg-muted/50 transition-colors">
+                        <div key={client.id} className="p-4 transition-all duration-200 hover:bg-primary/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.75)]">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -1498,7 +1504,7 @@ export default function ClientTracker() {
 
           {/* Table View */}
           <TabsContent value="table" className="mt-4">
-            <Card>
+            <Card className="overflow-hidden border-border/70 bg-background/70 shadow-lg shadow-black/10">
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -1520,7 +1526,7 @@ export default function ClientTracker() {
                       const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       return (
-                        <TableRow key={client.id}>
+                        <TableRow key={client.id} className="transition-colors hover:bg-primary/5">
                           <TableCell className="font-medium">
                             {formatFullName(client.primary_first_name, client.primary_surname)}
                           </TableCell>
@@ -1606,7 +1612,7 @@ export default function ClientTracker() {
           {/* Active Clients View */}
           <TabsContent value="active" className="mt-4">
             <div className="grid gap-4">
-              <Card>
+              <Card className="border-border/70 bg-background/70 shadow-lg shadow-black/10">
                 <CardHeader>
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
@@ -1622,7 +1628,7 @@ export default function ClientTracker() {
                       </p>
                     </div>
                     {/* Deal Status Sub-Filters */}
-                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                    <div className="flex items-center gap-1 rounded-xl border border-border/70 bg-card/80 p-1 shadow-inner">
                       <Button
                         variant={activeDealFilter === 'all' ? 'secondary' : 'ghost'}
                         size="sm"
@@ -1771,9 +1777,9 @@ function KanbanCard({
   return (
     <Card 
       className={cn(
-        "p-3 cursor-pointer hover:shadow-md transition-all duration-200 bg-card",
+        "group cursor-pointer border-border/70 bg-card/90 p-3 shadow-sm shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10",
         isDraggable && "cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50 scale-95 ring-2 ring-primary/50"
+        isDragging && "scale-95 border-primary/60 bg-primary/10 opacity-70 shadow-xl shadow-primary/20 ring-2 ring-primary/50"
       )}
       onClick={onEdit}
       draggable={isDraggable}
@@ -1783,7 +1789,7 @@ function KanbanCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isDraggable && (
-            <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
           )}
           <h4 className="font-medium text-sm line-clamp-1">
             {formatFullName(client.primary_first_name, client.primary_surname)}
@@ -1854,7 +1860,7 @@ function KanbanCard({
           </p>
         )}
         {client.borrowing_capacity && (
-          <p className="text-xs text-green-600 font-medium">
+          <p className="text-xs font-medium text-emerald-500">
             {formatCurrency(client.borrowing_capacity)}
           </p>
         )}
@@ -1862,7 +1868,7 @@ function KanbanCard({
 
       {/* Upcoming appointment */}
       {upcomingAppointment && (
-        <div className="mt-2 pt-2 border-t flex items-center gap-1.5 text-xs">
+        <div className="mt-2 flex items-center gap-1.5 border-t border-border/70 pt-2 text-xs">
           <Video className="h-3 w-3 text-primary flex-shrink-0" />
           <span className="text-muted-foreground truncate">
             {format(new Date(upcomingAppointment.startTime), 'MMM d, h:mm a')}
@@ -1872,7 +1878,7 @@ function KanbanCard({
 
       {/* Other pipeline memberships */}
       {uniquePipelines.length > 1 && (
-        <div className="mt-2 pt-2 border-t">
+        <div className="mt-2 border-t border-border/70 pt-2">
           <div className="flex flex-wrap gap-1">
             {uniquePipelines.slice(0, 2).map(name => (
               <Badge key={name} variant="outline" className="text-[9px] px-1 py-0">
@@ -1889,7 +1895,7 @@ function KanbanCard({
       )}
       
       {client.pipeline_notes && (
-        <p className="text-xs text-muted-foreground mt-2 line-clamp-2 border-t pt-2">
+        <p className="mt-2 line-clamp-2 border-t border-border/70 pt-2 text-xs text-muted-foreground">
           {client.pipeline_notes}
         </p>
       )}
