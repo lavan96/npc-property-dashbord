@@ -228,6 +228,11 @@ export default function Messages() {
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
                 All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
               </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="rounded-full border border-amber-300/20 bg-black/30 px-3 py-1 text-amber-100 shadow-inner shadow-black/20">Premium portal hub</span>
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-emerald-100">{clientThreads.length} client threads</span>
+                <span className="rounded-full border border-blue-300/20 bg-blue-300/10 px-3 py-1 text-blue-100">{financeGrouped.length} finance clients</span>
+              </div>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Button
@@ -262,8 +267,9 @@ export default function Messages() {
         </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'client' | 'finance')} className="space-y-4">
-          <div className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.9),rgba(5,5,6,0.88))] p-3 shadow-xl shadow-black/25 backdrop-blur-xl">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/15 bg-[linear-gradient(135deg,rgba(24,24,27,0.92),rgba(5,5,6,0.9))] p-3 shadow-xl shadow-black/25 backdrop-blur-xl">
+            <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/35 to-transparent" />
+            <div className="relative flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="relative min-w-0 flex-1 xl:max-w-2xl">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/75" />
                 <label htmlFor="portal-message-search" className="sr-only">Search portal messages by client, partner, or message</label>
@@ -273,7 +279,7 @@ export default function Messages() {
                   placeholder="Search by client, partner, or message…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-12 rounded-2xl border-amber-300/15 bg-black/45 pl-11 pr-4 text-sm text-foreground shadow-inner shadow-black/25 transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-amber-300/30 hover:bg-black/55 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  className="h-12 rounded-2xl border-amber-300/20 bg-[linear-gradient(180deg,rgba(0,0,0,0.58),rgba(12,12,14,0.82))] pl-11 pr-4 text-sm text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_14px_34px_rgba(0,0,0,0.22)] transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-amber-300/35 hover:bg-black/60 focus-visible:border-amber-300/65 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                 />
               </div>
 
@@ -282,14 +288,14 @@ export default function Messages() {
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   Client Portal
                   {totalClientUnread > 0 && (
-                    <Badge variant="destructive" className="ml-1">{totalClientUnread}</Badge>
+                    <Badge className="ml-1 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black">{totalClientUnread}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="finance" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_28px_rgba(0,0,0,0.22)] focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
                   <ShieldCheck className="h-4 w-4 shrink-0" />
                   Finance Portal
                   {totalFinanceUnread > 0 && (
-                    <Badge variant="destructive" className="ml-1">{totalFinanceUnread}</Badge>
+                    <Badge className="ml-1 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black">{totalFinanceUnread}</Badge>
                   )}
                 </TabsTrigger>
               </TabsList>
@@ -301,7 +307,10 @@ export default function Messages() {
               <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/12 via-emerald-300/[0.04] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients</CardTitle>
+                  <div>
+                    <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients</CardTitle>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{filteredClientThreads.length} visible · {totalClientUnread} unread</p>
+                  </div>
                   <Badge variant="outline" className="rounded-full border-emerald-300/25 bg-emerald-300/10 px-2 text-[10px] text-emerald-100">Client Portal</Badge>
                 </div>
               </CardHeader>
@@ -337,7 +346,7 @@ export default function Messages() {
                           <div className="flex items-center justify-between gap-2">
                             <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-amber-50">{t.client_name}</div>
                             {t.unread_count > 0 && (
-                              <Badge variant="destructive" className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{t.unread_count}</Badge>
+                              <Badge className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{t.unread_count}</Badge>
                             )}
                           </div>
                           <div className={cn('mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground/85', !t.last_message_preview && 'italic text-muted-foreground/55')}>
@@ -356,7 +365,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
                 <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain">
@@ -372,6 +381,11 @@ export default function Messages() {
                     <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
                       <p className="text-base font-semibold text-foreground">Select a client to view portal messages.</p>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a thread from the left pane to open the portal conversation workspace.</p>
+                      <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-amber-100/90">
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Search</span>
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Review</span>
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Reply</span>
+                      </div>
                       <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
                     </div>
                   </div>
@@ -386,7 +400,10 @@ export default function Messages() {
             <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-blue-300/[0.05] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients with Finance threads</CardTitle>
+                  <div>
+                    <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Finance clients</CardTitle>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{filteredFinanceGroups.length} visible · {totalFinanceUnread} unread</p>
+                  </div>
                   <Badge variant="outline" className="rounded-full border-blue-300/25 bg-blue-300/10 px-2 text-[10px] text-blue-100">Finance Portal</Badge>
                 </div>
               </CardHeader>
@@ -449,7 +466,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
               <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedFinanceClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain p-4">
@@ -457,15 +474,19 @@ export default function Messages() {
                   </div>
                 ) : (
                   <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground lg:min-h-0">
-                    <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-emerald-300/20 to-transparent" />
-                    <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
-                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/15 to-white/[0.03] text-emerald-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+                    <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-amber-300/25 to-transparent" />
+                    <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
+                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-300/25 bg-gradient-to-br from-amber-300/15 to-white/[0.03] text-amber-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
                       <ShieldCheck className="h-9 w-9 opacity-90" />
                     </div>
                     <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
                       <p className="text-base font-semibold text-foreground">Select a client to view finance portal threads.</p>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a finance-linked client to review partner-visible thread activity.</p>
-                      <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent" />
+                      <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-amber-100/90">
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Partner view</span>
+                        <span className="rounded-full border border-blue-300/15 bg-blue-300/10 px-2 py-0.5 text-blue-100">Finance threads</span>
+                      </div>
+                      <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
                     </div>
                   </div>
                 )}
