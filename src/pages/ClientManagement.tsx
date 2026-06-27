@@ -560,10 +560,46 @@ export default function ClientManagement() {
   }));
 
   const kpiCards = [
-    { label: 'Total Clients', value: totalClients, icon: Users, accent: 'text-amber-300', glow: 'from-amber-500/20' },
-    { label: 'Total Properties', value: totalProperties, icon: Building2, accent: 'text-cyan-300', glow: 'from-cyan-500/15' },
-    { label: 'Portfolio Value', value: formatCurrency(totalPortfolioValue), icon: DollarSign, accent: 'text-emerald-300', glow: 'from-emerald-500/15' },
-    { label: 'Pending GHL Sync', value: pendingSyncCount, icon: TrendingUp, accent: 'text-amber-300', glow: 'from-amber-500/20' },
+    {
+      label: 'Total Clients',
+      value: totalClients,
+      icon: Users,
+      accent: 'text-amber-200',
+      iconSurface: 'border-amber-300/25 bg-amber-400/10',
+      glow: 'from-amber-500/20',
+      valueClassName: 'text-foreground',
+      barClassName: 'from-amber-300 via-amber-400 to-transparent',
+    },
+    {
+      label: 'Total Properties',
+      value: totalProperties,
+      icon: Building2,
+      accent: 'text-amber-100',
+      iconSurface: 'border-amber-300/20 bg-amber-300/10',
+      glow: 'from-yellow-500/15',
+      valueClassName: 'text-foreground',
+      barClassName: 'from-yellow-300 via-amber-400 to-transparent',
+    },
+    {
+      label: 'Portfolio Value',
+      value: formatCurrency(totalPortfolioValue),
+      icon: DollarSign,
+      accent: 'text-amber-50',
+      iconSurface: 'border-amber-200/35 bg-amber-300/15 shadow-amber-500/10',
+      glow: 'from-amber-400/25',
+      valueClassName: 'bg-gradient-to-r from-amber-100 via-amber-300 to-yellow-500 bg-clip-text text-transparent',
+      barClassName: 'from-amber-200 via-yellow-400 to-transparent',
+    },
+    {
+      label: 'Pending GHL Sync',
+      value: pendingSyncCount,
+      icon: TrendingUp,
+      accent: 'text-amber-200',
+      iconSurface: 'border-amber-300/30 bg-amber-500/15',
+      glow: 'from-amber-600/25',
+      valueClassName: pendingSyncCount > 0 ? 'text-amber-200' : 'text-foreground',
+      barClassName: 'from-amber-300 via-orange-400 to-transparent',
+    },
   ];
 
   return (
@@ -686,19 +722,24 @@ export default function ClientManagement() {
       </section>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {kpiCards.map(({ label, value, icon: Icon, accent, glow }) => (
-          <Card key={label} className="group relative overflow-hidden border-border/70 bg-card/85 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/40 hover:shadow-2xl hover:shadow-amber-950/30">
-            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} to-transparent opacity-70 transition-opacity group-hover:opacity-100`} />
-            <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-              <div className="rounded-xl border border-white/10 bg-background/60 p-2 shadow-inner">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpiCards.map(({ label, value, icon: Icon, accent, iconSurface, glow, valueClassName, barClassName }) => (
+          <Card
+            key={label}
+            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-300/50 hover:shadow-2xl hover:shadow-amber-950/35"
+          >
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} via-transparent to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-100`} />
+            <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <CardHeader className="relative flex flex-row items-start justify-between space-y-0 pb-3">
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">{label}</CardTitle>
+              <div className={`rounded-2xl border p-2.5 shadow-inner transition-transform duration-300 group-hover:scale-105 ${iconSurface}`}>
                 <Icon className={`h-4 w-4 ${accent}`} />
               </div>
             </CardHeader>
-            <CardContent className="relative">
-              <div className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">{value}</div>
-              <div className="mt-3 h-1 w-16 rounded-full bg-gradient-to-r from-amber-400/80 to-transparent" />
+            <CardContent className="relative space-y-4 pt-0">
+              <div className={`text-3xl font-bold leading-none tracking-tight md:text-4xl ${valueClassName}`}>{value}</div>
+              <div className="h-px w-full bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
+              <div className={`h-1.5 w-24 rounded-full bg-gradient-to-r ${barClassName} opacity-90 shadow-[0_0_22px_rgba(245,158,11,0.22)] transition-all duration-300 group-hover:w-32 group-hover:opacity-100`} />
             </CardContent>
           </Card>
         ))}
