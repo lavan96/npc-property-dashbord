@@ -152,7 +152,10 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     : null;
 
   return (
-    <Card className={`group relative flex h-full min-h-[22rem] overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.9),rgba(3,7,18,0.84))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-950/35 ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''} ${isSelected ? 'border-amber-400/60 shadow-amber-950/30' : ''}`}>
+    <Card className={`group relative flex h-full min-h-[22rem] overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.9),rgba(3,7,18,0.84))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-950/35 focus-within:border-amber-300/70 focus-within:ring-2 focus-within:ring-amber-300/25 focus-within:shadow-amber-950/30 ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''} ${isSelected ? 'border-amber-400/70 shadow-amber-950/40 ring-1 ring-amber-300/35 hover:ring-amber-300/55' : ''}`}>
+      {isSelected && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-amber-300 via-amber-500 to-yellow-600 shadow-[0_0_18px_rgba(245,158,11,0.55)]" />
+      )}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-amber-400/75 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <CardHeader className="relative pb-4">
@@ -161,23 +164,29 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 rounded-full transition-colors hover:bg-amber-500/10"
+              className={`h-8 w-8 shrink-0 rounded-full border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0 ${
+                client.is_favorite
+                  ? 'border-yellow-300/45 bg-yellow-400/15 text-yellow-300 shadow-sm shadow-yellow-950/30 hover:scale-105 hover:bg-yellow-400/20 hover:shadow-yellow-400/20'
+                  : 'border-border/50 bg-background/35 text-muted-foreground hover:scale-105 hover:border-yellow-300/45 hover:bg-yellow-400/10 hover:text-yellow-300 hover:shadow-sm hover:shadow-yellow-400/15'
+              }`}
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
             >
               <Star 
-                className={`h-4 w-4 transition-colors ${
+                className={`h-4 w-4 transition-all duration-200 group-hover:drop-shadow-[0_0_8px_rgba(250,204,21,0.45)] ${
                   client.is_favorite 
                     ? 'fill-yellow-400 text-yellow-400' 
                     : 'text-muted-foreground hover:text-yellow-400'
                 }`} 
               />
             </Button>
-            <FollowUpFlag
-              clientId={client.id}
-              followUpDate={client.follow_up_date}
-              size="sm"
-            />
+            <div className="rounded-full border border-border/50 bg-background/35 shadow-sm transition-all duration-200 hover:border-amber-300/45 hover:bg-amber-400/10 focus-within:ring-2 focus-within:ring-amber-300/60">
+              <FollowUpFlag
+                clientId={client.id}
+                followUpDate={client.follow_up_date}
+                size="sm"
+              />
+            </div>
             <div className="min-w-0 space-y-2">
               <div className="space-y-1">
                 <h3 className="truncate text-base font-bold leading-tight tracking-tight text-foreground">{fullName}</h3>
@@ -196,32 +205,39 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 rounded-full border border-border/45 bg-background/30 p-1 shadow-sm">
             {onSelect && (
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={onSelect}
-                className="mr-1 rounded-md border-amber-500/45 bg-background/70 shadow-sm data-[state=checked]:bg-amber-500 data-[state=checked]:text-black"
-              />
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all duration-200 ${
+                isSelected
+                  ? 'border-amber-300/55 bg-amber-400/15 shadow-sm shadow-amber-950/30'
+                  : 'border-border/50 bg-background/40 hover:border-amber-300/45 hover:bg-amber-400/10'
+              }`}>
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={onSelect}
+                  aria-label={`Select ${fullName}`}
+                  className="rounded-md border-amber-500/45 bg-background/70 shadow-sm focus-visible:ring-2 focus-visible:ring-amber-300/70 data-[state=checked]:border-amber-300 data-[state=checked]:bg-amber-500 data-[state=checked]:text-black"
+                />
+              </div>
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/50 bg-background/40 transition-colors hover:border-amber-400/40 hover:bg-amber-500/10 hover:text-amber-200">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/50 bg-background/45 text-muted-foreground shadow-sm transition-all duration-200 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0 data-[state=open]:border-amber-400/60 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-200">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onView}>
+            <DropdownMenuContent align="end" sideOffset={8} className="w-48 rounded-xl border-amber-400/20 bg-zinc-950/95 p-1.5 text-sm shadow-2xl shadow-black/40 backdrop-blur">
+              <DropdownMenuItem onClick={onView} className="rounded-lg focus:bg-amber-500/10 focus:text-amber-100">
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSyncToGHL} disabled={isSyncing}>
+              <DropdownMenuItem onClick={handleSyncToGHL} disabled={isSyncing} className="rounded-lg focus:bg-amber-500/10 focus:text-amber-100">
                 <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                 {isSyncing ? 'Syncing...' : 'Sync to GHL'}
               </DropdownMenuItem>
               {client.ghl_contact_id && ghlLocationId && (
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="rounded-lg focus:bg-amber-500/10 focus:text-amber-100">
                   <a 
                     href={`https://app.gohighlevel.com/v2/location/${ghlLocationId}/contacts/detail/${client.ghl_contact_id}`}
                     target="_blank"
@@ -237,7 +253,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     onClick={onDelete}
-                    className="text-destructive focus:text-destructive"
+                    className="rounded-lg text-destructive focus:bg-destructive/10 focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete

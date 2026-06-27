@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Search, LayoutGrid, List, CheckSquare, X, FolderOpen, CalendarDays, Sparkles } from 'lucide-react';
+import { Search, LayoutGrid, List, CheckSquare, X, FolderOpen, CalendarDays, Sparkles, CheckCircle2 } from 'lucide-react';
 
 interface ChartFiltersProps {
   searchQuery: string;
@@ -158,13 +158,19 @@ export function ChartFilters({
           size="sm"
           className={cn(
             'group h-10 gap-1.5 rounded-2xl border-amber-300/35 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-0',
-            selectionMode && 'border-amber-300/70 bg-gradient-to-r from-primary via-amber-500 to-amber-400 text-primary-foreground shadow-[0_14px_30px_hsl(43_74%_49%/0.24)] hover:text-primary-foreground'
+            selectionMode && 'border-amber-200/80 bg-gradient-to-r from-primary via-amber-500 to-amber-400 text-primary-foreground shadow-[0_16px_36px_hsl(43_74%_49%/0.30),0_0_0_1px_hsl(43_96%_56%/0.30)] hover:text-primary-foreground'
           )}
           onClick={onToggleSelectionMode}
           aria-pressed={selectionMode}
         >
-          {selectionMode ? <Sparkles className="h-3.5 w-3.5" /> : <CheckSquare className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />}
-          {selectionMode ? `${selectedCount} selected` : 'Select'}
+          {selectionMode ? <Sparkles className="h-3.5 w-3.5 drop-shadow-sm" /> : <CheckSquare className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />}
+          <span>{selectionMode ? 'Selecting' : 'Select'}</span>
+          {selectionMode && (
+            <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-amber-100/45 bg-white/20 px-1.5 text-[10px] font-black tabular-nums shadow-inner">
+              <CheckCircle2 className="mr-1 h-3 w-3" />
+              {selectedCount}
+            </span>
+          )}
         </Button>
       </div>
     </div>

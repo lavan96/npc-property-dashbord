@@ -1,18 +1,18 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
-import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Upload, 
-  FileSpreadsheet, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  Upload,
+  FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  FileCheck2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseExcelToClients, type ParsedClient } from '@/utils/excelClientParser';
@@ -49,12 +49,12 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       // Read the Excel file
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      
+
       setProgress(30);
 
       // Parse clients from the workbook
       const clients = parseExcelToClients(workbook);
-      
+
       if (clients.length === 0) {
         throw new Error('No valid client data found in the spreadsheet');
       }
@@ -72,7 +72,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
 
       for (let i = 0; i < clients.length; i++) {
         const client = clients[i];
-        
+
         try {
           // Prepare client data
           const clientInsertData = {
@@ -113,10 +113,10 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
             clientId: '',
             data: clientInsertData,
           });
-          
+
           if (fnError) throw new Error(fnError.message);
           if (!fnData?.success) throw new Error(fnData?.error || 'Failed to create client');
-          
+
           const clientData = fnData.result;
           result.clientsCreated++;
           const newClientId = clientData.id;
@@ -152,7 +152,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 clientId: newClientId,
                 data: propertyData,
               });
-              
+
               if (propError || !propData?.success) {
                 result.errors.push(`Property error for ${client.primaryContact.firstName}: ${propError?.message || propData?.error}`);
               } else {
@@ -173,7 +173,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 start_date: emp.startDate,
                 is_current: true
               };
-              
+
               await invokeSecureFunction('manage-client-data', {
                 operation: 'create',
                 table: 'client_employment',
@@ -198,7 +198,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 overtime_non_essential: inc.overtimeNonEssential || 0,
                 other_taxable_income: inc.otherTaxableIncome || 0
               };
-              
+
               await invokeSecureFunction('manage-client-data', {
                 operation: 'create',
                 table: 'client_income',
@@ -220,7 +220,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 description: asset.description,
                 value: asset.value || 0
               };
-              
+
               await invokeSecureFunction('manage-client-data', {
                 operation: 'create',
                 table: 'client_assets',
@@ -243,7 +243,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 monthly_repayment: liability.monthlyRepayment || 0,
                 repayment_type: liability.repaymentType
               };
-              
+
               await invokeSecureFunction('manage-client-data', {
                 operation: 'create',
                 table: 'client_liabilities',
@@ -279,17 +279,17 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       setProgress(100);
       setImportResult(result);
       setStatus('complete');
-      
+
       if (result.clientsCreated > 0) {
         toast.success(`Successfully imported ${result.clientsCreated} client(s) with ${result.propertiesCreated} properties`);
-        
+
         // Add notification for client import
         addNotification({
           type: 'client_created',
           title: 'Clients Imported',
           message: `${result.clientsCreated} client(s) imported with ${result.propertiesCreated} properties`
         });
-        
+
         // Auto-sync imported clients to GHL via secure Edge Function
         try {
           const { data: clientsData } = await invokeSecureFunction<{ success: boolean; clients: Array<{ id: string }> }>('get-client-data', {
@@ -302,17 +302,17 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
               limit: result.clientsCreated
             }
           });
-          
+
           const newClients = clientsData?.clients || [];
-          
+
           if (newClients.length > 0) {
             toast.info('Syncing clients to GoHighLevel...');
             const clientIds = newClients.map(c => c.id);
-            
+
             const { data: syncResult, error: syncError } = await invokeSecureFunction('sync-client-to-ghl', {
               action: 'batch', clientIds,
             });
-            
+
             if (syncError) {
               console.error('Auto-sync error:', syncError);
               toast.warning('Import complete, but GHL sync failed. You can retry manually.');
@@ -323,7 +323,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
         } catch (syncErr) {
           console.error('Auto-sync error:', syncErr);
         }
-        
+
         onImportComplete();
       }
 
@@ -357,70 +357,112 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {status === 'idle' && (
         <div
           {...getRootProps()}
           className={`
-            border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-            ${isDragActive 
-              ? 'border-primary bg-primary/5' 
-              : 'border-border hover:border-primary/50 hover:bg-muted/50'
+            group relative min-h-[280px] cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-all duration-300 sm:p-8 md:p-10
+            ${isDragActive
+              ? 'scale-[1.01] border-amber-300 bg-amber-300/10 shadow-2xl shadow-amber-500/25 ring-4 ring-amber-300/20'
+              : 'border-amber-300/35 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_36%),linear-gradient(145deg,rgba(24,24,27,0.88),rgba(3,7,18,0.78))] shadow-xl shadow-black/20 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-300/[0.08] hover:shadow-2xl hover:shadow-amber-950/20 focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-300/20'
             }
           `}
         >
           <input {...getInputProps()} />
-          <FileSpreadsheet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-lg font-medium text-foreground">
-            {isDragActive ? 'Drop the Excel file here' : 'Drag & drop your Excel file here'}
-          </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            or click to browse (supports .xlsx and .xls)
-          </p>
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            No file selected
+          </div>
+          <div className="flex min-h-[220px] flex-col items-center justify-center">
+            <div className={`mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border shadow-2xl transition-all duration-300 ${isDragActive ? 'border-amber-200/60 bg-amber-300 text-black shadow-amber-500/35 scale-105' : 'border-amber-300/25 bg-amber-300/10 text-amber-100 shadow-amber-950/25 group-hover:border-amber-200/50 group-hover:bg-amber-300/15'}`}>
+              <FileSpreadsheet className="h-10 w-10" />
+            </div>
+            <div className="max-w-xl space-y-2">
+              <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                {isDragActive ? 'Drop the Excel file here' : 'Drag & drop your Excel file here'}
+              </p>
+              <p className="text-sm leading-6 text-slate-400 sm:text-base">
+                Import client intake data and property portfolios from a spreadsheet, or click anywhere in this panel to browse.
+              </p>
+            </div>
+            <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-amber-100">
+                <Upload className="h-3.5 w-3.5" />
+                Browse files
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-semibold text-slate-300">
+                <FileCheck2 className="h-3.5 w-3.5 text-emerald-300" />
+                Supports .xlsx and .xls
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
       {(status === 'parsing' || status === 'importing') && (
-        <div className="border rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <div>
-              <p className="font-medium">{fileName}</p>
-              <p className="text-sm text-muted-foreground">
+        <div className="relative overflow-hidden rounded-3xl border border-amber-300/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-amber-950/15 sm:p-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/10 text-amber-100 shadow-lg shadow-amber-950/20">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="truncate font-semibold text-amber-50">{fileName}</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-100">
+                  {status === 'parsing' ? 'Parsing' : 'Importing'}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-400">
                 {status === 'parsing' ? 'Parsing spreadsheet...' : 'Importing clients...'}
               </p>
+              <div className="mt-4 rounded-2xl border border-amber-300/10 bg-black/20 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold text-amber-100/70">
+                  <span>{status === 'parsing' ? 'Reading workbook structure' : 'Creating client records'}</span>
+                  <span className="tabular-nums">{Math.round(progress)}%</span>
+                </div>
+                <Progress value={progress} className="h-3 border border-amber-300/15 bg-amber-950/60 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]" />
+              </div>
             </div>
           </div>
-          <Progress value={progress} className="h-2" />
         </div>
       )}
 
       {status === 'complete' && importResult && (
-        <div className="border rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
-            <div>
-              <p className="font-medium text-foreground">Import Complete</p>
-              <p className="text-sm text-muted-foreground">{fileName}</p>
+        <div className="relative overflow-hidden rounded-3xl border border-emerald-300/25 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-emerald-950/15 sm:p-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-400/10 text-emerald-200 shadow-lg shadow-emerald-950/20">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-emerald-50">Import Complete</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100">
+                  Complete
+                </span>
+              </div>
+              <p className="mt-1 truncate text-sm text-slate-400">{fileName}</p>
             </div>
           </div>
-          
-          <div className="flex gap-4">
-            <Badge variant="secondary" className="text-sm">
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <Badge variant="secondary" className="justify-center rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
               {importResult.clientsCreated} Client(s)
             </Badge>
-            <Badge variant="secondary" className="text-sm">
+            <Badge variant="secondary" className="justify-center rounded-2xl border border-teal-300/20 bg-teal-400/10 px-4 py-3 text-sm font-bold text-teal-100">
               {importResult.propertiesCreated} Properties
             </Badge>
           </div>
 
           {importResult.errors.length > 0 && (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
-              <div className="flex items-center gap-2 text-destructive mb-2">
+            <div className="mt-5 rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
+              <div className="mb-2 flex items-center gap-2 text-destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="font-medium text-sm">{importResult.errors.length} Warning(s)</span>
               </div>
-              <ul className="text-sm text-destructive/80 space-y-1">
+              <ul className="space-y-1 text-sm text-destructive/80">
                 {importResult.errors.slice(0, 5).map((error, i) => (
                   <li key={i}>• {error}</li>
                 ))}
@@ -431,7 +473,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
             </div>
           )}
 
-          <Button onClick={resetState} variant="outline" className="w-full">
+          <Button onClick={resetState} variant="outline" className="mt-5 h-11 w-full rounded-2xl border-emerald-300/20 bg-white/[0.03] text-emerald-100 hover:bg-emerald-400/10">
             <Upload className="h-4 w-4 mr-2" />
             Import Another File
           </Button>
@@ -439,15 +481,26 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       )}
 
       {status === 'error' && (
-        <div className="border border-destructive/50 rounded-lg p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <XCircle className="h-6 w-6 text-destructive" />
-            <div>
-              <p className="font-medium text-foreground">Import Failed</p>
-              <p className="text-sm text-muted-foreground">{fileName}</p>
+        <div className="relative overflow-hidden rounded-3xl border border-destructive/40 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-red-950/15 sm:p-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-red-200/60 to-transparent" />
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive shadow-lg shadow-red-950/20">
+              <XCircle className="h-6 w-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-foreground">Import Failed</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-destructive">
+                  Error
+                </span>
+              </div>
+              <p className="mt-1 truncate text-sm text-muted-foreground">{fileName}</p>
+              <p className="mt-3 rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive/90">
+                Import failed. Please review the file and try again.
+              </p>
             </div>
           </div>
-          <Button onClick={resetState} variant="outline" className="w-full">
+          <Button onClick={resetState} variant="outline" className="mt-5 h-11 w-full rounded-2xl border-destructive/30 bg-white/[0.03] text-destructive hover:bg-destructive/10">
             Try Again
           </Button>
         </div>
