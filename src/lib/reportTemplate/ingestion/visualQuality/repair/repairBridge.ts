@@ -127,7 +127,7 @@ export function buildCdirSelfExpectations(cdir: CdirDocument): DoclingExpectatio
       expectedBounds.push({
         pageId: page.id,
         layerId: layer.id,
-        bounds,
+        bounds: bounds as { x: number; y: number; width: number; height: number },
       });
     }
   }
