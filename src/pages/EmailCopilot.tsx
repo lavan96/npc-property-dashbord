@@ -2837,17 +2837,24 @@ export default function EmailCopilot() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-6">
-              <div className="max-w-md text-center rounded-[2rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.56))] px-10 py-12 shadow-2xl shadow-black/15">
-                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/15 bg-primary/10 shadow-inner shadow-primary/10">
-                  <Mail className="h-10 w-10 text-primary/45" />
+            <div className="relative flex flex-1 items-center justify-center overflow-hidden p-6 sm:p-8">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,hsl(var(--primary)/0.09),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.45),transparent_45%,hsl(var(--primary)/0.035))]" />
+              <div className="pointer-events-none absolute left-4 top-1/2 hidden -translate-y-1/2 items-center gap-2 rounded-full border border-primary/10 bg-card/45 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/55 shadow-sm lg:flex">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Inbox
+              </div>
+              <div className="relative max-w-md text-center">
+                <div className="rounded-[2rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.055))] px-8 py-10 shadow-[0_24px_70px_hsl(var(--primary)/0.11)] ring-1 ring-primary/10 sm:px-12 sm:py-14">
+                  <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-[1.75rem] border border-primary/20 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.24),hsl(var(--primary)/0.10)_58%,hsl(var(--card)/0.92))] shadow-[inset_0_1px_0_hsl(var(--background)/0.5),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/15">
+                    <Mail className="h-11 w-11 text-primary/60 drop-shadow-sm" />
+                  </div>
+                  <p className="text-xl font-bold tracking-[-0.02em] text-foreground">
+                    {viewMode === 'sent' ? 'Select a sent email' : 'Select an email'}
+                  </p>
+                  <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
+                    {viewMode === 'sent' ? 'Choose a sent email from the list to view details' : 'Choose an email from the list to view details'}
+                  </p>
                 </div>
-                <p className="text-lg font-medium text-muted-foreground">
-                  {viewMode === 'sent' ? 'Select a sent email' : 'Select an email'}
-                </p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
-                  {viewMode === 'sent' ? 'Choose a sent email from the list to view details' : 'Choose an email from the list to view details'}
-                </p>
               </div>
             </div>
           )}
