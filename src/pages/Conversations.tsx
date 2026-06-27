@@ -679,7 +679,7 @@ export default function Conversations() {
   // RENDER
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.12),transparent_30%),linear-gradient(135deg,hsl(220_20%_5%),hsl(222_18%_8%)_45%,hsl(220_16%_6%))] p-3 text-foreground md:p-5">
+    <div className="flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.12),transparent_30%),linear-gradient(135deg,hsl(220_20%_5%),hsl(222_18%_8%)_45%,hsl(220_16%_6%))] p-3 text-foreground md:p-5">
       {/* Page header */}
       <div className="relative z-10 flex shrink-0 flex-col gap-4 overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(10,10,10,0.88),rgba(24,24,27,0.78)_48%,rgba(120,53,15,0.18))] px-4 py-4 shadow-2xl shadow-black/35 backdrop-blur-xl md:flex-row md:items-center md:justify-between md:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
@@ -864,7 +864,7 @@ export default function Conversations() {
       />
 
       {/* Main content area */}
-      <div className="mt-3 flex min-h-0 flex-1 gap-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(9,9,11,0.92),rgba(24,24,27,0.72))] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl"
+      <div className="mt-3 flex min-h-0 flex-1 basis-0 gap-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(9,9,11,0.92),rgba(24,24,27,0.72))] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-xl"
         onMouseMove={(e) => {
           if (!isDraggingConvRef.current) return;
           const delta = e.clientX - dragStartXConvRef.current;
@@ -877,7 +877,7 @@ export default function Conversations() {
         {/* ─── LEFT PANEL: Conversation List ─── */}
         {showList && (
           <div 
-            className={cn('flex min-h-0 flex-col overflow-hidden rounded-[1.55rem] border border-white/12 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,0.10),transparent_28%),linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.92)_48%,rgba(3,3,5,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_-1px_0_0_rgba(255,255,255,0.035),0_22px_60px_rgba(0,0,0,0.34)]', isMobile && 'w-full')}
+            className={cn('flex h-full min-h-0 flex-col overflow-hidden rounded-[1.55rem] border border-white/12 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,0.10),transparent_28%),linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.92)_48%,rgba(3,3,5,0.96))] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_-1px_0_0_rgba(255,255,255,0.035),0_22px_60px_rgba(0,0,0,0.34)]', isMobile && 'w-full')}
             style={!isMobile ? { width: convPanelWidth, minWidth: 300, maxWidth: 560, flexShrink: 0 } : undefined}
           >
             {/* Search & filter */}
@@ -918,7 +918,7 @@ export default function Conversations() {
             </div>
 
             {/* Conversation list */}
-            <ScrollArea className="min-h-0 flex-1 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.055),transparent_34%)] [scrollbar-color:rgba(113,113,122,0.65)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-zinc-600/80">
+            <ScrollArea className="min-h-0 flex-1 basis-0 overscroll-contain bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.055),transparent_34%)] [scrollbar-color:rgba(161,161,170,0.72)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-gradient-to-b [&_[data-radix-scroll-area-thumb]]:from-amber-200/70 [&_[data-radix-scroll-area-thumb]]:via-zinc-500/80 [&_[data-radix-scroll-area-thumb]]:to-zinc-700/80 [&_[data-radix-scroll-area-thumb]]:shadow-[0_0_14px_rgba(245,158,11,0.18)]">
               {loadingConversations ? (
                 <div className="space-y-3.5 p-4">
                   <div className="mb-1 flex items-center gap-2 rounded-2xl border border-amber-200/15 bg-amber-300/[0.045] px-3 py-2 text-xs font-medium text-amber-100/80">
@@ -1046,9 +1046,9 @@ export default function Conversations() {
 
         {/* ─── RIGHT PANEL: Thread View ─── */}
         {(selectedId || !isMobile) && (
-          <div className={cn('flex min-w-0 flex-1 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.10),transparent_30%),linear-gradient(180deg,rgba(24,24,27,0.84),rgba(9,9,11,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]', !selectedId && 'items-center justify-center p-6')}>
+          <div className={cn('flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.10),transparent_30%),linear-gradient(180deg,rgba(24,24,27,0.84),rgba(9,9,11,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]', !selectedId && 'items-center justify-center p-6')}>
             {!selectedId ? (
-              <div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-[1.35rem] p-4 sm:p-8">
+              <div className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-[1.35rem] p-4 sm:p-8">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_12%_50%,rgba(250,204,21,0.07),transparent_18%),linear-gradient(135deg,rgba(255,255,255,0.035),transparent_38%,rgba(255,255,255,0.025))]" />
                 <div className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 items-center gap-2 rounded-full border border-amber-200/10 bg-black/20 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-amber-100/35 shadow-inner shadow-black/30 lg:flex">
                   <ArrowLeft className="h-3.5 w-3.5" />
@@ -1147,7 +1147,7 @@ export default function Conversations() {
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="min-h-0 flex-1 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.035),transparent_38%)]">
+                <ScrollArea className="min-h-0 flex-1 basis-0 overscroll-contain bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.035),transparent_38%)] [scrollbar-color:rgba(161,161,170,0.72)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-gradient-to-b [&_[data-radix-scroll-area-thumb]]:from-amber-200/70 [&_[data-radix-scroll-area-thumb]]:via-zinc-500/80 [&_[data-radix-scroll-area-thumb]]:to-zinc-700/80 [&_[data-radix-scroll-area-thumb]]:shadow-[0_0_14px_rgba(245,158,11,0.18)]">
                   <div className="mx-auto w-full max-w-5xl px-4 py-5 md:px-6">
                     {loadingMessages ? (
                       <div className="mx-auto max-w-3xl space-y-4 py-8">
