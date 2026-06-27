@@ -191,17 +191,18 @@ export default function ReportRequests() {
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6">
         {/* Header */}
-        <div className="rounded-3xl border border-amber-300/15 bg-zinc-950/75 p-5 shadow-xl shadow-black/30 backdrop-blur sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="relative overflow-hidden rounded-3xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(9,9,11,0.88))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur sm:p-7">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-200">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-200 shadow-inner shadow-amber-950/20">
                 <Send className="h-3.5 w-3.5" />
                 Portal Operations
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Client Report Requests</h1>
-              <p className="mt-2 max-w-2xl text-sm text-zinc-400 sm:text-base">Manage incoming report requests from portal clients</p>
+              <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-5xl">Client Report Requests</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300/85 sm:text-base">Manage incoming report requests from portal clients</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400">
+            <div className="rounded-2xl border border-amber-300/15 bg-black/25 px-4 py-3 text-sm text-zinc-400 shadow-inner shadow-black/30">
               <span className="text-2xl font-semibold tabular-nums text-amber-200">{requests.length}</span>
               <span className="ml-2">total requests</span>
             </div>
