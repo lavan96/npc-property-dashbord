@@ -19,6 +19,16 @@ Preserve existing shadcn primitives and compose them inside the dashboard frame 
 
 Always test light mode, dark mode, mobile, desktop, focus states, hover states, forms, charts, and sidebar layout when adopting the shared theme foundation.
 
+## Client Page design source of truth
+
+This client-page-specific prompt applies only to Client Page work. Do not cascade these instructions into unrelated dashboards, finance portal pages, reports, or admin surfaces unless a future request explicitly widens the scope.
+
+For Client Page updates, review `dashboard-theme-foundation.md` as the primary design source of truth before implementation. Use it to understand and replicate the established visual identity, including the full colour palette, typography, font hierarchy, spacing, layout structure, button styles, imagery treatment, icon style, borders, shadows, and recurring UI/UX patterns.
+
+All new Client Page sections, components, pages, and updates must follow the same format, theme, tone, and design system already established by this foundation. The goal is for new Client Page work to feel fully consistent and seamlessly cascaded from the existing brand and interface.
+
+Do not introduce conflicting colours, fonts, layouts, or styling patterns on the Client Page unless clearly necessary. Where a detail is not explicitly defined, infer the closest matching style from this foundation and maintain consistency throughout the Client Page experience.
+
 ## Mandatory implementation planning rule
 
 For every future UI redesign plan in this codebase, include a dedicated step called:
