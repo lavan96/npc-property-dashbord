@@ -7,7 +7,7 @@
  * the generated template for manual refinement.
  */
 import { useState } from 'react';
-import { Activity, AlertTriangle, CheckCircle2, FileCode2, Layers3, Loader2, MousePointerClick, RotateCw, Wand2 } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, FileCode2, Layers3, Loader2, MousePointerClick, RotateCw, Wand2, Wrench } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
 import type { ImportReviewDecisionRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { CdirLayer } from '@/lib/reportTemplate/ingestion/cdir';
-import type { VisualQaReviewSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
+import type { VisualQaReviewSummary, VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 
 interface Props {
   open: boolean;
@@ -43,6 +43,14 @@ interface Props {
     generatedRasters?: string | null;
     diffRasters?: string | null;
   } | null;
+  onRunRepair?: () => Promise<void> | void;
+  repairAvailable?: boolean;
+  repairBusy?: boolean;
+  repairSummary?: VisualRepairOrchestrationSummary | null;
+  repairAuditPath?: string | null;
+  onApplyRepair?: () => Promise<void> | void;
+  applyRepairAvailable?: boolean;
+  applyRepairBusy?: boolean;
 }
 
 function flattenLayers(layers: CdirLayer[]): CdirLayer[] {
@@ -68,7 +76,7 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, onApplyRepair, applyRepairAvailable, applyRepairBusy }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
@@ -212,6 +220,48 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
               </Card>
             )}
 
+            {repairSummary && (
+              <Card className="p-4 border-success/30 bg-success/5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-medium">
+                      <Wrench className="h-4 w-4 text-success" /> Repair audit
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Repair status: {repairSummary.repairStatus}. Score moved from {pct(repairSummary.visualQaScore)} to {pct(repairSummary.finalScore)}
+                      {repairSummary.totalApplied > 0 ? ` with ${repairSummary.totalApplied} repair patch${repairSummary.totalApplied === 1 ? '' : 'es'} applied.` : '. No automatic patches were applied.'}
+                    </p>
+                  </div>
+                  <Badge variant={repairSummary.totalApplied > 0 ? 'default' : 'outline'}>
+                    {repairSummary.totalApplied > 0 ? 'Repaired' : 'Audit saved'}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-4 text-sm">
+                  <Metric label="Before" value={pct(repairSummary.visualQaScore)} />
+                  <Metric label="After" value={pct(repairSummary.finalScore)} />
+                  <Metric label="Delta" value={`${repairSummary.scoreDelta >= 0 ? '+' : ''}${Math.round(repairSummary.scoreDelta * 100)}%`} tone={repairSummary.scoreDelta < 0 ? 'warning' : 'normal'} />
+                  <Metric label="Patches" value={String(repairSummary.patchesAccepted)} />
+                </div>
+                <div className="mt-2 grid gap-2 md:grid-cols-4 text-sm">
+                  <Metric label="Eligible pages" value={String(repairSummary.eligiblePageCount)} />
+                  <Metric label="Passes" value={String(repairSummary.passesAttempted)} />
+                  <Metric label="Rejected" value={String(repairSummary.patchesRejected)} tone={repairSummary.patchesRejected > 0 ? 'warning' : 'normal'} />
+                  <Metric label="Problems" value={String(repairSummary.problemCount)} tone={repairSummary.problemCount > 0 ? 'warning' : 'normal'} />
+                </div>
+                {repairAuditPath && (
+                  <div className="mt-2 font-mono text-[10px] text-muted-foreground break-all">
+                    repair audit: {repairAuditPath}
+                  </div>
+                )}
+                {repairSummary.problems.length > 0 && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {repairSummary.problems.slice(0, 3).join(' · ')}
+                    {repairSummary.problems.length > 3 ? ` +${repairSummary.problems.length - 3} more` : ''}
+                  </p>
+                )}
+              </Card>
+            )}
+
             {recordedDecision && (
               <Card className="p-4 border-success/30 bg-success/5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -327,6 +377,18 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
             <Button variant="secondary" onClick={onRunVisualQa} disabled={!visualQaAvailable || !!visualQaBusy}>
               {visualQaBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Activity className="h-4 w-4 mr-1" />}
               Run visual QA
+            </Button>
+          )}
+          {onRunRepair && (
+            <Button variant="secondary" onClick={onRunRepair} disabled={!repairAvailable || !!repairBusy}>
+              {repairBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wrench className="h-4 w-4 mr-1" />}
+              Run repair
+            </Button>
+          )}
+          {onApplyRepair && (
+            <Button variant="default" onClick={onApplyRepair} disabled={!applyRepairAvailable || !!applyRepairBusy}>
+              {applyRepairBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+              Apply repair
             </Button>
           )}
           {onRunReconciliation && (
