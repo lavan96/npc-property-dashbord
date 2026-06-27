@@ -298,9 +298,9 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
         )}
       </ScrollArea>
 
-      <div className="border-t border-border p-3 bg-card">
-        <div className="flex items-center gap-1 mb-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Route:</span>
+      <div className="shrink-0 border-t border-amber-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Route:</span>
           {ROUTING_PRESETS.map(preset => {
             const active = preset.value === route;
             return (
@@ -309,7 +309,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
                 type="button"
                 size="sm"
                 variant={active ? 'default' : 'outline'}
-                className="h-auto min-h-7 px-2.5 py-1 text-xs"
+                className={cn('h-auto min-h-7 rounded-full px-3 py-1 text-xs transition-all focus-visible:ring-amber-300', active ? 'bg-amber-300 text-black hover:bg-amber-200' : 'border-white/10 bg-black/20 text-muted-foreground hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100')}
                 onClick={() => setRoute(preset.value)}
                 title={preset.description}
               >
@@ -318,16 +318,16 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             );
           })}
         </div>
-        <div className="mb-2 flex items-start gap-2 rounded-md border border-border bg-muted/30 p-2 text-[11px] text-muted-foreground">
-          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+        <div className="mb-2 flex items-start gap-2 rounded-2xl border border-white/10 bg-black/25 p-2.5 text-[11px] leading-5 text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/80" />
           <span>{selectedPreset.description}</span>
         </div>
 
         {financeAllocatedToClient && (
-          <div className="mb-2 rounded-md border border-primary/20 bg-primary/5 p-2">
+          <div className="mb-2 rounded-2xl border border-amber-300/15 bg-amber-300/5 p-2.5">
             <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Finance action allocation</label>
             <Select value={financeAllocationStatus} onValueChange={(value) => setFinanceAllocationStatus(value as FinanceAllocationStatus)}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-9 rounded-xl border-white/10 bg-black/30 text-xs focus:ring-amber-300/40">
                 <SelectValue placeholder="Choose finance action" />
               </SelectTrigger>
               <SelectContent>
@@ -339,7 +339,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             <p className="mt-1 text-[10px] text-muted-foreground">Finance receives access only to this allocated client-facing thread.</p>
           </div>
         )}
-        <div className="flex gap-2 items-end">
+        <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
             placeholder={
               route === 'client_finance' ? 'Message the client and allocate this thread to Finance...'
@@ -356,14 +356,14 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
               }
             }}
             disabled={sending}
-            className="min-h-[60px] resize-none flex-1"
+            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-amber-300/30 disabled:cursor-not-allowed disabled:opacity-60"
             maxLength={5000}
           />
-          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()}>
+          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()} className="h-10 w-10 shrink-0 rounded-xl bg-amber-300 text-black shadow-lg shadow-amber-950/20 transition-all hover:bg-amber-200 focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5">
+        <p className="mt-2 text-[10px] text-muted-foreground/80">
           Press ⌘/Ctrl+Enter to send · Command Centre controls route, visibility, allocation and governance logging.
         </p>
       </div>
