@@ -69,6 +69,29 @@ const statusCardConfig: Record<string, { glow: string; iconWrap: string; edge: s
   },
 };
 
+const statusButtonConfig: Record<string, { idle: string; active: string; icon: string }> = {
+  pending: {
+    idle: 'hover:border-amber-300/45 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-amber-300/35',
+    active: 'border-amber-300/55 bg-amber-300/15 text-amber-100 ring-2 ring-amber-300/20 shadow-[0_10px_26px_rgba(245,158,11,0.16)]',
+    icon: 'text-amber-200',
+  },
+  in_progress: {
+    idle: 'hover:border-blue-300/45 hover:bg-blue-400/10 hover:text-blue-100 focus-visible:ring-blue-300/35',
+    active: 'border-blue-300/55 bg-blue-400/15 text-blue-100 ring-2 ring-blue-300/20 shadow-[0_10px_26px_rgba(59,130,246,0.16)]',
+    icon: 'text-blue-200',
+  },
+  completed: {
+    idle: 'hover:border-emerald-300/45 hover:bg-emerald-400/10 hover:text-emerald-100 focus-visible:ring-emerald-300/35',
+    active: 'border-emerald-300/55 bg-emerald-400/15 text-emerald-100 ring-2 ring-emerald-300/20 shadow-[0_10px_26px_rgba(16,185,129,0.14)]',
+    icon: 'text-emerald-200',
+  },
+  declined: {
+    idle: 'hover:border-red-300/45 hover:bg-red-400/10 hover:text-red-100 focus-visible:ring-red-300/35',
+    active: 'border-red-300/55 bg-red-400/15 text-red-100 ring-2 ring-red-300/20 shadow-[0_10px_26px_rgba(248,113,113,0.14)]',
+    icon: 'text-red-200',
+  },
+};
+
 interface ReportRequest {
   id: string;
   client_id: string;
@@ -447,27 +470,29 @@ export default function ReportRequests() {
                 </div>
 
                 {/* Status Selector */}
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-zinc-200">Update Status</Label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-2 rounded-3xl border border-white/10 bg-black/20 p-4 shadow-inner shadow-black/25">
+                  <Label className="text-sm font-semibold text-zinc-100">Update Status</Label>
+                  <div className="flex flex-wrap gap-2.5">
                     {(['pending', 'in_progress', 'completed', 'declined'] as const).map((status) => {
                       const conf = statusConfig[status];
+                      const buttonTone = statusButtonConfig[status];
                       const Icon = conf.icon;
                       const isActive = selectedRequest.status === status;
                       return (
                         <Button
                           key={status}
                           size="sm"
-                          variant={isActive ? 'default' : 'outline'}
+                          variant="outline"
                           disabled={updatingStatus || isActive}
                           onClick={() => handleStatusUpdate(selectedRequest.id, status)}
                           className={cn(
-                            'rounded-full border-white/10 px-3 text-xs font-medium transition-all hover:border-amber-300/40 hover:bg-amber-300/10 hover:text-amber-100',
-                            isActive && conf.badgeVariant,
-                            isActive && 'pointer-events-none shadow-sm'
+                            'min-h-10 rounded-full border-white/10 bg-zinc-950/60 px-3.5 text-xs font-semibold text-zinc-300 shadow-inner shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
+                            buttonTone.idle,
+                            isActive && buttonTone.active,
+                            isActive && 'pointer-events-none'
                           )}
                         >
-                          {updatingStatus ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Icon className="mr-1.5 h-3.5 w-3.5" />}
+                          {updatingStatus ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Icon className={cn('mr-1.5 h-3.5 w-3.5', buttonTone.icon)} />}
                           {conf.label}
                         </Button>
                       );
