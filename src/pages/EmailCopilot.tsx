@@ -1797,9 +1797,9 @@ export default function EmailCopilot() {
   const sentCount = sentEmails.length + sentReplies.length;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.18))]">
+    <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] min-h-0 flex flex-col overflow-hidden overscroll-none bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.18))]">
       {/* Header */}
-      <div className="mx-3 md:mx-6 mt-3 md:mt-5 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.78))] px-4 md:px-5 py-3 md:py-4 shadow-2xl shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+      <div className="mx-3 md:mx-6 mt-3 md:mt-5 mb-3 flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.78))] px-4 md:px-5 py-3 md:py-4 shadow-2xl shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-card/70">
         <div className="flex items-center gap-2 md:gap-3">
           <div className="relative p-2 md:p-2.5 bg-primary/15 rounded-2xl ring-1 ring-primary/30 shadow-lg shadow-primary/10">
             <Mail className="h-4 w-4 md:h-5 md:w-5 text-primary" />
@@ -1927,7 +1927,7 @@ export default function EmailCopilot() {
 
       {/* Disclaimer - hidden on mobile to save space */}
       {!isMobile && (
-      <div className="relative mx-3 md:mx-6 mb-3 overflow-hidden rounded-2xl border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(10,10,10,0.72)_48%,rgba(24,24,27,0.64))] px-4 py-3 shadow-lg shadow-black/15 backdrop-blur">
+      <div className="relative mx-3 md:mx-6 mb-3 shrink-0 overflow-hidden rounded-2xl border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(10,10,10,0.72)_48%,rgba(24,24,27,0.64))] px-4 py-3 shadow-lg shadow-black/15 backdrop-blur">
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
         <p className="flex items-center gap-3 text-xs leading-5 text-amber-50/85 md:text-sm">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-200/30 bg-amber-300/12 shadow-inner shadow-amber-950/20">
@@ -1939,7 +1939,7 @@ export default function EmailCopilot() {
       )}
 
       {/* Main Content */}
-      <div className="relative mx-3 md:mx-6 mb-3 md:mb-5 flex min-h-0 flex-1 overflow-hidden rounded-3xl border border-primary/10 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.64))] shadow-2xl shadow-black/25 backdrop-blur"
+      <div className="relative mx-3 md:mx-6 mb-3 md:mb-5 flex min-h-0 flex-1 basis-0 overflow-hidden rounded-3xl border border-primary/10 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.64))] shadow-2xl shadow-black/25 backdrop-blur"
         onMouseMove={(e) => {
           if (!isDraggingRef.current) return;
           const delta = e.clientX - dragStartXRef.current;
@@ -1951,11 +1951,11 @@ export default function EmailCopilot() {
       >
         {/* Email List Panel - full width on mobile, hidden when detail shown */}
         <div 
-          className={`${isMobile ? 'w-full' : ''} min-h-0 border-r border-primary/10 flex flex-col bg-card/85 shadow-[inset_-1px_0_0_hsl(var(--primary)/0.04)] ${isMobile && showMobileDetail ? 'hidden' : ''}`}
+          className={`${isMobile ? 'w-full' : ''} min-h-0 overflow-hidden border-r border-primary/10 flex flex-col bg-card/85 shadow-[inset_-1px_0_0_hsl(var(--primary)/0.04)] ${isMobile && showMobileDetail ? 'hidden' : ''}`}
           style={!isMobile ? { width: listPanelWidth, minWidth: 280, maxWidth: 600, flexShrink: 0 } : undefined}
         >
           {/* Inbox/Sent Tabs */}
-          <div className="px-3 pt-3 border-b border-border/70 bg-background/30">
+          <div className="shrink-0 px-3 pt-3 border-b border-border/70 bg-background/30">
             <div className="mb-3 flex gap-1.5 rounded-2xl border border-primary/10 bg-background/45 p-1.5 shadow-inner shadow-black/10">
               <button
                 onClick={() => { setViewMode('inbox'); setSelectedSentReply(null); }}
@@ -1989,7 +1989,7 @@ export default function EmailCopilot() {
           {viewMode === 'inbox' ? (
             <>
               {/* Search and Filter Bar */}
-              <div className="space-y-3 border-b border-border/70 bg-background/20 px-3 py-3">
+              <div className="shrink-0 space-y-3 border-b border-border/70 bg-background/20 px-3 py-3">
                 {/* Search */}
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/70" />
@@ -2039,7 +2039,7 @@ export default function EmailCopilot() {
               </div>
               
               {/* Email List Header */}
-              <div className="border-b border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--background)/0.22))] px-4 py-3">
+              <div className="shrink-0 border-b border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--background)/0.22))] px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/15 bg-primary/10">
@@ -2059,7 +2059,7 @@ export default function EmailCopilot() {
             </>
           ) : (
             /* Sent Replies Header */
-            <div className="border-b border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--background)/0.22))] px-4 py-3">
+            <div className="shrink-0 border-b border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--background)/0.22))] px-4 py-3">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/15 bg-primary/10">
                   <Send className="h-3.5 w-3.5 text-primary" />
@@ -2071,7 +2071,7 @@ export default function EmailCopilot() {
             </div>
           )}
           
-          <ScrollArea className="flex-1 bg-background/15 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+          <ScrollArea className="min-h-0 flex-1 overscroll-contain bg-background/15 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
             {viewMode === 'inbox' ? (
               // Inbox view
               <>
@@ -2429,11 +2429,11 @@ export default function EmailCopilot() {
         )}
 
         {/* Email Detail Panel - Full screen overlay on mobile */}
-        <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1 min-w-0'} min-h-0 flex flex-col bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.08),transparent_34%),hsl(var(--background)/0.38)] overflow-hidden ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
+        <div className={`${isMobile ? 'absolute inset-0 z-50' : 'flex-1 min-w-0 basis-0'} min-h-0 overflow-hidden flex flex-col bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.08),transparent_34%),hsl(var(--background)/0.38)] ${isMobile && !showMobileDetail ? 'hidden' : ''}`}>
           {viewMode === 'sent' && selectedSentReply ? (
             // Sent Reply Detail View
             <>
-              <div className="px-6 py-4 bg-background border-b">
+              <div className="shrink-0 px-6 py-4 bg-background border-b">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
                     {isMobile && (
@@ -2477,8 +2477,8 @@ export default function EmailCopilot() {
                 </div>
               </div>
 
-              <ScrollArea className="flex-1">
-                <div className="p-6 space-y-4">
+              <ScrollArea className="min-h-0 flex-1 overscroll-contain [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+                <div className="min-w-0 space-y-4 p-4 md:p-6">
                   {/* Attachments Section */}
                   {isNonEmptyArray(selectedSentReply.attachments) && (
                     <div className="bg-muted/30 rounded-lg p-4">
@@ -2527,7 +2527,7 @@ export default function EmailCopilot() {
           ) : selectedEmail ? (
             <>
               {/* Email Header */}
-              <div className="border-b border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86)_56%,hsl(var(--primary)/0.045))] px-4 py-4 shadow-[0_14px_36px_hsl(var(--background)/0.16)] md:px-6">
+              <div className="shrink-0 border-b border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86)_56%,hsl(var(--primary)/0.045))] px-4 py-4 shadow-[0_14px_36px_hsl(var(--background)/0.16)] md:px-6">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="flex min-w-0 flex-1 items-start gap-3 md:gap-4">
                     {isMobile && (
@@ -2632,8 +2632,8 @@ export default function EmailCopilot() {
               </div>
 
               {/* Email Content */}
-              <ScrollArea className="flex-1">
-                <div className="p-6 space-y-6">
+              <ScrollArea className="min-h-0 flex-1 overscroll-contain [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+                <div className="min-w-0 space-y-6 p-4 md:p-6">
                   {/* Tier 4: Intelligence Panel */}
                   <EmailIntelligencePanel
                     email={{
@@ -2671,14 +2671,14 @@ export default function EmailCopilot() {
                   />
 
                   {/* Email Body */}
-                  <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.18)]">
+                  <div className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.18)]">
                     <div className="border-b border-border/55 bg-muted/20 px-5 py-3">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         <Mail className="h-3.5 w-3.5 text-primary/70" />
                         Email body
                       </div>
                     </div>
-                    <div className="max-h-[min(68vh,56rem)] overflow-auto px-5 py-5 sm:px-7 sm:py-6">
+                    <div className="max-h-[min(62dvh,44rem)] overflow-auto overscroll-contain px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-7 sm:py-6">
                       <EmailBodyView
                         content={selectedEmail.body}
                         html={selectedEmail.body_html}
@@ -2780,7 +2780,7 @@ export default function EmailCopilot() {
               </ScrollArea>
 
               {/* Action Bar */}
-              <div className="flex flex-col gap-3 border-t border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86))] px-4 py-3 shadow-[0_-12px_30px_rgba(0,0,0,0.12)] md:flex-row md:items-center md:justify-between md:px-6 md:py-4">
+              <div className="flex shrink-0 flex-col gap-3 border-t border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86))] px-4 py-3 shadow-[0_-12px_30px_rgba(0,0,0,0.12)] md:flex-row md:items-center md:justify-between md:px-6 md:py-4">
                 <div className="flex items-center gap-2 md:gap-3">
                   <Button 
                     onClick={handleSummarize} 
@@ -2996,7 +2996,7 @@ export default function EmailCopilot() {
             </div>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 -mr-2 pr-2 sm:pr-4">
+          <ScrollArea className="min-h-0 flex-1 -mr-2 overscroll-contain pr-2 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:pr-4">
             <div className="space-y-3 sm:space-y-4">
               {/* Email Recipients Section */}
               <div className="space-y-2 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm sm:space-y-3 sm:p-4">
@@ -3329,7 +3329,7 @@ export default function EmailCopilot() {
 
       {/* Summary Preview Modal */}
       <Dialog open={showSummaryModal} onOpenChange={setShowSummaryModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="flex max-h-[min(86dvh,760px)] max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -3340,7 +3340,7 @@ export default function EmailCopilot() {
             </DialogDescription>
           </DialogHeader>
           {selectedEmail?.summary && (
-            <ScrollArea className="max-h-[50vh]">
+            <ScrollArea className="min-h-0 max-h-[55dvh] overscroll-contain [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
               <div className="space-y-6 pr-4">
                 <div>
                   <Label className="text-xs uppercase text-muted-foreground font-semibold">TL;DR</Label>
@@ -3397,7 +3397,7 @@ export default function EmailCopilot() {
           setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
         }
       }}>
-        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] shadow-[0_24px_80px_hsl(var(--background)/0.35)]">
+        <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] shadow-[0_24px_80px_hsl(var(--background)/0.35)]">
           <DialogHeader className="border-b border-primary/10 pb-3">
             <DialogTitle className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
@@ -3410,7 +3410,7 @@ export default function EmailCopilot() {
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="min-h-0 flex-1 overscroll-contain pr-4 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
             <div className="space-y-4">
               {/* Email Recipients Section */}
               <div className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-4 shadow-sm">
@@ -3647,7 +3647,7 @@ export default function EmailCopilot() {
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="min-h-0 flex-1 overscroll-contain pr-4 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
             <div className="space-y-4">
               {/* Recipient Fields */}
               <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
@@ -3768,7 +3768,7 @@ export default function EmailCopilot() {
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="min-h-0 flex-1 overscroll-contain pr-4 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
             <div className="space-y-4">
               {/* Recipients Section */}
               <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
