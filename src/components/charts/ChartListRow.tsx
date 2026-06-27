@@ -1,10 +1,10 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2 } from 'lucide-react';
+import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { renderChartImage, type ChartData } from './ChartCard';
+import { CHART_TYPE_CONFIG, renderChartImage, type ChartData } from './ChartCard';
 
 interface ChartListRowProps {
   chart: ChartData;
@@ -18,10 +18,11 @@ interface ChartListRowProps {
 
 export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartListRowProps) {
   const navigate = useNavigate();
+  const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: chart.chart_type };
 
   return (
     <div
-      className={`flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-card/80 p-3 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-primary/10 ${isSelected ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+      className={`relative flex cursor-pointer items-center gap-3 rounded-xl border bg-card/80 p-3 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-primary/10 ${selectionMode && isSelected ? 'border-amber-300/80 bg-amber-500/10 ring-2 ring-amber-400/70 shadow-[0_16px_34px_hsl(43_74%_49%/0.16)]' : 'border-border/60'}`}
       onClick={() => {
         if (selectionMode) {
           onToggleSelect(chart.id);
@@ -33,7 +34,14 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
           checked={isSelected}
           onCheckedChange={() => onToggleSelect(chart.id)}
           onClick={(e) => e.stopPropagation()}
+          className="border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground"
+          aria-label={`Select ${chart.title}`}
         />
+      )}
+      {selectionMode && isSelected && (
+        <div className="pointer-events-none absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        </div>
       )}
 
       <div
@@ -44,12 +52,15 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{chart.title}</p>
-        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground flex-wrap">
-          <Badge variant="outline" className="text-[10px] h-4 px-1 capitalize">{chart.chart_type}</Badge>
+        <p className="truncate text-sm font-semibold leading-snug tracking-[-0.01em] text-foreground" title={chart.title}>{chart.title}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-muted-foreground">
+          <Badge variant="outline" className={`h-5 rounded-full px-2 text-[10px] font-semibold leading-none shadow-sm ${cfg.color}`}>
+            <span className="text-[11px] leading-none" aria-hidden="true">{cfg.emoji}</span>
+            <span className="capitalize">{chart.chart_type}</span>
+          </Badge>
           {chart.generated_reports && (
             <button
-              className="flex items-center gap-1 truncate hover:text-primary transition-colors"
+              className="flex items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-0.5 transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
               onClick={(e) => { e.stopPropagation(); navigate(`/report/${chart.report_id}`); }}
             >
               <FileText className="h-3 w-3 shrink-0" />
@@ -57,8 +68,8 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
               <ExternalLink className="h-2.5 w-2.5 shrink-0" />
             </button>
           )}
-          <span className="flex items-center gap-1 shrink-0">
-            <Calendar className="h-3 w-3" />
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/45 bg-background/55 px-2 py-0.5 tabular-nums">
+            <Calendar className="h-3 w-3 text-primary/70" />
             {format(new Date(chart.created_at), 'dd MMM yyyy')}
           </span>
           {chart.analysis_text && (
