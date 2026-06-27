@@ -714,29 +714,31 @@ export default function Conversations() {
                 size="sm"
                 disabled={isExportingHistory}
                 className={cn(
-                  'h-10 rounded-full px-4 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed',
+                  'h-10 rounded-full px-4 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:cursor-not-allowed',
                   isExportingHistory
                     ? 'border-amber-200/45 bg-amber-500/15 text-amber-50 shadow-amber-950/30 disabled:opacity-100'
-                    : 'border-amber-200/25 bg-zinc-950/75 text-zinc-100 hover:border-amber-200/55 hover:bg-amber-300/10 hover:text-amber-50 disabled:opacity-60'
+                    : 'border-amber-200/25 bg-zinc-950/75 text-zinc-100 hover:border-amber-200/65 hover:bg-amber-300/10 hover:text-amber-50 hover:shadow-[0_0_30px_rgba(245,158,11,0.18)] disabled:opacity-60'
                 )}
               >
                 {isExportingHistory ? <Loader2 className="mr-2 h-4 w-4 animate-spin text-amber-200" /> : <ExternalLink className="mr-2 h-4 w-4" />}
                 {isExportingHistory ? 'Exporting…' : 'Export'}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+            <DropdownMenuContent align="end" className="w-64 border-amber-200/15 bg-zinc-950/95 text-zinc-100 shadow-2xl shadow-black/45 backdrop-blur-xl">
+              <DropdownMenuItem onClick={() => setShowExportDialog(true)} className="rounded-lg focus:bg-amber-300/10 focus:text-amber-100">
                 Conversation summary (GHL contacts)
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => exportFullMessageHistory('xlsx')}
                 disabled={isExportingHistory}
+                className="rounded-lg focus:bg-amber-300/10 focus:text-amber-100"
               >
                 Full message history (.xlsx)
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => exportFullMessageHistory('csv')}
                 disabled={isExportingHistory}
+                className="rounded-lg focus:bg-amber-300/10 focus:text-amber-100"
               >
                 Full message history (.csv)
               </DropdownMenuItem>
@@ -746,10 +748,10 @@ export default function Conversations() {
             variant="outline"
             size="sm"
             className={cn(
-              'group h-10 rounded-full px-4 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed',
+              'group h-10 rounded-full px-4 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:cursor-not-allowed',
               isSyncing || loadingConversations
                 ? 'border-amber-200/45 bg-amber-500/15 text-amber-50 shadow-[0_0_28px_rgba(245,158,11,0.16)] disabled:opacity-100'
-                : 'border-emerald-300/25 bg-emerald-950/30 text-emerald-50 shadow-[0_0_24px_rgba(16,185,129,0.08)] hover:border-emerald-200/55 hover:bg-emerald-400/10 hover:text-emerald-50 disabled:opacity-65'
+                : 'border-emerald-300/25 bg-emerald-950/30 text-emerald-50 shadow-[0_0_24px_rgba(16,185,129,0.08)] hover:border-amber-200/55 hover:bg-amber-300/10 hover:text-amber-50 hover:shadow-[0_0_30px_rgba(245,158,11,0.16)] disabled:opacity-65'
             )}
             onClick={handleSyncAndRefresh}
             disabled={isSyncing || loadingConversations}
@@ -947,7 +949,7 @@ export default function Conversations() {
                   </Button>
                 </div>
               ) : filteredConversations.length === 0 ? (
-                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-white/[0.09] bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.10),transparent_34%),rgba(255,255,255,0.025)] px-5 py-14 text-center text-zinc-400 shadow-inner shadow-black/20">
+                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-amber-200/14 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.14),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] px-5 py-14 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.20)] text-center text-zinc-400">
                   <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-100/20 bg-amber-300/10 text-amber-100/80">
                     {conversations.length === 0 ? <Inbox className="h-5 w-5" /> : channelFilter !== 'all' ? <FilterX className="h-5 w-5" /> : <Search className="h-5 w-5" />}
                   </span>
@@ -981,6 +983,10 @@ export default function Conversations() {
                           conv.unread_count > 0 && !isActive && 'border-amber-200/18 bg-[linear-gradient(135deg,rgba(245,158,11,0.085),rgba(255,255,255,0.026)_60%,rgba(255,255,255,0.018))]'
                         )}
                         onClick={() => handleSelectConversation(conv)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectConversation(conv); } }}
+                        role="button"
+                        tabIndex={0}
+                        aria-current={isActive ? 'true' : undefined}
                         title={`${conv.client_name || 'Unknown contact'}${conv.last_message_body ? ` — ${conv.last_message_body}` : ' — No messages yet'}`}
                       >
                         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -1211,7 +1217,7 @@ export default function Conversations() {
                                 return (
                                   <div key={msg.id} className={cn('flex', isOutbound ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
-                                      'max-w-[82%] rounded-2xl border px-3.5 py-2 text-sm shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl md:max-w-[72%]',
+                                      'max-w-[82%] rounded-2xl border px-3.5 py-2 text-sm shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-200/35 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28),0_0_24px_rgba(245,158,11,0.10)] md:max-w-[72%]',
                                       isOutbound
                                         ? `${getOutboundBubbleClass()} border-white/10`
                                         : 'rounded-bl-md border-white/10 bg-zinc-900/90 text-zinc-100'
@@ -1258,20 +1264,20 @@ export default function Conversations() {
                     <span className="text-[11px] text-muted-foreground whitespace-nowrap">Send via:</span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-7 gap-1.5 border-amber-300/20 bg-black/35 px-2.5 text-xs text-amber-100 hover:bg-amber-400/10">
+                        <Button variant="outline" size="sm" className="h-7 gap-1.5 rounded-full border-amber-300/20 bg-black/35 px-2.5 text-xs text-amber-100 transition-all hover:border-amber-200/45 hover:bg-amber-400/10 hover:shadow-[0_0_18px_rgba(245,158,11,0.14)] focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950">
                           {(() => { const I = channelIcons[replyChannel] || MessageSquare; return <I className="h-3 w-3" />; })()}
                           <span className="capitalize">{replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'Email'}</span>
                           <ChevronDown className="h-3 w-3 opacity-50" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="min-w-[140px]">
-                        <DropdownMenuItem onClick={() => setReplyChannel('sms')} className="gap-2 text-xs">
+                      <DropdownMenuContent align="start" className="min-w-[140px] border-amber-200/15 bg-zinc-950/95 text-zinc-100 shadow-2xl shadow-black/45 backdrop-blur-xl">
+                        <DropdownMenuItem onClick={() => setReplyChannel('sms')} className="gap-2 rounded-lg text-xs focus:bg-amber-300/10 focus:text-amber-100">
                           <Phone className="h-3.5 w-3.5" /> SMS
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setReplyChannel('email')} className="gap-2 text-xs">
+                        <DropdownMenuItem onClick={() => setReplyChannel('email')} className="gap-2 rounded-lg text-xs focus:bg-amber-300/10 focus:text-amber-100">
                           <Mail className="h-3.5 w-3.5" /> Email
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setReplyChannel('whatsapp')} className="gap-2 text-xs">
+                        <DropdownMenuItem onClick={() => setReplyChannel('whatsapp')} className="gap-2 rounded-lg text-xs focus:bg-amber-300/10 focus:text-amber-100">
                           <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                         </DropdownMenuItem>
                       </DropdownMenuContent>
