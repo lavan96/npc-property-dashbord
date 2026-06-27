@@ -342,7 +342,7 @@ export default function Messages() {
                 <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
                   <div className="h-full overflow-auto overscroll-contain">
-                      <ClientPortalMessagesPanel clientId={selectedClientId} />
+                      <ClientPortalMessagesPanel clientId={selectedClientId} clientName={clientThreads.find((thread) => thread.client_id === selectedClientId)?.client_name} />
                   </div>
                 ) : (
                   <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground">
