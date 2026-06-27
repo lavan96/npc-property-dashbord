@@ -632,6 +632,35 @@ export default function Conversations() {
   const exportSizeMB = exportJobStatus?.fileSizeBytes
     ? (exportJobStatus.fileSizeBytes / (1024 * 1024)).toFixed(2)
     : null;
+  const exportStateStyles = exportJobStatus?.status === 'completed'
+    ? {
+        panel: 'border-emerald-300/30 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_34%),linear-gradient(135deg,rgba(6,78,59,0.32),rgba(9,9,11,0.88))] shadow-emerald-950/30',
+        iconWrap: 'border-emerald-200/35 bg-emerald-300/12 text-emerald-200 shadow-[0_0_22px_rgba(16,185,129,0.22)]',
+        icon: 'text-emerald-200',
+        title: 'text-emerald-50',
+        meta: 'text-emerald-100/75',
+        progressTrack: 'bg-emerald-950/50',
+        progressFill: 'bg-gradient-to-r from-emerald-300 via-teal-300 to-cyan-200 shadow-[0_0_18px_rgba(45,212,191,0.45)]',
+      }
+    : exportJobStatus?.status === 'failed'
+      ? {
+          panel: 'border-red-300/30 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.16),transparent_34%),linear-gradient(135deg,rgba(127,29,29,0.28),rgba(9,9,11,0.9))] shadow-red-950/30',
+          iconWrap: 'border-red-200/35 bg-red-400/12 text-red-200 shadow-[0_0_22px_rgba(239,68,68,0.20)]',
+          icon: 'text-red-200',
+          title: 'text-red-50',
+          meta: 'text-red-100/80',
+          progressTrack: 'bg-red-950/50',
+          progressFill: 'bg-red-300',
+        }
+      : {
+          panel: 'border-amber-300/30 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.20),transparent_34%),linear-gradient(135deg,rgba(120,53,15,0.30),rgba(9,9,11,0.9))] shadow-amber-950/30',
+          iconWrap: 'border-amber-200/35 bg-amber-300/12 text-amber-200 shadow-[0_0_24px_rgba(245,158,11,0.24)]',
+          icon: 'text-amber-200',
+          title: 'text-amber-50',
+          meta: 'text-amber-100/75',
+          progressTrack: 'bg-amber-950/45',
+          progressFill: 'bg-gradient-to-r from-amber-300 via-orange-300 to-yellow-200 shadow-[0_0_18px_rgba(251,191,36,0.45)]',
+        };
 
   // ── Show thread on mobile (hide list) ──
   const showThread = !!selectedId && isMobile;
@@ -671,9 +700,19 @@ export default function Conversations() {
         <div className="relative flex flex-wrap items-center gap-2.5 md:justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={isExportingHistory} className="h-10 rounded-full border-amber-200/25 bg-zinc-950/75 px-4 font-semibold text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 hover:border-amber-200/55 hover:bg-amber-300/10 hover:text-amber-50 disabled:translate-y-0 disabled:opacity-60">
-                {isExportingHistory ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
-                {isExportingHistory ? 'Exporting...' : 'Export'}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isExportingHistory}
+                className={cn(
+                  'h-10 rounded-full px-4 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed',
+                  isExportingHistory
+                    ? 'border-amber-200/45 bg-amber-500/15 text-amber-50 shadow-amber-950/30 disabled:opacity-100'
+                    : 'border-amber-200/25 bg-zinc-950/75 text-zinc-100 hover:border-amber-200/55 hover:bg-amber-300/10 hover:text-amber-50 disabled:opacity-60'
+                )}
+              >
+                {isExportingHistory ? <Loader2 className="mr-2 h-4 w-4 animate-spin text-amber-200" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+                {isExportingHistory ? 'Exporting…' : 'Export'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
@@ -697,35 +736,45 @@ export default function Conversations() {
           <Button
             variant="outline"
             size="sm"
-            className="group h-10 rounded-full border-emerald-300/25 bg-emerald-950/30 px-4 font-semibold text-emerald-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_24px_rgba(16,185,129,0.08)] transition-all hover:-translate-y-0.5 hover:border-emerald-200/55 hover:bg-emerald-400/10 hover:text-emerald-50 disabled:translate-y-0 disabled:opacity-65"
+            className={cn(
+              'group h-10 rounded-full px-4 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed',
+              isSyncing || loadingConversations
+                ? 'border-amber-200/45 bg-amber-500/15 text-amber-50 shadow-[0_0_28px_rgba(245,158,11,0.16)] disabled:opacity-100'
+                : 'border-emerald-300/25 bg-emerald-950/30 text-emerald-50 shadow-[0_0_24px_rgba(16,185,129,0.08)] hover:border-emerald-200/55 hover:bg-emerald-400/10 hover:text-emerald-50 disabled:opacity-65'
+            )}
             onClick={handleSyncAndRefresh}
             disabled={isSyncing || loadingConversations}
           >
-            <span className="mr-2 flex h-5 w-5 items-center justify-center rounded-full border border-emerald-200/25 bg-emerald-300/10">
+            <span className={cn(
+              'mr-2 flex h-5 w-5 items-center justify-center rounded-full border',
+              isSyncing || loadingConversations
+                ? 'border-amber-200/35 bg-amber-300/15 shadow-[0_0_18px_rgba(251,191,36,0.24)]'
+                : 'border-emerald-200/25 bg-emerald-300/10'
+            )}>
               {isSyncing || loadingConversations ? (
-                <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-200" />
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-200" />
               ) : (
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-200 transition-transform group-hover:scale-110" />
               )}
             </span>
-            {isSyncing ? 'Syncing...' : 'Sync'}
+            {isSyncing ? 'Syncing…' : loadingConversations ? 'Loading…' : 'Sync'}
           </Button>
         </div>
       </div>
 
       {exportJobStatus && (
-        <div className="mt-3 shrink-0 rounded-2xl border border-amber-400/20 bg-zinc-950/75 px-4 py-3 shadow-xl shadow-black/25 backdrop-blur-xl">
+        <div className={cn('mt-3 shrink-0 overflow-hidden rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-xl', exportStateStyles.panel)}>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium">
                 {exportJobStatus.status === 'completed' ? (
-                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <span className={cn('flex h-7 w-7 items-center justify-center rounded-full border', exportStateStyles.iconWrap)}><CheckCircle2 className={cn('h-4 w-4', exportStateStyles.icon)} /></span>
                 ) : exportJobStatus.status === 'failed' ? (
-                  <XCircle className="h-4 w-4 text-destructive" />
+                  <span className={cn('flex h-7 w-7 items-center justify-center rounded-full border', exportStateStyles.iconWrap)}><XCircle className={cn('h-4 w-4', exportStateStyles.icon)} /></span>
                 ) : (
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className={cn('flex h-7 w-7 items-center justify-center rounded-full border', exportStateStyles.iconWrap)}><Loader2 className={cn('h-4 w-4 animate-spin', exportStateStyles.icon)} /></span>
                 )}
-                <span>
+                <span className={cn('font-semibold', exportStateStyles.title)}>
                   {exportJobStatus.status === 'completed'
                     ? 'Conversation export ready'
                     : exportJobStatus.status === 'failed'
@@ -733,21 +782,21 @@ export default function Conversations() {
                       : `Exporting full message history (${exportJobStatus.fileFormat.toUpperCase()})`}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className={cn('truncate text-xs', exportStateStyles.meta)}>
                 {exportJobStatus.status === 'failed'
                   ? exportJobStatus.errorSummary
                   : `${exportJobStatus.processedItems}/${exportJobStatus.totalItems} conversations · ${exportJobStatus.totalMessages} messages`}
                 {exportSizeMB ? ` · ${exportSizeMB} MB` : ''}
               </p>
               {exportJobStatus.status !== 'completed' && exportJobStatus.status !== 'failed' && (
-                <div className="h-1.5 w-full max-w-xl overflow-hidden rounded-full bg-background">
-                  <div className="h-full bg-primary transition-all" style={{ width: `${exportProgressPercent}%` }} />
+                <div className={cn('h-2 w-full max-w-xl overflow-hidden rounded-full border border-white/10 shadow-inner', exportStateStyles.progressTrack)}>
+                  <div className={cn('h-full rounded-full transition-all duration-500 ease-out', exportStateStyles.progressFill)} style={{ width: `${exportProgressPercent}%` }} />
                 </div>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {exportJobStatus.status === 'completed' && exportJobStatus.signedUrl && (
-                <Button size="sm" asChild>
+                <Button size="sm" className="rounded-full bg-emerald-300 text-emerald-950 hover:bg-emerald-200" asChild>
                   <a href={exportJobStatus.signedUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                     Download
@@ -755,7 +804,7 @@ export default function Conversations() {
                 </Button>
               )}
               {(exportJobStatus.status === 'completed' || exportJobStatus.status === 'failed') && (
-                <Button size="sm" variant="ghost" onClick={() => setExportJobStatus(null)}>
+                <Button size="sm" variant="ghost" className="rounded-full text-zinc-200 hover:bg-white/10 hover:text-white" onClick={() => setExportJobStatus(null)}>
                   Dismiss
                 </Button>
               )}
