@@ -70,6 +70,13 @@ const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen overflow-hidden bg-[
 const premiumPanel = "border-white/10 bg-black/35 shadow-2xl shadow-black/30 backdrop-blur-xl";
 const premiumCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
 const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner shadow-black/20 transition-colors hover:border-amber-400/40 hover:bg-amber-400/5 focus-visible:ring-2 focus-visible:ring-amber-400/70";
+const premiumActionBase = "min-h-9 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
+const premiumUtilityAction = `${premiumActionBase} border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-300/45 hover:bg-sky-400/15 hover:text-sky-50 focus-visible:ring-sky-300`;
+const premiumQualityAction = `${premiumActionBase} border-emerald-300/25 bg-emerald-400/10 text-emerald-100 hover:border-emerald-300/45 hover:bg-emerald-400/15 hover:text-emerald-50 focus-visible:ring-emerald-300`;
+const premiumAlertAction = `${premiumActionBase} border-amber-300/30 bg-amber-400/10 text-amber-100 hover:border-amber-300/55 hover:bg-amber-400/15 hover:text-amber-50 focus-visible:ring-amber-300`;
+const premiumDangerAction = `${premiumActionBase} border-red-400/35 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/15 hover:text-red-100 focus-visible:ring-red-300`;
+const premiumSecondaryAction = `${premiumActionBase} border-white/10 bg-white/5 text-zinc-100 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-amber-300`;
 const premiumTabTrigger = "rounded-xl border border-transparent px-3 py-2 text-muted-foreground transition-all duration-200 hover:border-amber-400/25 hover:bg-amber-400/10 hover:text-amber-100 data-[state=active]:border-amber-400/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/25 data-[state=active]:to-yellow-300/10 data-[state=active]:text-amber-100 data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/10";
 
 interface SquadAssistant {
@@ -502,18 +509,20 @@ const CallLogs = () => {
           <h1 className="text-2xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-amber-100 via-foreground to-amber-300 bg-clip-text text-transparent">
             Call Logs
           </h1>
-          <p className="text-sm text-zinc-400 mt-2 max-w-2xl">Voice intelligence command centre for call outcomes, QA signals, squad handoffs, costs, sentiment, and operational follow-up.</p>
+          <p className="text-sm text-zinc-400 mt-2 max-w-2xl">Track and analyze voice agent call outcomes</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap rounded-2xl border border-white/10 bg-black/25 p-2">
-          {!isMobile && <WeeklyReportConfig />}
-          {!isMobile && <CleanupTestCalls onComplete={fetchCalls} />}
-          {!isMobile && <CleanupContactNames onComplete={fetchCalls} />}
-          {!isMobile && <CallAlerts calls={filteredCalls} />}
-          <CallLogsExport calls={filteredCalls} stats={stats} />
-          <Button onClick={fetchCalls} variant="outline" size="sm" className={cn("gap-2", premiumControl)}>
+        <div className="flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner shadow-black/20 md:w-auto md:justify-end">
+          <div className="flex flex-1 flex-wrap items-center gap-2 md:flex-none md:justify-end">
+          {!isMobile && <WeeklyReportConfig triggerClassName={premiumReportAction} />}
+          {!isMobile && <CleanupTestCalls onComplete={fetchCalls} testNumbersButtonClassName={premiumUtilityAction} flushButtonClassName={premiumDangerAction} />}
+          {!isMobile && <CleanupContactNames onComplete={fetchCalls} triggerClassName={premiumQualityAction} />}
+          {!isMobile && <CallAlerts calls={filteredCalls} triggerClassName={premiumAlertAction} />}
+          <CallLogsExport calls={filteredCalls} stats={stats} triggerClassName={premiumSecondaryAction} />
+          <Button onClick={fetchCalls} variant="outline" size="sm" className={cn("gap-2", premiumSecondaryAction)}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
+          </div>
         </div>
       </div>
 
