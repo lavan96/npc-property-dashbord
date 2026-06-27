@@ -1783,11 +1783,20 @@ export default function ReportQA() {
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <div className="report-qa-hero flex items-center justify-between px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start sm:gap-3 md:flex-row md:items-center">
-        <div className="flex items-center gap-2 min-w-0">
-          <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
+      <div className="report-qa-hero flex items-start justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start md:flex-row md:items-center">
+        <div className="min-w-0 space-y-1.5">
+          <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
+            <Sparkles className="h-3 w-3" />
+            AI Report Intelligence
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
+          </div>
+          <p className="report-qa-subtitle max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
+            Upload investment reports and ask questions to generate summaries, comparisons and citation-backed insights.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 md:justify-end">
+        <div className="report-qa-header-actions flex flex-wrap items-center gap-2 sm:gap-2.5 md:justify-end">
           <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} className="report-qa-icon-button h-9 w-9 rounded-full sm:h-10 sm:w-10" />
           <Button onClick={handleNewChat} className="report-qa-new-chat gap-1.5 h-9 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <Plus className="h-3.5 w-3.5" />
@@ -1853,7 +1862,7 @@ export default function ReportQA() {
                 onAdd={handleLibraryAdd}
                 existingNames={uploadedReports.map((r) => r.name)}
                 disabled={isUploading}
-                className="report-qa-library-button h-8 shrink-0 rounded-xl border-primary/30 bg-primary/10 px-3 text-xs text-primary hover:bg-primary/15 hover:text-primary"
+                className="report-qa-library-button h-9 shrink-0 rounded-full border-primary/35 bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/15 hover:text-primary"
               />
             </div>
           </CardHeader>
@@ -2033,15 +2042,20 @@ export default function ReportQA() {
             )}
 
             {/* Smart Suggestions — collapsible */}
-            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="report-qa-suggestions border-t pt-4 -mx-4 px-4">
-              <CollapsibleTrigger className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group">
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3" />
-                  Smart suggestions
+            <Collapsible defaultOpen={uploadedReports.length === 0 || messages.length === 0} className="report-qa-suggestions group rounded-2xl border px-3 py-3 shadow-sm data-[state=closed]:bg-muted/20 data-[state=open]:shadow-md">
+              <CollapsibleTrigger className="report-qa-suggestions-trigger flex w-full items-center justify-between gap-3 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="truncate">Smart suggestions</span>
                 </span>
-                <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors group-data-[state=open]:border-primary/30 group-data-[state=open]:text-primary">
+                  <span className="hidden sm:inline group-data-[state=closed]:inline">Tips</span>
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+                </span>
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-2">
+              <CollapsibleContent className="pt-3">
                 <SmartSuggestions
                   hasReports={uploadedReports.length > 0}
                   isComparison={uploadedReports.length > 1}
@@ -2057,7 +2071,7 @@ export default function ReportQA() {
 
         {/* Chat Section */}
         <Card className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 border shadow-sm rounded-2xl", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="report-qa-chat-header pb-2 sm:pb-3 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
+          <CardHeader className="report-qa-chat-header pb-3 sm:pb-4 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
@@ -2066,7 +2080,9 @@ export default function ReportQA() {
                 </Button>
               )}
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                <span className="report-qa-chat-title-icon flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl">
+                  <MessageSquare className="h-4 w-4" />
+                </span>
                 {isEditingMainTitle && conversationId ? (
                   <div className="flex items-center gap-1 flex-1">
                     <Input
@@ -2085,7 +2101,7 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <span 
-                    className="text-sm font-semibold truncate cursor-pointer"
+                    className="text-sm font-semibold tracking-tight truncate cursor-pointer"
                     onClick={() => {
                       if (conversationId) {
                         setMainTitleEdit(getCurrentTitle());
@@ -2156,7 +2172,9 @@ export default function ReportQA() {
                     <FileText className="h-4 w-4" />
                   </Button>
                 )}
-                <MessageSquare className="h-5 w-5" />
+                <span className="report-qa-chat-title-icon flex h-10 w-10 items-center justify-center rounded-2xl">
+                  <MessageSquare className="h-5 w-5" />
+                </span>
                 {isEditingMainTitle && conversationId ? (
                   <div className="flex items-center gap-2">
                     <Input value={mainTitleEdit} onChange={(e) => setMainTitleEdit(e.target.value)} className="h-7 w-48 text-sm" autoFocus
@@ -2170,7 +2188,7 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <CardTitle className="text-lg">{getCurrentTitle()}</CardTitle>
+                    <CardTitle className="report-qa-chat-title text-xl tracking-tight">{getCurrentTitle()}</CardTitle>
                     {conversationId && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); }}>
                         <Pencil className="h-3 w-3" />
@@ -2180,7 +2198,7 @@ export default function ReportQA() {
                 )}
               </div>
               
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="report-qa-toolbar flex items-center gap-1 flex-shrink-0">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
                 <Separator orientation="vertical" className="h-6 mx-1" />
                 {conversationId && (
@@ -2244,7 +2262,7 @@ export default function ReportQA() {
                 {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
               </div>
             </div>
-            <CardDescription className="hidden sm:block">
+            <CardDescription className="report-qa-chat-subtitle hidden sm:block pl-12 text-sm">
               {uploadedReports.length > 1 
                 ? `Comparing ${uploadedReports.length} reports` 
                 : 'Ask questions about the uploaded report'}
@@ -2256,9 +2274,9 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-2 sm:px-5">
+          <CardContent id="chat-main" className="report-qa-chat-content flex-1 flex flex-col min-h-0 overflow-hidden px-2 pb-2 sm:px-5 sm:pb-4">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className="flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className="report-qa-message-area flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
               {/* Load older messages button */}
               {hasOlderMessages && messages.length > 0 && (
                 <div className="flex justify-center py-2">
