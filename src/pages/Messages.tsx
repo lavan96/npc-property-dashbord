@@ -257,38 +257,40 @@ export default function Messages() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-zinc-950/80 p-3 shadow-xl shadow-black/25 backdrop-blur">
-          <div className="relative max-w-2xl">
-            <Search className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-amber-200/70" />
-            <Input
-              placeholder="Search by client, partner, or message…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-12 rounded-2xl border-white/10 bg-black/40 pl-11 text-sm shadow-inner shadow-black/20 transition-all placeholder:text-muted-foreground/70 focus-visible:border-amber-300/50 focus-visible:ring-amber-300/30"
-            />
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'client' | 'finance')} className="space-y-4">
+          <div className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.9),rgba(5,5,6,0.88))] p-3 shadow-xl shadow-black/25 backdrop-blur-xl">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="relative min-w-0 flex-1 xl:max-w-2xl">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/75" />
+                <Input
+                  placeholder="Search by client, partner, or message…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-12 rounded-2xl border-amber-300/15 bg-black/45 pl-11 pr-4 text-sm text-foreground shadow-inner shadow-black/25 transition-all placeholder:text-muted-foreground/75 hover:border-amber-300/25 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                />
+              </div>
+
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-white/10 bg-black/55 p-1.5 shadow-lg shadow-black/20 xl:w-auto xl:min-w-[420px]">
+                <TabsTrigger value="client" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
+                  <MessageSquare className="h-4 w-4 shrink-0" />
+                  Client Portal
+                  {totalClientUnread > 0 && (
+                    <Badge variant="destructive" className="ml-1">{totalClientUnread}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="finance" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
+                  <ShieldCheck className="h-4 w-4 shrink-0" />
+                  Finance Portal
+                  {totalFinanceUnread > 0 && (
+                    <Badge variant="destructive" className="ml-1">{totalFinanceUnread}</Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+            </div>
           </div>
-        </div>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'client' | 'finance')} className="space-y-4">
-        <TabsList className="h-auto rounded-2xl border border-white/10 bg-black/50 p-1.5 shadow-lg shadow-black/20">
-          <TabsTrigger value="client" className="gap-2 rounded-xl px-4 py-2.5 text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
-            <MessageSquare className="h-4 w-4" />
-            Client Portal
-            {totalClientUnread > 0 && (
-              <Badge variant="destructive" className="ml-1">{totalClientUnread}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="finance" className="gap-2 rounded-xl px-4 py-2.5 text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
-            <ShieldCheck className="h-4 w-4" />
-            Finance Portal
-            {totalFinanceUnread > 0 && (
-              <Badge variant="destructive" className="ml-1">{totalFinanceUnread}</Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="client" className="mt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
+          <TabsContent value="client" className="mt-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
             <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
               <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-300/10 to-transparent pb-3">
                 <CardTitle className="text-sm font-semibold tracking-wide text-amber-100">Clients</CardTitle>
