@@ -559,8 +559,52 @@ export default function ClientManagement() {
     ghl_status: client.ghl_sync_status || 'not_synced',
   }));
 
+  const kpiCards = [
+    {
+      label: 'Total Clients',
+      value: totalClients,
+      icon: Users,
+      accent: 'text-amber-200',
+      iconSurface: 'border-amber-300/25 bg-amber-400/10',
+      glow: 'from-amber-500/20',
+      valueClassName: 'text-foreground',
+      barClassName: 'from-amber-300 via-amber-400 to-transparent',
+    },
+    {
+      label: 'Total Properties',
+      value: totalProperties,
+      icon: Building2,
+      accent: 'text-amber-100',
+      iconSurface: 'border-amber-300/20 bg-amber-300/10',
+      glow: 'from-yellow-500/15',
+      valueClassName: 'text-foreground',
+      barClassName: 'from-yellow-300 via-amber-400 to-transparent',
+    },
+    {
+      label: 'Portfolio Value',
+      value: formatCurrency(totalPortfolioValue),
+      icon: DollarSign,
+      accent: 'text-amber-50',
+      iconSurface: 'border-amber-200/35 bg-amber-300/15 shadow-amber-500/10',
+      glow: 'from-amber-400/25',
+      valueClassName: 'bg-gradient-to-r from-amber-100 via-amber-300 to-yellow-500 bg-clip-text text-transparent',
+      barClassName: 'from-amber-200 via-yellow-400 to-transparent',
+    },
+    {
+      label: 'Pending GHL Sync',
+      value: pendingSyncCount,
+      icon: TrendingUp,
+      accent: 'text-amber-200',
+      iconSurface: 'border-amber-300/30 bg-amber-500/15',
+      glow: 'from-amber-600/25',
+      valueClassName: pendingSyncCount > 0 ? 'text-amber-200' : 'text-foreground',
+      barClassName: 'from-amber-300 via-orange-400 to-transparent',
+    },
+  ];
+
   return (
-    <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+    <div className="relative -mx-3 space-y-6 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))]" />
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
@@ -574,16 +618,21 @@ export default function ClientManagement() {
       />
 
       {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">Client Management</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage clients, properties, and sync with GoHighLevel
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-6">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+        <div className="pointer-events-none absolute -right-14 -top-20 h-44 w-44 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-200">Premium client workspace</div>
+            <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-5xl">Client Management</h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              Manage clients, properties, and sync with GoHighLevel
+            </p>
+            <p className="text-xs text-muted-foreground">Last auto-sync: {formatLastSync(lastSyncTime)}</p>
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner backdrop-blur lg:w-auto lg:justify-end">
           {/* Auto-sync toggle - compact on mobile */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border">
+          <div className="flex min-h-10 items-center gap-2 rounded-xl border border-amber-500/25 bg-background/70 px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10">
             {isAutoSyncing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
@@ -593,7 +642,7 @@ export default function ClientManagement() {
             <Switch
               checked={autoSyncEnabled}
               onCheckedChange={setAutoSyncEnabled}
-              className="scale-75 sm:scale-90"
+              className="scale-90 data-[state=checked]:bg-amber-400"
             />
           </div>
 
@@ -602,7 +651,7 @@ export default function ClientManagement() {
             variant="default" 
             size="sm"
             disabled={isImportingFromGHL}
-            className="h-8 text-xs sm:text-sm"
+            className="h-10 rounded-xl border border-amber-300/25 bg-amber-500/15 px-4 text-xs font-semibold text-amber-100 shadow-lg shadow-amber-950/20 transition-all hover:-translate-y-0.5 hover:bg-amber-500/25 hover:text-amber-50 sm:text-sm"
           >
             {isImportingFromGHL ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -620,7 +669,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-8 text-xs sm:text-sm"
+            className="h-10 rounded-xl border-amber-500/25 bg-background/70 px-4 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10 sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -632,7 +681,7 @@ export default function ClientManagement() {
               onClick={() => setShowAddClientModal(true)} 
               variant="default" 
               size="sm"
-              className="h-8 text-xs sm:text-sm"
+              className="h-10 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 text-xs font-bold text-black shadow-lg shadow-amber-500/25 transition-all hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400 hover:shadow-amber-500/35 sm:text-sm"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Add Client</span>
@@ -643,7 +692,7 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8">
+              <Button variant="outline" size="sm" className="h-10 rounded-xl border-amber-500/25 bg-background/70 px-3 transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -669,61 +718,46 @@ export default function ClientManagement() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalClients}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Properties</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalProperties}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalPortfolioValue)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending GHL Sync</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingSyncCount}</div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpiCards.map(({ label, value, icon: Icon, accent, iconSurface, glow, valueClassName, barClassName }) => (
+          <Card
+            key={label}
+            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-300/50 hover:shadow-2xl hover:shadow-amber-950/35"
+          >
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} via-transparent to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-100`} />
+            <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <CardHeader className="relative flex flex-row items-start justify-between space-y-0 pb-3">
+              <CardTitle className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">{label}</CardTitle>
+              <div className={`rounded-2xl border p-2.5 shadow-inner transition-transform duration-300 group-hover:scale-105 ${iconSurface}`}>
+                <Icon className={`h-4 w-4 ${accent}`} />
+              </div>
+            </CardHeader>
+            <CardContent className="relative space-y-4 pt-0">
+              <div className={`text-3xl font-bold leading-none tracking-tight md:text-4xl ${valueClassName}`}>{value}</div>
+              <div className="h-px w-full bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
+              <div className={`h-1.5 w-24 rounded-full bg-gradient-to-r ${barClassName} opacity-90 shadow-[0_0_22px_rgba(245,158,11,0.22)] transition-all duration-300 group-hover:w-32 group-hover:opacity-100`} />
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="clients" className="space-y-4">
-        <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-          <TabsList className="inline-flex w-auto min-w-max">
-            <TabsTrigger value="clients">Clients</TabsTrigger>
-            <TabsTrigger value="portfolio-reports">Portfolio</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="compare">Compare</TabsTrigger>
-            <TabsTrigger value="import">Import</TabsTrigger>
+      <Tabs defaultValue="clients" className="space-y-5 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-2xl shadow-black/20 backdrop-blur md:p-4">
+        <div className="-mx-3 overflow-x-auto px-3 pb-1 md:mx-0 md:px-0">
+          <TabsList className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+            <TabsTrigger value="clients" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Clients</TabsTrigger>
+            <TabsTrigger value="portfolio-reports" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Portfolio</TabsTrigger>
+            <TabsTrigger value="analytics" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Analytics</TabsTrigger>
+            <TabsTrigger value="compare" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Compare</TabsTrigger>
+            <TabsTrigger value="import" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Import</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="clients" className="space-y-4">
+        <TabsContent value="clients" className="space-y-5 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
           {/* Bulk Actions Bar */}
           <ClientBulkActions
             selectedClients={selectedClients}
@@ -733,21 +767,21 @@ export default function ClientManagement() {
           />
 
           {/* Search & Filters */}
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/70 p-3 shadow-inner flex-wrap">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search clients..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 border-border/70 bg-background/70 transition-all focus-visible:border-amber-400/60 focus-visible:ring-amber-400/30"
               />
             </div>
             <Button
               variant={showActiveOnly ? "default" : "outline"}
               size="sm"
               onClick={() => setShowActiveOnly(!showActiveOnly)}
-              className="gap-2"
+              className="gap-2 transition-all hover:-translate-y-0.5 hover:border-amber-400/50"
             >
               <Star className={`h-4 w-4 ${showActiveOnly ? 'fill-current' : ''}`} />
               Active Clients
@@ -780,14 +814,14 @@ export default function ClientManagement() {
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
+                <Card key={i} className="animate-pulse border-border/70 bg-card/80">
                   <CardContent className="h-48" />
                 </Card>
               ))}
             </div>
           ) : displayClients.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
+            <Card className="border-dashed border-border/70 bg-card/70">
+              <CardContent className="flex flex-col items-center justify-center py-14">
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold">No clients found</h3>
                 <p className="text-muted-foreground text-center mt-1">
@@ -813,16 +847,16 @@ export default function ClientManagement() {
           )}
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-4">
+        <TabsContent value="analytics" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
           <ClientAnalyticsDashboard clients={clients} />
         </TabsContent>
 
-        <TabsContent value="compare" className="space-y-4">
+        <TabsContent value="compare" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
           <ClientComparison clients={clients} />
         </TabsContent>
 
-        <TabsContent value="portfolio-reports" className="space-y-4">
-          <div className="flex items-center justify-between">
+        <TabsContent value="portfolio-reports" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/70 p-4 shadow-inner">
             <div>
               <h2 className="text-lg font-semibold">Portfolio Performance Reports</h2>
               <p className="text-sm text-muted-foreground">
@@ -841,8 +875,8 @@ export default function ClientManagement() {
           <PortfolioAnalysisReportsList showHeader={false} />
         </TabsContent>
 
-        <TabsContent value="import" className="space-y-4">
-          <Card>
+        <TabsContent value="import" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
+          <Card className="border-amber-500/20 bg-card/80 shadow-xl shadow-black/20 transition-colors hover:border-amber-400/40">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
