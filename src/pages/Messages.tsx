@@ -228,6 +228,11 @@ export default function Messages() {
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
                 All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
               </p>
+              <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="rounded-full border border-amber-300/20 bg-black/30 px-3 py-1 text-amber-100 shadow-inner shadow-black/20">Premium portal hub</span>
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-emerald-100">{clientThreads.length} client threads</span>
+                <span className="rounded-full border border-blue-300/20 bg-blue-300/10 px-3 py-1 text-blue-100">{financeGrouped.length} finance clients</span>
+              </div>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Button
@@ -262,31 +267,35 @@ export default function Messages() {
         </div>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'client' | 'finance')} className="space-y-4">
-          <div className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.9),rgba(5,5,6,0.88))] p-3 shadow-xl shadow-black/25 backdrop-blur-xl">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/15 bg-[linear-gradient(135deg,rgba(24,24,27,0.92),rgba(5,5,6,0.9))] p-3 shadow-xl shadow-black/25 backdrop-blur-xl">
+            <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/35 to-transparent" />
+            <div className="relative flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="relative min-w-0 flex-1 xl:max-w-2xl">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/75" />
+                <label htmlFor="portal-message-search" className="sr-only">Search portal messages by client, partner, or message</label>
                 <Input
+                  id="portal-message-search"
+                  aria-label="Search portal messages by client, partner, or message"
                   placeholder="Search by client, partner, or message…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-12 rounded-2xl border-amber-300/15 bg-black/45 pl-11 pr-4 text-sm text-foreground shadow-inner shadow-black/25 transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-amber-300/30 hover:bg-black/55 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  className="h-12 rounded-2xl border-amber-300/20 bg-[linear-gradient(180deg,rgba(0,0,0,0.58),rgba(12,12,14,0.82))] pl-11 pr-4 text-sm text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_14px_34px_rgba(0,0,0,0.22)] transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-amber-300/35 hover:bg-black/60 focus-visible:border-amber-300/65 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                 />
               </div>
 
-              <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-white/10 bg-black/55 p-1.5 shadow-lg shadow-black/20 xl:w-auto xl:min-w-[420px]">
+              <TabsList aria-label="Portal message type" className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-white/10 bg-black/55 p-1.5 shadow-lg shadow-black/20 xl:w-auto xl:min-w-[420px]">
                 <TabsTrigger value="client" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_28px_rgba(0,0,0,0.22)] focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   Client Portal
                   {totalClientUnread > 0 && (
-                    <Badge variant="destructive" className="ml-1">{totalClientUnread}</Badge>
+                    <Badge className="ml-1 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black">{totalClientUnread}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="finance" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_28px_rgba(0,0,0,0.22)] focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
                   <ShieldCheck className="h-4 w-4 shrink-0" />
                   Finance Portal
                   {totalFinanceUnread > 0 && (
-                    <Badge variant="destructive" className="ml-1">{totalFinanceUnread}</Badge>
+                    <Badge className="ml-1 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black">{totalFinanceUnread}</Badge>
                   )}
                 </TabsTrigger>
               </TabsList>
@@ -298,7 +307,10 @@ export default function Messages() {
               <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/12 via-emerald-300/[0.04] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients</CardTitle>
+                  <div>
+                    <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients</CardTitle>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{filteredClientThreads.length} visible · {totalClientUnread} unread</p>
+                  </div>
                   <Badge variant="outline" className="rounded-full border-emerald-300/25 bg-emerald-300/10 px-2 text-[10px] text-emerald-100">Client Portal</Badge>
                 </div>
               </CardHeader>
@@ -324,6 +336,8 @@ export default function Messages() {
                         <button
                           key={t.client_id}
                           onClick={() => setSelectedClientId(t.client_id)}
+                          aria-pressed={selectedClientId === t.client_id}
+                          aria-label={`Open Client Portal messages for ${t.client_name}`}
                           className={cn(
                             'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
                             selectedClientId === t.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
@@ -332,7 +346,7 @@ export default function Messages() {
                           <div className="flex items-center justify-between gap-2">
                             <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-amber-50">{t.client_name}</div>
                             {t.unread_count > 0 && (
-                              <Badge variant="destructive" className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{t.unread_count}</Badge>
+                              <Badge className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{t.unread_count}</Badge>
                             )}
                           </div>
                           <div className={cn('mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground/85', !t.last_message_preview && 'italic text-muted-foreground/55')}>
@@ -351,7 +365,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
                 <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain">
@@ -367,6 +381,11 @@ export default function Messages() {
                     <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
                       <p className="text-base font-semibold text-foreground">Select a client to view portal messages.</p>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a thread from the left pane to open the portal conversation workspace.</p>
+                      <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-amber-100/90">
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Search</span>
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Review</span>
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Reply</span>
+                      </div>
                       <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
                     </div>
                   </div>
@@ -378,42 +397,47 @@ export default function Messages() {
 
         <TabsContent value="finance" className="mt-0 min-h-0">
           <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-violet-300/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
-              <CardHeader className="border-b border-violet-300/15 bg-gradient-to-r from-violet-300/12 via-blue-300/[0.05] to-transparent px-4 py-3">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
+              <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-blue-300/[0.05] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-violet-100">Clients with Finance threads</CardTitle>
+                  <div>
+                    <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Finance clients</CardTitle>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{filteredFinanceGroups.length} visible · {totalFinanceUnread} unread</p>
+                  </div>
                   <Badge variant="outline" className="rounded-full border-blue-300/25 bg-blue-300/10 px-2 text-[10px] text-blue-100">Finance Portal</Badge>
                 </div>
               </CardHeader>
               <CardContent className="min-h-0 flex-1 p-0">
                 {loadingFinance ? (
-                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-violet-300/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
-                    <Loader2 className="h-5 w-5 animate-spin text-violet-200/80" />
+                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-amber-300/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
+                    <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
                     <p className="mt-3 text-sm font-medium text-foreground">Loading finance portal threads…</p>
                     <p className="mt-1 text-xs text-muted-foreground">Checking partner-visible finance activity.</p>
                   </div>
                 ) : filteredFinanceGroups.length === 0 ? (
-                  <div className="m-4 rounded-3xl border border-dashed border-violet-300/20 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
-                    <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-violet-200/65" />
+                  <div className="m-4 rounded-3xl border border-dashed border-amber-300/15 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
+                    <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-amber-200/65" />
                     <p className="font-medium text-foreground">{search.trim() ? 'No finance portal matches found.' : 'No finance portal threads yet.'}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {search.trim() ? 'Try another client, partner email, or message search.' : 'Finance partner threads will appear here once available.'}
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(139,92,246,0.42)_rgba(24,24,27,0.9)] lg:h-full lg:min-h-0">
+                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)] lg:h-full lg:min-h-0">
                     <div className="space-y-1.5 p-2">
                       {filteredFinanceGroups.map((g) => (
                         <button
                           key={g.client_id}
                           onClick={() => setSelectedFinanceClientId(g.client_id)}
+                          aria-pressed={selectedFinanceClientId === g.client_id}
+                          aria-label={`Open Finance Portal messages for ${g.client_name}`}
                           className={cn(
-                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(196,181,253,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50',
-                            selectedFinanceClientId === g.client_id && 'border-violet-300/45 bg-violet-300/12 shadow-[inset_4px_0_0_rgba(196,181,253,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            selectedFinanceClientId === g.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-violet-50">{g.client_name}</div>
+                            <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-amber-50">{g.client_name}</div>
                             {g.unread_total > 0 && (
                               <Badge className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{g.unread_total}</Badge>
                             )}
@@ -430,7 +454,7 @@ export default function Messages() {
                             </Badge>
                           </div>
                           {g.last_message_at && (
-                            <div className="mt-3 inline-flex rounded-full border border-violet-300/15 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
+                            <div className="mt-3 inline-flex rounded-full border border-amber-300/15 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
                               {formatDistanceToNow(new Date(g.last_message_at), { addSuffix: true })}
                             </div>
                           )}
@@ -442,7 +466,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
               <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedFinanceClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain p-4">
@@ -450,15 +474,19 @@ export default function Messages() {
                   </div>
                 ) : (
                   <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground lg:min-h-0">
-                    <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-emerald-300/20 to-transparent" />
-                    <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
-                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/15 to-white/[0.03] text-emerald-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+                    <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-amber-300/25 to-transparent" />
+                    <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
+                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-300/25 bg-gradient-to-br from-amber-300/15 to-white/[0.03] text-amber-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
                       <ShieldCheck className="h-9 w-9 opacity-90" />
                     </div>
                     <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
                       <p className="text-base font-semibold text-foreground">Select a client to view finance portal threads.</p>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a finance-linked client to review partner-visible thread activity.</p>
-                      <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent" />
+                      <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-amber-100/90">
+                        <span className="rounded-full border border-amber-300/15 bg-amber-300/10 px-2 py-0.5">Partner view</span>
+                        <span className="rounded-full border border-blue-300/15 bg-blue-300/10 px-2 py-0.5 text-blue-100">Finance threads</span>
+                      </div>
+                      <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
                     </div>
                   </div>
                 )}
@@ -469,7 +497,7 @@ export default function Messages() {
       </Tabs>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-h-[86vh] max-w-2xl overflow-hidden rounded-[1.75rem] border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] border-amber-300/20 sm:rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
           <DialogHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-white/[0.03] to-transparent px-6 py-5">
             <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">New portal message</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -477,7 +505,7 @@ export default function Messages() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[58vh] space-y-5 overflow-y-auto px-6 py-5 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
+          <div className="max-h-[62vh] space-y-5 overflow-y-auto px-4 py-5 sm:px-6 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
             <div className="space-y-2.5">
               <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">Scope</Label>
               <Select value={newScope} onValueChange={(v) => setNewScope(v as NewMessageScope)}>
@@ -499,7 +527,10 @@ export default function Messages() {
               <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">Client</Label>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/75" />
+                <label htmlFor="new-portal-message-client-search" className="sr-only">Search clients for a new portal message</label>
                 <Input
+                  id="new-portal-message-client-search"
+                  aria-label="Search clients for a new portal message"
                   placeholder="Search clients…"
                   value={newClientSearch}
                   onChange={(e) => setNewClientSearch(e.target.value)}
@@ -544,11 +575,11 @@ export default function Messages() {
             </div>
           </div>
 
-          <DialogFooter className="border-t border-white/10 bg-black/25 px-6 py-4 sm:justify-between">
-            <Button variant="outline" onClick={() => setNewOpen(false)} className="rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
+          <DialogFooter className="flex-col-reverse gap-2 border-t border-white/10 bg-black/25 px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
+            <Button variant="outline" onClick={() => setNewOpen(false)} className="w-full rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground sm:w-auto transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
             <Button
               disabled={!newClientId}
-              className="rounded-full bg-amber-300 px-6 font-semibold text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
+              className="w-full rounded-full bg-amber-300 px-6 font-semibold sm:w-auto text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
               onClick={() => {
                 const scopeMeta = SCOPE_OPTIONS.find((s) => s.value === newScope)!;
                 if (scopeMeta.group === 'client') {
