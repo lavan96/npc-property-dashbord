@@ -35,7 +35,7 @@ interface ChartCardProps {
   selectionMode: boolean;
 }
 
-export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.24),0_0_34px_rgba(245,158,11,0.14)] focus-within:border-amber-300/70 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.24)] dark:ring-white/10';
+export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/75 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_34px_rgba(245,158,11,0.16)] focus-within:border-amber-300/80 focus-within:ring-2 focus-within:ring-amber-300/35 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_30px_rgba(245,158,11,0.14)] dark:ring-white/10';
 
 const DEFAULT_TYPE_BADGE = { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: 'Chart' };
 
@@ -100,7 +100,7 @@ function ChartBitmapImage({ chart }: { chart: ChartData }) {
     <img
       src={chart.image_data}
       alt={`${chart.title} chart`}
-      className="block h-full w-full object-contain"
+      className="block h-full w-full object-contain transition-transform duration-300 ease-out group-hover/img:scale-[1.025]"
       onError={() => setHasError(true)}
     />
   );
@@ -133,7 +133,7 @@ function renderChartImage(chart: ChartData) {
         return (
           <div
             dangerouslySetInnerHTML={{ __html: svgContent }}
-            className="h-full w-full overflow-hidden [&>svg]:block [&>svg]:h-full [&>svg]:max-h-full [&>svg]:w-full [&>svg]:max-w-full"
+            className="h-full w-full overflow-hidden transition-transform duration-300 ease-out group-hover/img:scale-[1.025] [&>svg]:block [&>svg]:h-full [&>svg]:max-h-full [&>svg]:w-full [&>svg]:max-w-full"
           />
         );
       }
@@ -179,7 +179,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={() => onToggleSelect(chart.id)}
-                className="mr-1 h-5 w-5 rounded-md border-2 border-amber-300/75 bg-background/90 shadow-[0_4px_12px_hsl(43_74%_49%/0.16)] ring-2 ring-background/80 data-[state=checked]:border-amber-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-amber-400 data-[state=checked]:to-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(43_96%_56%/0.20)]" aria-label={`Select ${chart.title}`}
+                className="mr-1 h-5 w-5 rounded-md border-2 border-amber-300/75 bg-background/90 shadow-[0_4px_12px_hsl(43_74%_49%/0.16)] ring-2 ring-background/80 transition-all hover:border-amber-300 hover:shadow-[0_0_0_3px_hsl(43_96%_56%/0.18)] focus-visible:ring-2 focus-visible:ring-amber-300/60 data-[state=checked]:border-amber-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-amber-400 data-[state=checked]:to-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(43_96%_56%/0.20)]" aria-label={`Select ${chart.title}`}
               />
             )}
             <Badge variant="outline" className={`h-6 rounded-full px-2 py-0 text-[10px] font-semibold leading-none tracking-wide shadow-sm backdrop-blur-sm ${cfg.color}`}>
@@ -195,7 +195,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-1 outline-none transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-1 outline-none transition-colors hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/55"
                     onClick={() => navigate(`/report/${chart.report_id}`)}
                   >
                     <FileText className="h-3.5 w-3.5 shrink-0 text-primary/70" />
@@ -229,7 +229,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
           {selectionMode && isSelected && (
             <div className="pointer-events-none absolute inset-2 rounded-xl bg-amber-950/10 ring-2 ring-inset ring-amber-300/70" />
           )}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-black/5 group-hover/img:opacity-100">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-amber-950/5 group-hover/img:opacity-100">
             <div className="rounded-full border border-primary/25 bg-background/90 p-2 shadow-lg shadow-primary/10 backdrop-blur-sm">
               <Maximize2 className="h-4 w-4 text-foreground" />
             </div>
@@ -273,12 +273,12 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         <div className="mt-auto flex items-center justify-between gap-1 pt-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
           <div>
             {onDelete && (
-              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive" onClick={() => onDelete(chart)}>
+              <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-destructive transition-all hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/35" onClick={() => onDelete(chart)}>
                 <Trash2 className="h-3 w-3" /> Delete
               </Button>
             )}
           </div>
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs hover:bg-primary/10 hover:text-primary" onClick={() => onExport(chart)}>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs transition-all hover:border-amber-300/50 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onExport(chart)}>
             <Download className="h-3 w-3" /> Export
           </Button>
         </div>

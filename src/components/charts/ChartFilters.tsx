@@ -39,7 +39,7 @@ export function ChartFilters({
   const filterTriggerClass = (isActive = false) => cn(
     'h-11 min-w-[9.25rem] justify-between rounded-xl border bg-background/80 px-3 text-sm font-semibold text-foreground shadow-sm shadow-black/5 transition-all duration-200',
     'hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.13)]',
-    'focus:ring-2 focus:ring-amber-300/35 focus:ring-offset-0 data-[state=open]:border-amber-300/70 data-[state=open]:bg-amber-500/10 data-[state=open]:shadow-[0_14px_32px_hsl(43_74%_49%/0.16)]',
+    'focus:ring-2 focus:ring-amber-300/45 focus:ring-offset-0 focus-visible:ring-2 focus-visible:ring-amber-300/55 data-[state=open]:border-amber-300/70 data-[state=open]:bg-amber-500/10 data-[state=open]:shadow-[0_14px_32px_hsl(43_74%_49%/0.16)]',
     isActive
       ? 'border-amber-300/70 bg-gradient-to-r from-amber-500/18 to-primary/10 text-primary shadow-[0_10px_26px_hsl(43_74%_49%/0.14)]'
       : 'border-border/60'
@@ -56,10 +56,10 @@ export function ChartFilters({
             placeholder="Search charts by title, report, or analysis..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-12 rounded-2xl border-primary/15 bg-background/85 pl-12 pr-11 text-base font-medium shadow-inner shadow-black/5 transition-all placeholder:text-muted-foreground/80 hover:border-amber-300/45 focus-visible:border-amber-300/80 focus-visible:ring-4 focus-visible:ring-amber-300/20"
+            className="h-12 rounded-2xl border-primary/15 bg-background/85 pl-12 pr-11 text-base font-medium shadow-inner shadow-black/5 transition-all placeholder:text-muted-foreground/80 hover:border-amber-300/45 hover:bg-amber-500/5 focus-visible:border-amber-300/85 focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-amber-300/24 focus-visible:shadow-[inset_0_1px_0_hsl(var(--background)),0_0_0_1px_hsl(43_96%_56%/0.18),0_14px_34px_hsl(43_74%_49%/0.12)]"
           />
           {searchQuery && (
-            <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full hover:bg-amber-500/12 hover:text-primary" onClick={() => onSearchChange('')}>
+            <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full hover:bg-amber-500/12 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onSearchChange('')}>
               <X className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -139,8 +139,8 @@ export function ChartFilters({
                 size="sm"
                 className={cn(
                   'relative h-9 min-w-10 rounded-xl px-3 text-muted-foreground transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-0',
-                  'hover:-translate-y-0.5 hover:bg-amber-500/10 hover:text-foreground hover:shadow-sm',
-                  active && 'bg-gradient-to-br from-amber-300 via-amber-400 to-primary text-primary-foreground shadow-[0_10px_24px_hsl(43_74%_49%/0.28)] hover:bg-amber-400 hover:text-primary-foreground'
+                  'hover:-translate-y-0.5 hover:bg-amber-500/12 hover:text-foreground hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] active:translate-y-0',
+                  active && 'bg-gradient-to-br from-amber-300 via-amber-400 to-primary text-primary-foreground shadow-[0_10px_24px_hsl(43_74%_49%/0.28)] hover:bg-amber-400 hover:text-primary-foreground active:scale-[0.98]'
                 )}
                 onClick={() => onViewModeChange(mode)}
                 title={title}
@@ -157,7 +157,7 @@ export function ChartFilters({
           variant={selectionMode ? 'default' : 'outline'}
           size="sm"
           className={cn(
-            'group h-10 gap-1.5 rounded-2xl border-amber-300/35 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-0',
+            'group h-10 gap-1.5 rounded-2xl border-amber-300/35 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-0',
             selectionMode && 'border-amber-200/80 bg-gradient-to-r from-primary via-amber-500 to-amber-400 text-primary-foreground shadow-[0_16px_36px_hsl(43_74%_49%/0.30),0_0_0_1px_hsl(43_96%_56%/0.30)] hover:text-primary-foreground'
           )}
           onClick={onToggleSelectionMode}

@@ -52,12 +52,12 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
       )}
 
       <div
-        className="group/thumb relative h-16 w-24 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_38%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.34)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.70),0_8px_18px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/35 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_24px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_38%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)]"
+        className="group/thumb relative h-16 w-24 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_38%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.34)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.70),0_8px_18px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-amber-300/65 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_12px_28px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18)] focus-within:ring-2 focus-within:ring-amber-300/35 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_38%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)]"
         onClick={(e) => { e.stopPropagation(); onExpand(chart); }}
       >
-        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white/70 bg-white/95 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] transition-transform duration-200 group-hover/thumb:scale-[1.02] dark:border-white/10 dark:bg-slate-950/70">
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white/70 bg-white/95 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] transition-transform duration-200 group-hover/thumb:scale-[1.045] dark:border-white/10 dark:bg-slate-950/70">
           {renderChartImage(chart)}
-          <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-slate-950/5 group-hover/thumb:ring-primary/20 dark:ring-white/10" />
+          <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-slate-950/5 group-hover/thumb:ring-amber-300/35 dark:ring-white/10" />
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
           </Badge>
           {chart.generated_reports && (
             <button
-              className="flex items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-0.5 transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+              className="flex items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-0.5 transition-all hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/45"
               onClick={(e) => { e.stopPropagation(); navigate(`/report/${chart.report_id}`); }}
             >
               <FileText className="h-3 w-3 shrink-0" />
@@ -91,7 +91,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1 rounded-full px-2 text-xs text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-300"
+            className="h-8 gap-1 rounded-full px-2 text-xs text-amber-700 transition-all hover:-translate-y-0.5 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:text-amber-300"
             onClick={(e) => { e.stopPropagation(); setShowAnalysis(prev => !prev); }}
             aria-label={showAnalysis ? `Hide analysis for ${chart.title}` : `View analysis for ${chart.title}`}
           >
@@ -99,14 +99,14 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAnalysis ? 'rotate-180' : ''}`} />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary" onClick={(e) => { e.stopPropagation(); onExpand(chart); }}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full transition-all hover:-translate-y-0.5 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={(e) => { e.stopPropagation(); onExpand(chart); }}>
           <Maximize2 className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary" onClick={(e) => { e.stopPropagation(); onExport(chart); }}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full transition-all hover:-translate-y-0.5 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={(e) => { e.stopPropagation(); onExport(chart); }}>
           <Download className="h-3.5 w-3.5" />
         </Button>
         {onDelete && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(chart); }}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-destructive transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/35" onClick={(e) => { e.stopPropagation(); onDelete(chart); }}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         )}
