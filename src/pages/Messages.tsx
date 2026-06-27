@@ -447,25 +447,25 @@ export default function Messages() {
       </Tabs>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>New portal message</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-h-[86vh] max-w-2xl overflow-hidden rounded-[1.75rem] border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
+          <DialogHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-white/[0.03] to-transparent px-6 py-5">
+            <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">New portal message</DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-muted-foreground">
               Choose the scope and client. The thread will open in the relevant portal panel where you can compose your message.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Scope</Label>
+          <div className="max-h-[58vh] space-y-5 overflow-y-auto px-6 py-5 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
+            <div className="space-y-2.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">Scope</Label>
               <Select value={newScope} onValueChange={(v) => setNewScope(v as NewMessageScope)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-black/35 px-4 text-sm shadow-inner shadow-black/20 focus:ring-2 focus:ring-amber-300/30"><SelectValue /></SelectTrigger>
+                <SelectContent className="border-white/10 bg-zinc-950">
                   {SCOPE_OPTIONS.map((s) => (
                     <SelectItem key={s.value} value={s.value}>
-                      <div className="flex flex-col">
-                        <span>{s.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{s.hint}</span>
+                      <div className="flex flex-col py-1">
+                        <span className="text-sm font-medium">{s.label}</span>
+                        <span className="text-[10px] leading-4 text-muted-foreground">{s.hint}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -473,24 +473,24 @@ export default function Messages() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Client</Label>
+            <div className="space-y-2.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">Client</Label>
               <div className="relative">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/75" />
                 <Input
                   placeholder="Search clients…"
                   value={newClientSearch}
                   onChange={(e) => setNewClientSearch(e.target.value)}
-                  className="pl-9"
+                  className="h-12 rounded-2xl border-white/10 bg-black/35 pl-11 text-sm shadow-inner shadow-black/20 placeholder:text-muted-foreground/70 focus-visible:border-amber-300/50 focus-visible:ring-2 focus-visible:ring-amber-300/30"
                 />
               </div>
-              <ScrollArea className="h-56 border rounded-md">
+              <ScrollArea className="h-64 rounded-2xl border border-white/10 bg-black/25 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
                 {loadingAllClients ? (
                   <div className="flex items-center justify-center py-6">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-200/80" />
                   </div>
                 ) : (
-                  <div className="divide-y">
+                  <div className="space-y-1.5 p-2">
                     {allClients
                       .filter((c) => {
                         const q = newClientSearch.trim().toLowerCase();
@@ -506,13 +506,13 @@ export default function Messages() {
                           key={c.id}
                           onClick={() => setNewClientId(c.id)}
                           className={cn(
-                            'w-full text-left px-3 py-2 text-sm hover:bg-muted/50',
-                            newClientId === c.id && 'bg-muted',
+                            'w-full rounded-2xl border border-transparent px-3.5 py-3 text-left text-sm transition-all hover:border-amber-300/25 hover:bg-amber-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40',
+                            newClientId === c.id && 'border-amber-300/40 bg-amber-300/12 shadow-[inset_3px_0_0_rgba(251,191,36,0.95)]',
                           )}
                         >
-                          <div className="font-medium">{c.primary_contact_name || 'Unnamed client'}</div>
+                          <div className="truncate font-semibold text-foreground">{c.primary_contact_name || 'Unnamed client'}</div>
                           {c.primary_contact_email && (
-                            <div className="text-xs text-muted-foreground">{c.primary_contact_email}</div>
+                            <div className="mt-1 truncate text-xs text-muted-foreground">{c.primary_contact_email}</div>
                           )}
                         </button>
                       ))}
@@ -522,10 +522,11 @@ export default function Messages() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setNewOpen(false)}>Cancel</Button>
+          <DialogFooter className="border-t border-white/10 bg-black/25 px-6 py-4 sm:justify-between">
+            <Button variant="outline" onClick={() => setNewOpen(false)} className="rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100">Cancel</Button>
             <Button
               disabled={!newClientId}
+              className="rounded-full bg-amber-300 px-6 font-semibold text-black shadow-lg shadow-amber-950/20 transition-all hover:bg-amber-200 focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
               onClick={() => {
                 const scopeMeta = SCOPE_OPTIONS.find((s) => s.value === newScope)!;
                 if (scopeMeta.group === 'client') {
