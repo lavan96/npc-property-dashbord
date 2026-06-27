@@ -439,7 +439,7 @@ export default function Charts() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
                   {group.charts.map(chart => (
                     <ChartCard key={chart.id} {...cardProps(chart)} />
                   ))}
@@ -449,7 +449,7 @@ export default function Charts() {
           ))}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] 2xl:gap-6">
           {paginatedCharts.map(chart => (
             <ChartCard key={chart.id} {...cardProps(chart)} />
           ))}
