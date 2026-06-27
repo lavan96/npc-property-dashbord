@@ -192,13 +192,13 @@ export function useChartExport() {
       toast.success(`Exported "${chart.title}"`);
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export chart');
+      toast.error('Failed to export chart. Refresh the chart gallery, then try exporting again.');
     }
   }, []);
 
   const exportBulk = useCallback(async (charts: ChartData[], includeAnalysis = true) => {
     if (charts.length === 0) {
-      toast.error('No charts selected');
+      toast.error('No charts selected. Select at least one chart to export.');
       return;
     }
 
