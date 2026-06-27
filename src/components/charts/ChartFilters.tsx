@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { Search, LayoutGrid, List, CheckSquare, X, FolderOpen, CalendarDays, Sparkles, CheckCircle2 } from 'lucide-react';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface ChartFiltersProps {
   searchQuery: string;
@@ -46,7 +47,7 @@ export function ChartFilters({
   );
 
   return (
-    <div className="rounded-[1.5rem] border border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.08),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.88))] p-3 shadow-2xl shadow-black/10 backdrop-blur-xl sm:p-4">
+    <DashboardThemeFrame variant="toolbar" className="block border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.08),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.88))] p-3 shadow-2xl shadow-black/10 sm:p-4">
       <div className="pointer-events-none -mx-1 -mt-1 mb-3 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
       {/* Search + filters */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -178,6 +179,6 @@ export function ChartFilters({
           )}
         </Button>
       </div>
-    </div>
+    </DashboardThemeFrame>
   );
 }

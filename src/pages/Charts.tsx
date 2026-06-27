@@ -15,6 +15,7 @@ import { ChartLightbox } from '@/components/charts/ChartLightbox';
 import { ChartFilters } from '@/components/charts/ChartFilters';
 import { ChartStats } from '@/components/charts/ChartStats';
 import { useChartExport } from '@/components/charts/useChartExport';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 const CHARTS_PER_PAGE = 24;
 
@@ -297,9 +298,9 @@ export default function Charts() {
   // Loading skeleton
   if (loading && charts.length === 0) {
     return (
-      <div className="min-h-screen animate-fade-in overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(245,158,11,0.12),transparent_30%)] p-4 sm:p-6">
-        <div className="mx-auto max-w-[1700px] space-y-6">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-card/85 p-6 shadow-2xl shadow-black/15 backdrop-blur-xl">
+      <main className="min-h-screen animate-fade-in overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),radial-gradient(circle_at_85%_0%,hsl(43_96%_56%/0.12),transparent_30%)] p-4 sm:p-6">
+        <DashboardThemeFrame variant="page" className="max-w-[1700px] space-y-6">
+          <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-6 shadow-2xl shadow-black/15">
             <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
             <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-300/15 blur-3xl" />
             <div className="flex items-center gap-4">
@@ -311,7 +312,7 @@ export default function Charts() {
                 <p className="text-sm leading-6 text-muted-foreground">Loading saved visual analytics, report links and chart insights.</p>
               </div>
             </div>
-          </div>
+          </DashboardThemeFrame>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="overflow-hidden border-border/60 bg-card/80 shadow-lg">
@@ -337,16 +338,16 @@ export default function Charts() {
               </Card>
             ))}
           </div>
-        </div>
-      </div>
+        </DashboardThemeFrame>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen animate-fade-in bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_32%),radial-gradient(circle_at_85%_10%,rgba(245,158,11,0.09),transparent_28%)] p-4 sm:p-6">
-      <div className="mx-auto max-w-[1700px] space-y-7">
+    <main className="min-h-screen animate-fade-in bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_32%),radial-gradient(circle_at_85%_10%,hsl(43_96%_56%/0.09),transparent_28%)] p-4 sm:p-6">
+      <DashboardThemeFrame variant="page" className="max-w-[1700px] space-y-7">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-card/85 p-5 shadow-2xl shadow-black/15 backdrop-blur-xl sm:p-6">
+        <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-5 shadow-2xl shadow-black/15 sm:p-6">
           <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
           <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-20 bottom-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
@@ -377,18 +378,18 @@ export default function Charts() {
               </Button>
             </div>
           </div>
-        </div>
+        </DashboardThemeFrame>
 
         {isRefreshing && (
-          <div className="flex items-center gap-3 rounded-2xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 shadow-sm dark:text-amber-200">
+          <DashboardThemeFrame variant="toolbar" className="items-center border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
             <RefreshCw className="h-4 w-4 animate-spin" />
             <span className="font-medium">Refreshing chart gallery…</span>
             <span className="text-muted-foreground">Your current results remain visible while the latest charts load.</span>
-          </div>
+          </DashboardThemeFrame>
         )}
 
         {loadError && !loading && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-destructive/25 bg-destructive/8 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <DashboardThemeFrame variant="toolbar" className="flex-col gap-3 border-destructive/25 bg-destructive/8 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
               <div>
@@ -399,7 +400,7 @@ export default function Charts() {
             <Button variant="outline" size="sm" className="gap-2 rounded-full" onClick={fetchCharts}>
               <RefreshCw className="h-3.5 w-3.5" /> Retry
             </Button>
-          </div>
+          </DashboardThemeFrame>
         )}
 
         {/* Stats */}
@@ -453,7 +454,7 @@ export default function Charts() {
 
         {/* Content */}
       {charts.length === 0 ? (
-        <Card className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
+        <DashboardThemeFrame variant="section" className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
           <CardContent className="flex flex-col items-center justify-center h-80 space-y-4">
             <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/12 via-amber-500/10 to-background shadow-inner">
               <BarChart3 className="h-9 w-9 text-primary" />
@@ -465,9 +466,9 @@ export default function Charts() {
               </p>
             </div>
           </CardContent>
-        </Card>
+        </DashboardThemeFrame>
       ) : filteredCharts.length === 0 ? (
-        <Card className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
+        <DashboardThemeFrame variant="section" className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border/70 bg-muted/45"><SearchX className="h-7 w-7 text-muted-foreground" /></div>
             <div className="space-y-1"><h3 className="text-lg font-semibold">No matching charts</h3><p className="max-w-sm text-sm text-muted-foreground">Your search, report, chart type or date filters do not match any saved charts.</p></div>
@@ -479,7 +480,7 @@ export default function Charts() {
               <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />Clear filters
             </Button>
           </CardContent>
-        </Card>
+        </DashboardThemeFrame>
       ) : viewMode === 'grouped' ? (
         /* Grouped by Report view (Enhancement #2) */
         <div className="space-y-4">
@@ -567,7 +568,7 @@ export default function Charts() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-    </div>
+    </DashboardThemeFrame>
+    </main>
   );
 }
