@@ -164,16 +164,21 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
     ? Math.round(reports.reduce((acc, r) => acc + (r.health_score || 0), 0) / reports.length)
     : 0;
   const totalPortfolioValue = reports.reduce((acc, r) => acc + (Number(r.portfolio_value) || 0), 0);
-  const avgHealthAccent = avgHealthScore >= 75
+  // Visual-only cue using the existing scorecard ranges; does not alter the average score calculation.
+  const avgHealthAccent = avgHealthScore >= 80
     ? 'from-emerald-300 to-teal-300 shadow-emerald-500/20'
-    : avgHealthScore >= 50
+    : avgHealthScore >= 60
       ? 'from-amber-300 to-yellow-300 shadow-amber-500/20'
-      : 'from-red-300 to-rose-300 shadow-red-500/20';
-  const avgHealthIconClass = avgHealthScore >= 75
+      : avgHealthScore >= 40
+        ? 'from-orange-300 to-amber-300 shadow-orange-500/20'
+        : 'from-red-300 to-rose-300 shadow-red-500/20';
+  const avgHealthIconClass = avgHealthScore >= 80
     ? 'text-emerald-200'
-    : avgHealthScore >= 50
+    : avgHealthScore >= 60
       ? 'text-amber-200'
-      : 'text-red-200';
+      : avgHealthScore >= 40
+        ? 'text-orange-200'
+        : 'text-red-200';
 
   const handleViewPDF = async (report: PortfolioAnalysisReport) => {
     if (!report.pdf_file_path) {
