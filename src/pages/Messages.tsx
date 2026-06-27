@@ -208,63 +208,80 @@ export default function Messages() {
   const totalClientUnread = clientThreads.reduce((s, t) => s + (t.unread_count || 0), 0);
   const totalFinanceUnread = financeGrouped.reduce((s, t) => s + (t.unread_total || 0), 0);
 
+  const refreshing = loadingClient || loadingFinance;
+
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Inbox className="h-6 w-6" />
-            Portal Messages
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
-          </p>
+    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(217,164,65,0.12),transparent_30%),linear-gradient(180deg,rgba(8,8,10,0.96),rgba(12,12,14,0.98))] p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto flex max-w-[1520px] flex-col gap-5">
+        <div className="relative overflow-hidden rounded-3xl border border-amber-400/15 bg-black/45 p-5 shadow-2xl shadow-black/30 backdrop-blur xl:p-6">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
+          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-amber-400/10 blur-3xl" />
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="min-w-0">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                Command Centre inbox
+              </div>
+              <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/25 bg-gradient-to-br from-amber-300/20 to-amber-600/10 text-amber-200 shadow-lg shadow-amber-950/20">
+                  <Inbox className="h-6 w-6" />
+                </span>
+                Portal Messages
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                className="border border-amber-200/30 bg-gradient-to-r from-amber-300 to-yellow-600 font-semibold text-black shadow-lg shadow-amber-950/30 transition-all hover:-translate-y-0.5 hover:from-amber-200 hover:to-amber-500 focus-visible:ring-amber-300"
+                onClick={() => {
+                  setNewOpen(true);
+                  if (allClients.length === 0) loadAllClients();
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                New message
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-300/20 bg-black/30 text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-amber-300/10 focus-visible:ring-amber-300"
+                onClick={() => {
+                  loadClientThreads();
+                  loadFinanceThreads();
+                }}
+              >
+                <RefreshCcw className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')} />
+                Refresh
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              setNewOpen(true);
-              if (allClients.length === 0) loadAllClients();
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New message
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              loadClientThreads();
-              loadFinanceThreads();
-            }}
-          >
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+
+        <div className="rounded-3xl border border-white/10 bg-zinc-950/80 p-3 shadow-xl shadow-black/25 backdrop-blur">
+          <div className="relative max-w-2xl">
+            <Search className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-amber-200/70" />
+            <Input
+              placeholder="Search by client, partner, or message…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-12 rounded-2xl border-white/10 bg-black/40 pl-11 text-sm shadow-inner shadow-black/20 transition-all placeholder:text-muted-foreground/70 focus-visible:border-amber-300/50 focus-visible:ring-amber-300/30"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="relative max-w-md">
-        <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search by client, partner, or message…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'client' | 'finance')}>
-        <TabsList>
-          <TabsTrigger value="client" className="gap-2">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'client' | 'finance')} className="space-y-4">
+        <TabsList className="h-auto rounded-2xl border border-white/10 bg-black/50 p-1.5 shadow-lg shadow-black/20">
+          <TabsTrigger value="client" className="gap-2 rounded-xl px-4 py-2.5 text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
             <MessageSquare className="h-4 w-4" />
             Client Portal
             {totalClientUnread > 0 && (
               <Badge variant="destructive" className="ml-1">{totalClientUnread}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="finance" className="gap-2">
+          <TabsTrigger value="finance" className="gap-2 rounded-xl px-4 py-2.5 text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
             <ShieldCheck className="h-4 w-4" />
             Finance Portal
             {totalFinanceUnread > 0 && (
@@ -273,11 +290,11 @@ export default function Messages() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="client" className="mt-4">
+        <TabsContent value="client" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-            <Card className="lg:h-[75vh] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Clients</CardTitle>
+            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
+              <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-300/10 to-transparent pb-3">
+                <CardTitle className="text-sm font-semibold tracking-wide text-amber-100">Clients</CardTitle>
               </CardHeader>
               <CardContent className="flex-1 p-0">
                 {loadingClient ? (
@@ -285,19 +302,19 @@ export default function Messages() {
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : filteredClientThreads.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-10">
+                  <div className="m-4 rounded-2xl border border-dashed border-white/10 bg-black/30 px-4 py-10 text-center text-sm text-muted-foreground">
                     No client portal messages yet.
                   </div>
                 ) : (
                   <ScrollArea className="h-[70vh]">
-                    <div className="divide-y">
+                    <div className="divide-y divide-white/10 p-2">
                       {filteredClientThreads.map((t) => (
                         <button
                           key={t.client_id}
                           onClick={() => setSelectedClientId(t.client_id)}
                           className={cn(
-                            'w-full text-left p-3 hover:bg-muted/50 transition-colors',
-                            selectedClientId === t.client_id && 'bg-muted',
+                            'group w-full rounded-2xl border border-transparent p-3 text-left transition-all hover:border-amber-300/20 hover:bg-amber-300/10 hover:shadow-lg hover:shadow-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            selectedClientId === t.client_id && 'border-amber-300/35 bg-amber-300/10 shadow-[inset_3px_0_0_rgba(251,191,36,0.95)]',
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -322,16 +339,19 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="lg:h-[75vh] flex flex-col">
+            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
               <CardContent className="flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
                   <div className="h-full overflow-auto">
                     <ClientPortalMessagesPanel clientId={selectedClientId} />
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm">
-                    <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
-                    Select a client to view portal messages.
+                  <div className="flex h-full flex-col items-center justify-center p-8 text-center text-sm text-muted-foreground">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-300/20 bg-amber-300/10 text-amber-200 shadow-lg shadow-amber-950/20">
+                      <MessageSquare className="h-8 w-8" />
+                    </div>
+                    <p className="font-medium text-foreground">Select a client to view portal messages.</p>
+                    <p className="mt-1 max-w-xs text-xs">Choose a thread from the left pane to open the portal conversation workspace.</p>
                   </div>
                 )}
               </CardContent>
@@ -339,11 +359,11 @@ export default function Messages() {
           </div>
         </TabsContent>
 
-        <TabsContent value="finance" className="mt-4">
+        <TabsContent value="finance" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-            <Card className="lg:h-[75vh] flex flex-col">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Clients with Finance threads</CardTitle>
+            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
+              <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-300/10 to-transparent pb-3">
+                <CardTitle className="text-sm font-semibold tracking-wide text-amber-100">Clients with Finance threads</CardTitle>
               </CardHeader>
               <CardContent className="flex-1 p-0">
                 {loadingFinance ? (
@@ -351,19 +371,19 @@ export default function Messages() {
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : filteredFinanceGroups.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground py-10">
+                  <div className="m-4 rounded-2xl border border-dashed border-white/10 bg-black/30 px-4 py-10 text-center text-sm text-muted-foreground">
                     No finance portal threads yet.
                   </div>
                 ) : (
                   <ScrollArea className="h-[70vh]">
-                    <div className="divide-y">
+                    <div className="divide-y divide-white/10 p-2">
                       {filteredFinanceGroups.map((g) => (
                         <button
                           key={g.client_id}
                           onClick={() => setSelectedFinanceClientId(g.client_id)}
                           className={cn(
-                            'w-full text-left p-3 hover:bg-muted/50 transition-colors',
-                            selectedFinanceClientId === g.client_id && 'bg-muted',
+                            'group w-full rounded-2xl border border-transparent p-3 text-left transition-all hover:border-amber-300/20 hover:bg-amber-300/10 hover:shadow-lg hover:shadow-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            selectedFinanceClientId === g.client_id && 'border-amber-300/35 bg-amber-300/10 shadow-[inset_3px_0_0_rgba(251,191,36,0.95)]',
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -396,16 +416,19 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="lg:h-[75vh] flex flex-col">
+            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
               <CardContent className="flex-1 p-0 overflow-hidden">
                 {selectedFinanceClientId ? (
                   <div className="h-full overflow-auto p-4">
                     <StaffFinancePortalMessagesPanel clientId={selectedFinanceClientId} />
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm">
-                    <ShieldCheck className="h-8 w-8 mb-2 opacity-50" />
-                    Select a client to view finance portal threads.
+                  <div className="flex h-full flex-col items-center justify-center p-8 text-center text-sm text-muted-foreground">
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-emerald-300/20 bg-emerald-300/10 text-emerald-200 shadow-lg shadow-emerald-950/20">
+                      <ShieldCheck className="h-8 w-8" />
+                    </div>
+                    <p className="font-medium text-foreground">Select a client to view finance portal threads.</p>
+                    <p className="mt-1 max-w-xs text-xs">Choose a finance-linked client to review partner-visible thread activity.</p>
                   </div>
                 )}
               </CardContent>
@@ -512,6 +535,7 @@ export default function Messages() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
