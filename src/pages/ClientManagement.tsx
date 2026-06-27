@@ -888,17 +888,20 @@ export default function ClientManagement() {
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
-          <Card className="border-amber-500/20 bg-card/80 shadow-xl shadow-black/20 transition-colors hover:border-amber-400/40">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+          <Card className="relative overflow-hidden rounded-3xl border-amber-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] shadow-2xl shadow-black/25 transition-colors hover:border-amber-400/40">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+            <CardHeader className="border-b border-white/10 pb-4">
+              <CardTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-white sm:text-2xl">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/15 text-amber-100 shadow-lg shadow-amber-950/20">
+                  <Upload className="h-5 w-5" />
+                </span>
                 Import Clients from Excel
               </CardTitle>
-              <CardDescription>
-                Drag and drop your client intake form Excel file to import clients and their properties
+              <CardDescription className="max-w-2xl text-sm leading-6 text-slate-400">
+                Drag and drop your client intake form Excel file to import clients and their properties into the dashboard.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6">
               <ExcelDropzone onImportComplete={() => refetch()} />
             </CardContent>
           </Card>
