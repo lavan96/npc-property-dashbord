@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, Sparkles, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -35,6 +35,10 @@ interface ChartCardProps {
   selectionMode: boolean;
 }
 
+export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.24),0_0_34px_rgba(245,158,11,0.14)] focus-within:border-amber-300/70 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.24)] dark:ring-white/10';
+
+const DEFAULT_TYPE_BADGE = { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: 'Chart' };
+
 const CHART_TYPE_CONFIG: Record<string, { color: string; emoji: string; label: string }> = {
   bar: { color: 'border-blue-400/35 bg-gradient-to-r from-blue-500/12 to-violet-500/12 text-blue-700 shadow-blue-500/10 dark:text-blue-200', emoji: '📊', label: 'Bar' },
   pie: { color: 'border-emerald-400/35 bg-gradient-to-r from-emerald-500/12 to-teal-500/12 text-emerald-700 shadow-emerald-500/10 dark:text-emerald-200', emoji: '🥧', label: 'Pie' },
@@ -43,14 +47,72 @@ const CHART_TYPE_CONFIG: Record<string, { color: string; emoji: string; label: s
   scatter: { color: 'border-rose-400/35 bg-gradient-to-r from-rose-500/12 to-pink-500/12 text-rose-700 shadow-rose-500/10 dark:text-rose-200', emoji: '🔵', label: 'Scatter' },
   radar: { color: 'border-cyan-400/35 bg-gradient-to-r from-cyan-500/12 to-sky-500/12 text-cyan-700 shadow-cyan-500/10 dark:text-cyan-200', emoji: '🕸️', label: 'Radar' },
   area: { color: 'border-teal-400/35 bg-gradient-to-r from-teal-500/12 to-emerald-500/12 text-teal-700 shadow-teal-500/10 dark:text-teal-200', emoji: '📉', label: 'Area' },
+  distribution: { color: 'border-sky-400/35 bg-gradient-to-r from-sky-500/12 to-cyan-500/12 text-sky-700 shadow-sky-500/10 dark:text-sky-200', emoji: '📐', label: 'Distribution' },
+  pricing_trend: { color: 'border-violet-400/35 bg-gradient-to-r from-violet-500/12 to-fuchsia-500/12 text-violet-700 shadow-violet-500/10 dark:text-violet-200', emoji: '💹', label: 'Pricing Trend' },
+  suburb: { color: 'border-indigo-400/35 bg-gradient-to-r from-indigo-500/12 to-blue-500/12 text-indigo-700 shadow-indigo-500/10 dark:text-indigo-200', emoji: '🏘️', label: 'Suburb' },
+  property_type: { color: 'border-lime-400/35 bg-gradient-to-r from-lime-500/12 to-emerald-500/12 text-lime-700 shadow-lime-500/10 dark:text-lime-200', emoji: '🏢', label: 'Property Type' },
 };
+
+function normalizeChartType(type: string) {
+  return type.toLowerCase().trim().replace(/[\s-]+/g, '_');
+}
+
+export function getChartTypeConfig(type: string) {
+  const normalized = normalizeChartType(type);
+  const semanticKey = normalized.includes('distribution') ? 'distribution'
+    : normalized.includes('pricing') || normalized.includes('trend') ? 'pricing_trend'
+    : normalized.includes('suburb') ? 'suburb'
+    : normalized.includes('property') && normalized.includes('type') ? 'property_type'
+    : normalized.includes('doughnut') || normalized.includes('donut') ? 'doughnut'
+    : normalized.includes('scatter') ? 'scatter'
+    : normalized.includes('radar') ? 'radar'
+    : normalized.includes('area') ? 'area'
+    : normalized.includes('line') ? 'line'
+    : normalized.includes('pie') ? 'pie'
+    : normalized.includes('bar') ? 'bar'
+    : normalized;
+
+  return CHART_TYPE_CONFIG[semanticKey] || { ...DEFAULT_TYPE_BADGE, label: type.replace(/[_-]+/g, ' ') };
+}
+
+function ChartImageErrorState({ title = 'Chart preview unavailable', helper = 'The saved chart image could not be rendered.' }: { title?: string; helper?: string }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-amber-300/40 bg-amber-500/8 p-6 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-amber-500/12 text-amber-700 dark:text-amber-200">
+        <AlertTriangle className="h-5 w-5" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="max-w-xs text-xs leading-5 text-muted-foreground">{helper}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChartBitmapImage({ chart }: { chart: ChartData }) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return <ChartImageErrorState helper="Try refreshing the gallery. If the issue persists, regenerate or re-export the source report chart." />;
+  }
+
+  return (
+    <img
+      src={chart.image_data}
+      alt={`${chart.title} chart`}
+      className="block h-full w-full object-contain"
+      onError={() => setHasError(true)}
+    />
+  );
+}
 
 function renderChartImage(chart: ChartData) {
   if (!chart.image_data) {
     return (
-      <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-        No chart data available
-      </div>
+      <ChartImageErrorState
+        title="No chart image saved"
+        helper="This chart record exists, but it does not include renderable image data."
+      />
     );
   }
 
@@ -78,28 +140,24 @@ function renderChartImage(chart: ChartData) {
     } catch (error) {
       console.error('SVG parsing error:', error);
     }
-    return <div className="w-full h-full flex items-center justify-center text-destructive text-sm">Chart rendering error</div>;
+    return <ChartImageErrorState helper="The chart SVG could not be parsed safely. Refresh or regenerate the report if this continues." />;
   }
 
-  return (
-    <img
-      src={chart.image_data}
-      alt={`${chart.title} chart`}
-      className="block h-full w-full object-contain"
-      onError={(e) => {
-        (e.target as HTMLImageElement).style.display = 'none';
-      }}
-    />
-  );
+  return <ChartBitmapImage chart={chart} />;
 }
 
 export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
-  const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: chart.chart_type };
+  const cfg = getChartTypeConfig(chart.chart_type);
   const navigate = useNavigate();
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`group relative flex h-full min-h-[430px] overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-amber-300/70 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.28),0_0_34px_rgba(245,158,11,0.16)] dark:ring-white/10 ${selectionMode && isSelected ? 'border-amber-300/80 bg-gradient-to-b from-amber-500/10 via-card/95 to-card/85 ring-2 ring-amber-400/80 shadow-[0_22px_46px_hsl(43_74%_49%/0.18)]' : ''}`}>
+    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex h-full min-h-[430px] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25 hover:ring-amber-300/45' : ''} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-b from-amber-500/12 via-card/95 to-card/85 ring-2 ring-amber-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
+      {selectionMode && (
+        <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-amber-200/60 bg-background/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 shadow-lg shadow-amber-950/10 backdrop-blur-md dark:text-amber-200">
+          {isSelected ? 'Selected' : 'Selectable'}
+        </div>
+      )}
       {selectionMode && isSelected && (
         <div className="pointer-events-none absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
           <CheckCircle2 className="h-4 w-4" />
@@ -121,7 +179,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={() => onToggleSelect(chart.id)}
-                className="mr-1 border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground" aria-label={`Select ${chart.title}`}
+                className="mr-1 h-5 w-5 rounded-md border-2 border-amber-300/75 bg-background/90 shadow-[0_4px_12px_hsl(43_74%_49%/0.16)] ring-2 ring-background/80 data-[state=checked]:border-amber-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-amber-400 data-[state=checked]:to-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(43_96%_56%/0.20)]" aria-label={`Select ${chart.title}`}
               />
             )}
             <Badge variant="outline" className={`h-6 rounded-full px-2 py-0 text-[10px] font-semibold leading-none tracking-wide shadow-sm backdrop-blur-sm ${cfg.color}`}>
@@ -158,13 +216,19 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
 
       <CardContent className="flex flex-1 flex-col space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
         <div
-          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode && isSelected ? 'border-amber-300/70 ring-1 ring-amber-300/45' : 'border-border/60'}`}
+          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 ring-2 ring-amber-400/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_34px_rgba(245,158,11,0.22)]' : ''}`}
           onClick={() => onExpand(chart)}
         >
           <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
             {renderChartImage(chart)}
           </div>
           <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-slate-950/5 transition-all duration-300 group-hover/img:ring-amber-400/25 dark:ring-white/10" />
+          {selectionMode && (
+            <div className="pointer-events-none absolute inset-2 rounded-xl bg-gradient-to-br from-amber-500/10 via-transparent to-primary/10 opacity-100" />
+          )}
+          {selectionMode && isSelected && (
+            <div className="pointer-events-none absolute inset-2 rounded-xl bg-amber-950/10 ring-2 ring-inset ring-amber-300/70" />
+          )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-black/5 group-hover/img:opacity-100">
             <div className="rounded-full border border-primary/25 bg-background/90 p-2 shadow-lg shadow-primary/10 backdrop-blur-sm">
               <Maximize2 className="h-4 w-4 text-foreground" />

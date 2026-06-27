@@ -775,14 +775,16 @@ export default function ClientTracker() {
   return (
     <div className="min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
       {/* Header */}
-      <div className="rounded-2xl border border-primary/15 bg-card/80 p-4 shadow-xl shadow-black/20 backdrop-blur md:p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-5">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary shadow-inner">
             <Target className="h-3.5 w-3.5" /> CRM Workspace
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">Client Tracker</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">Client Tracker</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-[15px]">
             Track clients through your GHL pipelines
             {pipelines.length > 0 && (
               <span className="ml-2 text-xs md:text-sm">
@@ -794,8 +796,8 @@ export default function ClientTracker() {
         
         {/* Mobile: Compact action bar */}
         {isMobile ? (
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/70 p-2 shadow-inner">
-            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-muted/50 border">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-background/70 p-2 shadow-inner">
+            <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
               {isAutoSyncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
               ) : (
@@ -812,7 +814,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
-              className="h-8 text-xs"
+              className="h-9 rounded-xl px-3 text-xs font-semibold shadow-md shadow-primary/20"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -828,13 +830,13 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
-              className="h-8"
+              className="h-9 rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs">
+                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/70 bg-background/80 text-xs hover:border-primary/30 hover:bg-primary/5">
                   <Download className="h-3.5 w-3.5 mr-1" />
                   Export
                 </Button>
@@ -848,12 +850,12 @@ export default function ClientTracker() {
             </DropdownMenu>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/70 bg-background/60 p-2 shadow-inner">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-background/65 p-2 shadow-inner lg:justify-end">
             {/* Auto-sync toggle */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/10 px-3 py-1.5 shadow-sm">
+                  <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
                     {isAutoSyncing ? (
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
@@ -890,6 +892,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
+              className="rounded-xl px-4 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -906,13 +909,14 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
+              className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5">
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -930,55 +934,59 @@ export default function ClientTracker() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Clients</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-foreground md:text-5xl">{stats.total}</p>
+              </div>
+              <div className="rounded-2xl border border-primary/25 bg-primary/10 p-3 shadow-inner transition-all duration-300 group-hover:border-primary/45 group-hover:bg-primary/15">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Clients</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">With Follow-ups</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-amber-100 md:text-5xl">{stats.withFollowUp}</p>
+              </div>
+              <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-amber-400/45 group-hover:bg-amber-400/15">
+                <Clock className="h-5 w-5 text-amber-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/35 hover:shadow-xl hover:shadow-amber-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-amber-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/10 rounded-lg">
-                <Clock className="h-5 w-5 text-amber-500" />
+        <Card className="group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-red-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overdue</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-red-300 md:text-5xl">{stats.overdue}</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.withFollowUp}</p>
-                <p className="text-sm text-muted-foreground">With Follow-ups</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-red-500/35 hover:shadow-xl hover:shadow-red-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-red-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.overdue}</p>
-                <p className="text-sm text-muted-foreground">Overdue</p>
+              <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-3 shadow-inner transition-all duration-300 group-hover:border-red-500/45 group-hover:bg-red-500/15">
+                <AlertCircle className="h-5 w-5 text-red-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/35 hover:shadow-xl hover:shadow-emerald-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-emerald-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/10 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
+        <Card className="group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">In Finance</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-emerald-300 md:text-5xl">{stats.financeStage}</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.financeStage}</p>
-                <p className="text-sm text-muted-foreground">In Finance</p>
+              <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-emerald-400/45 group-hover:bg-emerald-400/15">
+                <TrendingUp className="h-5 w-5 text-emerald-400" />
               </div>
             </div>
           </CardContent>
@@ -1087,15 +1095,16 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <div className="rounded-2xl border border-border/70 bg-card/75 p-3 shadow-lg shadow-black/10 backdrop-blur">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15 backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
+        <div className="relative flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="group relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
             <Input
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 border-border/70 bg-background/80 pl-10 transition-all focus-visible:ring-primary/40"
+              className="h-11 rounded-xl border-border/70 bg-background/85 pl-10 pr-4 text-sm shadow-inner transition-all placeholder:text-muted-foreground/70 hover:border-primary/25 hover:bg-background/95 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25"
             />
           </div>
           
@@ -1103,11 +1112,11 @@ export default function ClientTracker() {
           {isMobile ? (
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 shrink-0">
+                <Button variant="outline" size="sm" className="h-11 shrink-0 rounded-xl border-border/70 bg-background/85 px-3 shadow-inner hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-primary/25">
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="h-[60vh]">
+              <SheetContent side="bottom" className="h-[60vh] rounded-t-3xl border-border/70 bg-card/95">
                 <SheetHeader>
                   <SheetTitle>Filters</SheetTitle>
                 </SheetHeader>
@@ -1115,14 +1124,14 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Pipeline</label>
                     <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                      <SelectTrigger>
-                        <Layers className="h-4 w-4 mr-2" />
+                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5")}>
+                        <Layers className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Select Pipeline" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Pipelines</SelectItem>
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                        <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                         {pipelines.map(pipeline => (
-                          <SelectItem key={pipeline.id} value={pipeline.id}>
+                          <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
                             {pipeline.name}
                           </SelectItem>
                         ))}
@@ -1132,14 +1141,14 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Stage</label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger>
-                        <Filter className="h-4 w-4 mr-2" />
+                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", statusFilter !== 'all' && "border-primary/45 bg-primary/5")}>
+                        <Filter className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Filter by stage" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Stages</SelectItem>
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                        <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                         {stagesForPipeline.map(stage => (
-                          <SelectItem key={stage.id} value={stage.name}>
+                          <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
                             <div className="flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
                               {stage.name}
@@ -1156,14 +1165,14 @@ export default function ClientTracker() {
             <>
               {/* Desktop: Inline filters */}
               <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                <SelectTrigger className="w-[220px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
-                  <Layers className="h-4 w-4 mr-2" />
+                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[230px]", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                  <Layers className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Select Pipeline" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Pipelines</SelectItem>
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                  <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                   {pipelines.map(pipeline => (
-                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                    <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
                       {pipeline.name}
                     </SelectItem>
                   ))}
@@ -1171,14 +1180,14 @@ export default function ClientTracker() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[200px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[215px]", statusFilter !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                  <Filter className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Filter by stage" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stages</SelectItem>
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                  <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                   {stagesForPipeline.map(stage => (
-                    <SelectItem key={stage.id} value={stage.name}>
+                    <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
                         {stage.name}
@@ -1228,16 +1237,39 @@ export default function ClientTracker() {
       {/* Tabs for different views */}
       {(pipelines.length > 0 || clients.length > 0) && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-border/70 bg-card/55 p-3 shadow-xl shadow-black/15 backdrop-blur md:p-4">
-          <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-            <TabsList className="inline-flex h-11 w-auto min-w-max border border-border/70 bg-background/80 p-1 shadow-inner">
-              {!isMobile && <TabsTrigger value="kanban">Kanban Board</TabsTrigger>}
-              <TabsTrigger value="pipeline">
+          <div className="-mx-3 overflow-x-auto px-3 md:mx-0 md:px-0">
+            <TabsList className="inline-flex h-12 w-auto min-w-max gap-1 rounded-2xl border border-border/70 bg-background/80 p-1.5 shadow-inner">
+              {!isMobile && (
+                <TabsTrigger
+                  value="kanban"
+                  className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+                >
+                  Kanban Board
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="pipeline"
+                className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+              >
                 {isMobile ? 'Cards' : 'Pipeline View'}
               </TabsTrigger>
-              <TabsTrigger value="table">Table</TabsTrigger>
-              <TabsTrigger value="active" className="flex items-center gap-1">
-                <UserCheck className="h-3.5 w-3.5" />
-                Active ({activeClients.length})
+              <TabsTrigger
+                value="table"
+                className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+              >
+                Table
+              </TabsTrigger>
+              <TabsTrigger
+                value="active"
+                className="group rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+              >
+                <span className="flex items-center gap-2">
+                  <UserCheck className="h-3.5 w-3.5" />
+                  <span>Active</span>
+                  <span className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-bold tabular-nums text-muted-foreground transition-colors group-data-[state=active]:border-primary-foreground/35 group-data-[state=active]:bg-primary-foreground/15 group-data-[state=active]:text-primary-foreground">
+                    {activeClients.length}
+                  </span>
+                </span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1246,19 +1278,21 @@ export default function ClientTracker() {
           <TabsContent value="kanban" className="mt-5">
             {/* Drag and drop hint */}
             {isDragDropEnabled && (
-              <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
-                <GripVertical className="h-3 w-3" />
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-inner">
+                <GripVertical className="h-3.5 w-3.5 text-primary" />
                 Drag cards to move opportunities between stages
-              </p>
+              </div>
             )}
             {!isDragDropEnabled && stagesForPipeline.length > 0 && (
-              <p className="text-xs text-muted-foreground mb-3">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-inner">
+                <Layers className="h-3.5 w-3.5 text-primary" />
                 Select a specific pipeline to enable drag-and-drop between stages
-              </p>
+              </div>
             )}
             
-            <ScrollArea className="w-full whitespace-nowrap">
-              <div className="flex gap-4 pb-4">
+            <div className="rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(135deg,hsl(var(--background)/0.72),hsl(var(--card)/0.62))] p-3 shadow-inner shadow-black/20">
+              <ScrollArea className="client-tracker-kanban-scroll w-full whitespace-nowrap rounded-[1.15rem]">
+                <div className="flex gap-5 pb-5 pr-3">
                 {/* Render stages in order */}
                 {stagesForPipeline.map(stage => {
                   const stageClients = groupedByStage[stage.id] || [];
@@ -1267,38 +1301,45 @@ export default function ClientTracker() {
                   return (
                     <div 
                       key={stage.id} 
-                      className="w-80 flex-shrink-0"
+                      className="w-[21rem] flex-shrink-0"
                       onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, stage.id) : undefined}
                       onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
                       onDrop={isDragDropEnabled ? (e) => handleDrop(e, stage.id, stage.name) : undefined}
                     >
                       <Card className={cn(
-                        "h-full border-border/70 bg-background/70 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
-                        isDragOver && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
+                        "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
+                        draggedClient && isDragDropEnabled && !isDragOver && "border-primary/20 bg-primary/[0.03]",
+                        isDragOver && isDragDropEnabled && "scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                       )}>
-                        <CardHeader className="py-3 px-4">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium flex items-center gap-2">
-                              <span 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: stage.color }}
-                              />
-                              {stage.name}
+                        <CardHeader className={cn(
+                          "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.58),hsl(var(--background)/0.42))] px-4 py-3.5 transition-colors",
+                          isDragOver && isDragDropEnabled && "border-primary/40 bg-primary/10"
+                        )}>
+                          <div className="flex items-center justify-between gap-3">
+                            <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold tracking-tight text-foreground">
+                              <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/80 shadow-inner">
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full shadow-[0_0_14px_currentColor]"
+                                  style={{ backgroundColor: stage.color, color: stage.color }}
+                                />
+                              </span>
+                              <span className="truncate">{stage.name}</span>
                             </CardTitle>
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-bold tabular-nums text-primary shadow-inner">
                               {stageClients.length}
                             </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="px-3 pb-3">
+                        <CardContent className="flex-1 px-3 pb-3 pt-3">
                           <div className={cn(
-                            "min-h-[100px] max-h-[560px] space-y-2 overflow-y-auto rounded-xl pr-1",
-                            isDragOver && isDragDropEnabled && "bg-primary/5 rounded-md"
+                            "client-tracker-kanban-scroll min-h-[500px] max-h-[58vh] space-y-2 overflow-y-auto rounded-xl pr-1",
+                            draggedClient && isDragDropEnabled && !isDragOver && "ring-1 ring-primary/10",
+                            isDragOver && isDragDropEnabled && "bg-primary/10 ring-2 ring-primary/30"
                           )}>
                             {stageClients.length === 0 ? (
                               <div className={cn(
-                                "text-center py-8 text-muted-foreground text-sm",
-                                isDragOver && isDragDropEnabled && "text-primary font-medium"
+                                "flex min-h-[9rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
+                                isDragOver && isDragDropEnabled && "border-primary/35 bg-primary/10 text-primary"
                               )}>
                                 {isDragOver && isDragDropEnabled ? 'Drop here' : 'No clients'}
                               </div>
@@ -1328,35 +1369,42 @@ export default function ClientTracker() {
                 {/* Unassigned column */}
                 {(groupedByStage['unassigned']?.length > 0 || isDragDropEnabled) && (
                   <div 
-                    className="flex-shrink-0 w-80"
+                    className="w-[21rem] flex-shrink-0"
                     onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, 'unassigned') : undefined}
                     onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
                     onDrop={isDragDropEnabled ? (e) => handleDrop(e, null, 'Unassigned') : undefined}
                   >
                     <Card className={cn(
-                      "h-full border-dashed border-border/70 bg-background/60 shadow-lg shadow-black/10 transition-all duration-300 hover:border-primary/25",
-                      dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
+                      "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-black/15 transition-all duration-300 hover:border-primary/25",
+                      draggedClient && isDragDropEnabled && dragOverStageId !== 'unassigned' && "border-primary/20 bg-primary/[0.03]",
+                      dragOverStageId === 'unassigned' && isDragDropEnabled && "scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                     )}>
-                      <CardHeader className="py-3 px-4">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                            <span className="w-3 h-3 rounded-full bg-gray-400" />
-                            Unassigned
+                      <CardHeader className={cn(
+                        "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.48),hsl(var(--background)/0.34))] px-4 py-3.5 transition-colors",
+                        dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/40 bg-primary/10"
+                      )}>
+                        <div className="flex items-center justify-between gap-3">
+                          <CardTitle className="flex min-w-0 items-center gap-2.5 text-sm font-semibold tracking-tight text-muted-foreground">
+                            <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/80 shadow-inner">
+                              <span className="h-2.5 w-2.5 rounded-full bg-gray-400 shadow-[0_0_14px_rgba(156,163,175,0.55)]" />
+                            </span>
+                            <span className="truncate">Unassigned</span>
                           </CardTitle>
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="shrink-0 rounded-full border border-border/70 bg-background/80 px-2.5 py-0.5 text-xs font-bold tabular-nums text-muted-foreground shadow-inner">
                             {groupedByStage['unassigned']?.length || 0}
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="px-3 pb-3">
+                      <CardContent className="flex-1 px-3 pb-3 pt-3">
                         <div className={cn(
-                          "min-h-[100px] max-h-[560px] space-y-2 overflow-y-auto rounded-xl pr-1",
-                          dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/5 rounded-md"
+                          "client-tracker-kanban-scroll min-h-[500px] max-h-[58vh] space-y-2 overflow-y-auto rounded-xl pr-1",
+                          draggedClient && isDragDropEnabled && dragOverStageId !== 'unassigned' && "ring-1 ring-primary/10",
+                          dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/10 ring-2 ring-primary/30"
                         )}>
                           {!groupedByStage['unassigned']?.length ? (
                             <div className={cn(
-                              "text-center py-8 text-muted-foreground text-sm",
-                              dragOverStageId === 'unassigned' && isDragDropEnabled && "text-primary font-medium"
+                              "flex min-h-[9rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.42),hsl(var(--background)/0.28))] px-4 py-10 text-center text-sm font-medium text-muted-foreground",
+                              dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/35 bg-primary/10 text-primary"
                             )}>
                               {dragOverStageId === 'unassigned' && isDragDropEnabled ? 'Drop here' : 'No clients'}
                             </div>
@@ -1381,66 +1429,70 @@ export default function ClientTracker() {
                     </Card>
                   </div>
                 )}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+                </div>
+                <ScrollBar orientation="horizontal" className="h-3" />
+              </ScrollArea>
+            </div>
           </TabsContent>
 
           {/* Pipeline List View */}
           <TabsContent value="pipeline" className="mt-4">
-            <Card className="overflow-hidden border-border/70 bg-background/70 shadow-lg shadow-black/10">
+            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
               <CardContent className="p-0">
                 {isLoading ? (
                   <div className="p-8 text-center text-muted-foreground">Loading clients...</div>
                 ) : filteredClients.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">No clients found</div>
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-border/60">
                     {filteredClients.map(client => {
                       const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                       const isOverdue = client.follow_up_date && new Date(client.follow_up_date) < new Date();
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       
                       return (
-                        <div key={client.id} className="p-4 transition-all duration-200 hover:bg-primary/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.75)]">
+                        <div key={client.id} className="group relative p-4 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:bg-primary/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.75)] hover:before:bg-primary md:p-5">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-medium text-foreground">
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                <h3
+                                  className="min-w-0 max-w-full truncate text-base font-semibold text-foreground transition-colors group-hover:text-primary"
+                                  title={formatFullName(client.primary_first_name, client.primary_surname)}
+                                >
                                   {formatFullName(client.primary_first_name, client.primary_surname)}
                                 </h3>
                                 {pipeline && (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
                                     {pipeline.name}
                                   </Badge>
                                 )}
                                 <Badge 
-                                  className="text-xs text-white"
+                                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
                                   style={{ backgroundColor: stageInfo.color }}
                                 >
                                   {stageInfo.name}
                                 </Badge>
                                 {isOverdue && (
-                                  <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                                  <Badge variant="destructive" className="rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm shadow-red-500/15">Overdue</Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                                 {client.primary_email && (
-                                  <span className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3" />
-                                    {client.primary_email}
+                                  <span className="flex min-w-0 items-center gap-1.5" title={client.primary_email}>
+                                    <Mail className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                                    <span className="max-w-[18rem] truncate">{client.primary_email}</span>
                                   </span>
                                 )}
                                 {client.primary_mobile && (
-                                  <span className="flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    {client.primary_mobile}
+                                  <span className="flex min-w-0 items-center gap-1.5" title={client.primary_mobile}>
+                                    <Phone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                                    <span className="truncate">{client.primary_mobile}</span>
                                   </span>
                                 )}
                               </div>
                               {client.follow_up_date && (
-                                <div className="flex items-center gap-1 mt-1 text-sm">
-                                  <CalendarIcon className="h-3 w-3" />
+                                <div className="mt-2 flex items-center gap-1.5 text-sm">
+                                  <CalendarIcon className="h-3 w-3 shrink-0" />
                                   <span className={isOverdue ? 'text-red-500' : 'text-muted-foreground'}>
                                     Follow-up: {format(new Date(client.follow_up_date), 'MMM d, yyyy')}
                                   </span>
@@ -1449,20 +1501,20 @@ export default function ClientTracker() {
                               {(client.borrowing_capacity || client.equity_release) && (
                                 <div className="flex items-center gap-4 mt-2 text-sm">
                                   {client.borrowing_capacity && (
-                                    <span className="flex items-center gap-1 text-green-600">
+                                    <span className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-500">
                                       <DollarSign className="h-3 w-3" />
                                       BC: {formatCurrency(client.borrowing_capacity)}
                                     </span>
                                   )}
                                   {client.equity_release && (
-                                    <span className="text-blue-600">
+                                    <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 font-semibold text-blue-500">
                                       Equity: {formatCurrency(client.equity_release)}
                                     </span>
                                   )}
                                 </div>
                               )}
                               {client.pipeline_notes && (
-                                <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                   {client.pipeline_notes}
                                 </p>
                               )}
@@ -1473,6 +1525,7 @@ export default function ClientTracker() {
                                   variant="ghost" 
                                   size="icon"
                                   onClick={() => setEditingClient(client)}
+                                  className="h-9 w-9 rounded-xl border border-border/60 bg-background/70 text-muted-foreground opacity-80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary group-hover:opacity-100"
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
@@ -1504,21 +1557,21 @@ export default function ClientTracker() {
 
           {/* Table View */}
           <TabsContent value="table" className="mt-4">
-            <Card className="overflow-hidden border-border/70 bg-background/70 shadow-lg shadow-black/10">
-              <CardContent className="p-0 overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client Name</TableHead>
-                      <TableHead>Pipeline</TableHead>
-                      <TableHead>Stage</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Follow-up Date</TableHead>
-                      <TableHead>Last Updated</TableHead>
-                      <TableHead>Borrowing Capacity</TableHead>
-                      <TableHead>Rental Income</TableHead>
-                      <TableHead>Equity Release</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
+              <CardContent className="client-tracker-kanban-scroll overflow-x-auto p-0">
+                <Table className="min-w-[1120px]">
+                  <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-xl">
+                    <TableRow className="border-border/70 hover:bg-transparent">
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Client Name</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Pipeline</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Stage</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Status</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Follow-up Date</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Last Updated</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Borrowing Capacity</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Rental Income</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Equity Release</TableHead>
+                      <TableHead className="h-12 whitespace-nowrap text-right text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1526,20 +1579,22 @@ export default function ClientTracker() {
                       const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       return (
-                        <TableRow key={client.id} className="transition-colors hover:bg-primary/5">
-                          <TableCell className="font-medium">
-                            {formatFullName(client.primary_first_name, client.primary_surname)}
+                        <TableRow key={client.id} className="border-border/55 transition-colors hover:bg-primary/5">
+                          <TableCell className="max-w-[220px] font-semibold text-foreground">
+                            <span className="block truncate" title={formatFullName(client.primary_first_name, client.primary_surname)}>
+                              {formatFullName(client.primary_first_name, client.primary_surname)}
+                            </span>
                           </TableCell>
                           <TableCell>
                             {pipeline ? (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
                                 {pipeline.name}
                               </Badge>
-                            ) : '-'}
+                            ) : <span className="text-muted-foreground/55">-</span>}
                           </TableCell>
                           <TableCell>
                             <Badge 
-                              className="text-xs text-white"
+                              className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
                               style={{ backgroundColor: stageInfo.color }}
                             >
                               {stageInfo.name}
@@ -1548,39 +1603,39 @@ export default function ClientTracker() {
                           <TableCell>
                             {client.opportunity_status ? (
                               <Badge variant="outline" className={cn(
-                                "text-xs",
+                                "rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-inner",
                                 client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600',
                                 client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500',
                                 client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600',
                               )}>
                                 {client.opportunity_status.charAt(0).toUpperCase() + client.opportunity_status.slice(1)}
                               </Badge>
-                            ) : '-'}
+                            ) : <span className="text-muted-foreground/55">-</span>}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap text-sm tabular-nums">
                             {client.follow_up_date 
                               ? format(new Date(client.follow_up_date), 'MMM d, yyyy')
-                              : '-'
+                              : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
                             {client.pipeline_updated_at
                               ? format(new Date(client.pipeline_updated_at), 'MMM d, yyyy')
-                              : '-'
+                              : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell>{formatCurrency(client.borrowing_capacity)}</TableCell>
-                          <TableCell>
+                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.borrowing_capacity ? "text-emerald-500" : "text-muted-foreground/55")}>{formatCurrency(client.borrowing_capacity)}</TableCell>
+                          <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
                             {client.proposed_rental_income 
-                              ? `$${client.proposed_rental_income}/wk`
-                              : '-'
+                              ? <span className="font-semibold text-emerald-500">${client.proposed_rental_income}/wk</span>
+                              : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell>{formatCurrency(client.equity_release)}</TableCell>
+                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.equity_release ? "text-emerald-500" : "text-muted-foreground/55")}>{formatCurrency(client.equity_release)}</TableCell>
                           <TableCell className="text-right">
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-xl border border-border/60 bg-background/70 p-0 text-muted-foreground shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary">
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
                               </DialogTrigger>
@@ -1612,15 +1667,17 @@ export default function ClientTracker() {
           {/* Active Clients View */}
           <TabsContent value="active" className="mt-4">
             <div className="grid gap-4">
-              <Card className="border-border/70 bg-background/70 shadow-lg shadow-black/10">
-                <CardHeader>
+              <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.78),hsl(var(--card)/0.6))] shadow-xl shadow-black/15">
+                <CardHeader className="border-b border-border/60 bg-card/35">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <UserCheck className="h-5 w-5 text-primary" />
+                      <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+                          <UserCheck className="h-5 w-5" />
+                        </span>
                         Active Clients Notes
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="mt-2 text-sm text-muted-foreground">
                         {searchQuery 
                           ? `Showing ${filteredActiveClients.length} of ${activeClients.length} active clients`
                           : `View notes for ${activeClients.length} active clients`
@@ -1628,11 +1685,11 @@ export default function ClientTracker() {
                       </p>
                     </div>
                     {/* Deal Status Sub-Filters */}
-                    <div className="flex items-center gap-1 rounded-xl border border-border/70 bg-card/80 p-1 shadow-inner">
+                    <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-black/10">
                       <Button
                         variant={activeDealFilter === 'all' ? 'secondary' : 'ghost'}
                         size="sm"
-                        className="h-7 text-xs px-3"
+                        className={cn("h-8 rounded-xl px-3 text-xs font-semibold transition-all", activeDealFilter === 'all' ? "border border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10" : "text-muted-foreground hover:bg-primary/8 hover:text-primary")}
                         onClick={() => setActiveDealFilter('all')}
                       >
                         All ({activeClients.length})
@@ -1640,7 +1697,7 @@ export default function ClientTracker() {
                       <Button
                         variant={activeDealFilter === 'closed' ? 'secondary' : 'ghost'}
                         size="sm"
-                        className="h-7 text-xs px-3"
+                        className={cn("h-8 rounded-xl px-3 text-xs font-semibold transition-all", activeDealFilter === 'closed' ? "border border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10" : "text-muted-foreground hover:bg-primary/8 hover:text-primary")}
                         onClick={() => setActiveDealFilter('closed')}
                       >
                         🏆 Deals Closed ({dealsClosedCount})
@@ -1648,7 +1705,7 @@ export default function ClientTracker() {
                       <Button
                         variant={activeDealFilter === 'prospects' ? 'secondary' : 'ghost'}
                         size="sm"
-                        className="h-7 text-xs px-3"
+                        className={cn("h-8 rounded-xl px-3 text-xs font-semibold transition-all", activeDealFilter === 'prospects' ? "border border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10" : "text-muted-foreground hover:bg-primary/8 hover:text-primary")}
                         onClick={() => setActiveDealFilter('prospects')}
                       >
                         Prospects ({activeClients.length - dealsClosedCount})
@@ -1656,15 +1713,15 @@ export default function ClientTracker() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-5">
                   {filteredActiveClients.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="rounded-2xl border border-dashed border-border/70 bg-card/35 py-10 text-center text-sm text-muted-foreground">
                       {searchQuery ? 'No matching active clients found' : 'No active clients found'}
                     </div>
                   ) : (
                     <>
                       {/* Grid of client cards with infinite scroll */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {filteredActiveClients
                           .slice(0, displayedActiveCount)
                           .map(client => {
@@ -1686,7 +1743,7 @@ export default function ClientTracker() {
                           <Button
                             variant="outline"
                             onClick={() => setDisplayedActiveCount(prev => prev + LOAD_MORE_COUNT)}
-                            className="gap-2"
+                            className="gap-2 rounded-xl border-primary/25 bg-primary/5 text-primary transition-all hover:border-primary/45 hover:bg-primary/10"
                           >
                             <Loader2 className="h-4 w-4" />
                             Load More ({filteredActiveClients.length - displayedActiveCount} remaining)
@@ -1777,32 +1834,35 @@ function KanbanCard({
   return (
     <Card 
       className={cn(
-        "group cursor-pointer border-border/70 bg-card/90 p-3 shadow-sm shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10",
+        "group relative overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.72))] p-3.5 shadow-md shadow-black/15 transition-all duration-300 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:-translate-y-1 hover:border-primary/40 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/15 hover:before:bg-primary/80",
         isDraggable && "cursor-grab active:cursor-grabbing",
-        isDragging && "scale-95 border-primary/60 bg-primary/10 opacity-70 shadow-xl shadow-primary/20 ring-2 ring-primary/50"
+        isDragging && "z-20 -rotate-1 scale-[1.02] cursor-grabbing border-primary/80 bg-primary/12 opacity-90 shadow-2xl shadow-primary/30 ring-2 ring-primary/60 before:bg-primary"
       )}
       onClick={onEdit}
       draggable={isDraggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
           {isDraggable && (
-            <GripVertical className="h-4 w-4 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+            <GripVertical className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
           )}
-          <h4 className="font-medium text-sm line-clamp-1">
+          <h4
+            className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary"
+            title={formatFullName(client.primary_first_name, client.primary_surname)}
+          >
             {formatFullName(client.primary_first_name, client.primary_surname)}
           </h4>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {isOverdue && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+            <Badge variant="destructive" className="rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm shadow-red-500/15">
               Overdue
             </Badge>
           )}
           {client.deal_status === 'closed' && (
-            <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-emerald-600">
+            <Badge variant="default" className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] shadow-sm shadow-emerald-500/15">
               🏆
             </Badge>
           )}
@@ -1810,27 +1870,33 @@ function KanbanCard({
       </div>
       
       {client.primary_email && (
-        <p className="text-xs text-muted-foreground mt-1 line-clamp-1 flex items-center gap-1">
-          <Mail className="h-3 w-3" />
-          {client.primary_email}
+        <p
+          className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+          title={client.primary_email}
+        >
+          <Mail className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+          <span className="truncate">{client.primary_email}</span>
         </p>
       )}
       
       {client.primary_mobile && (
-        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-          <Phone className="h-3 w-3" />
-          {client.primary_mobile}
+        <p
+          className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
+          title={client.primary_mobile}
+        >
+          <Phone className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+          <span className="truncate">{client.primary_mobile}</span>
         </p>
       )}
       
       {/* Status & Timestamp metadata */}
       {(client.opportunity_status || client.pipeline_updated_at) && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {client.opportunity_status && (
             <Badge 
               variant="outline" 
               className={cn(
-                "text-[10px] px-1.5 py-0",
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-inner",
                 client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10',
                 client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500 bg-red-500/10',
                 client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600 bg-blue-500/10',
@@ -1841,26 +1907,26 @@ function KanbanCard({
             </Badge>
           )}
           {client.pipeline_updated_at && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <Clock className="h-2.5 w-2.5" />
+            <span className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+              <Clock className="h-2.5 w-2.5 text-primary/70" />
               {format(new Date(client.pipeline_updated_at), 'MMM d')}
             </span>
           )}
         </div>
       )}
 
-      <div className="flex items-center justify-between mt-2">
+      <div className="mt-3 flex items-center justify-between gap-2">
         {client.follow_up_date && (
           <p className={cn(
-            "text-xs flex items-center gap-1",
+            "flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-xs",
             isOverdue ? 'text-red-500' : 'text-muted-foreground'
           )}>
-            <CalendarIcon className="h-3 w-3" />
+            <CalendarIcon className="h-3 w-3 shrink-0" />
             {format(new Date(client.follow_up_date), 'MMM d')}
           </p>
         )}
         {client.borrowing_capacity && (
-          <p className="text-xs font-medium text-emerald-500">
+          <p className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-400 shadow-inner">
             {formatCurrency(client.borrowing_capacity)}
           </p>
         )}
@@ -1868,9 +1934,9 @@ function KanbanCard({
 
       {/* Upcoming appointment */}
       {upcomingAppointment && (
-        <div className="mt-2 flex items-center gap-1.5 border-t border-border/70 pt-2 text-xs">
-          <Video className="h-3 w-3 text-primary flex-shrink-0" />
-          <span className="text-muted-foreground truncate">
+        <div className="mt-3 flex items-center gap-1.5 border-t border-border/70 pt-2.5 text-xs">
+          <Video className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+          <span className="truncate text-muted-foreground">
             {format(new Date(upcomingAppointment.startTime), 'MMM d, h:mm a')}
           </span>
         </div>
@@ -1878,15 +1944,15 @@ function KanbanCard({
 
       {/* Other pipeline memberships */}
       {uniquePipelines.length > 1 && (
-        <div className="mt-2 border-t border-border/70 pt-2">
-          <div className="flex flex-wrap gap-1">
+        <div className="mt-3 border-t border-border/70 pt-2.5">
+          <div className="flex flex-wrap gap-1.5">
             {uniquePipelines.slice(0, 2).map(name => (
-              <Badge key={name} variant="outline" className="text-[9px] px-1 py-0">
+              <Badge key={name} variant="outline" className="rounded-full border-primary/20 bg-primary/5 px-1.5 py-0 text-[9px] text-muted-foreground">
                 {name && name.length > 15 ? name.substring(0, 13) + '...' : name}
               </Badge>
             ))}
             {uniquePipelines.length > 2 && (
-              <Badge variant="outline" className="text-[9px] px-1 py-0">
+              <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 px-1.5 py-0 text-[9px] text-muted-foreground">
                 +{uniquePipelines.length - 2}
               </Badge>
             )}
@@ -1895,7 +1961,7 @@ function KanbanCard({
       )}
       
       {client.pipeline_notes && (
-        <p className="mt-2 line-clamp-2 border-t border-border/70 pt-2 text-xs text-muted-foreground">
+        <p className="mt-3 line-clamp-2 border-t border-border/70 pt-2.5 text-xs leading-relaxed text-muted-foreground">
           {client.pipeline_notes}
         </p>
       )}
