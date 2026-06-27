@@ -1,5 +1,5 @@
 // Template PDF importer.
-// Operations: create_import | upload_asset | stage_artifacts | start_finalize | retry_finalize | get_status | finalize | resync | get_artifacts | record_review_decision | fail
+// Operations: create_import | upload_asset | stage_artifacts | start_finalize | retry_finalize | get_status | finalize | resync | get_artifacts | record_review_decision | fail | save_visual_quality | get_visual_quality | save_visual_repair_audit | get_visual_repair_audit
 //
 // upload_asset accepts base64 PNG/JPG, stores in `template-import-assets`
 // (creates the bucket on first use) and returns the public URL. finalize
