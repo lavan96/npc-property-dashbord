@@ -23,16 +23,17 @@ export function ChartStats({ charts }: ChartStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       {stats.map(s => (
-        <Card key={s.label} className="border-border/50">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className={`h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0 ${s.color}`}>
+        <Card key={s.label} className="group overflow-hidden border-border/60 bg-card/80 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-primary/10">
+          <CardContent className="relative flex items-center gap-3 p-4">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/50 bg-background/70 shadow-inner ${s.color}`}>
               <s.icon className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] text-muted-foreground font-medium truncate">{s.label}</p>
-              <p className="text-lg font-bold leading-tight capitalize truncate">{s.value}</p>
+              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{s.label}</p>
+              <p className="truncate text-xl font-bold leading-tight capitalize text-foreground">{s.value}</p>
             </div>
           </CardContent>
         </Card>

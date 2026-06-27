@@ -46,16 +46,16 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
 
   return (
     <Dialog open={!!chart} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col overflow-hidden border-primary/20 bg-card/95 shadow-2xl shadow-black/40 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
             {chart.title}
-            <Badge variant="outline" className="text-xs capitalize">{chart.chart_type}</Badge>
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-xs capitalize text-primary">{chart.chart_type}</Badge>
           </DialogTitle>
           <DialogDescription className="flex items-center gap-3 text-xs flex-wrap">
             {chart.generated_reports && (
               <button
-                className="flex items-center gap-1 hover:text-primary transition-colors"
+                className="flex items-center gap-1 rounded-md transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onClick={() => { onClose(); navigate(`/report/${chart.report_id}`); }}
               >
                 <FileText className="h-3 w-3" />
@@ -69,7 +69,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
         </DialogHeader>
 
         <div className="flex-1 min-h-0 relative">
-          <div className="bg-background border rounded-lg p-4 h-[50vh] flex items-center justify-center">
+          <div className="flex h-[52vh] items-center justify-center rounded-2xl border border-border/60 bg-background/80 p-5 shadow-inner ring-1 ring-white/5">
             {renderChartImage(chart)}
           </div>
 
@@ -77,7 +77,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
             <Button
               variant="outline"
               size="icon"
-              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border-primary/25 bg-background/85 shadow-lg shadow-primary/10 backdrop-blur-sm hover:bg-primary/10 hover:text-primary"
               onClick={onPrev}
             >
               <ChevronLeft className="h-4 w-4" />
@@ -87,7 +87,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
             <Button
               variant="outline"
               size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border-primary/25 bg-background/85 shadow-lg shadow-primary/10 backdrop-blur-sm hover:bg-primary/10 hover:text-primary"
               onClick={onNext}
             >
               <ChevronRight className="h-4 w-4" />
@@ -97,7 +97,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
 
         {/* Analysis panel in lightbox (Enhancement #1) */}
         {chart.analysis_text && (
-          <div className="border border-amber-500/20 bg-amber-500/5 rounded-lg p-3">
+          <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 shadow-inner">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="h-3.5 w-3.5 text-amber-500" />
               <span className="text-xs font-medium">Analysis</span>
@@ -109,7 +109,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
         )}
 
         <div className="flex justify-end pt-1">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => onExport(chart)}>
+          <Button variant="outline" size="sm" className="gap-2 border-primary/25 bg-background/70 hover:border-primary/50 hover:bg-primary/10 hover:text-primary" onClick={() => onExport(chart)}>
             <Download className="h-4 w-4" /> Export as PNG
           </Button>
         </div>

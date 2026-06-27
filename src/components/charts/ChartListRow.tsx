@@ -21,7 +21,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
 
   return (
     <div
-      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors hover:bg-muted/50 cursor-pointer ${isSelected ? 'ring-2 ring-primary bg-primary/5' : ''}`}
+      className={`flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-card/80 p-3 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-primary/10 ${isSelected ? 'ring-2 ring-primary bg-primary/10' : ''}`}
       onClick={() => {
         if (selectionMode) {
           onToggleSelect(chart.id);
@@ -37,7 +37,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
       )}
 
       <div
-        className="h-16 w-24 shrink-0 bg-background border rounded-md overflow-hidden cursor-pointer p-1"
+        className="h-16 w-24 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-background/80 p-1 shadow-inner transition-all hover:border-primary/35"
         onClick={(e) => { e.stopPropagation(); onExpand(chart); }}
       >
         {renderChartImage(chart)}
