@@ -1,9 +1,9 @@
-import { ReactNode } from 'react';
+import type { CashFlowContainerProps } from './types';
 
-interface CashFlowProjectionTableProps {
-  children: ReactNode;
-}
-
-export function CashFlowProjectionTable({ children }: CashFlowProjectionTableProps) {
-  return <>{children}</>;
+export function CashFlowProjectionTable({ children }: CashFlowContainerProps) {
+  return (
+    <section className="rounded-[1.75rem] border border-slate-200/80 bg-gradient-to-br from-background via-muted/10 to-background p-2 shadow-sm md:p-3">
+      {children}
+    </section>
+  );
 }
