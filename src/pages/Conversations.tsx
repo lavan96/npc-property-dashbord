@@ -853,33 +853,36 @@ export default function Conversations() {
                       <div
                         key={conv.id}
                         className={cn(
-                          'group relative flex cursor-pointer items-center gap-3.5 rounded-[1.35rem] border border-white/[0.075] bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.018))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition-all duration-200 after:absolute after:inset-x-5 after:-bottom-[6px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/[0.07] after:to-transparent last:after:hidden focus-within:bg-amber-400/10 hover:-translate-y-0.5 hover:border-amber-200/22 hover:bg-white/[0.07] hover:shadow-lg hover:shadow-black/25',
-                          isActive ? 'border-amber-200/40 bg-amber-400/12 shadow-[inset_3px_0_0_rgba(234,179,8,0.9),0_0_30px_rgba(245,158,11,0.08)]' : '',
-                          conv.unread_count > 0 && !isActive && 'bg-amber-400/[0.045]'
+                          'group relative flex min-h-[5.6rem] cursor-pointer items-center gap-4 overflow-hidden rounded-[1.55rem] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,255,255,0.052),rgba(255,255,255,0.018)_55%,rgba(245,158,11,0.026))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_14px_30px_rgba(0,0,0,0.14)] outline-none transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-300 before:opacity-0 before:shadow-[0_0_18px_rgba(251,191,36,0.65)] before:transition-opacity after:absolute after:inset-x-6 after:-bottom-[6px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/[0.08] after:to-transparent last:after:hidden focus-visible:border-amber-200/55 focus-visible:bg-amber-300/[0.08] focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.075)_62%,rgba(255,255,255,0.028))] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_38px_rgba(0,0,0,0.28)] hover:before:opacity-100',
+                          isActive ? 'border-amber-200/65 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(255,255,255,0.045)_56%,rgba(245,158,11,0.10))] shadow-[inset_4px_0_0_rgba(251,191,36,0.95),0_0_0_1px_rgba(251,191,36,0.12),0_20px_42px_rgba(245,158,11,0.13)] before:opacity-100' : '',
+                          conv.unread_count > 0 && !isActive && 'border-amber-200/18 bg-[linear-gradient(135deg,rgba(245,158,11,0.085),rgba(255,255,255,0.026)_60%,rgba(255,255,255,0.018))]'
                         )}
                         onClick={() => handleSelectConversation(conv)}
+                        title={`${conv.client_name || 'Unknown contact'}${conv.last_message_body ? ` — ${conv.last_message_body}` : ' — No messages yet'}`}
                       >
-                        <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-transform duration-200 group-hover:scale-105', channelColors[normalized] || 'bg-muted')}>
-                          <Icon className="h-4 w-4" />
+                        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                        <div className={cn('relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.15rem] border shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_26px_rgba(0,0,0,0.24)] transition-all duration-200 group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_14px_30px_rgba(245,158,11,0.10)]', channelColors[normalized] || 'bg-muted')}>
+                          <Icon className="h-5 w-5" />
+                          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border border-zinc-950 bg-amber-300 opacity-0 shadow-[0_0_10px_rgba(251,191,36,0.9)] transition-opacity group-hover:opacity-100" />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={cn('truncate text-sm text-zinc-100', conv.unread_count > 0 ? 'font-semibold' : 'font-medium')}>
+                        <div className="relative min-w-0 flex-1 space-y-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <span className={cn('min-w-0 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-zinc-50 transition-colors group-hover:text-white', conv.unread_count > 0 ? 'font-bold' : 'font-semibold')} title={conv.client_name || 'Unknown contact'}>
                               {conv.client_name}
                             </span>
-                            <span className="shrink-0 text-[11px] text-zinc-500">
+                            <span className="shrink-0 rounded-full border border-white/[0.07] bg-black/20 px-2 py-0.5 text-[10px] font-medium text-zinc-400 transition-colors group-hover:border-amber-200/20 group-hover:text-amber-100/80">
                               {formatConversationDate(conv.last_message_date)}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 mt-0.5">
-                            <p className={cn('truncate text-xs', conv.unread_count > 0 ? 'text-zinc-100' : 'text-zinc-400/75')}>
+                          <div className="flex min-w-0 items-center justify-between gap-2">
+                            <p className={cn('min-w-0 truncate text-[0.8rem] leading-5 transition-colors', conv.unread_count > 0 ? 'font-medium text-zinc-100' : 'text-zinc-400/85 group-hover:text-zinc-200/90')} title={conv.last_message_body || 'No messages yet'}>
                               {conv.last_message_direction === 'outbound' && (
-                                <span className="text-muted-foreground">You: </span>
+                                <span className="text-amber-100/55">You: </span>
                               )}
-                              <span className={cn(!conv.last_message_body && 'italic text-zinc-500/90')}>{conv.last_message_body || 'No messages yet'}</span>
+                              <span className={cn(!conv.last_message_body && 'rounded-full border border-dashed border-white/10 bg-white/[0.035] px-2 py-0.5 italic text-zinc-400/90')}>{conv.last_message_body || 'No messages yet'}</span>
                             </p>
                             {conv.unread_count > 0 && (
-                              <Badge className="h-5 min-w-[20px] rounded-full text-[10px] px-1.5 bg-primary shrink-0">
+                              <Badge className="h-6 min-w-[24px] shrink-0 rounded-full bg-amber-300 px-2 text-[10px] font-bold text-black shadow-[0_0_18px_rgba(251,191,36,0.28)]">
                                 {conv.unread_count}
                               </Badge>
                             )}
