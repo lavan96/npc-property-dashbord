@@ -66,11 +66,13 @@ interface FailedMessageProps {
 
 export function FailedMessageIndicator({ content, onRetry, isRetrying }: FailedMessageProps) {
   return (
-    <div className="flex items-start gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg mt-1">
-      <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+    <div className="mt-1 flex items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 p-3 shadow-sm">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-destructive/25 bg-destructive/15 text-destructive">
+        <AlertCircle className="h-4 w-4" />
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-destructive font-medium">Failed to send message</p>
-        <p className="text-xs text-muted-foreground truncate">{content}</p>
+        <p className="text-sm font-semibold text-destructive">Failed to send message</p>
+        <p className="mt-0.5 text-xs text-muted-foreground truncate">{content}</p>
       </div>
       <RetryButton onRetry={onRetry} isRetrying={isRetrying} />
     </div>
