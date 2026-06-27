@@ -111,7 +111,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
   const queryClient = useQueryClient();
 
   // Fetch portfolio analysis reports via secure function
-  const { data: reports = [], isLoading, refetch } = useQuery({
+  const { data: reports = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['portfolio-analysis-reports', clientId],
     queryFn: async () => {
       const { data, error } = await invokeSecureFunction('get-client-data', {
@@ -164,6 +164,21 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
     ? Math.round(reports.reduce((acc, r) => acc + (r.health_score || 0), 0) / reports.length)
     : 0;
   const totalPortfolioValue = reports.reduce((acc, r) => acc + (Number(r.portfolio_value) || 0), 0);
+  // Visual-only cue using the existing scorecard ranges; does not alter the average score calculation.
+  const avgHealthAccent = avgHealthScore >= 80
+    ? 'from-emerald-300 to-teal-300 shadow-emerald-500/20'
+    : avgHealthScore >= 60
+      ? 'from-amber-300 to-yellow-300 shadow-amber-500/20'
+      : avgHealthScore >= 40
+        ? 'from-orange-300 to-amber-300 shadow-orange-500/20'
+        : 'from-red-300 to-rose-300 shadow-red-500/20';
+  const avgHealthIconClass = avgHealthScore >= 80
+    ? 'text-emerald-200'
+    : avgHealthScore >= 60
+      ? 'text-amber-200'
+      : avgHealthScore >= 40
+        ? 'text-orange-200'
+        : 'text-red-200';
 
   const handleViewPDF = async (report: PortfolioAnalysisReport) => {
     if (!report.pdf_file_path) {
@@ -230,39 +245,78 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       {showHeader && (
         <>
           {/* Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              { title: 'Total Reports', value: totalReports, icon: FileText, accent: 'text-amber-200' },
-              { title: 'Avg Health Score', value: `${avgHealthScore}/100`, icon: TrendingUp, accent: 'text-emerald-200' },
-              { title: 'Combined Portfolio', value: formatCurrency(totalPortfolioValue), icon: Building2, accent: 'text-amber-200' },
-            ].map((metric) => (
-              <Card key={metric.title} className="group overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-slate-950/90 via-zinc-950/85 to-black/80 shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-amber-950/25">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                  <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{metric.title}</CardTitle>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-2 transition-colors group-hover:border-amber-300/30 group-hover:bg-amber-400/10">
-                    <metric.icon className={`h-4 w-4 ${metric.accent}`} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold tracking-tight text-white">{metric.value}</div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Total Reports</CardTitle>
+                <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3 text-amber-200 shadow-lg shadow-amber-950/20 transition-colors group-hover:border-amber-200/40 group-hover:bg-amber-300/15">
+                  <FileText className="h-5 w-5" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="text-4xl font-bold tracking-[-0.04em] text-white sm:text-5xl">{totalReports}</div>
+                <div className="mt-5 h-px bg-gradient-to-r from-amber-300/70 via-amber-100/20 to-transparent" />
+              </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Avg Health Score</CardTitle>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-3 shadow-lg shadow-black/20 transition-colors group-hover:border-amber-200/35 group-hover:bg-white/10">
+                  <TrendingUp className={`h-5 w-5 ${avgHealthIconClass}`} />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-end gap-1">
+                  <span className="text-4xl font-bold tracking-[-0.04em] text-white sm:text-5xl">{avgHealthScore}</span>
+                  <span className="pb-1.5 text-lg font-semibold text-slate-500">/100</span>
+                </div>
+                <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/8">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${avgHealthAccent}`}
+                    style={{ width: `${Math.min(Math.max(avgHealthScore, 0), 100)}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="group relative overflow-hidden rounded-3xl border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_34%),linear-gradient(145deg,rgba(24,18,8,0.98),rgba(10,10,12,0.96)_55%,rgba(0,0,0,0.92))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:shadow-[0_24px_70px_rgba(245,158,11,0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
+              <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent opacity-80" />
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/75">Combined Portfolio</CardTitle>
+                <div className="rounded-2xl border border-amber-200/30 bg-amber-300/15 p-3 text-amber-100 shadow-lg shadow-amber-950/30 transition-colors group-hover:border-amber-100/50 group-hover:bg-amber-300/20">
+                  <Building2 className="h-5 w-5" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="break-words text-4xl font-bold tracking-[-0.05em] text-amber-50 sm:text-5xl xl:text-4xl 2xl:text-5xl">{formatCurrency(totalPortfolioValue)}</div>
+                <div className="mt-5 h-px bg-gradient-to-r from-amber-200/80 via-amber-100/30 to-transparent" />
+              </CardContent>
+            </Card>
           </div>
 
           {/* Search and Actions */}
-          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/30 p-3 shadow-lg shadow-black/15 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-            <div className="relative flex-1 sm:max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
+          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(0,0,0,0.42))] p-3 shadow-lg shadow-black/15 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <div className="relative flex-1 sm:max-w-lg">
+              <div className="pointer-events-none absolute left-3.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-300/10 text-amber-200/80">
+                <Search className="h-4 w-4" />
+              </div>
               <Input
                 placeholder="Search by client name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 rounded-2xl border-white/10 bg-slate-950/70 pl-10 text-slate-100 placeholder:text-slate-500 transition-all focus-visible:border-amber-300/60 focus-visible:ring-amber-300/25"
+                className="h-12 rounded-2xl border-white/10 bg-slate-950/80 pl-14 pr-4 text-sm font-medium text-slate-100 shadow-inner shadow-black/20 transition-all placeholder:text-slate-500 hover:border-amber-300/25 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/25 focus-visible:ring-offset-0"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="h-11 rounded-2xl border-amber-400/30 bg-amber-400/10 px-5 text-amber-100 transition-all hover:border-amber-300 hover:bg-amber-400/20 hover:text-amber-50 active:scale-[0.98]">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="h-12 justify-center rounded-2xl border-amber-300/25 bg-white/[0.03] px-5 font-semibold text-amber-100 shadow-sm shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-300/12 hover:text-amber-50 hover:shadow-[0_14px_34px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/30 active:translate-y-0 sm:min-w-[124px]"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin text-amber-200' : 'text-amber-200/85'}`} />
               Refresh
             </Button>
           </div>
@@ -270,19 +324,23 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       )}
 
       {/* Reports Table */}
-      <Card className="overflow-hidden rounded-3xl border-white/10 bg-gradient-to-b from-zinc-950/95 to-black/90 shadow-2xl shadow-black/30">
-        <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-4">
-          <CardTitle className="text-xl font-semibold text-white">
+      <Card className="group/register overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(12,12,14,0.98),rgba(0,0,0,0.94))] shadow-2xl shadow-black/30 transition-all duration-300 hover:border-amber-300/25 hover:shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+        <CardHeader className="relative border-b border-white/10 bg-white/[0.035] px-5 py-5 sm:px-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-60 transition-opacity duration-300 group-hover/register:opacity-100" />
+          <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-200 shadow-lg shadow-amber-950/20">
+              <FileText className="h-5 w-5" />
+            </span>
             {clientId ? 'Client Reports' : 'All Portfolio Analysis Reports'}
           </CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
             {clientId
               ? 'Previously generated portfolio performance reports for this client'
               : 'View all generated portfolio performance analysis reports across all clients'
             }
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="bg-black/15 p-0">
           {filteredReports.length === 0 ? (
             <div className="m-5 flex flex-col items-center justify-center rounded-3xl border border-dashed border-amber-300/20 bg-amber-400/[0.03] py-14 text-center transition-all duration-300">
               <div className="mb-4 rounded-3xl border border-white/10 bg-white/5 p-4">
@@ -297,19 +355,20 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </p>
             </div>
           ) : (
-            <ScrollArea className="h-[440px]">
+            <div className="p-4 sm:p-5">
+              <ScrollArea className="h-[440px] rounded-2xl border border-white/10 bg-slate-950/45 shadow-inner shadow-black/25">
               <Table className="min-w-[980px]">
-                <TableHeader>
-                  <TableRow className="border-white/10 bg-white/[0.02] hover:bg-white/[0.02]">
-                    {!clientId && <TableHead className="text-slate-300">Client</TableHead>}
-                    <TableHead className="text-slate-300">Health</TableHead>
-                    <TableHead className="text-slate-300">Score</TableHead>
-                    <TableHead className="text-slate-300">Portfolio Value</TableHead>
-                    <TableHead className="text-slate-300">Equity</TableHead>
-                    <TableHead className="text-slate-300">Cashflow</TableHead>
-                    <TableHead className="text-slate-300">Properties</TableHead>
-                    <TableHead className="text-slate-300">Generated</TableHead>
-                    <TableHead className="text-right text-slate-300">Actions</TableHead>
+                <TableHeader className="sticky top-0 z-20">
+                  <TableRow className="border-b border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.28)] backdrop-blur hover:bg-zinc-950/95">
+                    {!clientId && <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Client</TableHead>}
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Health</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Score</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Portfolio Value</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Equity</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Cashflow</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Properties</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Generated</TableHead>
+                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -394,6 +453,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                 </TableBody>
               </Table>
             </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
