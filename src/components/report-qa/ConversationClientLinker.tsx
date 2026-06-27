@@ -76,7 +76,8 @@ export function ConversationClientLinker({
           variant="outline"
           size="sm"
           disabled={loading || !conversationId}
-          className={cn('gap-2 h-8', clientId && 'border-primary/40 text-primary', className)}
+          className={cn('report-qa-toolbar-control h-8 gap-2 px-3 text-xs font-medium', clientId && 'border-primary/40 text-primary', className)}
+          data-active={clientId ? 'true' : undefined}
           title={conversationId ? (clientId ? 'Linked client — click to change' : 'Link this thread to a client') : 'Start a conversation first'}
         >
           <UserCircle2 className="h-3.5 w-3.5" />
