@@ -336,24 +336,35 @@ export default function ReportRequests() {
         {/* Request List */}
         {isLoading ? (
           <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] p-4 shadow-xl shadow-black/25">
-            <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-black/25 py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-amber-200" />
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/25 py-16 text-center">
+              <div className="mb-4 rounded-full border border-amber-300/20 bg-amber-300/10 p-3 shadow-[0_0_32px_rgba(245,158,11,0.16)]">
+                <Loader2 className="h-7 w-7 animate-spin text-amber-200" />
+              </div>
+              <p className="text-sm font-medium text-zinc-200">Loading report requests</p>
+              <p className="mt-1 text-xs text-zinc-500">Fetching the latest client portal requests…</p>
             </div>
           </div>
         ) : error ? (
-          <Card className="overflow-hidden border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.24),rgba(9,9,11,0.84))] shadow-xl shadow-black/25">
+          <Card className="overflow-hidden border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.2),rgba(9,9,11,0.86))] shadow-xl shadow-black/25">
             <CardContent className="py-12 text-center">
-              <XCircle className="mx-auto mb-3 h-12 w-12 text-red-300/70" />
-              <p className="font-medium text-red-100">Unable to load report requests.</p>
-              <p className="mt-1 text-sm text-red-200/70">{(error as Error).message || 'Please try again shortly.'}</p>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-red-300/20 bg-red-400/10">
+                <XCircle className="h-7 w-7 text-red-200/80" />
+              </div>
+              <p className="font-semibold text-red-100">Unable to load report requests.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-red-100/70">{(error as Error).message || 'Please try again shortly.'}</p>
             </CardContent>
           </Card>
         ) : filtered.length === 0 ? (
           <Card className="overflow-hidden border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] shadow-xl shadow-black/25">
             <CardContent className="py-14 text-center">
-              <Inbox className="mx-auto mb-3 h-12 w-12 text-amber-200/40" />
-              <p className="text-zinc-400">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10">
+                <Inbox className="h-7 w-7 text-amber-200/50" />
+              </div>
+              <p className="font-medium text-zinc-300">
                 {requests.length === 0 ? 'No report requests yet.' : 'No requests match your filters.'}
+              </p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+                {requests.length === 0 ? 'New portal requests will appear here as soon as clients submit them.' : 'Try adjusting the search term or selected request type/status filters.'}
               </p>
             </CardContent>
           </Card>
