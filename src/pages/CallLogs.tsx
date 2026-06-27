@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
+
 import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
 import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDashboard';
 import { CallRecordingPlayer, CallRecordingPlayerHandle } from '@/components/call-logs/CallRecordingPlayer';
@@ -63,6 +64,25 @@ import {
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+
+
+const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_34%),radial-gradient(circle_at_80%_8%,rgba(124,58,237,0.10),transparent_28%),linear-gradient(135deg,hsl(222_47%_5%),hsl(220_34%_8%)_46%,hsl(0_0%_4%))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
+const premiumPanel = "border-white/10 bg-black/35 shadow-2xl shadow-black/30 backdrop-blur-xl";
+const premiumCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
+const premiumMetricCard = "group relative overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10";
+const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105";
+const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400";
+const premiumMetricValue = "text-2xl font-bold leading-none tracking-tight md:text-[1.65rem]";
+const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner shadow-black/20 transition-colors hover:border-amber-400/40 hover:bg-amber-400/5 focus-visible:ring-2 focus-visible:ring-amber-400/70";
+const premiumActionBase = "min-h-9 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
+const premiumUtilityAction = `${premiumActionBase} border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-300/45 hover:bg-sky-400/15 hover:text-sky-50 focus-visible:ring-sky-300`;
+const premiumQualityAction = `${premiumActionBase} border-emerald-300/25 bg-emerald-400/10 text-emerald-100 hover:border-emerald-300/45 hover:bg-emerald-400/15 hover:text-emerald-50 focus-visible:ring-emerald-300`;
+const premiumAlertAction = `${premiumActionBase} border-amber-300/30 bg-amber-400/10 text-amber-100 hover:border-amber-300/55 hover:bg-amber-400/15 hover:text-amber-50 focus-visible:ring-amber-300`;
+const premiumDangerAction = `${premiumActionBase} border-red-400/35 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/15 hover:text-red-100 focus-visible:ring-red-300`;
+const premiumSecondaryAction = `${premiumActionBase} border-white/10 bg-white/5 text-zinc-100 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-amber-300`;
+const premiumTabList = "inline-flex h-auto min-w-max items-center gap-1.5 rounded-[1.35rem] border border-white/10 bg-black/45 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl";
+const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-zinc-400 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-400/25 data-[state=active]:via-yellow-300/15 data-[state=active]:to-amber-500/10 data-[state=active]:text-amber-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] md:text-sm";
 
 interface SquadAssistant {
   id: string;
@@ -485,58 +505,60 @@ const CallLogs = () => {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+    <div className={premiumPageShell}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent" />
+      <div className="mx-auto max-w-[1800px] space-y-5 md:space-y-7 pb-20 md:pb-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className={cn("flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-3xl border p-5 md:p-6", premiumPanel)}>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+          <h1 className="text-2xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-amber-100 via-foreground to-amber-300 bg-clip-text text-transparent">
             Call Logs
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Track and analyze voice agent call outcomes</p>
+          <p className="text-sm text-zinc-400 mt-2 max-w-2xl">Track and analyze voice agent call outcomes</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {!isMobile && <WeeklyReportConfig />}
-          {!isMobile && <CleanupTestCalls onComplete={fetchCalls} />}
-          {!isMobile && <CleanupContactNames onComplete={fetchCalls} />}
-          {!isMobile && <CallAlerts calls={filteredCalls} />}
-          <CallLogsExport calls={filteredCalls} stats={stats} />
-          <Button onClick={fetchCalls} variant="outline" size="sm" className="gap-2">
+        <div className="flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner shadow-black/20 md:w-auto md:justify-end">
+          <div className="flex flex-1 flex-wrap items-center gap-2 md:flex-none md:justify-end">
+          {!isMobile && <WeeklyReportConfig triggerClassName={premiumReportAction} />}
+          {!isMobile && <CleanupTestCalls onComplete={fetchCalls} testNumbersButtonClassName={premiumUtilityAction} flushButtonClassName={premiumDangerAction} />}
+          {!isMobile && <CleanupContactNames onComplete={fetchCalls} triggerClassName={premiumQualityAction} />}
+          {!isMobile && <CallAlerts calls={filteredCalls} triggerClassName={premiumAlertAction} />}
+          <CallLogsExport calls={filteredCalls} stats={stats} triggerClassName={premiumSecondaryAction} />
+          <Button onClick={fetchCalls} variant="outline" size="sm" className={cn("gap-2", premiumSecondaryAction)}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
+          </div>
         </div>
       </div>
 
       {/* Main Tabs */}
       <Tabs defaultValue="logs" className="w-full">
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className={isMobile ? "inline-flex w-auto" : ""}>
-            <TabsTrigger value="logs" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
-              <Phone className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)] md:mx-0 md:px-0">
+          <TabsList className={cn(premiumTabList, isMobile ? "w-auto" : "")}>
+            <TabsTrigger value="logs" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <Phone className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Call</span> Logs
             </TabsTrigger>
-            <TabsTrigger value="issues" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
-              <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="issues" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Issues</span>
             </TabsTrigger>
-            <TabsTrigger value="live" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
-              <Radio className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="live" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <Radio className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               Live
             </TabsTrigger>
-            <TabsTrigger value="trends" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
-              <LineChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="trends" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <LineChart className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               Trends
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm">
-              <PieChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="analytics" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <PieChart className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
-            {!isMobile && (
-              <TabsTrigger value="squad-analytics" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Squad Analytics
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="squad-analytics" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <Users className="h-4 w-4 shrink-0 transition-colors group-data-[state=active]:text-amber-200" />
+              Squad Analytics
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -563,107 +585,107 @@ const CallLogs = () => {
         <TabsContent value="logs" className="mt-4 md:mt-6 space-y-0">
 
       {/* Sticky header: Stats + Filters */}
-      <div className="sticky top-0 z-20 bg-background pb-4 space-y-4 md:space-y-6">
+      <div className="sticky top-0 z-20 rounded-b-3xl border-x border-b border-white/10 bg-black/70 pb-4 pt-2 space-y-4 md:space-y-6 backdrop-blur-xl shadow-2xl shadow-black/30">
 
       {/* Stats Cards - Responsive grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2 md:gap-3">
-        <Card className="bg-gradient-to-br from-card to-card/50">
-          <CardContent className="p-2 md:p-3">
-            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
-              <div className="p-1 md:p-1.5 rounded-lg bg-muted">
-                <Phone className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9">
+        <Card className={cn(premiumMetricCard, "from-zinc-900/95 via-zinc-950/85")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Total</span>
+              <div className={cn(premiumMetricIcon, "border-zinc-500/25 bg-zinc-500/10 text-zinc-300")}>
+                <Phone className="h-4 w-4" />
               </div>
-              <span className="text-[10px] md:text-xs text-muted-foreground">Total</span>
             </div>
-            <p className="text-lg md:text-xl font-bold">{stats.totalCalls}</p>
+            <p className={cn(premiumMetricValue, "text-zinc-50")}>{stats.totalCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-emerald-500/5 to-card">
-          <CardContent className="p-2 md:p-3">
-            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
-              <div className="p-1 md:p-1.5 rounded-lg bg-emerald-500/10">
-                <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-500" />
+        <Card className={cn(premiumMetricCard, "from-emerald-500/15 via-zinc-950/85 hover:border-emerald-300/40 hover:shadow-emerald-500/10")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Done</span>
+              <div className={cn(premiumMetricIcon, "border-emerald-300/25 bg-emerald-400/10 text-emerald-300")}>
+                <CheckCircle className="h-4 w-4" />
               </div>
-              <span className="text-[10px] md:text-xs text-muted-foreground">Done</span>
             </div>
-            <p className="text-lg md:text-xl font-bold text-emerald-500">{stats.completedCalls}</p>
+            <p className={cn(premiumMetricValue, "text-emerald-300")}>{stats.completedCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-blue-500/5 to-card">
-          <CardContent className="p-2 md:p-3">
-            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
-              <div className="p-1 md:p-1.5 rounded-lg bg-blue-500/10">
-                <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-500" />
+        <Card className={cn(premiumMetricCard, "from-blue-500/15 via-zinc-950/85 hover:border-blue-300/35 hover:shadow-blue-500/10")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Rate</span>
+              <div className={cn(premiumMetricIcon, "border-blue-300/25 bg-blue-400/10 text-blue-300")}>
+                <TrendingUp className="h-4 w-4" />
               </div>
-              <span className="text-[10px] md:text-xs text-muted-foreground">Rate</span>
             </div>
-            <p className="text-lg md:text-xl font-bold text-blue-500">{stats.successRate}%</p>
+            <p className={cn(premiumMetricValue, "text-blue-300")}>{stats.successRate}%</p>
           </CardContent>
         </Card>
-        <Card className="hidden sm:block">
-          <CardContent className="p-2 md:p-3">
-            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
-              <div className="p-1 md:p-1.5 rounded-lg bg-muted">
-                <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-muted-foreground" />
+        <Card className={cn(premiumMetricCard, "from-zinc-800/80 via-zinc-950/85")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Avg</span>
+              <div className={cn(premiumMetricIcon, "border-zinc-400/25 bg-zinc-400/10 text-zinc-300")}>
+                <Clock className="h-4 w-4" />
               </div>
-              <span className="text-[10px] md:text-xs text-muted-foreground">Avg</span>
             </div>
-            <p className="text-lg md:text-xl font-bold">{formatDuration(stats.avgDuration)}</p>
+            <p className={cn(premiumMetricValue, "font-mono text-zinc-50")}>{formatDuration(stats.avgDuration)}</p>
           </CardContent>
         </Card>
-        <Card className="hidden md:block bg-gradient-to-br from-amber-500/5 to-card">
-          <CardContent className="p-2 md:p-3">
-            <div className="flex items-center gap-1.5 md:gap-2 mb-1">
-              <div className="p-1 md:p-1.5 rounded-lg bg-amber-500/10">
-                <DollarSign className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-500" />
+        <Card className={cn(premiumMetricCard, "from-amber-500/15 via-zinc-950/85")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Cost</span>
+              <div className={cn(premiumMetricIcon, "border-amber-300/30 bg-amber-400/10 text-amber-300")}>
+                <DollarSign className="h-4 w-4" />
               </div>
-              <span className="text-[10px] md:text-xs text-muted-foreground">Cost</span>
             </div>
-            <p className="text-lg md:text-xl font-bold text-amber-500">${stats.totalCost.toFixed(2)}</p>
+            <p className={cn(premiumMetricValue, "text-amber-300")}>${stats.totalCost.toFixed(2)}</p>
           </CardContent>
         </Card>
-        <Card className="hidden lg:block bg-gradient-to-br from-green-500/5 to-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-green-500/10">
-                <PhoneIncoming className="w-3.5 h-3.5 text-green-500" />
+        <Card className={cn(premiumMetricCard, "from-teal-500/15 via-zinc-950/85 hover:border-teal-300/35 hover:shadow-teal-500/10")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Inbound</span>
+              <div className={cn(premiumMetricIcon, "border-teal-300/25 bg-teal-400/10 text-teal-300")}>
+                <PhoneIncoming className="h-4 w-4" />
               </div>
-              <span className="text-xs text-muted-foreground">Inbound</span>
             </div>
-            <p className="text-xl font-bold text-green-500">{stats.inboundCalls}</p>
+            <p className={cn(premiumMetricValue, "text-teal-300")}>{stats.inboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-sky-500/5 to-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-sky-500/10">
-                <PhoneOutgoing className="w-3.5 h-3.5 text-sky-500" />
+        <Card className={cn(premiumMetricCard, "from-sky-500/15 via-zinc-950/85 hover:border-sky-300/35 hover:shadow-sky-500/10")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Outbound</span>
+              <div className={cn(premiumMetricIcon, "border-sky-300/25 bg-sky-400/10 text-sky-300")}>
+                <PhoneOutgoing className="h-4 w-4" />
               </div>
-              <span className="text-xs text-muted-foreground">Outbound</span>
             </div>
-            <p className="text-xl font-bold text-sky-500">{stats.outboundCalls}</p>
+            <p className={cn(premiumMetricValue, "text-sky-300")}>{stats.outboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-orange-500/5 to-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-orange-500/10">
-                <Voicemail className="w-3.5 h-3.5 text-orange-500" />
+        <Card className={cn(premiumMetricCard, "from-orange-500/15 via-zinc-950/85 hover:border-orange-300/40 hover:shadow-orange-500/10")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Voicemail</span>
+              <div className={cn(premiumMetricIcon, "border-orange-300/30 bg-orange-400/10 text-orange-300")}>
+                <Voicemail className="h-4 w-4" />
               </div>
-              <span className="text-xs text-muted-foreground">Voicemail</span>
             </div>
-            <p className="text-xl font-bold text-orange-500">{stats.voicemails}</p>
+            <p className={cn(premiumMetricValue, "text-orange-300")}>{stats.voicemails}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-500/5 to-card">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-purple-500/10">
-                <Users className="w-3.5 h-3.5 text-purple-500" />
+        <Card className={cn(premiumMetricCard, "from-purple-500/15 via-zinc-950/85 hover:border-purple-300/35 hover:shadow-purple-500/10")}>
+          <CardContent className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className={premiumMetricLabel}>Squad</span>
+              <div className={cn(premiumMetricIcon, "border-purple-300/25 bg-purple-400/10 text-purple-300")}>
+                <Users className="h-4 w-4" />
               </div>
-              <span className="text-xs text-muted-foreground">Squad</span>
             </div>
-            <p className="text-xl font-bold text-purple-500">{stats.squadCalls}</p>
+            <p className={cn(premiumMetricValue, "text-purple-300")}>{stats.squadCalls}</p>
           </CardContent>
         </Card>
       </div>
@@ -678,7 +700,7 @@ const CallLogs = () => {
                 placeholder="Search calls..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className={cn("pl-9", premiumControl)}
               />
             </div>
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
@@ -824,9 +846,9 @@ const CallLogs = () => {
           )}
         </>
       ) : (
-        <Card>
+        <Card className={cn(premiumPanel, "rounded-2xl")}>
           <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3">
               <div className="flex-1 min-w-[200px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -834,12 +856,12 @@ const CallLogs = () => {
                     placeholder="Search by phone, name, or summary..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
+                    className={cn("pl-9", premiumControl)}
                   />
                 </div>
               </div>
               <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className={cn("w-[180px]", premiumControl)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
@@ -851,7 +873,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className={cn("w-[180px]", premiumControl)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Outcomes" />
                 </SelectTrigger>
@@ -874,7 +896,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className={cn("w-[160px]", premiumControl)}>
                   <Users className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Call Type" />
                 </SelectTrigger>
@@ -886,7 +908,7 @@ const CallLogs = () => {
               </Select>
               {squads.length > 0 && (
                 <Select value={selectedSquad} onValueChange={setSelectedSquad}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className={cn("w-[200px]", premiumControl)}>
                     <GitBranch className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="All Squads" />
                   </SelectTrigger>
@@ -899,7 +921,7 @@ const CallLogs = () => {
                 </Select>
               )}
               <Select value={selectedIntent} onValueChange={setSelectedIntent}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className={cn("w-[160px]", premiumControl)}>
                   <Target className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Intent" />
                 </SelectTrigger>
@@ -919,7 +941,7 @@ const CallLogs = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal",
+                      "w-[240px] justify-start text-left font-normal", premiumControl,
                       !dateRange && "text-muted-foreground"
                     )}
                   >
@@ -994,12 +1016,12 @@ const CallLogs = () => {
 
       <div className="mt-4 md:mt-6">
       {/* Call List */}
-      <Card>
-        <CardHeader className="pb-4">
+      <Card className={cn(premiumPanel, "rounded-3xl overflow-hidden")}>
+        <CardHeader className="pb-4 border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-purple-500/10">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
+                <BarChart3 className="w-5 h-5 text-amber-300" />
                 Call History
               </CardTitle>
               <CardDescription className="mt-1">
@@ -1097,7 +1119,7 @@ const CallLogs = () => {
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
-                  className={`group relative p-4 rounded-xl border bg-card hover:bg-muted/30 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  className={`group relative p-4 rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/90 via-zinc-900/75 to-black/80 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 focus-within:ring-2 focus-within:ring-amber-400/60 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
                   onClick={() => openCallDetail(call)}
@@ -1224,7 +1246,7 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "flex flex-col",
+          "flex flex-col border-white/10 bg-zinc-950/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl",
           isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>
@@ -1649,6 +1671,7 @@ const CallLogs = () => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 };
