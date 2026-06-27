@@ -22,7 +22,8 @@ export function TokenBalanceBanner() {
   const isPortfolioReportsPage = pathname === "/portfolio-reports";
   const isClientsPage = pathname === "/clients";
   const isClientTrackerPage = pathname === "/client-tracker";
-  const isMessagesPage = pathname === "/messages";
+  const isConversationsPage = pathname === "/conversations";
+  const isEmailCopilotPage = pathname === "/email-copilot";
 
   if (!lowBalance || !balance) return null;
 
@@ -30,7 +31,34 @@ export function TokenBalanceBanner() {
     ? Math.round((balance.available / balance.allowance) * 100)
     : 0;
 
-  if (isMessagesPage) {
+
+  if (isEmailCopilotPage) {
+    return (
+      <Alert className="relative mx-3 md:mx-6 mt-3 md:mt-5 overflow-hidden rounded-2xl border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.20),rgba(10,10,10,0.96)_44%,rgba(24,24,27,0.92))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
+        <div className="pointer-events-none absolute -left-12 -top-20 h-36 w-36 rounded-full bg-amber-300/15 blur-3xl" />
+        <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
+        <AlertTriangle className="h-4 w-4 text-amber-200" />
+        <AlertTitle className="text-sm font-semibold tracking-tight text-amber-100">Token balance low</AlertTitle>
+        <AlertDescription className="flex flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="max-w-3xl leading-6 text-amber-50/80">
+            <span className="font-semibold tabular-nums text-amber-50">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-amber-200/70 bg-amber-300 px-5 font-semibold text-amber-950 shadow-[0_12px_30px_rgba(245,158,11,0.26)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-100 hover:bg-amber-200 hover:text-amber-950 hover:shadow-[0_18px_42px_rgba(245,158,11,0.36)] focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (isConversationsPage) {
     return (
       <Alert className="relative mx-auto w-full max-w-[1520px] overflow-hidden rounded-[1.35rem] border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(9,9,11,0.96)_44%,rgba(23,23,23,0.92))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/85 to-transparent" />

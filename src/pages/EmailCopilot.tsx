@@ -1986,20 +1986,20 @@ export default function EmailCopilot() {
           {viewMode === 'inbox' ? (
             <>
               {/* Search and Filter Bar */}
-              <div className="px-3 py-3 border-b border-border/70 bg-background/20 space-y-2">
+              <div className="space-y-3 border-b border-border/70 bg-background/20 px-3 py-3">
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary/70" />
                   <Input
                     placeholder="Search emails..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-8 h-9 rounded-xl border-border/70 bg-background/70 focus-visible:ring-primary/40 focus-visible:border-primary/50"
+                    className="h-10 rounded-2xl border-primary/15 bg-background/75 pl-10 pr-9 text-sm shadow-inner shadow-black/10 placeholder:text-muted-foreground/70 transition-all focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/35"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -2007,13 +2007,13 @@ export default function EmailCopilot() {
                 </div>
                 
                 {/* Filters */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-8 text-xs flex-1 rounded-xl bg-background/70 hover:border-primary/40 focus:ring-primary/30">
+                    <SelectTrigger className="h-9 min-w-[150px] flex-1 rounded-xl border-primary/15 bg-background/75 text-xs shadow-sm transition-colors hover:border-primary/45 hover:bg-primary/5 focus:ring-primary/35">
                       <Filter className="h-3 w-3 mr-1" />
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl border-primary/15 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur">
                       <SelectItem value="all">All Emails</SelectItem>
                       <SelectItem value="unread">Unread</SelectItem>
                       <SelectItem value="read">Read</SelectItem>
@@ -2026,7 +2026,7 @@ export default function EmailCopilot() {
                   
                   <Badge 
                     variant={showArchived ? "default" : "outline"} 
-                    className="cursor-pointer text-xs h-8 px-3 rounded-xl transition-colors hover:border-primary/40 hover:bg-primary/10"
+                    className={`h-9 cursor-pointer rounded-xl px-3 text-xs font-semibold transition-all hover:border-primary/40 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 ${showArchived ? 'border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10' : 'border-border/70 bg-background/70 text-muted-foreground hover:text-foreground'}`}
                     onClick={() => setShowArchived(!showArchived)}
                   >
                     <Archive className="h-3 w-3 mr-1" />
