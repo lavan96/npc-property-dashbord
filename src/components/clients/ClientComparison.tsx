@@ -17,6 +17,8 @@ import {
   Users,
   Search,
   Star,
+  Sparkles,
+  UserCheck,
   X
 } from 'lucide-react';
 
@@ -139,90 +141,135 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
   return (
     <div className="space-y-6">
       {/* Client Selection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Select Clients to Compare (max 4)
-            </CardTitle>
-            <div className="flex items-center gap-2">
+      <Card className="relative overflow-hidden rounded-3xl border-amber-400/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.13),transparent_32%),linear-gradient(145deg,rgba(24,24,27,0.95),rgba(3,7,18,0.9))] shadow-2xl shadow-black/25">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+        <CardHeader className="border-b border-white/10 pb-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-100">
+                <Sparkles className="h-3.5 w-3.5" />
+                Benchmark workspace
+              </div>
+              <CardTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-white sm:text-2xl">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/15 text-amber-100 shadow-lg shadow-amber-950/20">
+                  <Users className="h-5 w-5" />
+                </span>
+                Select Clients to Compare
+              </CardTitle>
+              <p className="max-w-2xl text-sm leading-6 text-slate-400">
+                Search and filter your client list, then choose a focused cohort for side-by-side portfolio benchmarking.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300">
+                <span className="h-2 w-2 rounded-full bg-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.65)]" />
+                Max 4 clients · {selectedIds.length}/4 selected
+              </div>
               {selectedIds.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-7 text-xs gap-1">
-                  <X className="h-3 w-3" />
+                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-9 rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs font-semibold text-slate-300 hover:bg-white/[0.07] hover:text-white">
+                  <X className="mr-1.5 h-3.5 w-3.5" />
                   Clear ({selectedIds.length})
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-5 p-4 sm:p-5">
           {/* Search and Active filter */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-100/55" />
               <Input
-                placeholder="Search clients..."
+                placeholder="Search clients by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 text-sm"
+                className="h-12 rounded-2xl border-amber-300/15 bg-black/20 pl-11 pr-4 text-sm text-white shadow-inner shadow-black/20 placeholder:text-slate-500 transition-all hover:border-amber-300/30 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               />
             </div>
             <Button
               variant={showActiveOnly ? 'default' : 'outline'}
               size="sm"
-              className="h-8 gap-1.5 text-xs shrink-0"
+              className={`h-12 shrink-0 gap-2 rounded-2xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
+                showActiveOnly
+                  ? 'border-amber-300/30 bg-gradient-to-r from-amber-300 to-yellow-500 text-black shadow-lg shadow-amber-500/20 hover:from-amber-200 hover:to-yellow-400'
+                  : 'border-white/10 bg-white/[0.035] text-slate-300 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100'
+              }`}
               onClick={() => setShowActiveOnly(!showActiveOnly)}
             >
-              <Star className={`h-3.5 w-3.5 ${showActiveOnly ? 'fill-current' : ''}`} />
+              <Star className={`h-4 w-4 ${showActiveOnly ? 'fill-current' : ''}`} />
               Active Clients
               {activeClientCount > 0 && (
-                <Badge variant={showActiveOnly ? 'secondary' : 'outline'} className="h-4 px-1 text-[10px]">
+                <Badge variant={showActiveOnly ? 'secondary' : 'outline'} className={`h-5 rounded-full px-2 text-[10px] font-bold ${showActiveOnly ? 'border-black/10 bg-black/10 text-black' : 'border-amber-300/25 bg-amber-300/10 text-amber-100'}`}>
                   {activeClientCount}
                 </Badge>
               )}
             </Button>
           </div>
 
-          <ScrollArea className="h-[200px]">
+          <ScrollArea className="h-[280px] rounded-2xl border border-white/10 bg-black/15 p-3 shadow-inner shadow-black/25">
             {filteredClients.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                {showActiveOnly
-                  ? 'No active clients found. Star clients to mark them as active.'
-                  : 'No clients match your search.'
-                }
+              <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300/20 bg-amber-300/[0.03] px-6 py-8 text-center">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-100">
+                  <Search className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-semibold text-slate-200">
+                  {showActiveOnly
+                    ? 'No active clients found'
+                    : 'No clients match your search'
+                  }
+                </p>
+                <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">
+                  {showActiveOnly
+                    ? 'Star clients to mark them as active, or turn off the Active Clients filter.'
+                    : 'Try a different name or email to build your comparison cohort.'
+                  }
+                </p>
               </div>
             ) : (
-              <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                {filteredClients.map((client) => (
-                  <div
-                    key={client.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedIds.includes(client.id) 
-                        ? 'bg-primary/5 border-primary' 
-                        : 'hover:bg-muted/50'
-                    }`}
-                    onClick={() => toggleClient(client.id)}
-                  >
-                    <Checkbox 
-                      checked={selectedIds.includes(client.id)}
-                      onCheckedChange={() => toggleClient(client.id)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-sm truncate">
-                          {smartCapitalize(client.primary_first_name)} {smartCapitalize(client.primary_surname)}
-                        </p>
-                        {client.is_favorite && (
-                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />
-                        )}
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredClients.map((client) => {
+                  const isSelected = selectedIds.includes(client.id);
+
+                  return (
+                    <div
+                      key={client.id}
+                      className={`group flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-all duration-300 ${
+                        isSelected
+                          ? 'border-amber-300/70 bg-amber-300/12 shadow-lg shadow-amber-500/20 ring-1 ring-amber-200/30 hover:shadow-[0_16px_36px_rgba(245,158,11,0.18)]'
+                          : 'border-white/10 bg-white/[0.035] opacity-90 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-white/[0.06] hover:opacity-100 hover:shadow-[0_12px_28px_rgba(245,158,11,0.08)] focus-within:border-amber-300/45 focus-within:ring-2 focus-within:ring-amber-300/20'
+                      }`}
+                      onClick={() => toggleClient(client.id)}
+                    >
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border transition-colors ${isSelected ? 'border-amber-200/60 bg-amber-300/20 text-amber-100' : 'border-white/10 bg-black/20 text-slate-500 group-hover:text-amber-100'}`}>
+                        <Checkbox 
+                          checked={isSelected}
+                          onCheckedChange={() => toggleClient(client.id)}
+                          className="border-current data-[state=checked]:border-amber-300 data-[state=checked]:bg-amber-400 data-[state=checked]:text-black"
+                        />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {client.client_properties?.length || 0} properties • {formatCurrency(Number(client.total_portfolio_value) || 0)}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className={`truncate text-sm font-semibold ${isSelected ? 'text-amber-50' : 'text-slate-200'}`}>
+                            {smartCapitalize(client.primary_first_name)} {smartCapitalize(client.primary_surname)}
+                          </p>
+                          {client.is_favorite && (
+                            <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+                          )}
+                        </div>
+                        <p className="mt-1 truncate text-xs text-slate-500">
+                          {client.primary_email || 'No email on file'}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-400">
+                          <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5">{client.client_properties?.length || 0} properties</span>
+                          <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5">{formatCurrency(Number(client.total_portfolio_value) || 0)}</span>
+                        </div>
+                      </div>
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-colors ${isSelected ? 'border-amber-200/50 bg-amber-300 text-black shadow-[0_0_18px_rgba(251,191,36,0.45)]' : 'border-white/10 bg-black/20 text-slate-600 group-hover:text-slate-300'}`}>
+                        {isSelected ? selectedIds.indexOf(client.id) + 1 : '+'}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
@@ -231,52 +278,106 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
 
       {/* Comparison Results */}
       {selectedClients.length < 2 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Scale className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Select at least 2 clients to compare</p>
-            <p className="text-xs text-muted-foreground mt-1">
+        <Card className="relative overflow-hidden rounded-3xl border-amber-300/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(45,212,191,0.08),transparent_30%),linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.88))] shadow-2xl shadow-black/25">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <CardContent className="px-6 py-12 text-center sm:py-16">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-300/25 bg-amber-300/10 text-amber-100 shadow-2xl shadow-amber-950/30">
+              <Scale className="h-9 w-9" />
+            </div>
+            <div className="mx-auto max-w-xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-100">
+                <Sparkles className="h-3.5 w-3.5" />
+                Decision support
+              </div>
+              <p className="text-2xl font-bold tracking-tight text-white">Build a comparison cohort</p>
+              <p className="text-sm leading-6 text-slate-400">Select at least 2 clients to unlock the side-by-side portfolio view. The output will populate here using the exact selected client data and existing comparison metrics.</p>
+            </div>
+            <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Minimum</p>
+                <p className="mt-1 text-sm font-semibold text-slate-200">2 clients</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Maximum</p>
+                <p className="mt-1 text-sm font-semibold text-slate-200">4 clients</p>
+              </div>
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-left">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-100/60">Current</p>
+                <p className="mt-1 text-sm font-semibold text-amber-50">{selectedClients.length}/2 ready</p>
+              </div>
+            </div>
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-semibold text-slate-300">
+              <UserCheck className="h-3.5 w-3.5 text-amber-200" />
               {selectedClients.length === 1 ? '1 selected — pick one more' : 'Choose from the list above'}
-            </p>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="relative space-y-5 overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.1),transparent_28%),linear-gradient(145deg,rgba(24,24,27,0.72),rgba(3,7,18,0.58))] p-3 shadow-2xl shadow-black/20 sm:p-5">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
+          <div className="relative flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-100">
+                <Scale className="h-3.5 w-3.5" />
+                Comparison active
+              </div>
+              <h3 className="mt-3 text-xl font-bold tracking-tight text-white">Client benchmarking output</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-400">Side-by-side metrics for {selectedClients.length} selected clients using the existing comparison calculations.</p>
+            </div>
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-xs font-semibold text-amber-100">
+              <UserCheck className="h-3.5 w-3.5" />
+              {selectedClients.length} clients selected
+            </div>
+          </div>
+
           {/* Client Headers */}
-          <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${selectedClients.length}, 1fr)` }}>
-            {selectedClients.map((client) => (
-              <Card key={client.id} className="text-center">
-                <CardContent className="pt-4">
-                  <h3 className="font-semibold">
+          <div className="grid gap-4 overflow-x-auto pb-1" style={{ gridTemplateColumns: `repeat(${selectedClients.length}, minmax(210px, 1fr))` }}>
+            {selectedClients.map((client, index) => (
+              <Card key={client.id} className="min-w-[210px] rounded-3xl border-amber-300/25 bg-[linear-gradient(145deg,rgba(245,158,11,0.14),rgba(255,255,255,0.035))] shadow-lg shadow-amber-950/15">
+                <CardContent className="p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-amber-200/40 bg-amber-300 text-xs font-bold text-black shadow-[0_0_18px_rgba(251,191,36,0.35)]">{index + 1}</span>
+                    {client.is_favorite && <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />}
+                  </div>
+                  <h3 className="truncate text-base font-bold text-amber-50">
                     {smartCapitalize(client.primary_first_name)} {smartCapitalize(client.primary_surname)}
                   </h3>
-                  <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
-                    <Building2 className="h-3 w-3" />
-                    {client.client_properties?.length || 0} Properties
-                  </p>
+                  <p className="mt-1 truncate text-xs text-amber-100/55">{client.primary_email || 'No email on file'}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-amber-100/70">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 py-1">
+                      <Building2 className="h-3 w-3" />
+                      {client.client_properties?.length || 0} Properties
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1">{formatCurrency(Number(client.total_portfolio_value) || 0)}</span>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
           {/* Key Metrics Comparison */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Key Metrics</CardTitle>
+          <Card className="rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.88))] shadow-xl shadow-black/20">
+            <CardHeader className="border-b border-white/10 pb-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-base font-semibold text-white">Key Metrics</CardTitle>
+                <p className="text-xs font-medium text-slate-500">Best values are highlighted without changing comparison math</p>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5 p-4 sm:p-5">
               {metrics.map((metric) => {
                 const highest = getHighestValue(metric.key);
                 
                 return (
-                  <div key={metric.key} className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <metric.icon className="h-4 w-4" />
+                  <div key={metric.key} className="rounded-2xl border border-white/10 bg-white/[0.025] p-3 sm:p-4">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-300">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-amber-100">
+                        <metric.icon className="h-4 w-4" />
+                      </span>
                       {metric.label}
                     </div>
                     <div 
-                      className="grid gap-4" 
-                      style={{ gridTemplateColumns: `repeat(${selectedClients.length}, 1fr)` }}
+                      className="grid gap-3 overflow-x-auto pb-1" 
+                      style={{ gridTemplateColumns: `repeat(${selectedClients.length}, minmax(170px, 1fr))` }}
                     >
                       {selectedClients.map((client) => {
                         const value = Number(client[metric.key]) || 0;
@@ -289,16 +390,21 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                         return (
                           <div 
                             key={client.id} 
-                            className={`p-3 rounded-lg text-center ${isBest ? 'bg-green-500/10 border border-green-500/20' : 'bg-secondary'}`}
+                            className={`min-w-[170px] rounded-2xl border p-3 text-left ${isBest ? 'border-emerald-300/30 bg-emerald-400/10 shadow-lg shadow-emerald-950/10' : 'border-white/10 bg-black/20'}`}
                           >
-                            <p className={`font-semibold ${metric.key === 'net_monthly_cash_flow' ? (value >= 0 ? 'text-green-600' : 'text-red-600') : ''}`}>
-                              {metric.format(value)}
+                            <p className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                              {smartCapitalize(client.primary_first_name)}
                             </p>
-                            {isBest && (
-                              <Badge variant="secondary" className="mt-1 text-xs bg-green-500/10 text-green-600">
-                                Best
-                              </Badge>
-                            )}
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <p className={`text-lg font-bold tabular-nums ${metric.key === 'net_monthly_cash_flow' ? (value >= 0 ? 'text-green-600' : 'text-red-600') : 'text-slate-100'}`}>
+                                {metric.format(value)}
+                              </p>
+                              {isBest && (
+                                <Badge variant="secondary" className="shrink-0 rounded-full bg-green-500/10 text-xs text-green-600">
+                                  Best
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -308,14 +414,16 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
               })}
 
               {/* Equity Comparison */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <DollarSign className="h-4 w-4" />
+              <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3 sm:p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-300">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-amber-100">
+                    <DollarSign className="h-4 w-4" />
+                  </span>
                   Net Equity
                 </div>
                 <div 
-                  className="grid gap-4" 
-                  style={{ gridTemplateColumns: `repeat(${selectedClients.length}, 1fr)` }}
+                  className="grid gap-3 overflow-x-auto pb-1" 
+                  style={{ gridTemplateColumns: `repeat(${selectedClients.length}, minmax(170px, 1fr))` }}
                 >
                   {selectedClients.map((client) => {
                     const equity = (Number(client.total_portfolio_value) || 0) - (Number(client.total_debt) || 0);
@@ -325,16 +433,21 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                     return (
                       <div 
                         key={client.id} 
-                        className={`p-3 rounded-lg text-center ${isBest ? 'bg-green-500/10 border border-green-500/20' : 'bg-secondary'}`}
+                        className={`min-w-[170px] rounded-2xl border p-3 text-left ${isBest ? 'border-emerald-300/30 bg-emerald-400/10 shadow-lg shadow-emerald-950/10' : 'border-white/10 bg-black/20'}`}
                       >
-                        <p className={`font-semibold ${equity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(equity)}
+                        <p className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                          {smartCapitalize(client.primary_first_name)}
                         </p>
-                        {isBest && (
-                          <Badge variant="secondary" className="mt-1 text-xs bg-green-500/10 text-green-600">
-                            Best
-                          </Badge>
-                        )}
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <p className={`text-lg font-bold tabular-nums ${equity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(equity)}
+                          </p>
+                          {isBest && (
+                            <Badge variant="secondary" className="shrink-0 rounded-full bg-green-500/10 text-xs text-green-600">
+                              Best
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -342,14 +455,16 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
               </div>
 
               {/* LTV Comparison */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Percent className="h-4 w-4" />
+              <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-3 sm:p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-300">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-amber-100">
+                    <Percent className="h-4 w-4" />
+                  </span>
                   LTV Ratio
                 </div>
                 <div 
-                  className="grid gap-4" 
-                  style={{ gridTemplateColumns: `repeat(${selectedClients.length}, 1fr)` }}
+                  className="grid gap-3 overflow-x-auto pb-1" 
+                  style={{ gridTemplateColumns: `repeat(${selectedClients.length}, minmax(170px, 1fr))` }}
                 >
                   {selectedClients.map((client) => {
                     const ltv = Number(client.total_portfolio_value) > 0 
@@ -366,16 +481,21 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                     return (
                       <div 
                         key={client.id} 
-                        className={`p-3 rounded-lg text-center ${isBest ? 'bg-green-500/10 border border-green-500/20' : 'bg-secondary'}`}
+                        className={`min-w-[170px] rounded-2xl border p-3 text-left ${isBest ? 'border-emerald-300/30 bg-emerald-400/10 shadow-lg shadow-emerald-950/10' : 'border-white/10 bg-black/20'}`}
                       >
-                        <p className={`font-semibold ${ltv > 80 ? 'text-red-600' : ltv > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
-                          {ltv.toFixed(1)}%
+                        <p className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                          {smartCapitalize(client.primary_first_name)}
                         </p>
-                        {isBest && (
-                          <Badge variant="secondary" className="mt-1 text-xs bg-green-500/10 text-green-600">
-                            Best
-                          </Badge>
-                        )}
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <p className={`text-lg font-bold tabular-nums ${ltv > 80 ? 'text-red-600' : ltv > 60 ? 'text-yellow-600' : 'text-green-600'}`}>
+                            {ltv.toFixed(1)}%
+                          </p>
+                          {isBest && (
+                            <Badge variant="secondary" className="shrink-0 rounded-full bg-green-500/10 text-xs text-green-600">
+                              Best
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -386,21 +506,21 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
 
           {/* Scores Comparison */}
           {scores.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Client Scores</CardTitle>
+            <Card className="rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.88))] shadow-xl shadow-black/20">
+              <CardHeader className="border-b border-white/10 pb-4">
+                <CardTitle className="text-base font-semibold text-white">Client Scores</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-5">
                 <div 
-                  className="grid gap-4" 
-                  style={{ gridTemplateColumns: `repeat(${selectedClients.length}, 1fr)` }}
+                  className="grid gap-4 overflow-x-auto pb-1" 
+                  style={{ gridTemplateColumns: `repeat(${selectedClients.length}, minmax(220px, 1fr))` }}
                 >
                   {selectedClients.map((client) => {
                     const score = getScoreForClient(client.id);
                     
                     if (!score) {
                       return (
-                        <div key={client.id} className="p-4 bg-secondary rounded-lg text-center">
+                        <div key={client.id} className="min-w-[220px] rounded-2xl border border-white/10 bg-black/20 p-4 text-center">
                           <p className="text-sm text-muted-foreground">No score calculated</p>
                         </div>
                       );
@@ -413,10 +533,10 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                     return (
                       <div 
                         key={client.id} 
-                        className={`p-4 rounded-lg ${isBest ? 'bg-green-500/10 border border-green-500/20' : 'bg-secondary'}`}
+                        className={`min-w-[220px] rounded-2xl border p-4 ${isBest ? 'border-emerald-300/30 bg-emerald-400/10 shadow-lg shadow-emerald-950/10' : 'border-white/10 bg-black/20'}`}
                       >
-                        <div className="text-center mb-3">
-                          <p className="text-3xl font-bold">{score.overall_score}</p>
+                        <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-center">
+                          <p className="text-3xl font-bold tabular-nums text-white">{score.overall_score}</p>
                           <p className="text-xs text-muted-foreground">Overall Score</p>
                           {isBest && (
                             <Badge variant="secondary" className="mt-1 text-xs bg-green-500/10 text-green-600">
@@ -425,19 +545,19 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                           )}
                         </div>
                         <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
+                          <div className="flex justify-between gap-3 rounded-xl bg-white/[0.025] px-3 py-2">
                             <span className="text-muted-foreground">Portfolio Health</span>
                             <span className="font-medium">{score.portfolio_health}%</span>
                           </div>
-                          <div className="flex justify-between">
+                          <div className="flex justify-between gap-3 rounded-xl bg-white/[0.025] px-3 py-2">
                             <span className="text-muted-foreground">Cash Flow</span>
                             <span className="font-medium">{score.cash_flow_score}%</span>
                           </div>
-                          <div className="flex justify-between">
+                          <div className="flex justify-between gap-3 rounded-xl bg-white/[0.025] px-3 py-2">
                             <span className="text-muted-foreground">Growth Potential</span>
                             <span className="font-medium">{score.growth_potential}%</span>
                           </div>
-                          <div className="flex justify-between pt-2 border-t">
+                          <div className="flex justify-between gap-3 rounded-xl border-t border-white/10 bg-white/[0.025] px-3 py-2 pt-2">
                             <span className="text-muted-foreground">Risk Level</span>
                             <Badge 
                               variant="outline"
