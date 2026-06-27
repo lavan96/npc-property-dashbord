@@ -802,7 +802,7 @@ export default function ClientTracker() {
   return (
     <div className="min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-5">
+      <div className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-5">
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
         <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -824,7 +824,7 @@ export default function ClientTracker() {
         {/* Mobile: Compact action bar */}
         {isMobile ? (
           <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-background/70 p-2 shadow-inner">
-            <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
+            <div className="client-tracker-gold-interaction flex min-h-10 items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
               {isAutoSyncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
               ) : (
@@ -841,7 +841,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
-              className="h-9 rounded-xl px-3 text-xs font-semibold shadow-md shadow-primary/20"
+              className="h-10 rounded-xl px-3 text-xs font-semibold shadow-md shadow-primary/20 focus-visible:ring-primary/35"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -857,7 +857,7 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
-              className="h-9 rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
+              className="h-10 rounded-xl border-border/70 bg-background/80 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
@@ -882,7 +882,7 @@ export default function ClientTracker() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
+                  <div className="client-tracker-gold-interaction flex min-h-10 items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
                     {isAutoSyncing ? (
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
@@ -919,7 +919,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
-              className="rounded-xl px-4 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25"
+              className="h-10 rounded-xl px-4 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-primary/35"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -936,7 +936,7 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
-              className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
+              className="h-10 rounded-xl border-border/70 bg-background/80 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -962,7 +962,7 @@ export default function ClientTracker() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -976,7 +976,7 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card className="group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -990,7 +990,7 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card className="group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-red-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -1004,7 +1004,7 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card className="group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -1122,7 +1122,7 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <div className="relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15 backdrop-blur-xl">
+      <div className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15 backdrop-blur-xl">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
         <div className="relative flex flex-col gap-3 md:flex-row md:items-center">
           <div className="group relative flex-1">

@@ -474,7 +474,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                className="h-8 rounded-xl text-sm shadow-sm shadow-primary/15 focus-visible:ring-primary/35"
+                className="h-9 rounded-xl text-sm shadow-sm shadow-primary/15 focus-visible:ring-primary/35"
                 onClick={() => addNoteMutation.mutate()}
                 disabled={!newNoteContent.trim() || addNoteMutation.isPending}
               >
@@ -486,7 +486,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
+                className="h-9 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
                 onClick={() => {
                   setIsAddingNote(false);
                   setNewNoteContent('');
@@ -520,7 +520,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               <FileText className="h-3.5 w-3.5 text-primary/70" />
               Notes ({notes.length}{hasNextPage ? '+' : ''})
             </p>
-            <ScrollArea className="h-52 rounded-2xl border border-border/55 bg-background/45 p-2" onScrollCapture={handleScrollCapture}>
+            <ScrollArea className="client-tracker-kanban-scroll h-52 rounded-2xl border border-border/55 bg-background/45 p-2" onScrollCapture={handleScrollCapture}>
               <div 
                 ref={scrollRef}
                 className="space-y-2.5 pr-3"
@@ -540,7 +540,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="h-8 rounded-xl text-sm focus-visible:ring-primary/35"
+                            className="h-9 rounded-xl text-sm focus-visible:ring-primary/35"
                             onClick={() => updateNoteMutation.mutate(note.id)}
                             disabled={!editNoteContent.trim() || updateNoteMutation.isPending}
                           >
@@ -552,7 +552,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
+                            className="h-9 rounded-xl text-sm text-muted-foreground transition-all hover:bg-background/80 hover:text-foreground focus-visible:ring-primary/25"
                             onClick={handleCancelEdit}
                           >
                             Cancel
