@@ -266,7 +266,10 @@ export default function Messages() {
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="relative min-w-0 flex-1 xl:max-w-2xl">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/75" />
+                <label htmlFor="portal-message-search" className="sr-only">Search portal messages by client, partner, or message</label>
                 <Input
+                  id="portal-message-search"
+                  aria-label="Search portal messages by client, partner, or message"
                   placeholder="Search by client, partner, or message…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -274,7 +277,7 @@ export default function Messages() {
                 />
               </div>
 
-              <TabsList className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-white/10 bg-black/55 p-1.5 shadow-lg shadow-black/20 xl:w-auto xl:min-w-[420px]">
+              <TabsList aria-label="Portal message type" className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-white/10 bg-black/55 p-1.5 shadow-lg shadow-black/20 xl:w-auto xl:min-w-[420px]">
                 <TabsTrigger value="client" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_28px_rgba(0,0,0,0.22)] focus-visible:ring-2 focus-visible:ring-amber-300/50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-600 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-950/30">
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   Client Portal
@@ -324,6 +327,8 @@ export default function Messages() {
                         <button
                           key={t.client_id}
                           onClick={() => setSelectedClientId(t.client_id)}
+                          aria-pressed={selectedClientId === t.client_id}
+                          aria-label={`Open Client Portal messages for ${t.client_name}`}
                           className={cn(
                             'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
                             selectedClientId === t.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
@@ -407,6 +412,8 @@ export default function Messages() {
                         <button
                           key={g.client_id}
                           onClick={() => setSelectedFinanceClientId(g.client_id)}
+                          aria-pressed={selectedFinanceClientId === g.client_id}
+                          aria-label={`Open Finance Portal messages for ${g.client_name}`}
                           className={cn(
                             'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(196,181,253,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50',
                             selectedFinanceClientId === g.client_id && 'border-violet-300/45 bg-violet-300/12 shadow-[inset_4px_0_0_rgba(196,181,253,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
@@ -469,7 +476,7 @@ export default function Messages() {
       </Tabs>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-h-[86vh] max-w-2xl overflow-hidden rounded-[1.75rem] border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] sm:rounded-[1.75rem] border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
           <DialogHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-white/[0.03] to-transparent px-6 py-5">
             <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">New portal message</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -477,7 +484,7 @@ export default function Messages() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[58vh] space-y-5 overflow-y-auto px-6 py-5 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
+          <div className="max-h-[62vh] space-y-5 overflow-y-auto px-4 py-5 sm:px-6 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
             <div className="space-y-2.5">
               <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">Scope</Label>
               <Select value={newScope} onValueChange={(v) => setNewScope(v as NewMessageScope)}>
@@ -499,7 +506,10 @@ export default function Messages() {
               <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">Client</Label>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/75" />
+                <label htmlFor="new-portal-message-client-search" className="sr-only">Search clients for a new portal message</label>
                 <Input
+                  id="new-portal-message-client-search"
+                  aria-label="Search clients for a new portal message"
                   placeholder="Search clients…"
                   value={newClientSearch}
                   onChange={(e) => setNewClientSearch(e.target.value)}
@@ -544,11 +554,11 @@ export default function Messages() {
             </div>
           </div>
 
-          <DialogFooter className="border-t border-white/10 bg-black/25 px-6 py-4 sm:justify-between">
-            <Button variant="outline" onClick={() => setNewOpen(false)} className="rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
+          <DialogFooter className="flex-col-reverse gap-2 border-t border-white/10 bg-black/25 px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
+            <Button variant="outline" onClick={() => setNewOpen(false)} className="w-full rounded-full border-white/10 bg-black/30 px-5 sm:w-auto text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
             <Button
               disabled={!newClientId}
-              className="rounded-full bg-amber-300 px-6 font-semibold text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
+              className="w-full rounded-full bg-amber-300 px-6 sm:w-auto font-semibold text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
               onClick={() => {
                 const scopeMeta = SCOPE_OPTIONS.find((s) => s.value === newScope)!;
                 if (scopeMeta.group === 'client') {
