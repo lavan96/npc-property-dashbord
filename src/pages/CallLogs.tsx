@@ -32,6 +32,7 @@ import { CleanupTestCalls } from '@/components/call-logs/CleanupTestCalls';
 import { NegativeCallAnalysis } from '@/components/call-logs/NegativeCallAnalysis';
 import { CallToolCalls } from '@/components/call-logs/CallToolCalls';
 import { CallTranscriptChat } from '@/components/call-logs/CallTranscriptChat';
+import { callLogBadgeTone } from '@/components/call-logs/badgeStyles';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -77,7 +78,7 @@ const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner
 const premiumFilterControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-amber-300/70";
 const premiumFilterControlActive = "border-amber-300/45 bg-amber-300/12 text-amber-50 shadow-amber-500/10";
 const premiumSearchInput = "h-11 rounded-2xl border-white/10 bg-black/55 pl-11 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-amber-300/30 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
-const premiumActiveFilterBadge = "rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-100 shadow-sm shadow-amber-500/10";
+const premiumActiveFilterBadge = callLogBadgeTone('tag');
 const premiumActionBase = "min-h-9 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
 const premiumUtilityAction = `${premiumActionBase} border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-300/45 hover:bg-sky-400/15 hover:text-sky-50 focus-visible:ring-sky-300`;
@@ -456,11 +457,11 @@ const CallLogs = () => {
   };
 
   const getOutcomeBadge = (outcome: string | null) => {
-    if (!outcome) return <Badge variant="outline" className="rounded-full border-white/15 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">Unknown</Badge>;
+    if (!outcome) return <Badge variant="outline" className={callLogBadgeTone('neutral')}>Unknown</Badge>;
     const display = OUTCOME_DISPLAY[outcome];
     if (display) {
       const Icon = display.icon;
-      return <Badge className={cn("rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm", display.color)}><Icon className="w-3 h-3 mr-1" /> {display.label}</Badge>;
+      return <Badge className={cn("shadow-sm", callLogBadgeTone('neutral'), display.color)}><Icon className="w-3 h-3 mr-1" /> {display.label}</Badge>;
     }
     // Fallback for any VAPI reason not explicitly mapped - format nicely
     const category = getOutcomeCategory(outcome);
@@ -470,19 +471,19 @@ const CallLogs = () => {
     };
     const color = fallbackColors[category] || fallbackColors['other'];
     const label = outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    return <Badge className={cn("rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm", color)}><XCircle className="w-3 h-3 mr-1" /> {label}</Badge>;
+    return <Badge className={cn("shadow-sm", callLogBadgeTone('neutral'), color)}><XCircle className="w-3 h-3 mr-1" /> {label}</Badge>;
   };
 
   const getSentimentBadge = (sentiment: string | null) => {
     switch (sentiment) {
       case 'positive':
-        return <Badge className="rounded-full border border-emerald-300/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300 shadow-sm shadow-emerald-500/10">Positive</Badge>;
+        return <Badge className={callLogBadgeTone('success')}>Positive</Badge>;
       case 'negative':
-        return <Badge className="rounded-full border border-red-400/35 bg-red-500/15 px-2.5 py-1 text-xs font-medium text-red-300 shadow-sm shadow-red-500/10">Negative</Badge>;
+        return <Badge className={callLogBadgeTone('danger')}>Negative</Badge>;
       case 'neutral':
-        return <Badge className="rounded-full border border-zinc-500/30 bg-zinc-500/15 px-2.5 py-1 text-xs font-medium text-zinc-300">Neutral</Badge>;
+        return <Badge className={callLogBadgeTone('neutral')}>Neutral</Badge>;
       case 'mixed':
-        return <Badge className="rounded-full border border-amber-300/30 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 shadow-sm shadow-amber-500/10">Mixed</Badge>;
+        return <Badge className={callLogBadgeTone('warning')}>Mixed</Badge>;
       default:
         return null;
     }
@@ -1065,12 +1066,12 @@ const CallLogs = () => {
                   </Badge>
                 )}
                 {selectedSquad !== 'all' && (
-                  <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40 text-xs">
+                  <Badge className={callLogBadgeTone('squad')}>
                     Squad: {squads.find(s => s.id === selectedSquad)?.name}
                   </Badge>
                 )}
                 {selectedIntent !== 'all' && (
-                  <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 text-xs">
+                  <Badge className={callLogBadgeTone('success')}>
                     Intent: {selectedIntent.replace(/_/g, ' ')}
                   </Badge>
                 )}
@@ -1174,7 +1175,7 @@ const CallLogs = () => {
                           
                           {/* Squad badge with name */}
                           {call.is_squad_call && (
-                            <Badge className="max-w-[220px] rounded-full border border-purple-300/35 bg-purple-500/15 px-2.5 py-1 text-xs font-medium text-purple-200 shadow-sm shadow-purple-500/10">
+                            <Badge className={callLogBadgeTone('squad', 'max-w-[220px]')}>
                               <Users className="mr-1 h-3 w-3 shrink-0" />
                               <span className="truncate">{call.squad_name || 'Squad Call'}</span>
                             </Badge>
@@ -1182,7 +1183,7 @@ const CallLogs = () => {
                           
                           {/* Intent badge */}
                           {call.call_intent && (
-                            <Badge className="max-w-[220px] rounded-full border border-emerald-300/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300 shadow-sm shadow-emerald-500/10">
+                            <Badge className={callLogBadgeTone('success', 'max-w-[220px]')}>
                               <Target className="mr-1 h-3 w-3 shrink-0" />
                               <span className="truncate">{call.call_intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                             </Badge>
@@ -1190,7 +1191,7 @@ const CallLogs = () => {
                           
                           {/* Agent badge for non-squad calls */}
                           {call.agent_name && !call.is_squad_call && (
-                            <Badge className="max-w-[220px] rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-xs font-medium text-sky-200 shadow-sm shadow-sky-500/10">
+                            <Badge className={callLogBadgeTone('info', 'max-w-[220px]')}>
                               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-300" />
                               <span className="truncate">{call.agent_name}</span>
                             </Badge>
@@ -1212,7 +1213,7 @@ const CallLogs = () => {
                               </div>
                             ))}
                             {call.handoff_sequence && call.handoff_sequence.length > 0 && (
-                              <Badge variant="secondary" className="ml-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+                              <Badge variant="secondary" className={callLogBadgeTone('neutral', 'ml-1')}>
                                 <GitBranch className="mr-1 h-3 w-3" />
                                 {call.handoff_sequence.length} handoff{call.handoff_sequence.length > 1 ? 's' : ''}
                               </Badge>
@@ -1247,7 +1248,7 @@ const CallLogs = () => {
                         {call.tags && call.tags.length > 0 && (
                           <div className="mt-3 flex flex-wrap items-center gap-1.5">
                             {call.tags.map(tag => (
-                              <Badge key={tag} className="max-w-[180px] rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-100">
+                              <Badge key={tag} className={callLogBadgeTone('tag', 'max-w-[180px]')}>
                                 <Tag className="mr-1 h-3 w-3 shrink-0" />
                                 <span className="truncate">{tag}</span>
                               </Badge>
@@ -1320,15 +1321,15 @@ const CallLogs = () => {
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
-                      <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40">
+                      <Badge className={callLogBadgeTone('squad')}>
                         <Users className="w-3 h-3 mr-1" />
                         Squad Call
                       </Badge>
                       {selectedCall.squad_name && (
-                        <Badge className="bg-secondary text-secondary-foreground border border-border">{selectedCall.squad_name}</Badge>
+                        <Badge className={callLogBadgeTone('neutral')}>{selectedCall.squad_name}</Badge>
                       )}
                       {selectedCall.call_intent && (
-                        <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                        <Badge className={callLogBadgeTone('success')}>
                           <Target className="w-3 h-3 mr-1" />
                           {selectedCall.call_intent.replace(/_/g, ' ')}
                         </Badge>
@@ -1501,7 +1502,7 @@ const CallLogs = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Badge variant="secondary" className="text-sm capitalize">
+                          <Badge variant="secondary" className={callLogBadgeTone('neutral', 'text-sm capitalize')}>
                             {selectedCall.call_intent.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                           </Badge>
                         </CardContent>
@@ -1560,11 +1561,11 @@ const CallLogs = () => {
                               const toAssistant = selectedCall.assistants_involved?.find(a => a.id === handoff.toAssistant);
                               return (
                                 <div key={i} className="flex items-center gap-2 text-sm">
-                                  <Badge variant="outline" className="font-normal">
+                                  <Badge variant="outline" className={callLogBadgeTone('neutral', 'font-normal')}>
                                     {fromAssistant?.name || handoff.fromAssistant.slice(0, 8)}
                                   </Badge>
                                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                                  <Badge variant="outline" className="font-normal">
+                                  <Badge variant="outline" className={callLogBadgeTone('neutral', 'font-normal')}>
                                     {toAssistant?.name || handoff.toAssistant.slice(0, 8)}
                                   </Badge>
                                   <span className="text-xs text-muted-foreground ml-auto">
@@ -1596,7 +1597,7 @@ const CallLogs = () => {
                               return (
                                 <div key={i} className="space-y-2">
                                   <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge variant="outline" className={callLogBadgeTone('neutral')}>
                                       {assistant?.name || item.assistant.slice(0, 8)}
                                     </Badge>
                                   </div>
@@ -1662,7 +1663,7 @@ const CallLogs = () => {
                       {selectedCall.key_topics?.length ? (
                         <div className="flex flex-wrap gap-2">
                           {selectedCall.key_topics.map((topic, i) => (
-                            <Badge key={i} variant="secondary">{topic}</Badge>
+                            <Badge key={i} variant="secondary" className={callLogBadgeTone('tag')}>{topic}</Badge>
                           ))}
                         </div>
                       ) : (
