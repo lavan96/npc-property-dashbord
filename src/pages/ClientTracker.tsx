@@ -1095,15 +1095,16 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <div className="rounded-2xl border border-border/70 bg-card/75 p-3 shadow-lg shadow-black/10 backdrop-blur">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15 backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
+        <div className="relative flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="group relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
             <Input
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-10 border-border/70 bg-background/80 pl-10 transition-all focus-visible:ring-primary/40"
+              className="h-11 rounded-xl border-border/70 bg-background/85 pl-10 pr-4 text-sm shadow-inner transition-all placeholder:text-muted-foreground/70 hover:border-primary/25 hover:bg-background/95 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25"
             />
           </div>
           
@@ -1111,11 +1112,11 @@ export default function ClientTracker() {
           {isMobile ? (
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 shrink-0">
+                <Button variant="outline" size="sm" className="h-11 shrink-0 rounded-xl border-border/70 bg-background/85 px-3 shadow-inner hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-primary/25">
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="h-[60vh]">
+              <SheetContent side="bottom" className="h-[60vh] rounded-t-3xl border-border/70 bg-card/95">
                 <SheetHeader>
                   <SheetTitle>Filters</SheetTitle>
                 </SheetHeader>
@@ -1123,14 +1124,14 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Pipeline</label>
                     <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                      <SelectTrigger>
-                        <Layers className="h-4 w-4 mr-2" />
+                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5")}>
+                        <Layers className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Select Pipeline" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Pipelines</SelectItem>
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                        <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                         {pipelines.map(pipeline => (
-                          <SelectItem key={pipeline.id} value={pipeline.id}>
+                          <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
                             {pipeline.name}
                           </SelectItem>
                         ))}
@@ -1140,14 +1141,14 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Stage</label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger>
-                        <Filter className="h-4 w-4 mr-2" />
+                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", statusFilter !== 'all' && "border-primary/45 bg-primary/5")}>
+                        <Filter className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Filter by stage" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Stages</SelectItem>
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                        <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                         {stagesForPipeline.map(stage => (
-                          <SelectItem key={stage.id} value={stage.name}>
+                          <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
                             <div className="flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
                               {stage.name}
@@ -1164,14 +1165,14 @@ export default function ClientTracker() {
             <>
               {/* Desktop: Inline filters */}
               <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                <SelectTrigger className="w-[220px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
-                  <Layers className="h-4 w-4 mr-2" />
+                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[230px]", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                  <Layers className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Select Pipeline" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Pipelines</SelectItem>
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                  <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                   {pipelines.map(pipeline => (
-                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                    <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
                       {pipeline.name}
                     </SelectItem>
                   ))}
@@ -1179,14 +1180,14 @@ export default function ClientTracker() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[200px] border-border/70 bg-background/80 transition-all hover:border-primary/30 focus:ring-primary/30">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[215px]", statusFilter !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                  <Filter className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Filter by stage" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stages</SelectItem>
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                  <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                   {stagesForPipeline.map(stage => (
-                    <SelectItem key={stage.id} value={stage.name}>
+                    <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
                         {stage.name}
