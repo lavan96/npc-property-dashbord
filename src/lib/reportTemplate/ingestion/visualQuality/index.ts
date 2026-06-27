@@ -165,3 +165,14 @@ export {
   type RepairIssueSummary,
   type RepairSuggestion,
 } from './repair';
+
+export {
+  REPAIR_ELIGIBILITY_VERSION,
+  evaluatePageRepairEligibility,
+  evaluateVisualRepairEligibility,
+  type PageRepairEligibility,
+  type RepairEligibilityBlockReason,
+  type RepairEligibilityDecision,
+  type RepairFallbackMode,
+  type VisualRepairEligibility,
+} from './repair';
