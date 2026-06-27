@@ -72,12 +72,12 @@ const channelIcons: Record<string, any> = {
 };
 
 const channelColors: Record<string, string> = {
-  sms: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  email: 'bg-blue-100 text-blue-700 border-blue-200',
-  whatsapp: 'bg-green-100 text-green-700 border-green-200',
-  instagram: 'bg-pink-100 text-pink-700 border-pink-200',
-  facebook: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-  live_chat: 'bg-purple-100 text-purple-700 border-purple-200',
+  sms: 'bg-blue-500/10 text-blue-300 border-blue-400/30 shadow-[0_0_22px_rgba(59,130,246,0.12)]',
+  email: 'bg-amber-500/10 text-amber-200 border-amber-400/30 shadow-[0_0_22px_rgba(245,158,11,0.12)]',
+  whatsapp: 'bg-emerald-500/10 text-emerald-200 border-emerald-400/30 shadow-[0_0_22px_rgba(16,185,129,0.12)]',
+  instagram: 'bg-pink-500/10 text-pink-200 border-pink-400/30 shadow-[0_0_22px_rgba(236,72,153,0.12)]',
+  facebook: 'bg-indigo-500/10 text-indigo-200 border-indigo-400/30 shadow-[0_0_22px_rgba(99,102,241,0.12)]',
+  live_chat: 'bg-purple-500/10 text-purple-200 border-purple-400/30 shadow-[0_0_22px_rgba(168,85,247,0.12)]',
 };
 
 const channelToGhlType = (ch: string): string => {
@@ -624,25 +624,30 @@ export default function Conversations() {
   // RENDER
   // ═══════════════════════════════════════════════════════════
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.12),transparent_30%),linear-gradient(135deg,hsl(220_20%_5%),hsl(222_18%_8%)_45%,hsl(220_16%_6%))] p-3 text-foreground md:p-5">
       {/* Page header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
+      <div className="relative z-10 flex shrink-0 items-center justify-between rounded-2xl border border-amber-400/20 bg-black/45 px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-xl md:px-5">
         <div className="flex items-center gap-2">
           {isMobile && selectedId && (
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleBack}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">Conversations</h1>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 shadow-[0_0_30px_rgba(234,179,8,0.14)]">
+            <MessageSquare className="h-5 w-5 text-amber-300" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight text-white">Conversations</h1>
+            <p className="hidden text-xs text-zinc-400 sm:block">Premium CRM communications centre</p>
+          </div>
           {!loadingConversations && (
-            <Badge variant="secondary" className="text-xs">{conversations.length}</Badge>
+            <Badge variant="secondary" className="border border-amber-300/25 bg-amber-400/10 text-xs text-amber-100 shadow-[0_0_18px_rgba(234,179,8,0.12)]">{conversations.length}</Badge>
           )}
         </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={isExportingHistory}>
+              <Button variant="outline" size="sm" disabled={isExportingHistory} className="border-amber-300/25 bg-zinc-950/70 text-zinc-100 hover:border-amber-300/50 hover:bg-amber-400/10 hover:text-amber-100">
                 <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
                 {isExportingHistory ? 'Exporting...' : 'Export'}
               </Button>
@@ -668,6 +673,7 @@ export default function Conversations() {
           <Button
             variant="outline"
             size="sm"
+            className="border-amber-300/25 bg-zinc-950/70 text-zinc-100 hover:border-amber-300/50 hover:bg-amber-400/10 hover:text-amber-100 disabled:opacity-60"
             onClick={handleSyncAndRefresh}
             disabled={isSyncing || loadingConversations}
           >
@@ -678,7 +684,7 @@ export default function Conversations() {
       </div>
 
       {exportJobStatus && (
-        <div className="border-b bg-muted/30 px-4 py-3 shrink-0">
+        <div className="mt-3 shrink-0 rounded-2xl border border-amber-400/20 bg-zinc-950/75 px-4 py-3 shadow-xl shadow-black/25 backdrop-blur-xl">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0 space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -741,7 +747,7 @@ export default function Conversations() {
       />
 
       {/* Main content area */}
-      <div className="flex flex-1 min-h-0"
+      <div className="mt-3 flex min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/55 shadow-2xl shadow-black/35 backdrop-blur-xl"
         onMouseMove={(e) => {
           if (!isDraggingConvRef.current) return;
           const delta = e.clientX - dragStartXConvRef.current;
@@ -754,18 +760,18 @@ export default function Conversations() {
         {/* ─── LEFT PANEL: Conversation List ─── */}
         {showList && (
           <div 
-            className={cn('flex flex-col border-r', isMobile && 'w-full')}
+            className={cn('flex flex-col border-r border-white/10 bg-black/35', isMobile && 'w-full')}
             style={!isMobile ? { width: convPanelWidth, minWidth: 260, maxWidth: 550, flexShrink: 0 } : undefined}
           >
             {/* Search & filter */}
-            <div className="p-3 space-y-2 border-b shrink-0">
+            <div className="shrink-0 space-y-3 border-b border-white/10 bg-zinc-950/70 p-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search conversations..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-8 text-sm"
+                  className="h-9 border-white/10 bg-black/45 pl-9 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:border-amber-300/50 focus-visible:ring-amber-300/25"
                 />
               </div>
               <div className="flex gap-1.5 flex-wrap">
@@ -774,7 +780,7 @@ export default function Conversations() {
                     key={ch}
                     variant={channelFilter === ch ? 'default' : 'outline'}
                     size="sm"
-                    className="h-7 text-xs px-2.5"
+                    className={cn("h-7 rounded-full px-3 text-xs transition-all", channelFilter === ch ? "bg-amber-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.25)] hover:bg-amber-300" : "border-white/10 bg-zinc-900/70 text-zinc-300 hover:border-amber-300/40 hover:bg-amber-400/10 hover:text-amber-100")}
                     onClick={() => setChannelFilter(ch)}
                   >
                     {ch === 'all' ? 'All' : ch === 'sms' ? 'SMS' : ch === 'whatsapp' ? 'WhatsApp' : 'Email'}
@@ -816,26 +822,26 @@ export default function Conversations() {
                       <div
                         key={conv.id}
                         className={cn(
-                          'flex items-center gap-3 px-3 py-3 cursor-pointer transition-colors border-b border-border/50',
-                          isActive ? 'bg-accent' : 'hover:bg-muted/50',
-                          conv.unread_count > 0 && !isActive && 'bg-primary/[0.03]'
+                          'group relative flex cursor-pointer items-center gap-3 border-b border-white/[0.07] px-3 py-3 transition-all duration-200 focus-within:bg-amber-400/10 hover:bg-white/[0.055]',
+                          isActive ? 'bg-amber-400/10 shadow-[inset_3px_0_0_rgba(234,179,8,0.9)]' : '',
+                          conv.unread_count > 0 && !isActive && 'bg-amber-400/[0.045]'
                         )}
                         onClick={() => handleSelectConversation(conv)}
                       >
-                        <div className={cn('h-10 w-10 rounded-full flex items-center justify-center shrink-0 border', channelColors[normalized] || 'bg-muted')}>
+                        <div className={cn('h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-105', channelColors[normalized] || 'bg-muted')}>
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <span className={cn('text-sm truncate', conv.unread_count > 0 ? 'font-semibold' : 'font-medium')}>
+                            <span className={cn('truncate text-sm text-zinc-100', conv.unread_count > 0 ? 'font-semibold' : 'font-medium')}>
                               {conv.client_name}
                             </span>
-                            <span className="text-[11px] text-muted-foreground shrink-0">
+                            <span className="shrink-0 text-[11px] text-zinc-500">
                               {formatConversationDate(conv.last_message_date)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between gap-2 mt-0.5">
-                            <p className={cn('text-xs truncate', conv.unread_count > 0 ? 'text-foreground' : 'text-muted-foreground')}>
+                            <p className={cn('truncate text-xs', conv.unread_count > 0 ? 'text-zinc-100' : 'text-zinc-500')}>
                               {conv.last_message_direction === 'outbound' && (
                                 <span className="text-muted-foreground">You: </span>
                               )}
@@ -860,7 +866,7 @@ export default function Conversations() {
         {/* Resizable Drag Handle */}
         {!isMobile && showList && (
           <div
-            className="w-1.5 hover:w-2 bg-transparent hover:bg-primary/20 cursor-col-resize transition-all flex-shrink-0 relative group"
+            className="group relative w-1.5 flex-shrink-0 cursor-col-resize bg-transparent transition-all hover:w-2 hover:bg-amber-400/15"
             onMouseDown={(e) => {
               e.preventDefault();
               isDraggingConvRef.current = true;
@@ -868,15 +874,15 @@ export default function Conversations() {
               dragStartWidthConvRef.current = convPanelWidth;
             }}
           >
-            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-border group-hover:bg-primary/40 transition-colors" />
+            <div className="absolute inset-y-4 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-white/10 transition-colors group-hover:bg-amber-300/50" />
           </div>
         )}
 
         {/* ─── RIGHT PANEL: Thread View ─── */}
         {(selectedId || !isMobile) && (
-          <div className={cn('flex flex-col flex-1 min-w-0', !selectedId && 'items-center justify-center')}>
+          <div className={cn('flex min-w-0 flex-1 flex-col bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.08),transparent_28%)]', !selectedId && 'items-center justify-center')}>
             {!selectedId ? (
-              <div className="text-center text-muted-foreground">
+              <div className="rounded-3xl border border-amber-300/15 bg-black/35 p-10 text-center text-zinc-400 shadow-2xl shadow-black/25">
                 <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm font-medium">Select a conversation</p>
                 <p className="text-xs mt-1">Choose from the list to view messages</p>
@@ -884,16 +890,16 @@ export default function Conversations() {
             ) : selectedConversation ? (
               <>
                 {/* Thread header with client context */}
-                <div className="flex items-center gap-3 px-4 py-2.5 border-b shrink-0">
+                <div className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-zinc-950/70 px-4 py-3">
                   {!isMobile && (
-                    <div className={cn('h-9 w-9 rounded-full flex items-center justify-center border shrink-0',
+                    <div className={cn('h-10 w-10 rounded-2xl flex items-center justify-center border shrink-0',
                       channelColors[normalizeChannel(selectedConversation.channel_type)] || 'bg-muted'
                     )}>
                       {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-4 w-4" />; })()}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{selectedConversation.client_name}</p>
+                    <p className="truncate text-sm font-semibold text-white">{selectedConversation.client_name}</p>
                     <p className="text-[11px] text-muted-foreground capitalize">
                       {normalizeChannel(selectedConversation.channel_type).replace('_', ' ')}
                       {selectedConversation.client_id && (
@@ -920,7 +926,7 @@ export default function Conversations() {
 
                 {/* Messages */}
                 <ScrollArea className="flex-1 min-h-0">
-                  <div className="px-4 py-2">
+                  <div className="px-4 py-4">
                     {loadingMessages ? (
                       <div className="flex items-center justify-center py-16">
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -934,7 +940,7 @@ export default function Conversations() {
                       <div className="space-y-4">
                         {groupedMessages.map((group) => (
                           <div key={group.label}>
-                            <div className="flex items-center gap-2 my-3">
+                            <div className="my-4 flex items-center gap-2">
                               <Separator className="flex-1" />
                               <span className="text-[10px] text-muted-foreground font-medium px-2 whitespace-nowrap">{group.label}</span>
                               <Separator className="flex-1" />
@@ -967,10 +973,10 @@ export default function Conversations() {
                                 return (
                                   <div key={msg.id} className={cn('flex', isOutbound ? 'justify-end' : 'justify-start')}>
                                     <div className={cn(
-                                      'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm',
+                                      'max-w-[75%] rounded-2xl border px-3.5 py-2 text-sm shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl',
                                       isOutbound
-                                        ? getOutboundBubbleClass()
-                                        : 'bg-muted rounded-bl-md'
+                                        ? `${getOutboundBubbleClass()} border-white/10`
+                                        : 'rounded-bl-md border-white/10 bg-zinc-900/90 text-zinc-100'
                                     )}>
                                       {!isOutbound && msg.sender_name && (
                                         <p className="text-[10px] font-medium mb-0.5 opacity-70">{msg.sender_name}</p>
@@ -1009,12 +1015,12 @@ export default function Conversations() {
                 </ScrollArea>
 
                 {/* Reply composer */}
-                <div className="border-t px-4 py-3 shrink-0 space-y-2">
+                <div className="shrink-0 space-y-2 border-t border-white/10 bg-zinc-950/75 px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.25)]">
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-muted-foreground whitespace-nowrap">Send via:</span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs px-2.5">
+                        <Button variant="outline" size="sm" className="h-7 gap-1.5 border-amber-300/20 bg-black/35 px-2.5 text-xs text-amber-100 hover:bg-amber-400/10">
                           {(() => { const I = channelIcons[replyChannel] || MessageSquare; return <I className="h-3 w-3" />; })()}
                           <span className="capitalize">{replyChannel === 'sms' ? 'SMS' : replyChannel === 'whatsapp' ? 'WhatsApp' : 'Email'}</span>
                           <ChevronDown className="h-3 w-3 opacity-50" />
@@ -1056,7 +1062,7 @@ export default function Conversations() {
                         placeholder="Email subject..."
                         value={emailSubject}
                         onChange={(e) => setEmailSubject(e.target.value)}
-                        className="h-8 text-sm"
+                        className="h-8 border-white/10 bg-black/35 text-sm focus-visible:border-amber-300/50 focus-visible:ring-amber-300/25"
                       />
                     </>
                   )}
