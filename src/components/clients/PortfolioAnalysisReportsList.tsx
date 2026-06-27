@@ -47,6 +47,7 @@ import {
   Loader2,
   Building2,
   Eye,
+  AlertCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -128,7 +129,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
   const queryClient = useQueryClient();
 
   // Fetch portfolio analysis reports via secure function
-  const { data: reports = [], isLoading, isRefetching, refetch } = useQuery({
+  const { data: reports = [], isLoading, isError, error, isRefetching, refetch } = useQuery({
     queryKey: ['portfolio-analysis-reports', clientId],
     queryFn: async () => {
       const { data, error } = await invokeSecureFunction('get-client-data', {
@@ -248,10 +249,46 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-3xl border border-amber-400/15 bg-black/30 p-8 shadow-xl shadow-black/20">
-        <div className="flex flex-col items-center gap-3 text-slate-300">
-          <Loader2 className="h-8 w-8 animate-spin text-amber-300" />
-          <p className="text-sm font-medium">Loading portfolio intelligence...</p>
+      <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-3xl border border-amber-400/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.72),rgba(0,0,0,0.55))] p-8 shadow-xl shadow-black/20">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
+        <div className="flex flex-col items-center gap-4 text-center text-slate-300">
+          <div className="rounded-3xl border border-amber-300/20 bg-amber-300/10 p-4 shadow-lg shadow-amber-950/20">
+            <Loader2 className="h-8 w-8 animate-spin text-amber-300" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-100">Loading portfolio intelligence...</p>
+            <p className="mt-1 text-xs text-slate-500">Retrieving generated portfolio analysis reports.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="relative overflow-hidden rounded-3xl border border-red-300/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.16),rgba(0,0,0,0.58))] p-6 shadow-xl shadow-black/20">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-red-200/35 to-transparent" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="rounded-2xl border border-red-300/25 bg-red-500/10 p-3 text-red-200">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-red-100">Unable to load portfolio reports</h3>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                {error instanceof Error ? error.message : 'An unexpected error occurred while loading portfolio analysis reports.'}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="rounded-2xl border-red-300/25 bg-red-500/10 text-red-100 transition-all hover:border-red-300/45 hover:bg-red-500/15 hover:text-red-50 focus-visible:ring-2 focus-visible:ring-red-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -363,11 +400,13 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               <div className="mb-4 rounded-3xl border border-white/10 bg-white/5 p-4">
                 <FileText className="h-12 w-12 text-amber-200/80" />
               </div>
-              <h3 className="text-lg font-semibold text-white">No reports found</h3>
-              <p className="mt-1 text-sm text-slate-400">
-                {clientId
-                  ? 'Generate a portfolio analysis to see reports here'
-                  : 'No portfolio analysis reports have been generated yet'
+              <h3 className="text-lg font-semibold text-white">{searchQuery ? 'No matching reports found' : 'No reports found'}</h3>
+              <p className="mt-1 max-w-md text-sm leading-6 text-slate-400">
+                {searchQuery
+                  ? 'Try adjusting the client name search to reveal matching portfolio analysis reports.'
+                  : clientId
+                    ? 'Generate a portfolio analysis to see reports here'
+                    : 'No portfolio analysis reports have been generated yet'
                 }
               </p>
             </div>
