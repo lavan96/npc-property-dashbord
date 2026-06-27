@@ -50,6 +50,7 @@ import {
   Inbox,
   FilterX,
   MessagesSquare,
+  Sparkles,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -1186,7 +1187,8 @@ export default function Conversations() {
                 <span className="font-semibold uppercase tracking-[0.22em] text-amber-100/70">
                   Inbox
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035))] px-2.5 py-1 font-semibold text-amber-100/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.75)]" />
                   {filteredConversations.length} shown
                 </span>
               </div>
@@ -1199,7 +1201,7 @@ export default function Conversations() {
                   aria-label="Search conversations by contact or message"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-11 rounded-2xl border-white/10 bg-black/55 pl-11 pr-4 text-sm font-medium text-zinc-100 shadow-inner shadow-black/30 outline-none transition-all duration-200 placeholder:font-normal placeholder:text-zinc-400/80 hover:border-white/20 hover:bg-black/65 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/25 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  className="h-11 rounded-2xl border-amber-100/10 bg-[linear-gradient(135deg,rgba(0,0,0,0.62),rgba(39,39,42,0.38))] pl-11 pr-4 text-sm font-medium text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),inset_0_-10px_22px_rgba(0,0,0,0.20)] outline-none transition-all duration-200 placeholder:font-normal placeholder:text-zinc-500 hover:border-amber-100/24 hover:bg-black/65 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/25 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                 />
               </div>
               <div className="flex flex-wrap gap-1.5 rounded-2xl border border-white/10 bg-black/35 p-1.5 shadow-inner shadow-black/30">
@@ -1462,6 +1464,10 @@ export default function Conversations() {
                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
                 <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-amber-300/10 blur-3xl" />
                 <div className="pointer-events-none absolute -bottom-20 left-1/2 h-32 w-56 -translate-x-1/2 rounded-full bg-white/[0.035] blur-3xl" />
+                <div className="relative mx-auto mb-4 flex w-fit items-center gap-2 rounded-full border border-amber-200/15 bg-amber-300/[0.065] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-100/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                  <Sparkles className="h-3 w-3" />
+                  CRM workspace
+                </div>
                 <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-100/22 bg-[radial-gradient(circle_at_35%_25%,rgba(254,243,199,0.18),rgba(245,158,11,0.09)_45%,rgba(24,24,27,0.66))] shadow-[0_0_55px_rgba(234,179,8,0.16),inset_0_1px_0_rgba(255,255,255,0.16)] ring-1 ring-white/[0.055]">
                   <div className="absolute inset-2 rounded-[1.3rem] border border-white/[0.055] bg-black/10" />
                   <MessageSquare
@@ -1689,11 +1695,11 @@ export default function Conversations() {
                       {groupedMessages.map((group) => (
                         <div key={group.label}>
                           <div className="my-4 flex items-center gap-2">
-                            <Separator className="flex-1" />
-                            <span className="text-[10px] text-muted-foreground font-medium px-2 whitespace-nowrap">
+                            <Separator className="flex-1 bg-gradient-to-r from-transparent via-amber-100/16 to-white/5" />
+                            <span className="whitespace-nowrap rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100/60 shadow-inner shadow-black/20">
                               {group.label}
                             </span>
-                            <Separator className="flex-1" />
+                            <Separator className="flex-1 bg-gradient-to-r from-white/5 via-amber-100/16 to-transparent" />
                           </div>
                           <div className="space-y-2">
                             {group.messages.map((msg) => {
@@ -1704,17 +1710,17 @@ export default function Conversations() {
                                   "",
                               );
 
-                              // Channel-specific outbound colors (light shades for readability)
+                              // Channel-specific outbound bubble treatments tuned for the dark CRM workspace
                               const getOutboundBubbleClass = () => {
                                 switch (msgChannel) {
                                   case "sms":
-                                    return "bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-br-md";
+                                    return "rounded-br-md border-blue-200/22 bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(15,23,42,0.92))] text-blue-50 shadow-[0_12px_34px_rgba(37,99,235,0.16)]";
                                   case "whatsapp":
-                                    return "bg-green-100 dark:bg-green-900/40 text-foreground rounded-br-md";
+                                    return "rounded-br-md border-emerald-200/22 bg-[linear-gradient(135deg,rgba(16,185,129,0.26),rgba(6,78,59,0.34)_38%,rgba(15,23,42,0.94))] text-emerald-50 shadow-[0_12px_34px_rgba(16,185,129,0.14)]";
                                   case "email":
-                                    return "bg-amber-100 dark:bg-amber-900/40 text-foreground rounded-br-md";
+                                    return "rounded-br-md border-amber-200/26 bg-[linear-gradient(135deg,rgba(245,158,11,0.30),rgba(120,53,15,0.30)_42%,rgba(15,23,42,0.94))] text-amber-50 shadow-[0_12px_34px_rgba(245,158,11,0.14)]";
                                   default:
-                                    return "bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-br-md";
+                                    return "rounded-br-md border-blue-200/22 bg-[linear-gradient(135deg,rgba(59,130,246,0.28),rgba(15,23,42,0.92))] text-blue-50 shadow-[0_12px_34px_rgba(37,99,235,0.16)]";
                                 }
                               };
 
@@ -1722,13 +1728,13 @@ export default function Conversations() {
                                 if (!isOutbound) return "text-muted-foreground";
                                 switch (msgChannel) {
                                   case "sms":
-                                    return "text-blue-500 dark:text-blue-400";
+                                    return "text-blue-100/70";
                                   case "whatsapp":
-                                    return "text-green-600 dark:text-green-400";
+                                    return "text-emerald-100/70";
                                   case "email":
-                                    return "text-amber-600 dark:text-amber-400";
+                                    return "text-amber-100/70";
                                   default:
-                                    return "text-blue-500 dark:text-blue-400";
+                                    return "text-blue-100/70";
                                 }
                               };
 
@@ -1746,8 +1752,8 @@ export default function Conversations() {
                                     className={cn(
                                       "max-w-[82%] rounded-2xl border px-3.5 py-2 text-sm shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-200/35 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28),0_0_24px_rgba(245,158,11,0.10)] md:max-w-[72%]",
                                       isOutbound
-                                        ? `${getOutboundBubbleClass()} border-white/10`
-                                        : "rounded-bl-md border-white/10 bg-zinc-900/90 text-zinc-100",
+                                        ? getOutboundBubbleClass()
+                                        : "rounded-bl-md border-white/10 bg-[linear-gradient(135deg,rgba(39,39,42,0.96),rgba(9,9,11,0.92))] text-zinc-100 shadow-[0_12px_30px_rgba(0,0,0,0.22)]",
                                     )}
                                   >
                                     {!isOutbound && msg.sender_name && (
@@ -1813,10 +1819,10 @@ export default function Conversations() {
               </ScrollArea>
 
               {/* Reply composer */}
-              <div className="shrink-0 space-y-3 border-t border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+              <div className="shrink-0 space-y-3 border-t border-amber-100/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.78),rgba(9,9,11,0.96))] px-4 py-3 shadow-[0_-18px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                    Send via:
+                  <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100/50">
+                    Send via
                   </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -1878,7 +1884,7 @@ export default function Conversations() {
                       >
                         <SelectTrigger
                           aria-label="Select email reply mailbox"
-                          className="h-9 min-w-0 flex-1 text-xs focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                          className="h-9 min-w-0 flex-1 rounded-full border-amber-100/15 bg-black/35 text-xs text-zinc-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -1903,7 +1909,7 @@ export default function Conversations() {
                       aria-label="Email subject"
                       value={emailSubject}
                       onChange={(e) => setEmailSubject(e.target.value)}
-                      className="h-10 border-white/10 bg-black/35 text-sm focus-visible:border-amber-300/50 focus-visible:ring-amber-300/25"
+                      className="h-10 rounded-2xl border-amber-100/12 bg-black/35 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:border-amber-300/50 focus-visible:ring-amber-300/25"
                     />
                   </>
                 )}
