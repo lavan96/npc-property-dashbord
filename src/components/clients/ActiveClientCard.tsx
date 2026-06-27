@@ -398,7 +398,8 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className={cn("h-8 w-8 shrink-0 hover:border-yellow-400/35 hover:bg-yellow-400/10 hover:text-yellow-400 focus-visible:ring-yellow-400/30", activeClientActionButtonClass)}
+              aria-label={client.is_favorite ? 'Remove from active clients' : 'Add to active clients'}
+              className={cn("h-10 w-10 shrink-0 hover:border-yellow-400/35 hover:bg-yellow-400/10 hover:text-yellow-400 focus-visible:ring-yellow-400/30", activeClientActionButtonClass)}
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
             >
@@ -499,7 +500,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="client-tracker-gold-interaction h-9 w-full rounded-xl border-primary/25 bg-primary/5 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/35"
+            className="client-tracker-gold-interaction h-10 w-full rounded-xl border-primary/25 bg-primary/5 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/35"
             onClick={() => setIsAddingNote(true)}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -575,7 +576,8 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={cn("h-7 w-7 p-0", activeClientActionButtonClass)}
+                                aria-label={`Open note actions for ${format(new Date(note.created_at), 'dd MMM yyyy, h:mm a')}`}
+                                className={cn("h-9 w-9 p-0", activeClientActionButtonClass)}
                               >
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </Button>

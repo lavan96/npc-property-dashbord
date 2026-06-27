@@ -863,7 +863,7 @@ export default function ClientTracker() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/70 bg-background/80 text-xs text-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35">
+                <Button variant="outline" size="sm" aria-label="Export client tracker" className="h-9 rounded-xl border-border/70 bg-background/80 text-xs text-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35">
                   <Download className="h-3.5 w-3.5 mr-1" />
                   Export
                 </Button>
@@ -943,7 +943,7 @@ export default function ClientTracker() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-xl border-border/70 bg-background/80 text-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35">
+                <Button variant="outline" size="sm" aria-label="Export client tracker" className="rounded-xl border-border/70 bg-background/80 text-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35">
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
@@ -1129,6 +1129,7 @@ export default function ClientTracker() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
             <Input
               placeholder="Search clients..."
+              aria-label="Search clients"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 pl-10 pr-4 text-sm shadow-inner transition-all placeholder:text-muted-foreground/70 hover:border-primary/30 hover:bg-background/95 focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -1139,7 +1140,7 @@ export default function ClientTracker() {
           {isMobile ? (
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="h-11 shrink-0 rounded-xl border-border/70 bg-background/85 px-3 shadow-inner hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-primary/25">
+                <Button variant="outline" size="sm" aria-label="Open client filters" className="h-11 shrink-0 rounded-xl border-border/70 bg-background/85 px-3 shadow-inner hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-primary/25">
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
@@ -1151,7 +1152,7 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Pipeline</label>
                     <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                      <SelectTrigger className={cn("client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 focus:ring-primary/30", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5")}>
+                      <SelectTrigger aria-label="Filter by pipeline" className={cn("client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 focus:ring-primary/30", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5")}>
                         <Layers className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Select Pipeline" />
                       </SelectTrigger>
@@ -1168,7 +1169,7 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Stage</label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className={cn("client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 focus:ring-primary/30", statusFilter !== 'all' && "border-primary/45 bg-primary/5")}>
+                      <SelectTrigger aria-label="Filter by stage" className={cn("client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 focus:ring-primary/30", statusFilter !== 'all' && "border-primary/45 bg-primary/5")}>
                         <Filter className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Filter by stage" />
                       </SelectTrigger>
@@ -1192,7 +1193,7 @@ export default function ClientTracker() {
             <>
               {/* Desktop: Inline filters */}
               <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                <SelectTrigger className={cn("client-tracker-gold-interaction h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 hover:bg-background/95 focus:ring-primary/30 md:w-[230px]", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                <SelectTrigger aria-label="Filter by pipeline" className={cn("client-tracker-gold-interaction h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 hover:bg-background/95 focus:ring-primary/30 md:w-[230px]", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
                   <Layers className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Select Pipeline" />
                 </SelectTrigger>
@@ -1207,7 +1208,7 @@ export default function ClientTracker() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className={cn("client-tracker-gold-interaction h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 hover:bg-background/95 focus:ring-primary/30 md:w-[215px]", statusFilter !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                <SelectTrigger aria-label="Filter by stage" className={cn("client-tracker-gold-interaction h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 hover:bg-background/95 focus:ring-primary/30 md:w-[215px]", statusFilter !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
                   <Filter className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Filter by stage" />
                 </SelectTrigger>
@@ -1266,7 +1267,7 @@ export default function ClientTracker() {
       {/* Tabs for different views */}
       {(pipelines.length > 0 || clients.length > 0) && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-border/70 bg-card/55 p-3 shadow-xl shadow-black/15 backdrop-blur md:p-4">
-          <div className="-mx-3 overflow-x-auto px-3 md:mx-0 md:px-0">
+          <div className="-mx-3 overflow-x-auto px-3 md:mx-0 md:px-0" aria-label="Client tracker view tabs">
             <TabsList className="inline-flex h-12 w-auto min-w-max gap-1 rounded-2xl border border-border/70 bg-background/80 p-1.5 shadow-inner">
               {!isMobile && (
                 <TabsTrigger
@@ -1320,8 +1321,8 @@ export default function ClientTracker() {
             )}
             
             <div className="rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(135deg,hsl(var(--background)/0.72),hsl(var(--card)/0.62))] p-3 shadow-inner shadow-black/20">
-              <ScrollArea className="client-tracker-kanban-scroll w-full whitespace-nowrap rounded-[1.15rem]">
-                <div className="flex gap-5 pb-5 pr-3">
+              <ScrollArea className="client-tracker-kanban-scroll w-full whitespace-nowrap rounded-[1.15rem]" aria-label="Kanban board stages">
+                <div className="flex gap-4 pb-5 pr-3 sm:gap-5">
                 {/* Render stages in order */}
                 {stagesForPipeline.map(stage => {
                   const stageClients = groupedByStage[stage.id] || [];
@@ -1330,7 +1331,7 @@ export default function ClientTracker() {
                   return (
                     <div 
                       key={stage.id} 
-                      className="w-[21rem] flex-shrink-0"
+                      className="w-[18.5rem] flex-shrink-0 sm:w-[21rem]"
                       onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, stage.id) : undefined}
                       onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
                       onDrop={isDragDropEnabled ? (e) => handleDrop(e, stage.id, stage.name) : undefined}
@@ -1400,7 +1401,7 @@ export default function ClientTracker() {
                 {/* Unassigned column */}
                 {(groupedByStage['unassigned']?.length > 0 || isDragDropEnabled) && (
                   <div 
-                    className="w-[21rem] flex-shrink-0"
+                    className="w-[18.5rem] flex-shrink-0 sm:w-[21rem]"
                     onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, 'unassigned') : undefined}
                     onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
                     onDrop={isDragDropEnabled ? (e) => handleDrop(e, null, 'Unassigned') : undefined}
@@ -1570,8 +1571,9 @@ export default function ClientTracker() {
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
+                                  aria-label={`Edit ${formatFullName(client.primary_first_name, client.primary_surname)}`}
                                   onClick={() => setEditingClient(client)}
-                                  className={cn("h-9 w-9 opacity-85 group-hover:opacity-100", actionIconButtonClass)}
+                                  className={cn("h-10 w-10 opacity-85 group-hover:opacity-100", actionIconButtonClass)}
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
@@ -1604,8 +1606,8 @@ export default function ClientTracker() {
           {/* Table View */}
           <TabsContent value="table" className="mt-4">
             <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
-              <CardContent className="client-tracker-kanban-scroll overflow-x-auto p-0">
-                <Table className="min-w-[1120px]">
+              <CardContent className="client-tracker-kanban-scroll overflow-x-auto p-0" role="region" aria-label="Client tracker table" tabIndex={0}>
+                <Table className="min-w-[1120px]" aria-label="Client tracker client table">
                   <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-xl">
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableHead className="h-12 whitespace-nowrap text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Client Name</TableHead>
@@ -1701,7 +1703,7 @@ export default function ClientTracker() {
                           <TableCell className="text-right">
                             <Dialog>
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className={cn("h-8 w-8 p-0", actionIconButtonClass)}>
+                                <Button variant="ghost" size="sm" aria-label={`Edit ${formatFullName(client.primary_first_name, client.primary_surname)}`} className={cn("h-10 w-10 p-0", actionIconButtonClass)}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
                               </DialogTrigger>
@@ -1913,6 +1915,15 @@ function KanbanCard({
         isDragging && "client-tracker-drop-glow z-20 -rotate-1 scale-[1.02] cursor-grabbing border-primary/80 bg-primary/12 opacity-90 shadow-2xl shadow-primary/30 ring-2 ring-primary/60 before:bg-primary"
       )}
       onClick={onEdit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onEdit();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Edit ${formatFullName(client.primary_first_name, client.primary_surname)}`}
       draggable={isDraggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
