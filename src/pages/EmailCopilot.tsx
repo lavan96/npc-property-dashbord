@@ -2036,16 +2036,18 @@ export default function EmailCopilot() {
               </div>
               
               {/* Email List Header */}
-              <div className="px-4 py-2 border-b border-border/70 bg-muted/25">
+              <div className="border-b border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--background)/0.22))] px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Inbox className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/15 bg-primary/10">
+                      <Inbox className="h-3.5 w-3.5 text-primary" />
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums text-foreground">
                       {filteredEmails.length} {filteredEmails.length === 1 ? 'email' : 'emails'}
                     </span>
                     {sortedThreadKeys.length !== filteredEmails.length && (
-                      <span className="text-xs text-muted-foreground">
-                        ({sortedThreadKeys.length} {sortedThreadKeys.length === 1 ? 'thread' : 'threads'})
+                      <span className="rounded-full border border-border/60 bg-background/55 px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                        {sortedThreadKeys.length} {sortedThreadKeys.length === 1 ? 'thread' : 'threads'}
                       </span>
                     )}
                   </div>
@@ -2054,28 +2056,30 @@ export default function EmailCopilot() {
             </>
           ) : (
             /* Sent Replies Header */
-            <div className="px-4 py-2 border-b bg-muted/30">
+            <div className="border-b border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--background)/0.22))] px-4 py-3">
               <div className="flex items-center gap-2">
-                <Send className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primary/15 bg-primary/10">
+                  <Send className="h-3.5 w-3.5 text-primary" />
+                </span>
+                <span className="text-sm font-semibold tabular-nums text-foreground">
                   {sentCount} sent {sentCount === 1 ? 'email' : 'emails'}
                 </span>
               </div>
             </div>
           )}
           
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 bg-background/15 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
             {viewMode === 'inbox' ? (
               // Inbox view
               <>
                 {isLoading ? (
-                  <div className="p-8 text-center">
-                    <RefreshCw className="h-6 w-6 mx-auto mb-2 animate-spin text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Loading emails...</p>
+                  <div className="m-4 rounded-2xl border border-border/60 bg-card/55 p-8 text-center shadow-inner shadow-black/10">
+                    <RefreshCw className="mx-auto mb-3 h-6 w-6 animate-spin text-primary/70" />
+                    <p className="text-sm font-medium text-muted-foreground">Loading emails...</p>
                   </div>
                 ) : filteredEmails.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <Inbox className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <div className="m-4 rounded-2xl border border-dashed border-primary/20 bg-card/45 p-8 text-center shadow-inner shadow-black/10">
+                    <Inbox className="mx-auto mb-3 h-12 w-12 text-primary/35" />
                     <p className="text-sm font-medium text-muted-foreground">
                       {searchQuery || statusFilter !== 'all' ? 'No matching emails' : 'No emails'}
                     </p>
@@ -2084,7 +2088,7 @@ export default function EmailCopilot() {
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/60">
+                  <div className="divide-y divide-border/45">
                     {sortedThreadKeys.map((threadKey) => {
                       const threadEmails = emailThreads.get(threadKey)!;
                       const isThreaded = threadEmails.length > 1;
@@ -2108,7 +2112,7 @@ export default function EmailCopilot() {
                                 handleSelectEmail(latestEmail);
                               }
                             }}
-                            className={`group px-4 py-3 cursor-pointer transition-all hover:bg-primary/5 hover:shadow-inner ${
+                            className={`group px-4 py-3.5 cursor-pointer transition-all hover:bg-primary/5 hover:shadow-inner ${
                               selectedEmail?.id === latestEmail.id ? 'bg-primary/10 border-l-4 border-l-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]' : ''
                             } ${hasUnread ? 'bg-primary/5' : ''}`}
                           >
@@ -2260,15 +2264,15 @@ export default function EmailCopilot() {
               // Sent view - shows both synced sent emails AND manually sent replies
               <>
                 {filteredEmails.length === 0 && sentReplies.length === 0 ? (
-                  <div className="p-8 text-center">
-                    <Send className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+                  <div className="m-4 rounded-2xl border border-dashed border-primary/20 bg-card/45 p-8 text-center shadow-inner shadow-black/10">
+                    <Send className="mx-auto mb-3 h-12 w-12 text-primary/35" />
                     <p className="text-sm font-medium text-muted-foreground">No sent emails</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Emails you send will appear here
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/60">
+                  <div className="divide-y divide-border/45">
                     {/* Show synced sent emails from Outlook */}
                     {filteredEmails.map((email) => (
                       <div
