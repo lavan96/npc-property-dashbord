@@ -49,7 +49,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
     <Dialog open={!!chart} onOpenChange={() => onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/88 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[92dvh] w-[calc(100vw-1.5rem)] max-w-6xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-card/98 p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-white/10 backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:w-[min(94vw,72rem)]">
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[94dvh] w-[calc(100vw-1rem)] max-w-7xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-card/98 p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-white/10 backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:w-[min(96vw,84rem)]">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
           <div className="pointer-events-none absolute -right-24 -top-28 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-28 bottom-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
@@ -86,29 +86,39 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
               </div>
             </DialogHeader>
 
-            <div className="relative mt-5 min-h-[280px] flex-1">
-              <div className="flex h-[48vh] min-h-[280px] max-h-[560px] items-center justify-center rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.08),transparent_38%),hsl(var(--background)/0.86)] p-3 shadow-inner ring-1 ring-white/5 sm:p-5">
-                {renderChartImage(chart)}
+            <div className="relative mt-5 min-h-[320px] flex-1 px-0 sm:px-14">
+              <div className="relative flex h-[56vh] min-h-[320px] max-h-[680px] items-center justify-center overflow-hidden rounded-[1.75rem] border border-amber-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-white/10 sm:p-5 lg:p-7">
+                <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent" />
+                <div className="pointer-events-none absolute -left-24 top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
+                <div className="pointer-events-none absolute -right-20 bottom-8 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
+                <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.25rem] border border-slate-200/85 bg-white p-4 shadow-[0_20px_58px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(15,23,42,0.06)] sm:p-6 lg:p-8 dark:border-white/15">
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.62),transparent_28%,transparent_72%,rgba(15,23,42,0.035))]" />
+                  <div className="relative flex h-full w-full items-center justify-center [&>div]:max-h-full [&>div]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_svg]:max-h-full [&_svg]:max-w-full">
+                    {renderChartImage(chart)}
+                  </div>
+                </div>
               </div>
 
               {hasPrev && (
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute left-2 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full border-amber-300/35 bg-background/90 shadow-xl shadow-black/15 backdrop-blur hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-amber-300/60"
+                  className="absolute left-3 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full border-amber-200/45 bg-slate-950/78 text-amber-100 shadow-[0_16px_42px_rgba(0,0,0,0.36)] ring-1 ring-white/10 backdrop-blur-xl transition-all hover:-translate-x-0.5 hover:scale-105 hover:border-amber-200/80 hover:bg-amber-400/20 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:left-2 lg:left-4"
                   onClick={onPrev}
+                  aria-label="View previous chart"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-6 w-6 drop-shadow" />
                 </Button>
               )}
               {hasNext && (
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute right-2 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full border-amber-300/35 bg-background/90 shadow-xl shadow-black/15 backdrop-blur hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-amber-300/60"
+                  className="absolute right-3 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full border-amber-200/45 bg-slate-950/78 text-amber-100 shadow-[0_16px_42px_rgba(0,0,0,0.36)] ring-1 ring-white/10 backdrop-blur-xl transition-all hover:translate-x-0.5 hover:scale-105 hover:border-amber-200/80 hover:bg-amber-400/20 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:right-2 lg:right-4"
                   onClick={onNext}
+                  aria-label="View next chart"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-6 w-6 drop-shadow" />
                 </Button>
               )}
             </div>
