@@ -77,7 +77,8 @@ const premiumQualityAction = `${premiumActionBase} border-emerald-300/25 bg-emer
 const premiumAlertAction = `${premiumActionBase} border-amber-300/30 bg-amber-400/10 text-amber-100 hover:border-amber-300/55 hover:bg-amber-400/15 hover:text-amber-50 focus-visible:ring-amber-300`;
 const premiumDangerAction = `${premiumActionBase} border-red-400/35 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/15 hover:text-red-100 focus-visible:ring-red-300`;
 const premiumSecondaryAction = `${premiumActionBase} border-white/10 bg-white/5 text-zinc-100 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-amber-300`;
-const premiumTabTrigger = "rounded-xl border border-transparent px-3 py-2 text-muted-foreground transition-all duration-200 hover:border-amber-400/25 hover:bg-amber-400/10 hover:text-amber-100 data-[state=active]:border-amber-400/40 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500/25 data-[state=active]:to-yellow-300/10 data-[state=active]:text-amber-100 data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/10";
+const premiumTabList = "inline-flex h-auto min-w-max items-center gap-1.5 rounded-[1.35rem] border border-white/10 bg-black/45 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl";
+const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-zinc-400 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-400/25 data-[state=active]:via-yellow-300/15 data-[state=active]:to-amber-500/10 data-[state=active]:text-amber-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] md:text-sm";
 
 interface SquadAssistant {
   id: string;
@@ -528,34 +529,32 @@ const CallLogs = () => {
 
       {/* Main Tabs */}
       <Tabs defaultValue="logs" className="w-full">
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className={cn("h-auto gap-1 rounded-2xl border border-white/10 bg-black/35 p-1.5 shadow-xl shadow-black/20", isMobile ? "inline-flex w-auto" : "")}>
-            <TabsTrigger value="logs" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
-              <Phone className="w-3.5 h-3.5 md:w-4 md:h-4" />
+        <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)] md:mx-0 md:px-0">
+          <TabsList className={cn(premiumTabList, isMobile ? "w-auto" : "")}>
+            <TabsTrigger value="logs" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <Phone className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Call</span> Logs
             </TabsTrigger>
-            <TabsTrigger value="issues" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
-              <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="issues" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Issues</span>
             </TabsTrigger>
-            <TabsTrigger value="live" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
-              <Radio className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="live" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <Radio className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               Live
             </TabsTrigger>
-            <TabsTrigger value="trends" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
-              <LineChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="trends" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <LineChart className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               Trends
             </TabsTrigger>
-            <TabsTrigger value="analytics" className={cn("flex items-center gap-1.5 md:gap-2 text-xs md:text-sm", premiumTabTrigger)}>
-              <PieChart className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <TabsTrigger value="analytics" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <PieChart className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
               <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
-            {!isMobile && (
-              <TabsTrigger value="squad-analytics" className={cn("flex items-center gap-2", premiumTabTrigger)}>
-                <Users className="w-4 h-4" />
-                Squad Analytics
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="squad-analytics" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
+              <Users className="h-4 w-4 shrink-0 transition-colors group-data-[state=active]:text-amber-200" />
+              Squad Analytics
+            </TabsTrigger>
           </TabsList>
         </div>
 
