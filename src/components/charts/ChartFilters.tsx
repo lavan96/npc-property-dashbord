@@ -46,7 +46,7 @@ export function ChartFilters({
   );
 
   return (
-    <div className="rounded-[1.5rem] border border-primary/15 bg-card/90 p-3 shadow-2xl shadow-black/10 backdrop-blur-xl sm:p-4">
+    <div className="rounded-[1.5rem] border border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.08),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.88))] p-3 shadow-2xl shadow-black/10 backdrop-blur-xl sm:p-4">
       <div className="pointer-events-none -mx-1 -mt-1 mb-3 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
       {/* Search + filters */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -59,7 +59,7 @@ export function ChartFilters({
             placeholder="Search charts by title, report, or analysis..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-12 rounded-2xl border-primary/15 bg-background/85 pl-12 pr-11 text-base font-medium shadow-inner shadow-black/5 transition-all placeholder:text-muted-foreground/80 hover:border-amber-300/45 hover:bg-amber-500/5 focus-visible:border-amber-300/85 focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-amber-300/24 focus-visible:shadow-[inset_0_1px_0_hsl(var(--background)),0_0_0_1px_hsl(43_96%_56%/0.18),0_14px_34px_hsl(43_74%_49%/0.12)]"
+            className="h-12 rounded-2xl border-primary/15 bg-background/85 pl-12 pr-11 text-base font-medium shadow-inner shadow-black/5 transition-all placeholder:text-foreground/45 hover:border-amber-300/45 hover:bg-amber-500/5 focus-visible:border-amber-300/85 focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-amber-300/24 focus-visible:shadow-[inset_0_1px_0_hsl(var(--background)),0_0_0_1px_hsl(43_96%_56%/0.18),0_14px_34px_hsl(43_74%_49%/0.12)]"
           />
           {searchQuery && (
             <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full hover:bg-amber-500/12 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onSearchChange('')} aria-label="Clear chart search">

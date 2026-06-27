@@ -35,7 +35,7 @@ interface ChartCardProps {
   selectionMode: boolean;
 }
 
-export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96)_0%,hsl(var(--muted)/0.18)_48%,hsl(var(--card)/0.92)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.10)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/75 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_34px_rgba(245,158,11,0.16)] focus-within:border-amber-300/80 focus-within:ring-2 focus-within:ring-amber-300/35 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_30px_rgba(245,158,11,0.14)] dark:ring-white/10';
+export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.075),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.98)_0%,hsl(var(--muted)/0.20)_48%,hsl(var(--card)/0.94)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.11)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/75 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_34px_rgba(245,158,11,0.16)] focus-within:border-amber-300/80 focus-within:ring-2 focus-within:ring-amber-300/35 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_30px_rgba(245,158,11,0.14)] dark:border-amber-200/12 dark:ring-white/10';
 
 const DEFAULT_TYPE_BADGE = { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: 'Chart' };
 
@@ -44,7 +44,7 @@ const CHART_TYPE_CONFIG: Record<string, { color: string; emoji: string; label: s
   pie: { color: 'border-emerald-400/35 bg-gradient-to-r from-emerald-500/12 to-teal-500/12 text-emerald-700 shadow-emerald-500/10 dark:text-emerald-200', emoji: '🥧', label: 'Pie' },
   line: { color: 'border-violet-400/35 bg-gradient-to-r from-violet-500/12 to-blue-500/12 text-violet-700 shadow-violet-500/10 dark:text-violet-200', emoji: '📈', label: 'Line' },
   doughnut: { color: 'border-amber-400/35 bg-gradient-to-r from-amber-500/12 to-orange-500/12 text-amber-700 shadow-amber-500/10 dark:text-amber-200', emoji: '🍩', label: 'Doughnut' },
-  scatter: { color: 'border-rose-400/35 bg-gradient-to-r from-rose-500/12 to-pink-500/12 text-rose-700 shadow-rose-500/10 dark:text-rose-200', emoji: '🔵', label: 'Scatter' },
+  scatter: { color: 'border-fuchsia-400/35 bg-gradient-to-r from-fuchsia-500/12 to-violet-500/12 text-fuchsia-700 shadow-fuchsia-500/10 dark:text-fuchsia-200', emoji: '✦', label: 'Scatter' },
   radar: { color: 'border-cyan-400/35 bg-gradient-to-r from-cyan-500/12 to-sky-500/12 text-cyan-700 shadow-cyan-500/10 dark:text-cyan-200', emoji: '🕸️', label: 'Radar' },
   area: { color: 'border-teal-400/35 bg-gradient-to-r from-teal-500/12 to-emerald-500/12 text-teal-700 shadow-teal-500/10 dark:text-teal-200', emoji: '📉', label: 'Area' },
   distribution: { color: 'border-sky-400/35 bg-gradient-to-r from-sky-500/12 to-cyan-500/12 text-sky-700 shadow-sky-500/10 dark:text-sky-200', emoji: '📐', label: 'Distribution' },
@@ -164,7 +164,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         </div>
       )}
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/0 to-transparent transition-all duration-300 group-hover:via-amber-300/80" />
-      <CardHeader className="space-y-3 border-b border-border/40 bg-gradient-to-b from-muted/25 to-transparent px-4 pb-4 pt-4 sm:px-5">
+      <CardHeader className="space-y-3 border-b border-amber-200/15 bg-gradient-to-b from-amber-500/8 via-muted/20 to-transparent px-4 pb-4 pt-4 sm:px-5">
         <div className="flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-start min-[420px]:justify-between">
           <div className="flex-1 min-w-0">
             <CardTitle
@@ -182,7 +182,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
                 className="mr-1 h-5 w-5 rounded-md border-2 border-amber-300/75 bg-background/90 shadow-[0_4px_12px_hsl(43_74%_49%/0.16)] ring-2 ring-background/80 transition-all hover:border-amber-300 hover:shadow-[0_0_0_3px_hsl(43_96%_56%/0.18)] focus-visible:ring-2 focus-visible:ring-amber-300/60 data-[state=checked]:border-amber-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-amber-400 data-[state=checked]:to-primary data-[state=checked]:text-primary-foreground data-[state=checked]:shadow-[0_0_0_3px_hsl(43_96%_56%/0.20)]" aria-label={`Select ${chart.title}`}
               />
             )}
-            <Badge variant="outline" className={`h-6 rounded-full px-2 py-0 text-[10px] font-semibold leading-none tracking-wide shadow-sm backdrop-blur-sm ${cfg.color}`}>
+            <Badge variant="outline" className={`inline-flex h-6 items-center gap-1 rounded-full px-2.5 py-0 text-[10px] font-bold leading-none tracking-wide shadow-sm backdrop-blur-sm ${cfg.color}`}>
               <span className="text-[11px] leading-none" aria-hidden="true">{cfg.emoji}</span>
               <span>{cfg.label}</span>
             </Badge>
@@ -270,7 +270,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
             <CollapsibleContent>
               <div className="mt-2 overflow-hidden rounded-2xl border border-amber-500/25 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.36))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_12px_28px_rgba(15,23,42,0.08)] dark:bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.16),transparent_42%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.16))]">
                 <div className="max-h-72 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]">
-                  <p className="whitespace-pre-wrap break-words text-xs leading-6 text-muted-foreground [overflow-wrap:anywhere]">
+                  <p className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/75 [overflow-wrap:anywhere]">
                     {chart.analysis_text}
                   </p>
                 </div>
@@ -287,7 +287,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
               </Button>
             )}
           </div>
-          <Button variant="ghost" size="sm" className="h-10 gap-1 rounded-full text-xs transition-all hover:border-amber-300/50 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_8px_20px_hsl(43_74%_49%/0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onExport(chart)}>
+          <Button variant="ghost" size="sm" className="h-10 gap-1 rounded-full border border-amber-300/25 bg-amber-500/8 px-3 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/14 hover:text-primary hover:shadow-[0_10px_24px_hsl(43_74%_49%/0.16)] focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onExport(chart)}>
             <Download className="h-3 w-3" /> Export
           </Button>
         </div>
