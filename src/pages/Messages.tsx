@@ -383,30 +383,30 @@ export default function Messages() {
 
         <TabsContent value="finance" className="mt-0 min-h-0">
           <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-violet-300/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
-              <CardHeader className="border-b border-violet-300/15 bg-gradient-to-r from-violet-300/12 via-blue-300/[0.05] to-transparent px-4 py-3">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
+              <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-blue-300/[0.05] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-violet-100">Clients with Finance threads</CardTitle>
+                  <CardTitle className="text-[13px] font-bold uppercase tracking-[0.18em] text-amber-100">Clients with Finance threads</CardTitle>
                   <Badge variant="outline" className="rounded-full border-blue-300/25 bg-blue-300/10 px-2 text-[10px] text-blue-100">Finance Portal</Badge>
                 </div>
               </CardHeader>
               <CardContent className="min-h-0 flex-1 p-0">
                 {loadingFinance ? (
-                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-violet-300/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
-                    <Loader2 className="h-5 w-5 animate-spin text-violet-200/80" />
+                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-amber-300/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
+                    <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
                     <p className="mt-3 text-sm font-medium text-foreground">Loading finance portal threads…</p>
                     <p className="mt-1 text-xs text-muted-foreground">Checking partner-visible finance activity.</p>
                   </div>
                 ) : filteredFinanceGroups.length === 0 ? (
-                  <div className="m-4 rounded-3xl border border-dashed border-violet-300/20 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
-                    <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-violet-200/65" />
+                  <div className="m-4 rounded-3xl border border-dashed border-amber-300/15 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
+                    <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-amber-200/65" />
                     <p className="font-medium text-foreground">{search.trim() ? 'No finance portal matches found.' : 'No finance portal threads yet.'}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {search.trim() ? 'Try another client, partner email, or message search.' : 'Finance partner threads will appear here once available.'}
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(139,92,246,0.42)_rgba(24,24,27,0.9)] lg:h-full lg:min-h-0">
+                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)] lg:h-full lg:min-h-0">
                     <div className="space-y-1.5 p-2">
                       {filteredFinanceGroups.map((g) => (
                         <button
@@ -415,12 +415,12 @@ export default function Messages() {
                           aria-pressed={selectedFinanceClientId === g.client_id}
                           aria-label={`Open Finance Portal messages for ${g.client_name}`}
                           className={cn(
-                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(196,181,253,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/50',
-                            selectedFinanceClientId === g.client_id && 'border-violet-300/45 bg-violet-300/12 shadow-[inset_4px_0_0_rgba(196,181,253,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            selectedFinanceClientId === g.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-violet-50">{g.client_name}</div>
+                            <div className="truncate pr-2 text-[15px] font-semibold leading-5 text-foreground transition-colors group-hover:text-amber-50">{g.client_name}</div>
                             {g.unread_total > 0 && (
                               <Badge className="shrink-0 rounded-full border border-amber-200/50 bg-amber-300 px-2 text-[10px] font-bold text-black shadow-sm shadow-amber-950/20">{g.unread_total}</Badge>
                             )}
@@ -437,7 +437,7 @@ export default function Messages() {
                             </Badge>
                           </div>
                           {g.last_message_at && (
-                            <div className="mt-3 inline-flex rounded-full border border-violet-300/15 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
+                            <div className="mt-3 inline-flex rounded-full border border-amber-300/15 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
                               {formatDistanceToNow(new Date(g.last_message_at), { addSuffix: true })}
                             </div>
                           )}
@@ -476,7 +476,7 @@ export default function Messages() {
       </Tabs>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] sm:rounded-[1.75rem] border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] border-amber-300/20 sm:rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
           <DialogHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-white/[0.03] to-transparent px-6 py-5">
             <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">New portal message</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -555,10 +555,10 @@ export default function Messages() {
           </div>
 
           <DialogFooter className="flex-col-reverse gap-2 border-t border-white/10 bg-black/25 px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
-            <Button variant="outline" onClick={() => setNewOpen(false)} className="w-full rounded-full border-white/10 bg-black/30 px-5 sm:w-auto text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
+            <Button variant="outline" onClick={() => setNewOpen(false)} className="w-full rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground sm:w-auto transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
             <Button
               disabled={!newClientId}
-              className="w-full rounded-full bg-amber-300 px-6 sm:w-auto font-semibold text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
+              className="w-full rounded-full bg-amber-300 px-6 font-semibold sm:w-auto text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
               onClick={() => {
                 const scopeMeta = SCOPE_OPTIONS.find((s) => s.value === newScope)!;
                 if (scopeMeta.group === 'client') {
