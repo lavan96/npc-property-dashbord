@@ -29,7 +29,7 @@ export default function CashFlowAnalysis() {
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeFilter>('30');
 
-  const PAGE_SIZE = 200;
+  const PAGE_SIZE = 50;
   const { toast } = useToast();
 
   const dateRangeCutoff = useMemo(() => {
