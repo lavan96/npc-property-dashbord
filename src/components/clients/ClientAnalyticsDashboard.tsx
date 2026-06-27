@@ -10,6 +10,7 @@ import {
   Bar,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip as RechartsTooltip,
 } from 'recharts';
 import {
@@ -114,6 +115,21 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
     success: 'bg-success/12 text-success',
     accent: 'bg-accent/12 text-accent',
   } as const;
+  const chartTooltipStyle = {
+    border: '1px solid rgba(245, 158, 11, 0.22)',
+    borderRadius: '14px',
+    background: 'rgba(9, 9, 11, 0.96)',
+    boxShadow: '0 18px 44px rgba(0, 0, 0, 0.42)',
+    color: 'rgb(248, 250, 252)',
+  };
+  const chartLabelStyle = {
+    color: 'rgb(251, 191, 36)',
+    fontWeight: 700,
+  };
+  const chartItemStyle = {
+    color: 'rgb(226, 232, 240)',
+    fontWeight: 600,
+  };
 
   return (
     <div className="space-y-6">
@@ -204,116 +220,155 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Cash Flow Status</CardTitle>
+      <div className="grid gap-5 xl:grid-cols-3">
+        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <CardHeader className="border-b border-white/10 pb-3">
+            <CardTitle className="text-base font-semibold tracking-tight text-white">Cash Flow Status</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
+          <CardContent className="p-5">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={analytics.cashFlowData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    innerRadius={58}
+                    outerRadius={86}
                     dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
+                    paddingAngle={4}
+                    labelLine={false}
+                    stroke="rgba(2,6,23,0.92)"
+                    strokeWidth={3}
                   >
                     {analytics.cashFlowData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip />
+                  <RechartsTooltip contentStyle={chartTooltipStyle} itemStyle={chartItemStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex justify-center gap-4">
-              <div className="flex items-center gap-2">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <div className="flex items-center justify-between rounded-2xl border border-emerald-300/15 bg-emerald-400/10 px-3 py-2">
+                <span className="flex items-center gap-2 text-sm font-medium text-emerald-100">
                 <CheckCircle className="h-4 w-4 text-success" />
-                <span className="text-sm">{analytics.positiveCashFlowClients} Positive</span>
+                  Positive
+                </span>
+                <span className="text-sm font-bold text-emerald-200">{analytics.positiveCashFlowClients}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between rounded-2xl border border-red-300/15 bg-red-500/10 px-3 py-2">
+                <span className="flex items-center gap-2 text-sm font-medium text-red-100">
                 <AlertCircle className="h-4 w-4 text-destructive" />
-                <span className="text-sm">{analytics.negativeCashFlowClients} Negative</span>
+                  Negative
+                </span>
+                <span className="text-sm font-bold text-red-200">{analytics.negativeCashFlowClients}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Portfolio Size Distribution</CardTitle>
+        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <CardHeader className="border-b border-white/10 pb-3">
+            <CardTitle className="text-base font-semibold tracking-tight text-white">Portfolio Size Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.portfolioDistribution}>
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <RechartsTooltip />
-                  <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <CardContent className="p-5">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
+              {analytics.portfolioDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={analytics.portfolioDistribution} margin={{ top: 12, right: 8, left: -16, bottom: 8 }} barCategoryGap="22%">
+                    <CartesianGrid stroke="rgba(148,163,184,0.12)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'rgb(148, 163, 184)', fontWeight: 600 }} axisLine={{ stroke: 'rgba(148,163,184,0.18)' }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: 'rgb(148, 163, 184)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <RechartsTooltip contentStyle={chartTooltipStyle} labelStyle={chartLabelStyle} itemStyle={chartItemStyle} cursor={{ fill: 'rgba(245, 158, 11, 0.08)' }} />
+                    <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[8, 8, 2, 2]} activeBar={{ fill: 'rgb(251, 191, 36)' }} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.025] text-sm font-medium text-slate-400">
+                  No portfolio size data
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Property Count Distribution</CardTitle>
+        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <CardHeader className="border-b border-white/10 pb-3">
+            <CardTitle className="text-base font-semibold tracking-tight text-white">Property Count Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={analytics.propertyDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {analytics.propertyDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
+          <CardContent className="p-5">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
+              {analytics.propertyDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analytics.propertyDistribution}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={86}
+                      dataKey="value"
+                      paddingAngle={3}
+                      labelLine={false}
+                      stroke="rgba(2,6,23,0.92)"
+                      strokeWidth={3}
+                    >
+                      {analytics.propertyDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip contentStyle={chartTooltipStyle} itemStyle={chartItemStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.025] text-sm font-medium text-slate-400">
+                  No property count data
+                </div>
+              )}
             </div>
+            {analytics.propertyDistribution.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {analytics.propertyDistribution.map((entry, index) => (
+                  <span key={entry.name} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-xs font-semibold text-slate-300">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length] }} />
+                    {entry.name}: {entry.value}
+                  </span>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">GoHighLevel Sync Status</CardTitle>
+      <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <CardHeader className="border-b border-white/10 pb-3">
+          <CardTitle className="text-base font-semibold tracking-tight text-white">GoHighLevel Sync Status</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-2">
+        <CardContent className="p-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-3 rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4 transition-colors hover:border-emerald-300/30">
               <div className="flex justify-between text-sm">
-                <span>Synced</span>
-                <span className="text-success">{analytics.syncedCount}</span>
+                <span className="font-medium text-emerald-100">Synced</span>
+                <span className="font-bold text-emerald-200">{analytics.syncedCount}</span>
               </div>
               <Progress value={(analytics.syncedCount / clients.length) * 100} className="h-2" />
             </div>
-            <div className="flex-1 space-y-2">
+            <div className="space-y-3 rounded-2xl border border-amber-300/15 bg-amber-400/10 p-4 transition-colors hover:border-amber-300/30">
               <div className="flex justify-between text-sm">
-                <span>Pending</span>
-                <span className="text-warning">{analytics.pendingCount}</span>
+                <span className="font-medium text-amber-100">Pending</span>
+                <span className="font-bold text-amber-200">{analytics.pendingCount}</span>
               </div>
               <Progress value={(analytics.pendingCount / clients.length) * 100} className="h-2" />
             </div>
-            <div className="flex-1 space-y-2">
+            <div className="space-y-3 rounded-2xl border border-red-300/15 bg-red-500/10 p-4 transition-colors hover:border-red-300/30">
               <div className="flex justify-between text-sm">
-                <span>Errors</span>
-                <span className="text-destructive">{analytics.errorCount}</span>
+                <span className="font-medium text-red-100">Errors</span>
+                <span className="font-bold text-red-200">{analytics.errorCount}</span>
               </div>
               <Progress value={(analytics.errorCount / clients.length) * 100} className="h-2" />
             </div>
