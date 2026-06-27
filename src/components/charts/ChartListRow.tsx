@@ -45,10 +45,13 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
       )}
 
       <div
-        className="h-16 w-24 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-border/60 bg-background/80 p-1 shadow-inner transition-all hover:border-primary/35"
+        className="group/thumb relative h-16 w-24 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_38%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.34)_100%)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.70),0_8px_18px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/35 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_10px_24px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_38%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)]"
         onClick={(e) => { e.stopPropagation(); onExpand(chart); }}
       >
-        {renderChartImage(chart)}
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white/70 bg-white/95 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] transition-transform duration-200 group-hover/thumb:scale-[1.02] dark:border-white/10 dark:bg-slate-950/70">
+          {renderChartImage(chart)}
+          <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-slate-950/5 group-hover/thumb:ring-primary/20 dark:ring-white/10" />
+        </div>
       </div>
 
       <div className="flex-1 min-w-0">
