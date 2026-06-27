@@ -90,11 +90,21 @@ const getHealthBadgeVariant = (health: string | null): 'default' | 'secondary' |
 
 const getHealthBadgeClassName = (health: string | null) => {
   switch (health?.toLowerCase()) {
-    case 'excellent': return 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100 shadow-emerald-950/20 hover:bg-emerald-400/20';
-    case 'good': return 'border-teal-300/40 bg-teal-400/15 text-teal-100 shadow-teal-950/20 hover:bg-teal-400/20';
-    case 'fair': return 'border-amber-300/45 bg-amber-400/15 text-amber-100 shadow-amber-950/20 hover:bg-amber-400/20';
-    case 'poor': return 'border-red-300/45 bg-red-500/15 text-red-100 shadow-red-950/20 hover:bg-red-500/20';
-    default: return 'border-slate-400/30 bg-slate-400/10 text-slate-200 hover:bg-slate-400/15';
+    case 'excellent': return 'border-emerald-300/45 bg-emerald-400/12 text-emerald-100 ring-1 ring-inset ring-emerald-200/15 hover:bg-emerald-400/18';
+    case 'good': return 'border-teal-300/45 bg-teal-400/12 text-teal-100 ring-1 ring-inset ring-teal-200/15 hover:bg-teal-400/18';
+    case 'fair': return 'border-amber-300/50 bg-amber-400/13 text-amber-100 ring-1 ring-inset ring-amber-200/15 hover:bg-amber-400/18';
+    case 'poor': return 'border-red-300/45 bg-red-500/13 text-red-100 ring-1 ring-inset ring-red-200/15 hover:bg-red-500/18';
+    default: return 'border-slate-400/30 bg-slate-400/10 text-slate-200 ring-1 ring-inset ring-white/10 hover:bg-slate-400/15';
+  }
+};
+
+const getHealthScoreMeterClassName = (health: string | null) => {
+  switch (health?.toLowerCase()) {
+    case 'excellent': return 'from-emerald-300 to-teal-300';
+    case 'good': return 'from-teal-300 to-emerald-300';
+    case 'fair': return 'from-amber-300 to-yellow-300';
+    case 'poor': return 'from-red-300 to-rose-300';
+    default: return 'from-slate-400 to-slate-300';
   }
 };
 
@@ -380,13 +390,23 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                         </TableCell>
                       )}
                       <TableCell className="px-4 py-4">
-                        <Badge variant={getHealthBadgeVariant(report.overall_health)} className={`rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition-all ${getHealthBadgeClassName(report.overall_health)}`}>
+                        <Badge variant={getHealthBadgeVariant(report.overall_health)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold leading-none tracking-wide shadow-sm transition-all ${getHealthBadgeClassName(report.overall_health)}`}>
                           {report.overall_health || 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-right tabular-nums">
-                        <span className="font-semibold text-white">{report.health_score || '-'}</span>
-                        <span className="text-slate-500 text-xs">/100</span>
+                        <div className="ml-auto flex w-20 flex-col items-end gap-1.5">
+                          <div>
+                            <span className="font-semibold text-white">{report.health_score ?? '-'}</span>
+                            <span className="text-slate-500 text-xs">/100</span>
+                          </div>
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className={`h-full rounded-full bg-gradient-to-r ${getHealthScoreMeterClassName(report.overall_health)}`}
+                              style={{ width: `${Math.min(Math.max(Number(report.health_score) || 0, 0), 100)}%` }}
+                            />
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-right font-medium tabular-nums text-slate-200">{formatCurrency(Number(report.portfolio_value))}</TableCell>
                       <TableCell className="px-4 py-4 text-right font-medium tabular-nums text-slate-200">{formatCurrency(Number(report.total_equity))}</TableCell>
