@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { BarChart3, Download, RefreshCw, ChevronDown, FileText } from 'lucide-react';
+import { BarChart3, Download, RefreshCw, ChevronDown, FileText, CheckCircle2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { subDays, subMonths, subYears } from 'date-fns';
 import { ChartCard, type ChartData } from '@/components/charts/ChartCard';
@@ -382,17 +382,23 @@ export default function Charts() {
 
         {/* Bulk actions bar */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 p-3 shadow-lg shadow-primary/5 backdrop-blur">
-          <Badge variant="default" className="text-xs">{selectedIds.size} selected</Badge>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={selectAll}>
-            Select all ({filteredCharts.length})
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setSelectedIds(new Set())}>
-            Clear
-          </Button>
+        <div className="sticky top-3 z-20 flex flex-col gap-3 overflow-hidden rounded-2xl border border-amber-300/55 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.22),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.90))] p-3 shadow-[0_18px_48px_hsl(43_74%_49%/0.18),0_0_0_1px_hsl(43_96%_56%/0.18)] backdrop-blur-xl sm:flex-row sm:items-center">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
+          <Badge variant="default" className="h-8 w-fit gap-1.5 rounded-full border border-amber-100/45 bg-gradient-to-r from-primary via-amber-500 to-amber-400 px-3 text-xs font-black shadow-lg shadow-amber-950/10">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {selectedIds.size} selected
+          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 rounded-full border-amber-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/80 hover:bg-amber-500/10 hover:text-primary" onClick={selectAll}>
+              Select all ({filteredCharts.length})
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 gap-1 rounded-full border-amber-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-3 w-3" /> Clear
+            </Button>
+          </div>
           <div className="flex-1" />
-          <Button size="sm" className="h-7 text-xs gap-1" onClick={handleBulkExport}>
-            <Download className="h-3 w-3" /> Export selected
+          <Button size="sm" className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-primary via-amber-500 to-amber-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] hover:brightness-105" onClick={handleBulkExport}>
+            <Download className="h-3.5 w-3.5" /> Export selected
           </Button>
         </div>
       )}
@@ -439,7 +445,7 @@ export default function Charts() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
                   {group.charts.map(chart => (
                     <ChartCard key={chart.id} {...cardProps(chart)} />
                   ))}
@@ -449,7 +455,7 @@ export default function Charts() {
           ))}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] 2xl:gap-6">
           {paginatedCharts.map(chart => (
             <ChartCard key={chart.id} {...cardProps(chart)} />
           ))}

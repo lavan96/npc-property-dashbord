@@ -381,7 +381,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       )}
 
       {/* Reports Table */}
-      <Card className="group/register overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(12,12,14,0.98),rgba(0,0,0,0.94))] shadow-2xl shadow-black/30 transition-all duration-300 hover:border-amber-300/30 hover:ring-1 hover:ring-amber-300/10 hover:shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+      <Card className="group/register overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(12,12,14,0.99),rgba(0,0,0,0.95))] shadow-2xl shadow-black/30 transition-all duration-300 hover:border-amber-300/35 hover:ring-1 hover:ring-amber-300/15 hover:shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
         <CardHeader className="relative border-b border-white/10 bg-white/[0.035] px-5 py-5 sm:px-6">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-60 transition-opacity duration-300 group-hover/register:opacity-100" />
           <CardTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight text-white">
@@ -415,24 +415,24 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
             </div>
           ) : (
             <div className="max-w-full overflow-hidden p-3 sm:p-5">
-              <ScrollArea className="h-[440px] max-w-full rounded-2xl border border-white/10 bg-slate-950/45 shadow-inner shadow-black/25">
+              <ScrollArea className="h-[440px] max-w-full rounded-2xl border border-white/10 bg-slate-950/55 shadow-inner shadow-black/25">
               <Table aria-label="Portfolio analysis reports" className="min-w-[980px] text-sm">
                 <TableHeader className="sticky top-0 z-20">
-                  <TableRow className="border-b border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] shadow-[0_10px_24px_rgba(0,0,0,0.28)] backdrop-blur hover:bg-zinc-950/95">
-                    {!clientId && <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Client</TableHead>}
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Health</TableHead>
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Score</TableHead>
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Portfolio Value</TableHead>
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Equity</TableHead>
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Cashflow</TableHead>
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Properties</TableHead>
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Generated</TableHead>
-                    <TableHead className="h-12 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Actions</TableHead>
+                  <TableRow className="border-b border-amber-300/20 bg-[linear-gradient(180deg,rgba(30,30,33,0.99),rgba(9,9,11,0.97))] shadow-[0_10px_24px_rgba(0,0,0,0.28)] backdrop-blur hover:bg-zinc-950/95">
+                    {!clientId && <TableHead className="h-13 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Client</TableHead>}
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Health</TableHead>
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Score</TableHead>
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Portfolio Value</TableHead>
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Equity</TableHead>
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Cashflow</TableHead>
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Properties</TableHead>
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Generated</TableHead>
+                    <TableHead className="h-13 whitespace-nowrap px-4 text-right text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/85">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReports.map((report) => (
-                    <TableRow key={report.id} className="group/row h-auto sm:h-16 border-white/10 border-l-2 border-l-transparent transition-all duration-200 hover:border-l-amber-300/80 hover:bg-amber-400/[0.07] hover:shadow-[inset_0_1px_0_rgba(245,158,11,0.10),inset_0_-1px_0_rgba(245,158,11,0.08)] data-[state=selected]:border-l-amber-300 data-[state=selected]:bg-amber-400/10">
+                    <TableRow key={report.id} className="group/row h-auto border-white/10 border-l-2 border-l-transparent transition-all duration-200 hover:border-l-amber-300/90 hover:bg-amber-400/[0.075] hover:shadow-[inset_0_1px_0_rgba(245,158,11,0.12),inset_0_-1px_0_rgba(245,158,11,0.10),0_10px_28px_rgba(0,0,0,0.22)] data-[state=selected]:border-l-amber-300 data-[state=selected]:bg-amber-400/10 sm:h-16">
                       {!clientId && (
                         <TableCell className="px-4 py-4 font-semibold text-slate-100 transition-colors group-hover/row:text-amber-50">
                           {smartCapitalize(report.client_name)}
@@ -444,7 +444,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                         </Badge>
                       </TableCell>
                       <TableCell className="px-4 py-4 text-right tabular-nums">
-                        <div className="ml-auto flex w-20 flex-col items-end gap-1.5">
+                        <div className="ml-auto flex w-24 flex-col items-end gap-1.5 rounded-xl border border-white/10 bg-white/[0.035] px-2.5 py-2 transition-colors group-hover/row:border-amber-300/20 group-hover/row:bg-amber-300/[0.055]">
                           <div>
                             <span className="font-semibold text-white">{report.health_score ?? '-'}</span>
                             <span className="text-slate-500 text-xs">/100</span>
@@ -469,7 +469,11 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="px-4 py-4 text-center font-medium tabular-nums text-slate-200">{report.total_properties || '-'}</TableCell>
+                      <TableCell className="px-4 py-4 text-center font-medium tabular-nums text-slate-200">
+                        <span className="inline-flex min-w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 transition-colors group-hover/row:border-amber-300/20 group-hover/row:bg-amber-300/[0.06]">
+                          {report.total_properties || '-'}
+                        </span>
+                      </TableCell>
                       <TableCell className="px-4 py-4">
                         <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-sm font-medium text-slate-300 transition-colors group-hover/row:border-amber-300/20 group-hover/row:bg-amber-300/[0.06] group-hover/row:text-slate-100">
                           <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-200/80" />
@@ -483,7 +487,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                               variant="ghost"
                               size="icon"
                               aria-label={`Open actions for ${smartCapitalize(report.client_name)}`}
-                              className="h-10 w-10 rounded-xl border border-transparent text-slate-300 transition-all group-hover/row:border-amber-300/20 group-hover/row:bg-white/[0.04] group-hover/row:text-amber-100 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                              className="h-10 w-10 rounded-xl border border-transparent text-slate-300 transition-all group-hover/row:border-amber-300/25 group-hover/row:bg-white/[0.05] group-hover/row:text-amber-100 hover:border-amber-300/45 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-amber-300/45 data-[state=open]:bg-amber-400/10 data-[state=open]:text-amber-100"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
