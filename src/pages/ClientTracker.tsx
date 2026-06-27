@@ -1237,16 +1237,39 @@ export default function ClientTracker() {
       {/* Tabs for different views */}
       {(pipelines.length > 0 || clients.length > 0) && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-border/70 bg-card/55 p-3 shadow-xl shadow-black/15 backdrop-blur md:p-4">
-          <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-            <TabsList className="inline-flex h-11 w-auto min-w-max border border-border/70 bg-background/80 p-1 shadow-inner">
-              {!isMobile && <TabsTrigger value="kanban">Kanban Board</TabsTrigger>}
-              <TabsTrigger value="pipeline">
+          <div className="-mx-3 overflow-x-auto px-3 md:mx-0 md:px-0">
+            <TabsList className="inline-flex h-12 w-auto min-w-max gap-1 rounded-2xl border border-border/70 bg-background/80 p-1.5 shadow-inner">
+              {!isMobile && (
+                <TabsTrigger
+                  value="kanban"
+                  className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+                >
+                  Kanban Board
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="pipeline"
+                className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+              >
                 {isMobile ? 'Cards' : 'Pipeline View'}
               </TabsTrigger>
-              <TabsTrigger value="table">Table</TabsTrigger>
-              <TabsTrigger value="active" className="flex items-center gap-1">
-                <UserCheck className="h-3.5 w-3.5" />
-                Active ({activeClients.length})
+              <TabsTrigger
+                value="table"
+                className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+              >
+                Table
+              </TabsTrigger>
+              <TabsTrigger
+                value="active"
+                className="group rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+              >
+                <span className="flex items-center gap-2">
+                  <UserCheck className="h-3.5 w-3.5" />
+                  <span>Active</span>
+                  <span className="rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[11px] font-bold tabular-nums text-muted-foreground transition-colors group-data-[state=active]:border-primary-foreground/35 group-data-[state=active]:bg-primary-foreground/15 group-data-[state=active]:text-primary-foreground">
+                    {activeClients.length}
+                  </span>
+                </span>
               </TabsTrigger>
             </TabsList>
           </div>
