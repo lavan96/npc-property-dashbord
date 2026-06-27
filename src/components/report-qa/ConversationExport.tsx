@@ -139,7 +139,7 @@ export function ConversationExport({ messages, title, reportNames, conversationI
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+          <Button variant="ghost" size="sm" className="report-qa-toolbar-control h-8 gap-1.5 px-3 text-xs font-medium" title="Export conversation">
             <Download className="h-3 w-3" />
             Export
           </Button>

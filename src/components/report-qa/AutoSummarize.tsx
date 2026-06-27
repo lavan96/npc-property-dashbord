@@ -93,8 +93,9 @@ Keep it brief but comprehensive.`,
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 text-xs"
+          className="report-qa-toolbar-control h-8 gap-1.5 px-3 text-xs font-medium disabled:border-dashed"
           disabled={disabled || messages.length < 2}
+          title={disabled || messages.length < 2 ? 'Summarize is available after a longer conversation' : 'Summarize conversation'}
           onClick={() => {
             setIsOpen(true);
             if (!summary) generateSummary();
