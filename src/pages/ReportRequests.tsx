@@ -32,10 +32,10 @@ const requestTypeConfig: Record<string, { label: string; icon: typeof BarChart3;
 };
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; badgeVariant: string }> = {
-  pending: { label: 'Pending', icon: Clock, color: 'text-amber-300', badgeVariant: 'bg-amber-500/15 text-amber-200 border-amber-300/30' },
-  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'text-blue-300', badgeVariant: 'bg-blue-500/15 text-blue-200 border-blue-300/30' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-emerald-300', badgeVariant: 'bg-emerald-500/15 text-emerald-200 border-emerald-300/30' },
-  declined: { label: 'Declined', icon: XCircle, color: 'text-red-300', badgeVariant: 'bg-red-500/15 text-red-200 border-red-300/30' },
+  pending: { label: 'Pending', icon: Clock, color: 'text-amber-300', badgeVariant: 'border-amber-300/35 bg-amber-400/10 text-amber-100 shadow-amber-950/20' },
+  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'text-blue-300', badgeVariant: 'border-blue-300/35 bg-blue-400/10 text-blue-100 shadow-blue-950/20' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-emerald-300', badgeVariant: 'border-emerald-300/35 bg-emerald-400/10 text-emerald-100 shadow-emerald-950/20' },
+  declined: { label: 'Declined', icon: XCircle, color: 'text-red-300', badgeVariant: 'border-red-300/35 bg-red-400/10 text-red-100 shadow-red-950/20' },
 };
 
 const statusCardConfig: Record<string, { glow: string; iconWrap: string; edge: string; count: string; active: string }> = {
@@ -360,7 +360,7 @@ export default function ReportRequests() {
                             <div className="min-w-0 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-sm font-semibold tracking-tight text-white sm:text-base">{typeConf.label}</p>
-                                <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm', statConf.badgeVariant)}>
+                                <Badge variant="outline" className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>
                                   {statConf.label}
                                 </Badge>
                               </div>
@@ -410,7 +410,7 @@ export default function ReportRequests() {
                     <div className={cn('rounded-2xl p-3 shadow-inner shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
                     <div>
                       <p className="text-sm font-semibold text-white">{typeConf.label}</p>
-                      <Badge variant="outline" className={cn('mt-0.5 text-[10px]', statConf.badgeVariant)}>{statConf.label}</Badge>
+                      <Badge variant="outline" className={cn('mt-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                     </div>
                   </div>
 
@@ -453,9 +453,9 @@ export default function ReportRequests() {
                           disabled={updatingStatus || isActive}
                           onClick={() => handleStatusUpdate(selectedRequest.id, status)}
                           className={cn(
-                            'rounded-full border-white/10 text-xs transition-all hover:border-amber-300/40 hover:bg-amber-300/10 hover:text-amber-100',
+                            'rounded-full border-white/10 px-3 text-xs font-medium transition-all hover:border-amber-300/40 hover:bg-amber-300/10 hover:text-amber-100',
                             isActive && conf.badgeVariant,
-                            isActive && 'pointer-events-none'
+                            isActive && 'pointer-events-none shadow-sm'
                           )}
                         >
                           {updatingStatus ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Icon className="mr-1.5 h-3.5 w-3.5" />}
