@@ -28,3 +28,18 @@ export type {
   RepairPassReport,
   RepairLoopResult,
 } from './repairTypes';
+
+export {
+  REPAIR_ISSUE_CLASSIFIER_VERSION,
+  classifyPageRepairIssues,
+  classifyVisualQualityRepairIssues,
+  isFallbackAction,
+  isRepairAction,
+  summarizeRepairIssues,
+  type ClassifiedRepairIssues,
+  type RepairIssue,
+  type RepairIssueCategory,
+  type RepairIssueSeverity,
+  type RepairIssueSummary,
+  type RepairSuggestion,
+} from './issueClassifier';
