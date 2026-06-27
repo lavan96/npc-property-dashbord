@@ -344,42 +344,42 @@ export default function ReportRequests() {
                 const TypeIcon = typeConf.icon;
                 return (
                   <Card
-                  key={req.id}
-                  className="group cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(9,9,11,0.84))] shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-[0_18px_46px_rgba(245,158,11,0.12)]"
-                  onClick={() => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); }}
-                >
-                  <CardContent className="relative p-4 sm:p-5">
-                    <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-300/0 transition-colors group-hover:bg-amber-300/70" />
-                    <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                    <div className="flex items-start gap-3 sm:gap-4">
-                      <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner', typeConf.color)}>
-                        <TypeIcon className="h-5 w-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-white">{typeConf.label}</p>
-                              <Badge variant="outline" className={cn('text-[10px] shadow-sm', statConf.badgeVariant)}>
-                                {statConf.label}
-                              </Badge>
+                    key={req.id}
+                    className="group cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)]"
+                    onClick={() => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); }}
+                  >
+                    <CardContent className="relative p-4 sm:p-5">
+                      <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-300/0 transition-colors duration-300 group-hover:bg-amber-300/80" />
+                      <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                      <div className="flex items-start gap-4">
+                        <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner transition-transform duration-300 group-hover:scale-105', typeConf.color)}>
+                          <TypeIcon className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 space-y-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold tracking-tight text-white sm:text-base">{typeConf.label}</p>
+                                <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm', statConf.badgeVariant)}>
+                                  {statConf.label}
+                                </Badge>
+                              </div>
+                              <div className="grid gap-1.5 text-xs leading-5 text-zinc-400">
+                                <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-amber-200/75" /><span className="capitalize font-medium text-zinc-100">{req.client_name}</span></div>
+                                {req.client_email && <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-zinc-500" /><span className="break-all">{req.client_email}</span></div>}
+                                {req.client_phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-zinc-500" /><span>{req.client_phone}</span></div>}
+                                {req.property_address && <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 text-zinc-500" /><span>{req.property_address}</span></div>}
+                                {req.notes && <div className="flex items-start gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-zinc-300"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/60" /><span className="line-clamp-2">{req.notes}</span></div>}
+                              </div>
                             </div>
-                            <div className="grid gap-1 text-xs text-zinc-400">
-                              <div className="flex items-center gap-1.5"><User className="h-3 w-3 text-amber-200/70" /><span className="capitalize text-zinc-200">{req.client_name}</span></div>
-                              {req.client_email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3" /><span>{req.client_email}</span></div>}
-                              {req.client_phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3" /><span>{req.client_phone}</span></div>}
-                              {req.property_address && <p className="mt-1 text-zinc-400">📍 {req.property_address}</p>}
-                              {req.notes && <p className="mt-1.5 line-clamp-1 text-zinc-400">💬 {req.notes}</p>}
+                            <div className="shrink-0 self-start rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-left shadow-inner shadow-black/25 sm:text-right">
+                              <p className="text-xs font-medium tabular-nums text-zinc-200">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
+                              <p className="mt-0.5 text-[10px] text-zinc-500">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
                             </div>
-                          </div>
-                          <div className="ml-auto shrink-0 rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-right shadow-inner shadow-black/25">
-                            <p className="text-xs font-medium tabular-nums text-zinc-300">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
-                            <p className="mt-0.5 text-[10px] text-zinc-500">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
+                    </CardContent>
                   </Card>
                 );
               })}
