@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Paperclip, Download, X, ShieldCheck } from 'lucide-react';
+import { Loader2, Send, Paperclip, Download, X, ShieldCheck, UserCircle2 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -211,31 +211,32 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                     </div>
                   )}
                   <div className={cn('flex min-w-0 max-w-[min(82%,42rem)] flex-col', mine ? 'items-end' : 'items-start')}>
-                  <div className={cn(
-                    'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
-                    mine ? 'border-violet-300/30 bg-gradient-to-br from-violet-300 to-blue-500 text-black' : 'border-blue-300/15 bg-zinc-900/95 text-foreground'
-                  )}>
-                    {!mine && (
-                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
-                        {m.sender_name || (m.sender_type === 'staff' ? 'Staff' : m.sender_type === 'client' ? 'Client' : 'Finance Partner')}
-                      </div>
-                    )}
-                    <div className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.body}</div>
-                    {m.attachment_path && m.attachment_filename && (
-                      <button
-                        onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
-                        className={cn(
-                          'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40',
-                          mine ? 'text-primary-foreground/90' : 'text-foreground/80'
-                        )}
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        <span className="min-w-0 truncate">{m.attachment_filename}</span>
-                        <span className="opacity-70">{formatBytes(m.attachment_size_bytes)}</span>
-                      </button>
-                    )}
+                    <div className={cn(
+                      'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
+                      mine ? 'border-violet-300/30 bg-gradient-to-br from-violet-300 to-blue-500 text-black' : 'border-blue-300/15 bg-zinc-900/95 text-foreground'
+                    )}>
+                      {!mine && (
+                        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
+                          {m.sender_name || (m.sender_type === 'staff' ? 'Staff' : m.sender_type === 'client' ? 'Client' : 'Finance Partner')}
+                        </div>
+                      )}
+                      <div className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.body}</div>
+                      {m.attachment_path && m.attachment_filename && (
+                        <button
+                          onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
+                          className={cn(
+                            'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40',
+                            mine ? 'text-primary-foreground/90' : 'text-foreground/80'
+                          )}
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          <span className="min-w-0 truncate">{m.attachment_filename}</span>
+                          <span className="opacity-70">{formatBytes(m.attachment_size_bytes)}</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="mt-1.5 px-1 text-[10px] text-muted-foreground/85">{formatStamp(m.created_at)}</div>
                   </div>
-                  <div className="mt-1.5 px-1 text-[10px] text-muted-foreground/85">{formatStamp(m.created_at)}</div>
                 </div>
               );
             })}
