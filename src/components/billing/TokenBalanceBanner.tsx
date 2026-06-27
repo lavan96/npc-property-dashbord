@@ -25,6 +25,56 @@ export function TokenBalanceBanner() {
     ? Math.round((balance.available / balance.allowance) * 100)
     : 0;
 
+  if (isPortfolioReportsPage) {
+    return (
+      <Alert className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-3xl border-amber-300/35 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(220_22%_7%/0.97)_46%,hsl(32_28%_9%/0.94))] px-4 py-3.5 shadow-[0_18px_55px_hsl(0_0%_0%/0.28)] backdrop-blur-xl dark:border-amber-300/30 sm:px-5">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/85 to-transparent" />
+        <div className="pointer-events-none absolute -left-10 -top-16 h-32 w-32 rounded-full bg-amber-300/10 blur-3xl" />
+        <div className="pointer-events-none absolute -right-12 bottom-0 h-28 w-28 rounded-full bg-amber-500/10 blur-3xl" />
+        <AlertTriangle className="h-4 w-4 text-amber-200" />
+        <AlertTitle className="text-sm font-semibold tracking-tight text-amber-100">Token balance low</AlertTitle>
+        <AlertDescription className="flex flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="max-w-3xl leading-6 text-amber-50/78">
+            <span className="font-semibold tabular-nums text-amber-50">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-amber-200/65 bg-amber-300 px-5 font-semibold text-amber-950 shadow-[0_12px_30px_hsl(43_84%_52%/0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-100 hover:bg-amber-200 hover:text-amber-950 hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.34)] focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:translate-y-0 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (isReportRequestsPage) {
+    return (
+      <Alert className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-[1.75rem] border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(9,9,11,0.96)_42%,rgba(24,24,27,0.9))] px-4 py-3 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
+        <div className="pointer-events-none absolute -right-12 -top-20 h-36 w-36 rounded-full bg-amber-300/20 blur-3xl" />
+        <Sparkles className="h-4 w-4 text-amber-200" />
+        <AlertTitle className="text-sm font-semibold tracking-tight text-amber-100">Token balance low</AlertTitle>
+        <AlertDescription className="flex flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="max-w-3xl text-amber-50/80">
+            <span className="font-semibold tabular-nums text-amber-50">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-amber-200/70 bg-amber-300 px-5 font-semibold text-amber-950 shadow-[0_10px_28px_rgba(245,158,11,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-100 hover:bg-amber-200 hover:text-amber-950 hover:shadow-[0_16px_38px_rgba(245,158,11,0.34)] focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (isReportRequestsPage) {
     return (

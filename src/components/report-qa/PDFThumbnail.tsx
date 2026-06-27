@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Eye, X, Loader2, FileWarning } from 'lucide-react';
+import { FileText, Eye, X, Loader2, FileWarning, CheckCircle2, UploadCloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -163,39 +163,98 @@ interface UploadProgressItemProps {
 }
 
 export function UploadProgressItem({ fileName, progress, status, error }: UploadProgressItemProps) {
+  const isPending = status === 'uploading' || status === 'processing';
+  const statusLabel =
+    status === 'error' ? 'Error' :
+    status === 'complete' ? 'Ready' :
+    status === 'processing' ? 'Processing…' :
+    `${progress}%`;
+  const helperCopy =
+    status === 'error' ? 'Upload error' :
+    status === 'complete' ? 'Report uploaded and ready for Q&A' :
+    status === 'processing' ? 'Parsing report content for retrieval' :
+    'Uploading report securely';
+
   return (
-    <div className="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
-      <div className="flex-shrink-0">
+    <div
+      className={cn(
+        "rounded-2xl border p-3 shadow-sm transition-all",
+        status === 'error'
+          ? "border-destructive/30 bg-destructive/10"
+          : status === 'complete'
+            ? "border-emerald-500/30 bg-emerald-500/10"
+            : "border-amber-500/30 bg-amber-500/10"
+      )}
+    >
+      <div className="flex items-start gap-3">
+      <div
+        className={cn(
+          "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border shadow-sm",
+          status === 'error'
+            ? "border-destructive/25 bg-destructive/15 text-destructive"
+            : status === 'complete'
+              ? "border-emerald-500/25 bg-emerald-500/15 text-emerald-500"
+              : "border-amber-500/25 bg-amber-500/15 text-amber-500"
+        )}
+      >
         {status === 'error' ? (
-          <FileWarning className="h-5 w-5 text-destructive" />
+          <FileWarning className="h-5 w-5" />
         ) : status === 'complete' ? (
-          <FileText className="h-5 w-5 text-green-500" />
+          <CheckCircle2 className="h-5 w-5" />
+        ) : status === 'uploading' ? (
+          <UploadCloud className="h-5 w-5" />
         ) : (
-          <Loader2 className="h-5 w-5 text-primary animate-spin" />
+          <Loader2 className="h-5 w-5 animate-spin" />
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{fileName}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">{fileName}</p>
+            <p
+              className={cn(
+                "mt-0.5 text-xs",
+                status === 'error'
+                  ? "text-destructive"
+                  : status === 'complete'
+                    ? "text-emerald-600 dark:text-emerald-300"
+                    : "text-amber-600 dark:text-amber-300"
+              )}
+            >
+              {helperCopy}
+            </p>
+          </div>
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]",
+              status === 'error'
+                ? "border-destructive/25 bg-destructive/10 text-destructive"
+                : status === 'complete'
+                  ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                  : "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300"
+            )}
+          >
+            {statusLabel}
+          </span>
+        </div>
         <div className="flex items-center gap-2 mt-1">
-          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div className="flex-1 h-2 overflow-hidden rounded-full bg-background/70 shadow-inner">
             <div 
               className={cn(
-                "h-full transition-all duration-300",
-                status === 'error' ? "bg-destructive" : "bg-primary"
+                "h-full rounded-full transition-all duration-500",
+                status === 'error' ? "bg-destructive" :
+                status === 'complete' ? "bg-gradient-to-r from-emerald-500 to-teal-400" :
+                "bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400",
+                isPending && "animate-pulse"
               )}
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-xs text-muted-foreground min-w-[40px] text-right">
-            {status === 'error' ? 'Error' : 
-             status === 'complete' ? 'Done' :
-             status === 'processing' ? 'Processing...' :
-             `${progress}%`}
-          </span>
         </div>
         {error && (
-          <p className="text-xs text-destructive mt-1">{error}</p>
+          <p className="mt-2 rounded-lg border border-destructive/20 bg-background/60 px-2 py-1.5 text-xs text-destructive">{error}</p>
         )}
+      </div>
       </div>
     </div>
   );

@@ -79,8 +79,9 @@ export function AccessibilitySettings({ className }: AccessibilitySettingsProps)
         <Button 
           variant="ghost" 
           size="sm" 
-          className={cn("h-7 gap-1.5 text-xs", className)}
+          className={cn("report-qa-toolbar-control h-8 gap-1.5 px-3 text-xs font-medium", className)}
           aria-label="Accessibility settings"
+          title="Accessibility settings"
         >
           <Settings2 className="h-3 w-3" />
           <span className="hidden sm:inline">A11y</span>
