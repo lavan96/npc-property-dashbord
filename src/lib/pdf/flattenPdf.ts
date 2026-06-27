@@ -4,8 +4,8 @@
  * — every page becomes a single embedded JPEG at the original physical size.
  *
  * Designed as a universal "Download as Flattened PDF" step that sits behind
- * every download surface in the dashboard. Lazy-imports pdfjs-dist so the
- * ~1MB worker only loads when the user actually clicks Flatten.
+ * every download surface in the dashboard. Lazy-imports PDF.js from the CDN
+ * so the app does not need to bundle or install pdfjs-dist.
  */
 import { PDFDocument } from 'pdf-lib';
 
@@ -18,14 +18,21 @@ export interface FlattenPdfOptions {
   onProgress?: (page: number, totalPages: number) => void;
 }
 
-let pdfjsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
+const PDFJS_VERSION = '4.4.168';
+const PDFJS_CDN_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
 
-async function loadPdfjs(): Promise<typeof import('pdfjs-dist')> {
+type PdfJsModule = {
+  GlobalWorkerOptions: { workerSrc: string };
+  getDocument: (source: unknown) => { promise: Promise<any> };
+};
+
+let pdfjsPromise: Promise<PdfJsModule> | null = null;
+
+async function loadPdfjs(): Promise<PdfJsModule> {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
-      const pdfjs = await import('pdfjs-dist');
-      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url' as string)).default as string;
-      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+      const pdfjs = await import(/* @vite-ignore */ `${PDFJS_CDN_BASE}/pdf.min.mjs`) as PdfJsModule;
+      pdfjs.GlobalWorkerOptions.workerSrc = `${PDFJS_CDN_BASE}/pdf.worker.min.mjs`;
       return pdfjs;
     })();
   }

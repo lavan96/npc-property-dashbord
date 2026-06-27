@@ -289,6 +289,7 @@ const App = () => (
                           </ProtectedRoute>
                         }>
                 <Route index element={<Overview />} />
+                <Route path="dashboard" element={<Overview />} />
                 <Route path="listings" element={<ModuleGuard moduleKey="listings"><Listings /></ModuleGuard>} />
                 <Route
                   path="calendar"

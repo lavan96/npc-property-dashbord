@@ -1776,14 +1776,14 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "report-qa-premium p-2 sm:p-4 md:p-6 sm:space-y-4 md:space-y-5 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0 min-w-0 overflow-hidden",
+          "report-qa-premium flex h-[calc(100dvh-8rem)] max-h-[calc(100dvh-8rem)] min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-2 pb-16 sm:h-[calc(100dvh-9rem)] sm:max-h-[calc(100dvh-9rem)] sm:gap-4 sm:p-4 sm:pb-20 md:h-[calc(100dvh-10rem)] md:max-h-[calc(100dvh-10rem)] md:gap-5 md:p-6 md:pb-0",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <div className="report-qa-hero flex items-start justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start md:flex-row md:items-center">
+      <div className="report-qa-hero flex shrink-0 items-start justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start md:flex-row md:items-center">
         <div className="min-w-0 space-y-1.5">
           <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
             <Sparkles className="h-3 w-3" />
@@ -1802,11 +1802,11 @@ export default function ReportQA() {
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">New Chat</span>
           </Button>
-          <Button variant="outline" onClick={() => setShowHistory(true)} className="report-qa-history-button gap-1.5 h-9 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm" size="sm">
+          <Button variant="outline" onClick={() => setShowHistory(true)} className="report-qa-history-button gap-1.5 h-9 rounded-full border-primary/20 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-md sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <History className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">History</span>
             {savedConversations.length > 0 && (
-              <Badge variant="secondary" className="report-qa-history-badge ml-0.5 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-bold tabular-nums sm:h-5 sm:px-1.5 sm:text-xs">
+              <Badge variant="secondary" className="report-qa-history-badge ml-0.5 h-5 min-w-5 rounded-full border border-primary/20 bg-primary text-primary-foreground px-1.5 text-[10px] font-bold tabular-nums shadow-sm sm:h-5 sm:px-1.5 sm:text-xs">
                 {savedConversations.length}
               </Badge>
             )}
@@ -1836,7 +1836,7 @@ export default function ReportQA() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 h-[calc(100%-4.5rem)] sm:h-[calc(100%-5.5rem)] md:h-[calc(100%-6rem)] min-w-0">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-hidden sm:gap-4 md:gap-6 lg:grid-cols-3">
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
         <Card className="report-qa-panel report-qa-reports-panel hidden lg:flex lg:col-span-1 flex-col overflow-hidden min-h-0">
@@ -1979,7 +1979,7 @@ export default function ReportQA() {
 
             {/* Uploaded Reports — compact list */}
             {uploadedReports.length > 0 && (
-              <ScrollArea className="report-qa-report-list flex-1 -mx-1 px-1">
+              <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1">
                 <div className="space-y-1.5">
                   {uploadedReports.map((report, index) => {
                     const isActive = activeReportIndex === index;
@@ -2071,7 +2071,7 @@ export default function ReportQA() {
 
         {/* Chat Section */}
         <Card className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 border shadow-sm rounded-2xl", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
-          <CardHeader className="report-qa-chat-header pb-2 sm:pb-3 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
+          <CardHeader className="report-qa-chat-header pb-3 sm:pb-4 px-3 sm:px-5 py-3 sm:py-4 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
               {!showReportsPanel && (
@@ -2080,7 +2080,9 @@ export default function ReportQA() {
                 </Button>
               )}
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                <MessageSquare className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                <span className="report-qa-chat-title-icon flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl">
+                  <MessageSquare className="h-4 w-4" />
+                </span>
                 {isEditingMainTitle && conversationId ? (
                   <div className="flex items-center gap-1 flex-1">
                     <Input
@@ -2099,7 +2101,7 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <span 
-                    className="text-sm font-semibold truncate cursor-pointer"
+                    className="text-sm font-semibold tracking-tight truncate cursor-pointer"
                     onClick={() => {
                       if (conversationId) {
                         setMainTitleEdit(getCurrentTitle());
@@ -2163,14 +2165,16 @@ export default function ReportQA() {
             </div>
 
             {/* Desktop: full toolbar layout (unchanged) */}
-            <div className="hidden sm:flex sm:flex-row sm:items-center gap-2 sm:justify-between">
-              <div className="flex items-center gap-2">
+            <div className="hidden sm:flex sm:flex-row sm:flex-wrap sm:items-start gap-3 sm:justify-between">
+              <div className="flex min-w-0 flex-1 items-center gap-2 pt-1">
                 {!showReportsPanel && (
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleReportsPanel} title="Show reports panel (⌘B)">
                     <FileText className="h-4 w-4" />
                   </Button>
                 )}
-                <MessageSquare className="h-5 w-5" />
+                <span className="report-qa-chat-title-icon flex h-10 w-10 items-center justify-center rounded-2xl">
+                  <MessageSquare className="h-5 w-5" />
+                </span>
                 {isEditingMainTitle && conversationId ? (
                   <div className="flex items-center gap-2">
                     <Input value={mainTitleEdit} onChange={(e) => setMainTitleEdit(e.target.value)} className="h-7 w-48 text-sm" autoFocus
@@ -2184,7 +2188,7 @@ export default function ReportQA() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <CardTitle className="text-lg">{getCurrentTitle()}</CardTitle>
+                    <CardTitle className="report-qa-chat-title text-xl tracking-tight">{getCurrentTitle()}</CardTitle>
                     {conversationId && (
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setMainTitleEdit(getCurrentTitle()); setIsEditingMainTitle(true); }}>
                         <Pencil className="h-3 w-3" />
@@ -2194,9 +2198,9 @@ export default function ReportQA() {
                 )}
               </div>
               
-              <div className="report-qa-toolbar flex items-center gap-1 flex-shrink-0">
+              <div className="report-qa-toolbar flex flex-wrap items-center justify-end gap-1.5 flex-shrink min-w-[18rem]">
                 <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} disabled={isProcessing} />
-                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Separator orientation="vertical" className="mx-1 hidden h-7 bg-primary/20 md:block" />
                 {conversationId && (
                   <>
                     <ConversationClientLinker
@@ -2215,7 +2219,7 @@ export default function ReportQA() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="report-qa-toolbar-control h-8 w-8"
                   onClick={() => setShowCitations((v) => !v)}
                   title={
                     showCitations
@@ -2224,6 +2228,7 @@ export default function ReportQA() {
                   }
                   aria-pressed={showCitations}
                   aria-label="Toggle citations"
+                  data-active={showCitations ? 'true' : undefined}
                 >
                   {showCitations ? (
                     <Quote className="h-4 w-4" />
@@ -2234,7 +2239,7 @@ export default function ReportQA() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="report-qa-toolbar-control h-8 w-8"
                   disabled={!agentModeSupported}
                   onClick={() => setAgentMode((v) => !v)}
                   title={
@@ -2246,6 +2251,7 @@ export default function ReportQA() {
                   }
                   aria-pressed={agentMode && agentModeSupported}
                   aria-label="Toggle agent mode"
+                  data-active={agentMode && agentModeSupported ? 'true' : undefined}
                 >
                   <Wrench
                     className={cn(
@@ -2255,10 +2261,10 @@ export default function ReportQA() {
                   />
                 </Button>
                 <AccessibilitySettings />
-                {conversationId && <Badge variant="outline" className="text-xs ml-2 whitespace-nowrap">Auto-saving</Badge>}
+                {conversationId && <Badge variant="outline" className="ml-1 whitespace-nowrap border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] text-primary">Auto-saving</Badge>}
               </div>
             </div>
-            <CardDescription className="hidden sm:block">
+            <CardDescription className="report-qa-chat-subtitle hidden sm:block pl-12 text-sm">
               {uploadedReports.length > 1 
                 ? `Comparing ${uploadedReports.length} reports` 
                 : 'Ask questions about the uploaded report'}
@@ -2270,9 +2276,9 @@ export default function ReportQA() {
               </div>
             )}
           </CardHeader>
-          <CardContent id="chat-main" className="flex-1 flex flex-col min-h-0 overflow-hidden px-2 sm:px-5">
+          <CardContent id="chat-main" className="report-qa-chat-content flex-1 flex flex-col min-h-0 overflow-hidden px-2 pb-2 sm:px-5 sm:pb-4">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className="flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className="report-qa-message-area mb-2 min-h-0 flex-1 overflow-hidden pr-1 sm:mb-4 sm:pr-4" aria-label="Chat messages" role="log" aria-live="polite">
               {/* Load older messages button */}
               {hasOlderMessages && messages.length > 0 && (
                 <div className="flex justify-center py-2">
@@ -2293,15 +2299,31 @@ export default function ReportQA() {
               )}
               {messages.length === 0 ? (
                 <div className="report-qa-empty-state h-full flex items-center justify-center text-center p-4 sm:p-8">
-                  <div className="space-y-4">
-                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                    <p className="text-muted-foreground">
-                      {uploadedReports.length > 0
-                        ? uploadedReports.length > 1 
-                          ? 'Ask a question to compare the reports'
-                          : 'Ask a question about the report'
-                        : 'Upload reports to start asking questions'}
-                    </p>
+                  <div className="report-qa-empty-card space-y-5">
+                    <div className="report-qa-empty-icon-wrap" aria-hidden="true">
+                      <MessageSquare className="report-qa-empty-icon" />
+                      <Sparkles className="report-qa-empty-sparkle" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="report-qa-empty-title">
+                        {uploadedReports.length > 0
+                          ? uploadedReports.length > 1 
+                            ? 'Ask a question to compare the reports'
+                            : 'Ask a question about the report'
+                          : 'Upload reports to start asking questions'}
+                      </p>
+                      <p className="report-qa-empty-helper">
+                        {uploadedReports.length > 0
+                          ? 'Use the chat below to surface insights, clarify details, and turn report data into next steps.'
+                          : 'Drop a PDF into the report panel, then Aurixa will keep the chat grounded in the uploaded report.'}
+                      </p>
+                    </div>
+                    {uploadedReports.length === 0 && (
+                      <div className="report-qa-empty-upload-cue" aria-hidden="true">
+                        <Upload className="h-3.5 w-3.5" />
+                        <span>Start with the upload area</span>
+                      </div>
+                    )}
                     {/* Mobile upload button - only shown on small screens */}
                     <div className="lg:hidden space-y-3">
                       <Button
@@ -2335,7 +2357,7 @@ export default function ReportQA() {
                   </div>
                 </div>
               ) : (
-              <div className="w-full space-y-2 sm:space-y-4">
+              <div className="report-qa-message-stack w-full space-y-3 sm:space-y-5">
                   {(() => {
                     const currentConv = savedConversations.find((c) => c.id === conversationId);
                     const parentConv = currentConv?.branched_from_conversation_id
@@ -2364,27 +2386,27 @@ export default function ReportQA() {
                     );
                     
                     return (
-                      <div key={message.id} id={`qa-msg-${message.id}`} className="w-full scroll-mt-24 transition-shadow rounded-lg">
+                      <div key={message.id} id={`qa-msg-${message.id}`} className="report-qa-message-row w-full scroll-mt-24 transition-shadow rounded-lg">
                         {showDateSep && <MessageDateSeparator date={message.timestamp} />}
                         <div className={cn(
-                          "flex gap-2 sm:gap-3 w-full",
+                          "report-qa-message-frame flex gap-2 sm:gap-3 w-full",
                           message.role === 'user' ? 'justify-end' : 'justify-start'
                         )}>
                           {message.role === 'assistant' && (
-                            <div className={cn("hidden sm:flex h-8 w-8 rounded-full items-center justify-center flex-shrink-0", getAccentClass())}>
+                            <div className={cn("report-qa-message-avatar hidden sm:flex h-8 w-8 rounded-full items-center justify-center flex-shrink-0", getAccentClass())}>
                               <Bot className="h-4 w-4 text-primary" />
                             </div>
                           )}
                           <div 
                             className={cn(
-                              "min-w-0 max-w-[92%] sm:max-w-[80%] rounded-2xl p-2.5 sm:p-3.5 shadow-sm",
+                              "report-qa-message-bubble min-w-0 max-w-[92%] sm:max-w-[80%] rounded-2xl p-3 sm:p-4 shadow-sm",
                               message.role === 'user' ? 'qa-chat-bubble-user' : 'qa-chat-bubble-assistant',
                               getMessageBgClass(message.role)
                             )}
                             role="article"
                             aria-label={`${message.role === 'user' ? 'You' : 'Assistant'} said`}
                           >
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="report-qa-message-meta flex items-center gap-2 mb-2">
                               {message.role === 'user' && message.sent_by_username && (
                                 <span className="text-xs font-medium opacity-80">
                                   {message.sent_by_username}
@@ -2401,7 +2423,7 @@ export default function ReportQA() {
                               )}
                             </div>
                             {message.role === 'assistant' ? (
-                              <div className="qa-markdown text-xs sm:text-sm break-words overflow-hidden [overflow-wrap:anywhere]">
+                              <div className="report-qa-assistant-content qa-markdown text-sm break-words overflow-hidden [overflow-wrap:anywhere]">
                                 <ReactMarkdown 
                                   remarkPlugins={[remarkGfm]}
                                   components={{
@@ -2428,7 +2450,7 @@ export default function ReportQA() {
                                 </ReactMarkdown>
                               </div>
                             ) : (
-                              <div className="space-y-2">
+                              <div className="report-qa-user-content space-y-2">
                                 {message.audioUrl && (
                                   <VoiceMessagePlayer 
                                     audioUrl={message.audioUrl} 
@@ -2437,7 +2459,7 @@ export default function ReportQA() {
                                     progressColor="rgba(255, 255, 255, 0.8)"
                                   />
                                 )}
-                                <p className="text-xs sm:text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.content}</p>
+                                <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.content}</p>
                               </div>
                             )}
                             {/* PDF Attachments */}
@@ -2456,6 +2478,7 @@ export default function ReportQA() {
                               <>
                                 {showCitations && (message.documentCitations?.length || message.comparisonMode) && (
                                   <Citations
+                                    className="report-qa-citations"
                                     documents={message.documentCitations}
                                     comparisonMode={message.comparisonMode}
                                     onDocumentClick={openCitationInViewer}
@@ -2464,7 +2487,7 @@ export default function ReportQA() {
                                 {message.toolInvocations && message.toolInvocations.length > 0 && (
                                   <ToolInvocations invocations={message.toolInvocations} />
                                 )}
-                                <div className="space-y-2 mt-2 pt-2 border-t border-border/50">
+                                <div className="report-qa-message-actions space-y-2 mt-3 pt-3 border-t border-border/50">
                                 <div className="flex flex-wrap gap-1 sm:gap-2">
                                   <CopyWithFeedback content={message.content} />
                                   <TextToSpeech text={message.content} />
@@ -2558,7 +2581,7 @@ export default function ReportQA() {
                             )}
                           </div>
                           {message.role === 'user' && (
-                            <div className="hidden sm:flex h-8 w-8 rounded-full bg-secondary items-center justify-center flex-shrink-0">
+                            <div className="report-qa-message-avatar report-qa-message-avatar-user hidden sm:flex h-8 w-8 rounded-full bg-secondary items-center justify-center flex-shrink-0">
                               <User className="h-4 w-4" />
                             </div>
                           )}
@@ -2568,6 +2591,7 @@ export default function ReportQA() {
                   })}
                   {isProcessing && (
                     <StreamingTypingIndicator 
+                      className="report-qa-streaming-state"
                       isMultiReport={uploadedReports.length > 1} 
                       streamingContent={streamingContent}
                     />
@@ -2593,13 +2617,13 @@ export default function ReportQA() {
                 duration={recordingDuration}
                 maxDuration={MAX_RECORDING_DURATION}
                 accumulatedText={accumulatedTranscript}
-                className="mb-2" 
+                className="mb-2 shrink-0"
               />
             )}
 
             {/* Pending audio preview */}
             {pendingAudioUrl && !isRecording && (
-              <div className="mb-2 p-2 rounded-lg bg-muted/50 border">
+              <div className="mb-2 shrink-0 rounded-lg border bg-muted/50 p-2">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-muted-foreground">Voice message ready</span>
                   <Button
@@ -2618,14 +2642,14 @@ export default function ReportQA() {
 
             {/* Indexing indicator */}
             {isIndexing && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm text-muted-foreground">
+              <div className="flex shrink-0 items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Indexing reports for intelligent retrieval… Chat will be available shortly.</span>
               </div>
             )}
 
             {/* Input */}
-            <div className="report-qa-composer space-y-1 pt-2 sm:pt-3 border-t flex-shrink-0">
+            <div className="report-qa-composer max-h-[14rem] shrink-0 space-y-2 overflow-hidden border-t pt-3 sm:pt-4">
               <div className="flex gap-1.5 sm:gap-2 items-end">
                 <Textarea
                   ref={inputRef}
@@ -2640,7 +2664,7 @@ export default function ReportQA() {
                   onChange={(e) => {
                     setInputMessage(e.target.value);
                     e.target.style.height = 'auto';
-                    e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -2649,7 +2673,7 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="flex-1 min-h-[44px] max-h-[300px] resize-none overflow-y-auto rounded-2xl"
+                  className="report-qa-composer-input max-h-40 min-h-[52px] flex-1 resize-none overflow-y-auto rounded-2xl px-4 py-3 text-sm leading-6"
                   rows={1}
                 />
               {/* Recording controls */}
@@ -2661,7 +2685,7 @@ export default function ReportQA() {
                     onClick={pauseRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Pause recording"
-                    className="h-10 w-10 flex-shrink-0"
+                    className="report-qa-composer-control report-qa-composer-control-secondary h-11 w-11 flex-shrink-0"
                   >
                     <Pause className="h-4 w-4" />
                   </Button>
@@ -2671,7 +2695,7 @@ export default function ReportQA() {
                     onClick={finalizeRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Stop and transcribe"
-                    className="h-10 w-10 flex-shrink-0"
+                    className="report-qa-composer-control h-11 w-11 flex-shrink-0"
                   >
                     <Square className="h-4 w-4" />
                   </Button>
@@ -2684,7 +2708,7 @@ export default function ReportQA() {
                     onClick={resumeRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Resume recording"
-                    className="h-10 w-10 flex-shrink-0 border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    className="report-qa-composer-control report-qa-composer-control-secondary h-11 w-11 flex-shrink-0 border-orange-500 text-orange-500 hover:bg-orange-500/10"
                   >
                     <Play className="h-4 w-4" />
                   </Button>
@@ -2694,7 +2718,7 @@ export default function ReportQA() {
                     onClick={finalizeRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Stop and transcribe"
-                    className="h-10 w-10 flex-shrink-0"
+                    className="report-qa-composer-control h-11 w-11 flex-shrink-0"
                   >
                     <Square className="h-4 w-4" />
                   </Button>
@@ -2706,7 +2730,7 @@ export default function ReportQA() {
                   onClick={startRecording}
                   disabled={isProcessing || isTranscribing}
                   title="Start voice input"
-                  className="h-10 w-10 flex-shrink-0"
+                  className="report-qa-composer-control report-qa-mic-button h-11 w-11 flex-shrink-0"
                 >
                   {isTranscribing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -2718,7 +2742,9 @@ export default function ReportQA() {
                 <Button
                   onClick={() => handleSendMessage()}
                   disabled={!inputMessage.trim() || isProcessing || isRecording || isIndexing || inputMessage.length > MAX_MESSAGE_LENGTH}
-                  className="h-10 flex-shrink-0"
+                  className="report-qa-composer-control report-qa-send-button h-11 w-11 flex-shrink-0 rounded-2xl"
+                  title="Send message"
+                  aria-label="Send message"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -2821,32 +2847,39 @@ export default function ReportQA() {
         setShowHistory(open);
         if (!open) setHistorySearchQuery('');
       }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Conversation History
+        <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col overflow-hidden p-0 sm:rounded-2xl">
+          <DialogHeader className="border-b bg-gradient-to-br from-primary/10 via-background to-background px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <History className="h-5 w-5" />
+              </span>
+              <span>
+                Conversation History
+                <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                  {savedConversations.length} saved Q&A session{savedConversations.length !== 1 ? 's' : ''}
+                </span>
+              </span>
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="pt-2">
               Search and load previous Q&A conversations (⌘K)
             </DialogDescription>
           </DialogHeader>
           
           {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative border-b bg-muted/20 px-5 py-4 sm:px-6">
+            <Search className="absolute left-8 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground sm:left-9" />
             <Input
               placeholder="Search conversations by title or report name..."
               value={historySearchQuery}
               onChange={(e) => setHistorySearchQuery(e.target.value)}
-              className="pl-9 pr-9"
+              className="h-10 rounded-xl bg-background pl-9 pr-9 shadow-sm"
               autoFocus
             />
             {historySearchQuery && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                className="absolute right-6 top-1/2 h-6 w-6 -translate-y-1/2 sm:right-7"
                 onClick={() => setHistorySearchQuery('')}
               >
                 <X className="h-3 w-3" />
@@ -2854,29 +2887,29 @@ export default function ReportQA() {
             )}
           </div>
           
-          <ScrollArea className="max-h-[450px]">
+          <ScrollArea className="min-h-0 flex-1 px-3 py-3 sm:px-4">
             {savedConversations.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
                 <Archive className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground font-medium">No conversations yet</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
+                <p className="font-medium text-foreground">No conversations yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   Start a new chat to create your first conversation
                 </p>
               </div>
             ) : filteredConversations.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
                 <Search className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground font-medium">No results found</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
+                <p className="font-medium text-foreground">No results found</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   Try a different search term
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {Object.entries(groupConversationsByDate(sortedConversations)).map(([group, convs]) => 
                   convs.length > 0 && (
                     <div key={group} className="space-y-2">
-                      <div className="flex items-center gap-2 px-1">
+                      <div className="flex items-center gap-2 px-1 pt-1">
                         {group === 'Pinned' ? (
                           <Pin className="h-3 w-3 text-primary" />
                         ) : (
@@ -2894,9 +2927,9 @@ export default function ReportQA() {
                         <div
                           key={conv.id}
                           className={cn(
-                            "p-3 border rounded-lg hover:bg-muted/50 transition-all group cursor-pointer",
-                            conversationId === conv.id && "border-primary/50 bg-primary/5",
-                            pinnedIds.includes(conv.id) && "border-primary/30"
+                            "group cursor-pointer rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md",
+                            conversationId === conv.id && "border-primary bg-primary/10 shadow-md ring-1 ring-primary/15",
+                            pinnedIds.includes(conv.id) && "border-primary/40"
                           )}
                         >
                           {editingConversationId === conv.id ? (
@@ -2936,13 +2969,13 @@ export default function ReportQA() {
                                     {pinnedIds.includes(conv.id) && (
                                       <Pin className="h-3 w-3 text-primary fill-current flex-shrink-0" />
                                     )}
-                                    <p className="font-medium text-sm truncate">{conv.title}</p>
+                                    <p className="truncate text-sm font-semibold leading-5 text-foreground sm:text-base">{conv.title}</p>
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                                    <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px] font-semibold">
                                       {conv.report_names.length} report{conv.report_names.length !== 1 ? 's' : ''}
                                     </Badge>
-                                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                    <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                                       <Clock className="h-2.5 w-2.5" />
                                       {new Date(conv.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
@@ -3006,14 +3039,14 @@ export default function ReportQA() {
                                 </div>
                               </div>
                               {/* Report names preview */}
-                              <div className="mt-2 flex flex-wrap gap-1">
+                              <div className="mt-3 flex flex-wrap gap-1.5">
                                 {conv.report_names.slice(0, 2).map((name, idx) => (
-                                  <span key={idx} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded truncate max-w-[120px]">
+                                  <span key={idx} className="max-w-[190px] truncate rounded-full border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground">
                                     {name.replace('.pdf', '')}
                                   </span>
                                 ))}
                                 {conv.report_names.length > 2 && (
-                                  <span className="text-[10px] text-muted-foreground">
+                                  <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
                                     +{conv.report_names.length - 2} more
                                   </span>
                                 )}
@@ -3031,7 +3064,7 @@ export default function ReportQA() {
           
           {/* Footer with count */}
           {savedConversations.length > 0 && (
-            <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
+            <div className="flex items-center justify-between border-t bg-muted/20 px-5 py-3 text-xs text-muted-foreground sm:px-6">
               <span>
                 {filteredConversations.length} of {savedConversations.length} conversation{savedConversations.length !== 1 ? 's' : ''}
                 {pinnedIds.length > 0 && ` • ${pinnedIds.length} pinned`}
