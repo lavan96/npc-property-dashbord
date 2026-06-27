@@ -1232,9 +1232,11 @@ html {
     position: fixed !important;
     inset: 0 !important;
     z-index: 50 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     padding: 1rem !important;
     background: hsl(var(--background)) !important;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .report-qa-fullscreen .lg\\:col-span-2,
@@ -3035,15 +3037,124 @@ html {
 
   .report-qa-chat-header {
     border-bottom: 1px solid hsl(43 24% 38% / 0.22);
-    background: linear-gradient(180deg, hsl(43 74% 49% / 0.08), transparent);
+    background:
+      radial-gradient(circle at 10% 0%, hsl(43 84% 58% / 0.16), transparent 18rem),
+      linear-gradient(180deg, hsl(43 74% 49% / 0.095), hsl(0 0% 100% / 0.018) 72%, transparent);
+  }
+
+  .report-qa-chat-panel {
+    border-color: hsl(43 42% 44% / 0.34) !important;
+    background:
+      radial-gradient(circle at 78% -12%, hsl(43 86% 58% / 0.13), transparent 22rem),
+      radial-gradient(circle at 4% 42%, hsl(43 74% 49% / 0.08), transparent 19rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.027)),
+      hsl(220 18% 7% / 0.97) !important;
+    box-shadow:
+      0 32px 90px hsl(0 0% 0% / 0.46),
+      0 0 0 1px hsl(43 74% 49% / 0.08),
+      inset 0 1px 0 hsl(0 0% 100% / 0.09) !important;
+  }
+
+  .report-qa-chat-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent, hsl(43 74% 49% / 0.08), transparent) 0 0 / 100% 1px no-repeat,
+      radial-gradient(circle at 50% 0%, hsl(43 90% 62% / 0.08), transparent 26rem);
+  }
+
+  .report-qa-chat-panel > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-chat-title-icon {
+    border: 1px solid hsl(43 74% 49% / 0.28);
+    background: linear-gradient(135deg, hsl(43 74% 49% / 0.22), hsl(43 74% 49% / 0.07));
+    color: hsl(var(--primary));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1), 0 12px 28px hsl(43 74% 20% / 0.18);
+  }
+
+  .report-qa-chat-title {
+    color: hsl(var(--foreground));
+    text-shadow: 0 1px 0 hsl(0 0% 0% / 0.28);
+  }
+
+  .report-qa-chat-subtitle {
+    color: hsl(var(--muted-foreground) / 0.92);
+    line-height: 1.45;
+  }
+
+  .report-qa-chat-content {
+    padding-top: 0.9rem;
+    background: linear-gradient(180deg, hsl(0 0% 0% / 0.06), transparent 7rem);
+  }
+
+  .report-qa-message-area {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid hsl(43 22% 38% / 0.18);
+    border-radius: 1.35rem;
+    padding: 0.85rem 0.25rem 0.85rem 0.85rem;
+    background:
+      radial-gradient(circle at 16% 0%, hsl(43 74% 49% / 0.08), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.04), hsl(0 0% 100% / 0.018));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.055),
+      inset 0 -1px 0 hsl(0 0% 0% / 0.18);
   }
 
   .report-qa-toolbar {
-    border: 1px solid hsl(43 24% 38% / 0.16);
-    border-radius: 999px;
-    padding: 0.2rem;
-    background: hsl(0 0% 100% / 0.026);
-    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+    max-width: min(100%, 62rem);
+    border: 1px solid hsl(43 30% 42% / 0.28);
+    border-radius: 1.25rem;
+    padding: 0.35rem;
+    background:
+      radial-gradient(circle at 8% 0%, hsl(43 86% 58% / 0.12), transparent 14rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.032));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.075),
+      0 14px 34px hsl(0 0% 0% / 0.16);
+  }
+
+  .report-qa-toolbar-control {
+    min-height: 2rem;
+    border: 1px solid hsl(43 24% 42% / 0.28) !important;
+    border-radius: 0.875rem !important;
+    background: hsl(220 14% 10% / 0.62) !important;
+    color: hsl(var(--foreground) / 0.88) !important;
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.055);
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  }
+
+  .report-qa-toolbar-control:hover {
+    border-color: hsl(43 74% 49% / 0.52) !important;
+    background: hsl(43 74% 49% / 0.12) !important;
+    color: hsl(43 92% 82%) !important;
+    box-shadow: 0 10px 24px hsl(43 74% 18% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-toolbar-control:focus-visible {
+    outline: 2px solid hsl(43 86% 66% / 0.78) !important;
+    outline-offset: 2px;
+  }
+
+  .report-qa-toolbar-control[data-active="true"],
+  .report-qa-toolbar-control[aria-pressed="true"] {
+    border-color: hsl(43 86% 58% / 0.62) !important;
+    background: linear-gradient(135deg, hsl(43 86% 58% / 0.24), hsl(43 86% 58% / 0.1)) !important;
+    color: hsl(43 94% 78%) !important;
+  }
+
+  .report-qa-toolbar-control:disabled {
+    cursor: not-allowed;
+    border-color: hsl(43 14% 34% / 0.18) !important;
+    background: hsl(220 10% 12% / 0.38) !important;
+    color: hsl(var(--muted-foreground) / 0.48) !important;
+    opacity: 1;
+    box-shadow: none;
   }
 
   .report-qa-toolbar button:hover,
@@ -3245,13 +3356,113 @@ html {
     box-shadow: 0 6px 14px hsl(43 74% 20% / 0.12), inset 0 1px 0 hsl(0 0% 100% / 0.08);
   }
 
-  .report-qa-empty-state > div {
-    max-width: 30rem;
-    border: 1px solid hsl(43 30% 38% / 0.26);
+  .report-qa-empty-state {
+    min-height: clamp(22rem, 48vh, 36rem);
+  }
+
+  .report-qa-empty-card {
+    position: relative;
+    width: min(100%, 32rem);
+    max-width: 32rem;
+    overflow: hidden;
+    border: 1px solid hsl(43 38% 48% / 0.34);
+    border-radius: clamp(1.5rem, 3vw, 2rem);
+    padding: clamp(1.5rem, 4vw, 2.75rem);
+    background:
+      radial-gradient(circle at 50% 0%, hsl(43 88% 61% / 0.18), transparent 42%),
+      radial-gradient(circle at 8% 88%, hsl(43 72% 48% / 0.09), transparent 30%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.035));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.1),
+      0 22px 58px hsl(0 0% 0% / 0.18);
+  }
+
+  .report-qa-empty-card::before {
+    content: '';
+    position: absolute;
+    inset: 0.75rem;
+    pointer-events: none;
+    border: 1px solid hsl(43 44% 58% / 0.12);
+    border-radius: calc(clamp(1.5rem, 3vw, 2rem) - 0.45rem);
+  }
+
+  .report-qa-empty-card::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 1.15rem;
+    width: 8rem;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, hsl(43 82% 62% / 0.5), transparent);
+    transform: translateX(-50%);
+  }
+
+  .report-qa-empty-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-empty-icon-wrap {
+    position: relative;
+    display: grid;
+    width: clamp(4.25rem, 12vw, 5.5rem);
+    height: clamp(4.25rem, 12vw, 5.5rem);
+    margin: 0 auto;
+    place-items: center;
+    border: 1px solid hsl(43 44% 54% / 0.3);
     border-radius: 1.5rem;
-    padding: 2rem;
-    background: radial-gradient(circle at top, hsl(43 74% 49% / 0.12), transparent 65%), hsl(0 0% 100% / 0.035);
-    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.07);
+    background:
+      radial-gradient(circle at 35% 25%, hsl(43 82% 64% / 0.32), transparent 46%),
+      linear-gradient(145deg, hsl(43 74% 49% / 0.15), hsl(0 0% 100% / 0.05));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.12),
+      0 16px 30px hsl(43 55% 20% / 0.18);
+  }
+
+  .report-qa-empty-icon {
+    width: clamp(2rem, 6vw, 2.6rem);
+    height: clamp(2rem, 6vw, 2.6rem);
+    color: hsl(43 82% 62% / 0.82);
+    filter: drop-shadow(0 8px 18px hsl(43 72% 34% / 0.22));
+  }
+
+  .report-qa-empty-sparkle {
+    position: absolute;
+    right: -0.35rem;
+    top: -0.3rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    color: hsl(43 86% 66% / 0.78);
+  }
+
+  .report-qa-empty-title {
+    color: hsl(var(--foreground));
+    font-size: clamp(1rem, 2.2vw, 1.2rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .report-qa-empty-helper {
+    max-width: 25rem;
+    margin: 0 auto;
+    color: hsl(var(--muted-foreground));
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .report-qa-empty-upload-cue {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 1px solid hsl(43 38% 48% / 0.28);
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
+    color: hsl(43 78% 62% / 0.9);
+    background: linear-gradient(180deg, hsl(43 74% 49% / 0.12), hsl(0 0% 100% / 0.035));
+    font-size: 0.75rem;
+    font-weight: 600;
   }
 
   .report-qa-chat-panel .qa-chat-bubble-assistant {
@@ -3265,11 +3476,689 @@ html {
   }
 
   .report-qa-composer {
-    border-color: hsl(43 24% 38% / 0.24) !important;
-    background: linear-gradient(180deg, transparent, hsl(0 0% 0% / 0.18));
+    position: relative;
+    border-color: hsl(43 34% 48% / 0.28) !important;
+    margin-inline: -0.35rem;
+    padding: 1rem 0.45rem 0.15rem;
+    background:
+      radial-gradient(circle at 12% 0%, hsl(43 82% 58% / 0.12), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.055), hsl(220 18% 7% / 0.28));
   }
 
-  .report-qa-composer textarea:focus-visible {
-    box-shadow: 0 0 0 1px hsl(43 74% 49% / 0.45), 0 0 24px hsl(43 74% 49% / 0.12);
+  .report-qa-composer::before {
+    content: '';
+    position: absolute;
+    inset: 0.55rem 0.25rem auto;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, hsl(43 78% 62% / 0.34), transparent);
+  }
+
+  .report-qa-composer textarea,
+  .report-qa-composer-input {
+    color: hsl(var(--foreground) / 0.96);
+    border: 1px solid hsl(43 28% 48% / 0.32);
+    background:
+      linear-gradient(180deg, hsl(220 16% 12% / 0.96), hsl(220 18% 8% / 0.94));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.08),
+      inset 0 -1px 0 hsl(0 0% 0% / 0.18),
+      0 16px 34px hsl(0 0% 0% / 0.18);
+    transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease, opacity 180ms ease;
+  }
+
+  .report-qa-composer textarea::placeholder,
+  .report-qa-composer-input::placeholder {
+    color: hsl(40 18% 78% / 0.68);
+    letter-spacing: 0.005em;
+  }
+
+  .report-qa-composer textarea:disabled,
+  .report-qa-composer-input:disabled {
+    cursor: not-allowed;
+    border-color: hsl(43 18% 38% / 0.2);
+    background: linear-gradient(180deg, hsl(220 12% 11% / 0.72), hsl(220 14% 8% / 0.7));
+    opacity: 0.72;
+  }
+
+  .report-qa-composer-control {
+    border-radius: 1rem;
+    border: 1px solid hsl(43 30% 48% / 0.28);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1), 0 12px 26px hsl(0 0% 0% / 0.16);
+    transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease;
+  }
+
+  .report-qa-composer-control:not(:disabled):hover {
+    transform: translateY(-1px);
+    border-color: hsl(43 74% 58% / 0.52);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.14), 0 16px 32px hsl(0 0% 0% / 0.2), 0 0 18px hsl(43 74% 49% / 0.12);
+  }
+
+  .report-qa-mic-button,
+  .report-qa-composer-control-secondary {
+    color: hsl(43 72% 72% / 0.94);
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.035));
+  }
+
+  .report-qa-send-button {
+    color: hsl(0 0% 100%);
+    border-color: hsl(43 80% 64% / 0.58);
+    background: linear-gradient(135deg, hsl(43 78% 54%), hsl(35 88% 44%));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.28), 0 16px 34px hsl(43 74% 20% / 0.3), 0 0 24px hsl(43 74% 49% / 0.18);
+  }
+
+  .report-qa-send-button:disabled,
+  .report-qa-composer-control:disabled {
+    transform: none;
+    color: hsl(40 12% 72% / 0.42);
+    border-color: hsl(43 18% 38% / 0.18);
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.045), hsl(0 0% 100% / 0.02));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
+    opacity: 0.62;
+  }
+
+  @media (max-width: 1023px) {
+    .report-qa-premium {
+      overscroll-behavior: contain;
+    }
+
+    .report-qa-hero {
+      border-radius: 1rem;
+    }
+
+    .report-qa-header-actions > button,
+    .report-qa-header-actions [role='button'] {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+
+    .report-qa-reports-panel {
+      flex-shrink: 0;
+    }
+
+    .report-qa-chat-panel {
+      min-height: min(52rem, 82dvh);
+    }
+
+    .report-qa-message-area {
+      max-height: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .report-qa-toolbar {
+      width: 100%;
+      justify-content: flex-start;
+      overflow-wrap: anywhere;
+    }
+
+    .report-qa-suggestions [class*='report-qa-suggestion'],
+    .report-qa-suggestion-chip {
+      white-space: normal;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .report-qa-premium {
+      border-radius: 0;
+    }
+
+    .report-qa-message-area {
+      padding: 0.65rem 0.15rem 0.65rem 0.65rem;
+      border-radius: 1rem;
+    }
+
+    .report-qa-message-stack {
+      padding-right: 0.15rem;
+    }
+
+    .report-qa-message-bubble {
+      max-width: 96% !important;
+    }
+
+    .report-qa-dropzone {
+      min-height: 9rem;
+    }
+
+    .report-qa-composer {
+      margin-inline: -0.15rem;
+      padding-inline: 0.25rem;
+      padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+    }
+
+    .report-qa-composer-control {
+      min-width: 2.75rem;
+      min-height: 2.75rem;
+    }
+  }
+
+
+  /* Phase 9 — premium chat message presentation for Report Q&A only. */
+  .report-qa-message-stack {
+    padding-right: 0.45rem;
+  }
+
+  .report-qa-message-row {
+    contain: inline-size;
+  }
+
+  .report-qa-message-frame {
+    align-items: flex-start;
+  }
+
+  .report-qa-message-avatar {
+    border: 1px solid hsl(43 44% 58% / 0.24);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1), 0 10px 24px hsl(0 0% 0% / 0.16);
+  }
+
+  .report-qa-message-avatar-user {
+    background: linear-gradient(135deg, hsl(43 72% 24% / 0.7), hsl(220 14% 13% / 0.86)) !important;
+    color: hsl(43 90% 82%);
+  }
+
+  .report-qa-message-bubble {
+    position: relative;
+    overflow: hidden;
+    line-height: 1.65;
+    letter-spacing: -0.003em;
+    box-shadow: 0 16px 38px hsl(0 0% 0% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-message-bubble::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.08), transparent 32%);
+    opacity: 0.7;
+  }
+
+  .report-qa-message-bubble > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-message-meta {
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+  }
+
+  .report-qa-chat-panel .qa-chat-bubble-assistant {
+    border-color: hsl(43 28% 48% / 0.32);
+    background:
+      radial-gradient(circle at 0% 0%, hsl(43 82% 58% / 0.08), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.034));
+  }
+
+  .report-qa-chat-panel .qa-chat-bubble-user {
+    border: 1px solid hsl(43 88% 70% / 0.34);
+    background:
+      radial-gradient(circle at 0% 0%, hsl(0 0% 100% / 0.22), transparent 14rem),
+      linear-gradient(135deg, hsl(43 78% 55%), hsl(34 86% 42%));
+    color: hsl(35 28% 8%);
+    box-shadow: 0 16px 34px hsl(43 74% 20% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.25);
+  }
+
+  .report-qa-assistant-content {
+    color: hsl(var(--foreground) / 0.92);
+    font-size: 0.92rem;
+    line-height: 1.72;
+  }
+
+  .report-qa-assistant-content :where(p, ul, ol, blockquote, table, pre) {
+    margin-block: 0.72rem;
+  }
+
+  .report-qa-assistant-content :where(p:first-child, ul:first-child, ol:first-child, blockquote:first-child, table:first-child, pre:first-child) {
+    margin-top: 0;
+  }
+
+  .report-qa-assistant-content :where(p:last-child, ul:last-child, ol:last-child, blockquote:last-child, table:last-child, pre:last-child) {
+    margin-bottom: 0;
+  }
+
+  .report-qa-assistant-content :where(ul, ol) {
+    padding-left: 1.25rem;
+  }
+
+  .report-qa-assistant-content :where(li) {
+    margin-block: 0.28rem;
+    padding-left: 0.08rem;
+  }
+
+  .report-qa-assistant-content :where(h1, h2, h3, h4) {
+    margin-top: 1rem;
+    margin-bottom: 0.45rem;
+    color: hsl(var(--foreground));
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  .report-qa-assistant-content :where(blockquote) {
+    border-left: 3px solid hsl(43 74% 49% / 0.55);
+    border-radius: 0.6rem;
+    padding: 0.55rem 0.8rem;
+    background: hsl(43 74% 49% / 0.08);
+    color: hsl(var(--foreground) / 0.82);
+  }
+
+  .report-qa-assistant-content :where(code) {
+    border: 1px solid hsl(43 24% 42% / 0.22);
+    border-radius: 0.4rem;
+    padding: 0.08rem 0.32rem;
+    background: hsl(220 14% 5% / 0.5);
+    font-size: 0.88em;
+  }
+
+  .report-qa-assistant-content :where(pre) {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid hsl(43 24% 42% / 0.22);
+    border-radius: 0.9rem;
+    padding: 0.85rem;
+    background: hsl(220 16% 5% / 0.72);
+  }
+
+  .report-qa-assistant-content :where(pre code) {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .report-qa-user-content {
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  .report-qa-citations {
+    border-color: hsl(43 28% 48% / 0.22);
+    border-radius: 0.95rem;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, hsl(43 74% 49% / 0.08), hsl(0 0% 100% / 0.025));
+  }
+
+  .report-qa-citations button,
+  .report-qa-citations a {
+    border-radius: 999px;
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-message-actions {
+    border-color: hsl(43 24% 42% / 0.2) !important;
+  }
+
+  .report-qa-streaming-state {
+    margin-top: 0.25rem;
+  }
+
+  .report-qa-streaming-state > div:last-child {
+    max-width: min(80%, 58rem);
+    border: 1px solid hsl(43 28% 48% / 0.28);
+    border-radius: 1rem;
+    background:
+      radial-gradient(circle at 0% 0%, hsl(43 82% 58% / 0.09), transparent 15rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(0 0% 100% / 0.032));
+    box-shadow: 0 14px 34px hsl(0 0% 0% / 0.16), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-streaming-state p {
+    max-height: min(44vh, 32rem);
+    overflow: auto;
+    line-height: 1.7;
+    color: hsl(var(--foreground) / 0.92);
+  }
+
+  .report-qa-chat-panel [class*='bg-destructive\/10'] {
+    border-color: hsl(0 78% 62% / 0.34) !important;
+    background: linear-gradient(135deg, hsl(0 78% 62% / 0.14), hsl(0 0% 100% / 0.035)) !important;
+    box-shadow: 0 12px 30px hsl(0 78% 24% / 0.14), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .report-qa-composer textarea:focus-visible,
+  .report-qa-composer-input:focus-visible {
+    border-color: hsl(43 82% 62% / 0.72);
+    box-shadow:
+      0 0 0 1px hsl(43 74% 49% / 0.52),
+      0 0 0 5px hsl(43 74% 49% / 0.1),
+      0 0 30px hsl(43 74% 49% / 0.18),
+      inset 0 1px 0 hsl(0 0% 100% / 0.1);
+  }
+}
+
+@layer components {
+  /* Phase 14 — restrained Report Q&A micro-interactions only. */
+  .report-qa-premium :where(button, [role='button'], a, input, textarea) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .report-qa-premium :where(button, [role='button'], a, input, textarea, [tabindex]):focus-visible {
+    outline: 2px solid hsl(43 86% 66% / 0.86);
+    outline-offset: 3px;
+  }
+
+  .report-qa-panel {
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  }
+
+  .report-qa-panel:hover {
+    border-color: hsl(43 48% 48% / 0.38) !important;
+    box-shadow:
+      0 30px 82px hsl(0 0% 0% / 0.44),
+      0 0 0 1px hsl(43 74% 49% / 0.1),
+      inset 0 1px 0 hsl(0 0% 100% / 0.085) !important;
+    transform: translateY(-1px);
+  }
+
+  .report-qa-new-chat,
+  .report-qa-history-button,
+  .report-qa-icon-button,
+  .report-qa-library-button {
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  }
+
+  .report-qa-new-chat:active,
+  .report-qa-history-button:active,
+  .report-qa-icon-button:active,
+  .report-qa-library-button:active,
+  .report-qa-toolbar-control:active,
+  .report-qa-composer-control:not(:disabled):active {
+    transform: translateY(0) scale(0.985);
+  }
+
+  .report-qa-dropzone {
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  }
+
+  .report-qa-dropzone .report-qa-upload-icon {
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .report-qa-dropzone:hover .report-qa-upload-icon,
+  .report-qa-dropzone:focus-visible .report-qa-upload-icon,
+  .report-qa-dropzone.is-drag-over .report-qa-upload-icon {
+    transform: translateY(-1px) scale(1.025);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.12), 0 14px 30px hsl(43 74% 20% / 0.24), 0 0 24px hsl(43 74% 49% / 0.14);
+  }
+
+  .report-qa-report-item,
+  .report-qa-library-row,
+  .report-qa-history-row {
+    transition: transform 170ms ease, border-color 170ms ease, background 170ms ease, box-shadow 170ms ease, opacity 170ms ease;
+  }
+
+  .report-qa-library-row:not(:disabled):hover,
+  .report-qa-history-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px hsl(0 0% 0% / 0.18), 0 0 0 1px hsl(43 74% 49% / 0.08);
+  }
+
+  .report-qa-library-row:not(:disabled):active,
+  .report-qa-history-row:active,
+  .report-qa-report-item:active {
+    transform: translateY(0) scale(0.995);
+  }
+
+  .report-qa-suggestions {
+    transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  }
+
+  .report-qa-suggestions:hover {
+    border-color: hsl(43 54% 50% / 0.42) !important;
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.09), 0 18px 38px hsl(0 0% 0% / 0.13);
+  }
+
+  .report-qa-suggestions [data-radix-collapsible-content] {
+    overflow: hidden;
+    animation: reportQaCollapseIn 180ms ease-out;
+  }
+
+  .report-qa-suggestion-chip {
+    will-change: transform;
+  }
+
+  .report-qa-suggestion-chip:focus-visible {
+    box-shadow: 0 0 0 1px hsl(43 74% 49% / 0.5), 0 0 0 5px hsl(43 74% 49% / 0.12), 0 12px 24px hsl(43 74% 20% / 0.16);
+  }
+
+  .report-qa-composer:focus-within {
+    background:
+      radial-gradient(circle at 12% 0%, hsl(43 82% 58% / 0.16), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.065), hsl(220 18% 7% / 0.3));
+  }
+
+  .report-qa-send-button:not(:disabled):hover {
+    border-color: hsl(43 92% 72% / 0.72);
+    background: linear-gradient(135deg, hsl(43 84% 60%), hsl(35 88% 46%));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.32), 0 18px 38px hsl(43 74% 20% / 0.36), 0 0 30px hsl(43 74% 49% / 0.22);
+  }
+
+  .report-qa-message-row {
+    animation: reportQaMessageIn 220ms ease-out both;
+  }
+
+  .report-qa-message-bubble {
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+  }
+
+  .report-qa-message-bubble:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 38px hsl(0 0% 0% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  @keyframes reportQaMessageIn {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.995);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes reportQaCollapseIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .report-qa-premium *,
+    .report-qa-premium *::before,
+    .report-qa-premium *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 1ms !important;
+    }
+
+    .report-qa-panel:hover,
+    .report-qa-dropzone:hover,
+    .report-qa-dropzone:focus-visible,
+    .report-qa-dropzone.is-drag-over,
+    .report-qa-message-bubble:hover,
+    .report-qa-library-row:not(:disabled):hover,
+    .report-qa-history-row:hover,
+    .report-qa-report-item:hover {
+      transform: none !important;
+    }
+  }
+}
+
+@layer components {
+  /* Phase 16 — final premium SaaS polish for Report Q&A only. */
+  .report-qa-premium {
+    background:
+      radial-gradient(circle at 12% 6%, hsl(43 86% 58% / 0.18), transparent 30rem),
+      radial-gradient(circle at 86% 14%, hsl(43 74% 49% / 0.12), transparent 24rem),
+      radial-gradient(circle at 52% 100%, hsl(220 56% 26% / 0.18), transparent 30rem),
+      linear-gradient(135deg, hsl(0 0% 3%), hsl(220 22% 6%) 46%, hsl(32 18% 5%));
+  }
+
+  .report-qa-panel {
+    border-color: hsl(43 42% 44% / 0.34) !important;
+    box-shadow:
+      0 26px 74px hsl(0 0% 0% / 0.44),
+      0 0 0 1px hsl(43 72% 50% / 0.07),
+      inset 0 1px 0 hsl(0 0% 100% / 0.08) !important;
+  }
+
+  .report-qa-reports-panel {
+    background:
+      radial-gradient(circle at 20% 0%, hsl(43 88% 60% / 0.16), transparent 19rem),
+      radial-gradient(circle at 96% 100%, hsl(43 72% 48% / 0.08), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.028)),
+      hsl(220 18% 7% / 0.97) !important;
+  }
+
+  .report-qa-panel-section {
+    border-color: hsl(43 28% 42% / 0.26);
+    background:
+      linear-gradient(180deg, hsl(0 0% 100% / 0.045), hsl(0 0% 100% / 0.018));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.055);
+  }
+
+  .report-qa-dropzone {
+    min-height: clamp(13.75rem, 24vh, 17.5rem);
+    border-style: dashed !important;
+    border-color: hsl(43 86% 62% / 0.66) !important;
+    background:
+      radial-gradient(circle at 50% -8%, hsl(43 90% 64% / 0.28), transparent 14rem),
+      radial-gradient(circle at 18% 90%, hsl(43 74% 49% / 0.13), transparent 11rem),
+      linear-gradient(145deg, hsl(43 78% 55% / 0.16), hsl(220 20% 8% / 0.42) 48%, hsl(43 74% 49% / 0.09)),
+      hsl(220 18% 7% / 0.86);
+    box-shadow:
+      0 0 0 1px hsl(43 86% 62% / 0.18),
+      0 18px 42px hsl(0 0% 0% / 0.24),
+      0 0 38px hsl(43 74% 49% / 0.12),
+      inset 0 1px 0 hsl(0 0% 100% / 0.11);
+  }
+
+  .report-qa-dropzone::after {
+    content: '';
+    position: absolute;
+    inset: 0.7rem;
+    border: 1px solid hsl(43 74% 62% / 0.13);
+    border-radius: 1rem;
+    pointer-events: none;
+  }
+
+  .report-qa-dropzone .report-qa-upload-icon {
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 1.35rem;
+    background:
+      radial-gradient(circle at 34% 20%, hsl(43 92% 72% / 0.34), transparent 48%),
+      linear-gradient(145deg, hsl(43 80% 54% / 0.24), hsl(43 74% 49% / 0.08));
+  }
+
+  .report-qa-chat-panel {
+    box-shadow:
+      0 34px 96px hsl(0 0% 0% / 0.5),
+      0 0 0 1px hsl(43 86% 58% / 0.12),
+      0 0 56px hsl(43 74% 49% / 0.08),
+      inset 0 1px 0 hsl(0 0% 100% / 0.1) !important;
+  }
+
+  .report-qa-message-area {
+    border-color: hsl(43 32% 42% / 0.28);
+    background:
+      radial-gradient(circle at 16% 0%, hsl(43 82% 58% / 0.1), transparent 18rem),
+      radial-gradient(circle at 90% 100%, hsl(43 62% 38% / 0.08), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.052), hsl(0 0% 100% / 0.02));
+  }
+
+  .report-qa-toolbar {
+    gap: 0.45rem;
+    padding: 0.45rem;
+    border-color: hsl(43 40% 48% / 0.34);
+    background:
+      radial-gradient(circle at 6% 0%, hsl(43 86% 58% / 0.16), transparent 14rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.1), hsl(0 0% 100% / 0.036));
+  }
+
+  .report-qa-toolbar-control {
+    min-width: 2.25rem;
+    border-radius: 0.95rem !important;
+    border-color: hsl(43 34% 46% / 0.36) !important;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.075), hsl(220 14% 10% / 0.66)) !important;
+  }
+
+  .report-qa-suggestions {
+    border-color: hsl(43 48% 50% / 0.38) !important;
+    background:
+      radial-gradient(circle at 8% 0%, hsl(43 90% 64% / 0.2), transparent 38%),
+      radial-gradient(circle at 92% 100%, hsl(43 74% 49% / 0.1), transparent 34%),
+      linear-gradient(135deg, hsl(43 76% 50% / 0.09), hsl(0 0% 100% / 0.045) 54%, hsl(0 0% 100% / 0.022));
+  }
+
+  .report-qa-suggestion-chip {
+    border-radius: 0.95rem;
+    padding: 0.55rem 0.75rem;
+    border-color: hsl(43 44% 48% / 0.42);
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.095), hsl(0 0% 100% / 0.036));
+  }
+
+  .report-qa-empty-card {
+    width: min(100%, 36rem);
+    max-width: 36rem;
+    border-color: hsl(43 50% 54% / 0.4);
+    background:
+      radial-gradient(circle at 50% -5%, hsl(43 90% 64% / 0.24), transparent 44%),
+      radial-gradient(circle at 8% 88%, hsl(43 72% 48% / 0.11), transparent 31%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.095), hsl(0 0% 100% / 0.038));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.12),
+      0 28px 68px hsl(0 0% 0% / 0.24),
+      0 0 44px hsl(43 74% 49% / 0.08);
+  }
+
+  .report-qa-empty-helper,
+  .report-qa-subtitle,
+  .report-qa-chat-subtitle {
+    color: hsl(43 20% 86% / 0.78);
+  }
+
+  .report-qa-chat-panel .qa-chat-bubble-assistant {
+    border: 1px solid hsl(43 30% 44% / 0.3);
+    background:
+      radial-gradient(circle at 0% 0%, hsl(43 74% 49% / 0.08), transparent 14rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.036));
+    box-shadow: 0 14px 34px hsl(0 0% 0% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.075);
+  }
+
+  .report-qa-composer {
+    max-height: min(12.5rem, 32dvh);
+    margin-inline: -0.1rem;
+    border-color: hsl(43 42% 52% / 0.34) !important;
+    border-radius: 1.25rem 1.25rem 0 0;
+    padding-inline: 0.65rem;
+    background:
+      radial-gradient(circle at 12% 0%, hsl(43 88% 62% / 0.14), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.07), hsl(220 18% 7% / 0.34));
+  }
+
+  .report-qa-composer textarea,
+  .report-qa-composer-input {
+    max-height: 7rem;
+    border-color: hsl(43 40% 52% / 0.42) !important;
+  }
+
+  .report-qa-composer-control {
+    border: 1px solid hsl(43 36% 48% / 0.36) !important;
+    border-radius: 1rem !important;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.08), hsl(220 14% 10% / 0.68)) !important;
+    color: hsl(43 18% 90% / 0.92) !important;
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.075), 0 10px 24px hsl(0 0% 0% / 0.16);
+  }
+
+  .report-qa-send-button {
+    border-color: hsl(43 90% 66% / 0.52) !important;
+    background: linear-gradient(135deg, hsl(43 86% 58%), hsl(34 88% 43%)) !important;
+    color: hsl(30 26% 8%) !important;
   }
 }
