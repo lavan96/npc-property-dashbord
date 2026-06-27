@@ -364,8 +364,8 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
           className={`
             group relative min-h-[280px] cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-all duration-300 sm:p-8 md:p-10
             ${isDragActive
-              ? 'border-amber-300 bg-amber-300/10 shadow-2xl shadow-amber-500/25 ring-4 ring-amber-300/20'
-              : 'border-amber-300/35 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_36%),linear-gradient(145deg,rgba(24,24,27,0.88),rgba(3,7,18,0.78))] shadow-xl shadow-black/20 hover:border-amber-300/70 hover:bg-amber-300/[0.08] hover:shadow-2xl hover:shadow-amber-950/20 focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-300/20'
+              ? 'scale-[1.01] border-amber-300 bg-amber-300/10 shadow-2xl shadow-amber-500/25 ring-4 ring-amber-300/20'
+              : 'border-amber-300/35 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_36%),linear-gradient(145deg,rgba(24,24,27,0.88),rgba(3,7,18,0.78))] shadow-xl shadow-black/20 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-300/[0.08] hover:shadow-2xl hover:shadow-amber-950/20 focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-300/20'
             }
           `}
         >

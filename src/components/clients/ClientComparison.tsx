@@ -183,13 +183,13 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                 placeholder="Search clients by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-12 rounded-2xl border-amber-300/15 bg-black/20 pl-11 pr-4 text-sm text-white shadow-inner shadow-black/20 placeholder:text-slate-500 transition-colors focus-visible:border-amber-300/45 focus-visible:ring-amber-300/25"
+                className="h-12 rounded-2xl border-amber-300/15 bg-black/20 pl-11 pr-4 text-sm text-white shadow-inner shadow-black/20 placeholder:text-slate-500 transition-all hover:border-amber-300/30 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               />
             </div>
             <Button
               variant={showActiveOnly ? 'default' : 'outline'}
               size="sm"
-              className={`h-12 shrink-0 gap-2 rounded-2xl px-4 text-sm font-semibold transition-all ${
+              className={`h-12 shrink-0 gap-2 rounded-2xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                 showActiveOnly
                   ? 'border-amber-300/30 bg-gradient-to-r from-amber-300 to-yellow-500 text-black shadow-lg shadow-amber-500/20 hover:from-amber-200 hover:to-yellow-400'
                   : 'border-white/10 bg-white/[0.035] text-slate-300 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100'
@@ -235,8 +235,8 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                       key={client.id}
                       className={`group flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-all duration-300 ${
                         isSelected
-                          ? 'border-amber-300/70 bg-amber-300/12 shadow-lg shadow-amber-500/20 ring-1 ring-amber-200/30'
-                          : 'border-white/10 bg-white/[0.035] opacity-90 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-white/[0.06] hover:opacity-100'
+                          ? 'border-amber-300/70 bg-amber-300/12 shadow-lg shadow-amber-500/20 ring-1 ring-amber-200/30 hover:shadow-[0_16px_36px_rgba(245,158,11,0.18)]'
+                          : 'border-white/10 bg-white/[0.035] opacity-90 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-white/[0.06] hover:opacity-100 hover:shadow-[0_12px_28px_rgba(245,158,11,0.08)] focus-within:border-amber-300/45 focus-within:ring-2 focus-within:ring-amber-300/20'
                       }`}
                       onClick={() => toggleClient(client.id)}
                     >

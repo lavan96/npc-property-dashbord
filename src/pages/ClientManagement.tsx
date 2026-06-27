@@ -651,7 +651,7 @@ export default function ClientManagement() {
             variant="default" 
             size="sm"
             disabled={isImportingFromGHL}
-            className="h-11 rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(120,53,15,0.12))] px-4 text-xs font-bold text-amber-100 shadow-lg shadow-amber-950/25 transition-all hover:-translate-y-0.5 hover:border-amber-200/55 hover:bg-amber-500/25 hover:text-amber-50 hover:shadow-amber-500/15 focus-visible:ring-2 focus-visible:ring-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+            className="h-11 rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(120,53,15,0.12))] px-4 text-xs font-bold text-amber-100 shadow-lg shadow-amber-950/25 transition-all hover:-translate-y-0.5 hover:border-amber-200/55 hover:bg-amber-500/25 hover:text-amber-50 hover:shadow-[0_14px_38px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-amber-300/55 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
           >
             {isImportingFromGHL ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -669,7 +669,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-4 text-xs font-semibold text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/40 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+            className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-4 text-xs font-semibold text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -681,7 +681,7 @@ export default function ClientManagement() {
               onClick={() => setShowAddClientModal(true)} 
               variant="default" 
               size="sm"
-              className="h-12 rounded-2xl border border-amber-200/50 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-5 text-xs font-black text-black shadow-xl shadow-amber-500/30 transition-all hover:-translate-y-1 hover:from-amber-200 hover:via-yellow-300 hover:to-amber-400 hover:shadow-amber-400/40 focus-visible:ring-2 focus-visible:ring-amber-200/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:text-sm"
+              className="h-12 rounded-2xl border border-amber-200/50 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-5 text-xs font-black text-black shadow-xl shadow-amber-500/30 transition-all hover:-translate-y-1 hover:from-amber-200 hover:via-yellow-300 hover:to-amber-400 hover:shadow-[0_18px_46px_rgba(251,191,36,0.32)] focus-visible:ring-2 focus-visible:ring-amber-200/75 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:text-sm"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Add Client</span>
@@ -692,26 +692,26 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-3 text-slate-200 transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/40" aria-label="More actions">
+              <Button variant="outline" size="sm" className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-3 text-slate-200 transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-amber-300/50 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-100" aria-label="More actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-56 rounded-2xl border-amber-500/20 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-2 shadow-2xl shadow-black/30">
-              <DropdownMenuItem onClick={handleClearAndReimport} disabled={isImportingFromGHL} className="rounded-xl text-red-200 focus:bg-red-500/10 focus:text-red-100 disabled:opacity-50">
+              <DropdownMenuItem onClick={handleClearAndReimport} disabled={isImportingFromGHL} className="rounded-xl text-red-200 transition-colors focus:bg-red-500/10 focus:text-red-100 disabled:opacity-50">
                 <Trash2 className="h-4 w-4 mr-2 text-red-300" />
                 Clear & Reimport
               </DropdownMenuItem>
               {pendingSyncCount > 0 && (
-                <DropdownMenuItem onClick={handleSyncAllPending} disabled={isSyncingAll} className="rounded-xl focus:bg-amber-500/10 focus:text-amber-100 disabled:opacity-50">
+                <DropdownMenuItem onClick={handleSyncAllPending} disabled={isSyncingAll} className="rounded-xl transition-colors focus:bg-amber-500/10 focus:text-amber-100 disabled:opacity-50">
                   <RefreshCw className="h-4 w-4 mr-2 text-amber-300" />
                   Sync All ({pendingSyncCount})
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => refetch()} className="rounded-xl focus:bg-amber-500/10 focus:text-amber-100">
+              <DropdownMenuItem onClick={() => refetch()} className="rounded-xl transition-colors focus:bg-amber-500/10 focus:text-amber-100">
                 <RefreshCw className="h-4 w-4 mr-2 text-slate-300" />
                 Refresh
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = '/client-tracker'} className="rounded-xl focus:bg-amber-500/10 focus:text-amber-100">
+              <DropdownMenuItem onClick={() => window.location.href = '/client-tracker'} className="rounded-xl transition-colors focus:bg-amber-500/10 focus:text-amber-100">
                 <Target className="h-4 w-4 mr-2 text-slate-300" />
                 Client Tracker
               </DropdownMenuItem>
@@ -774,14 +774,14 @@ export default function ClientManagement() {
                 placeholder="Search clients..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 rounded-xl border-amber-500/20 bg-background/75 pl-10 pr-4 text-sm shadow-sm shadow-black/20 placeholder:text-muted-foreground/75 transition-all focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-400/30"
+                className="h-11 rounded-xl border-amber-500/20 bg-background/75 pl-10 pr-4 text-sm shadow-sm shadow-black/20 placeholder:text-muted-foreground/75 transition-all hover:border-amber-400/35 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               />
             </div>
             <Button
               variant={showActiveOnly ? "default" : "outline"}
               size="sm"
               onClick={() => setShowActiveOnly(!showActiveOnly)}
-              className={`h-11 gap-2 rounded-xl px-4 font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/50 ${
+              className={`h-11 gap-2 rounded-xl px-4 font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/50 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                 showActiveOnly
                   ? 'border-amber-300/40 bg-amber-400 text-black shadow-amber-500/20 hover:bg-amber-300 hover:text-black'
                   : 'border-amber-500/25 bg-background/70 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-100'
@@ -797,7 +797,7 @@ export default function ClientManagement() {
             </Button>
             <ClientFilters filters={filters} onFiltersChange={setFilters} />
             {filteredClients.length > 0 && (
-              <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/55 px-3 text-sm shadow-sm transition-colors hover:border-amber-500/25 hover:bg-amber-500/5">
+              <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border/60 bg-background/55 px-3 text-sm shadow-sm transition-all hover:border-amber-500/35 hover:bg-amber-500/5 focus-within:border-amber-300/50 focus-within:ring-2 focus-within:ring-amber-300/25">
                 <Checkbox
                   checked={allSelected}
                   ref={(ref) => {

@@ -61,7 +61,7 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-11 gap-2 rounded-xl border-amber-500/25 bg-background/70 px-4 font-semibold text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-400/30">
+        <Button variant="outline" size="sm" className="h-11 gap-2 rounded-xl border-amber-500/25 bg-background/70 px-4 font-semibold text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-amber-300/55 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-100">
           <Filter className="h-4 w-4 text-amber-200/80" />
           Filters
           {activeFilterCount > 0 && (
@@ -76,7 +76,7 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
           <div className="flex items-center justify-between">
             <h4 className="font-medium">Filters</h4>
             {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 px-2 text-xs">
+              <Button variant="ghost" size="sm" onClick={handleReset} className="h-8 rounded-lg px-2 text-xs transition-colors hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35">
                 <X className="h-3 w-3 mr-1" />
                 Clear all
               </Button>
