@@ -2678,42 +2678,47 @@ export default function EmailCopilot() {
 
                   {/* AI Summary */}
                   {selectedEmail.summary && (
-                    <div className="bg-card/90 rounded-2xl border border-primary/20 overflow-hidden shadow-xl shadow-primary/5 transition-all hover:border-primary/35">
-                      <div className="px-4 py-3 bg-primary/10 border-b border-primary/15 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium">AI Summary</span>
+                    <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(var(--primary)/0.045))] shadow-[0_18px_48px_hsl(var(--primary)/0.08)] transition-all hover:border-primary/35">
+                      <div className="flex items-center justify-between gap-3 border-b border-primary/15 bg-primary/10 px-5 py-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner">
+                            <Sparkles className="h-4 w-4 text-primary" />
+                          </span>
+                          <div className="min-w-0">
+                            <span className="block text-sm font-bold text-foreground">AI Summary</span>
+                            <span className="block text-xs text-muted-foreground">Generated insight for review</span>
+                          </div>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setShowSummaryModal(true)}>
+                        <Button variant="ghost" size="sm" onClick={() => setShowSummaryModal(true)} className="shrink-0 rounded-full hover:bg-primary/10 hover:text-primary">
                           View Full Summary
                         </Button>
                       </div>
-                      <div className="p-4 space-y-4">
-                        <div>
-                          <Label className="text-xs uppercase text-muted-foreground font-semibold">TL;DR</Label>
-                          <p className="text-sm mt-1">{selectedEmail.summary.tldr}</p>
+                      <div className="space-y-5 p-5">
+                        <div className="rounded-2xl border border-border/55 bg-background/45 p-4">
+                          <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">TL;DR</Label>
+                          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/85">{selectedEmail.summary.tldr}</p>
                         </div>
                         {toStringArray(selectedEmail.summary.keyPoints).length > 0 && (
-                          <div>
-                            <Label className="text-xs uppercase text-muted-foreground font-semibold">Key Points</Label>
-                            <ul className="mt-1 space-y-1">
+                          <div className="rounded-2xl border border-border/55 bg-background/35 p-4">
+                            <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Key Points</Label>
+                            <ul className="mt-3 space-y-2">
                               {toStringArray(selectedEmail.summary.keyPoints).map((point, i) => (
-                                <li key={i} className="text-sm flex items-start gap-2">
-                                  <ChevronRight className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                                  <span>{point}</span>
+                                <li key={i} className="flex items-start gap-2 text-sm leading-6">
+                                  <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                                  <span className="min-w-0 break-words text-foreground/85">{point}</span>
                                 </li>
                               ))}
                             </ul>
                           </div>
                         )}
                         {toStringArray(selectedEmail.summary.requiredActions).length > 0 && (
-                          <div>
-                            <Label className="text-xs uppercase text-muted-foreground font-semibold">Required Actions</Label>
-                            <ul className="mt-1 space-y-1">
+                          <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-4">
+                            <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Required Actions</Label>
+                            <ul className="mt-3 space-y-2">
                               {toStringArray(selectedEmail.summary.requiredActions).map((action, i) => (
-                                <li key={i} className="text-sm flex items-start gap-2">
-                                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                  <span>{action}</span>
+                                <li key={i} className="flex items-start gap-2 text-sm leading-6">
+                                  <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                                  <span className="min-w-0 break-words text-foreground/85">{action}</span>
                                 </li>
                               ))}
                             </ul>
@@ -2725,13 +2730,18 @@ export default function EmailCopilot() {
 
                   {/* Draft Reply Preview */}
                   {selectedEmail.draft_reply && (
-                    <div className="bg-card/90 rounded-2xl border border-purple-500/20 overflow-hidden shadow-xl shadow-purple-950/10 transition-all hover:border-purple-500/35">
-                      <div className="px-4 py-3 bg-purple-500/5 border-b flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-purple-600" />
-                          <span className="text-sm font-medium">Draft Reply</span>
+                    <div className="overflow-hidden rounded-[1.75rem] border border-amber-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(43_74%_49%/0.055))] shadow-[0_18px_48px_hsl(43_74%_49%/0.10)] transition-all hover:border-amber-500/40">
+                      <div className="flex items-center justify-between gap-3 border-b border-amber-500/20 bg-amber-500/10 px-5 py-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/10 shadow-inner">
+                            <MessageSquare className="h-4 w-4 text-amber-600" />
+                          </span>
+                          <div className="min-w-0">
+                            <span className="block text-sm font-bold text-foreground">Draft Reply</span>
+                            <span className="block text-xs text-amber-700 dark:text-amber-300">Review required before sending</span>
+                          </div>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => {
+                        <Button variant="ghost" size="sm" className="shrink-0 rounded-full hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-300" onClick={() => {
                           setCurrentDraft(selectedEmail.draft_reply || '');
                           initializeReplyFields();
                           setShowDraftModal(true);
@@ -2739,8 +2749,12 @@ export default function EmailCopilot() {
                           View & Edit Draft
                         </Button>
                       </div>
-                      <div className="p-4">
-                        <p className="text-sm text-muted-foreground line-clamp-3">
+                      <div className="space-y-3 p-5">
+                        <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>AI outputs are drafts. Review and edit before sending.</span>
+                        </div>
+                        <p className="line-clamp-4 whitespace-pre-wrap break-words rounded-2xl border border-border/55 bg-background/45 p-4 text-sm leading-6 text-foreground/85">
                           {selectedEmail.draft_reply}
                         </p>
                       </div>
@@ -2750,14 +2764,14 @@ export default function EmailCopilot() {
               </ScrollArea>
 
               {/* Action Bar */}
-              <div className="px-4 md:px-6 py-3 md:py-4 bg-card/90 border-t border-border/70 flex flex-col md:flex-row md:items-center gap-3 md:justify-between shadow-[0_-12px_30px_rgba(0,0,0,0.12)]">
+              <div className="flex flex-col gap-3 border-t border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86))] px-4 py-3 shadow-[0_-12px_30px_rgba(0,0,0,0.12)] md:flex-row md:items-center md:justify-between md:px-6 md:py-4">
                 <div className="flex items-center gap-2 md:gap-3">
                   <Button 
                     onClick={handleSummarize} 
                     disabled={isSummarizing}
                     variant={selectedEmail.summary ? "outline" : "default"}
                     size={isMobile ? "sm" : "default"}
-                    className="flex-1 md:flex-none"
+                    className="flex-1 rounded-full md:flex-none"
                   >
                     <Sparkles className={`h-4 w-4 mr-2 ${isSummarizing ? 'animate-pulse' : ''}`} />
                     {isSummarizing ? 'Summarizing...' : selectedEmail.summary ? 'Re-summarize' : 'Summarize'}
@@ -2771,16 +2785,16 @@ export default function EmailCopilot() {
                     }} 
                     variant="outline"
                     size={isMobile ? "sm" : "default"}
-                    className="flex-1 md:flex-none"
+                    className="flex-1 rounded-full border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 md:flex-none"
                   >
-                    <Reply className="h-4 w-4 mr-2" />
+                    <Reply className="h-4 w-4 mr-2 text-amber-600" />
                     {isMobile ? 'Reply' : (selectedEmail.draft_reply ? 'Compose New Reply' : 'Compose Reply')}
                   </Button>
                   <Button 
                     onClick={handleOpenForward}
                     variant="outline"
                     size={isMobile ? "sm" : "default"}
-                    className="flex-1 md:flex-none"
+                    className="flex-1 rounded-full md:flex-none"
                   >
                     <Forward className="h-4 w-4 mr-2" />
                     Forward
@@ -2794,7 +2808,7 @@ export default function EmailCopilot() {
                       variant="secondary" 
                       size="sm"
                       onClick={() => setShowSummaryModal(true)}
-                      className="flex-1 md:flex-none"
+                      className="flex-1 rounded-full md:flex-none"
                     >
                       <Sparkles className="h-4 w-4 mr-2 text-primary" />
                       {isMobile ? 'Summary' : 'View Summary'}
@@ -2805,9 +2819,9 @@ export default function EmailCopilot() {
                       variant="secondary" 
                       size="sm"
                       onClick={handleOpenEditDraft}
-                      className="flex-1 md:flex-none"
+                      className="flex-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-800 hover:bg-amber-500/15 dark:text-amber-200 md:flex-none"
                     >
-                      <MessageSquare className="h-4 w-4 mr-2 text-purple-600" />
+                      <MessageSquare className="h-4 w-4 mr-2 text-amber-600" />
                       {isMobile ? 'Edit Draft' : 'View & Edit Draft'}
                     </Button>
                   )}
@@ -2821,9 +2835,9 @@ export default function EmailCopilot() {
                     </span>
                     {loadingQuickReplies ? (
                       <>
-                        <div className="h-6 w-24 rounded-full bg-muted animate-pulse" />
-                        <div className="h-6 w-28 rounded-full bg-muted animate-pulse" />
-                        <div className="h-6 w-20 rounded-full bg-muted animate-pulse" />
+                        <div className="h-6 w-24 animate-pulse rounded-full bg-primary/10" />
+                        <div className="h-6 w-28 animate-pulse rounded-full bg-primary/10" />
+                        <div className="h-6 w-20 animate-pulse rounded-full bg-primary/10" />
                       </>
                     ) : (
                       quickReplies.map((q, i) => (
@@ -2834,7 +2848,7 @@ export default function EmailCopilot() {
                             initializeReplyFields();
                             setShowDraftModal(true);
                           }}
-                          className="text-xs px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 hover:bg-primary/10 text-foreground transition-colors"
+                          className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-primary/10"
                         >
                           {q}
                         </button>
