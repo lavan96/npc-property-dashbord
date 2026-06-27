@@ -57,7 +57,7 @@ export function ChartStats({ charts }: ChartStatsProps) {
       {stats.map(s => (
         <Card
           key={s.label}
-          className={`dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-gradient-to-br ${s.insight ? 'from-primary/16 via-card/95 to-amber-950/10 border-primary/25' : 'from-card/95 via-card/90 to-slate-950/5'} shadow-xl shadow-black/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/45 hover:ring-1 hover:ring-primary/20 hover:shadow-[0_24px_70px_hsl(var(--primary)/0.16)] dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/25`}
+          className={`dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-gradient-to-br ${s.insight ? 'from-primary/16 via-card/95 to-amber-950/10 border-primary/25' : 'from-card/95 via-card/90 to-slate-950/5'} shadow-xl shadow-black/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/65 hover:ring-1 hover:ring-amber-300/30 hover:shadow-[0_24px_70px_hsl(43_74%_49%/0.18),0_0_0_1px_hsl(43_96%_56%/0.14)] focus-within:border-amber-300/65 focus-within:ring-2 focus-within:ring-amber-300/25 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/25`}
         >
           <div className={`pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r ${s.edge} opacity-70 transition-opacity duration-300 group-hover:opacity-100`} />
           <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-3xl transition-opacity duration-300 group-hover:opacity-80" />
