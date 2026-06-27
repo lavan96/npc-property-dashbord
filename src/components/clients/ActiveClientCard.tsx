@@ -89,7 +89,7 @@ type NoteType = typeof noteTypes[number]['value'];
 const NOTE_TRUNCATE_LENGTH = 150;
 const PAGE_SIZE = 10;
 const activeClientBadgeClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
-const activeClientActionButtonClass = "rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
+const activeClientActionButtonClass = "client-tracker-gold-interaction rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
 const activeClientMenuContentClass = "z-50 min-w-[10rem] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur-xl";
 const activeClientMenuItemClass = "cursor-pointer rounded-lg px-2.5 py-2 text-sm focus:bg-primary/10 focus:text-primary";
 
@@ -375,7 +375,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
 
   return (
     <Card className={cn(
-      "group flex flex-col overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.74))] shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10",
+      "client-tracker-gold-interaction group flex flex-col overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.74))] shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10",
       client.is_favorite && "ring-2 ring-yellow-400/50"
     )}>
       <CardHeader className="border-b border-border/60 bg-card/35 pb-3">
@@ -499,7 +499,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-full rounded-xl border-primary/25 bg-primary/5 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/35"
+            className="client-tracker-gold-interaction h-9 w-full rounded-xl border-primary/25 bg-primary/5 text-sm font-semibold text-primary shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/35"
             onClick={() => setIsAddingNote(true)}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -527,7 +527,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                 {notes.map((note: ClientNote) => (
                   <div 
                     key={note.id} 
-                    className="relative rounded-2xl border border-border/60 bg-card/80 p-3 text-sm shadow-sm shadow-black/5 transition-all hover:border-primary/25 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/10"
+                    className="client-tracker-gold-interaction relative rounded-2xl border border-border/60 bg-card/80 p-3 text-sm shadow-sm shadow-black/5 transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md hover:shadow-primary/10"
                   >
                     {editingNoteId === note.id ? (
                       <div className="space-y-2">
@@ -600,7 +600,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="mt-2 h-7 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary"
+                            className="client-tracker-gold-interaction mt-2 h-7 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35"
                             onClick={() => toggleNoteExpansion(note.id)}
                           >
                             {expandedNotes.has(note.id) ? (

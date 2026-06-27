@@ -144,7 +144,7 @@ const FALLBACK_STAGES = [
 
 const badgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
 const compactBadgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 shadow-sm";
-const actionIconButtonClass = "rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
+const actionIconButtonClass = "client-tracker-gold-interaction rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
 const actionMenuContentClass = "z-50 min-w-[12rem] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur-xl";
 const actionMenuItemClass = "cursor-pointer rounded-lg px-2.5 py-2 text-sm focus:bg-primary/10 focus:text-primary";
 
@@ -1131,7 +1131,7 @@ export default function ClientTracker() {
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-11 rounded-xl border-border/70 bg-background/85 pl-10 pr-4 text-sm shadow-inner transition-all placeholder:text-muted-foreground/70 hover:border-primary/25 hover:bg-background/95 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25"
+              className="client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 pl-10 pr-4 text-sm shadow-inner transition-all placeholder:text-muted-foreground/70 hover:border-primary/30 hover:bg-background/95 focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/30"
             />
           </div>
           
@@ -1151,7 +1151,7 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Pipeline</label>
                     <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5")}>
+                      <SelectTrigger className={cn("client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 focus:ring-primary/30", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5")}>
                         <Layers className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Select Pipeline" />
                       </SelectTrigger>
@@ -1168,7 +1168,7 @@ export default function ClientTracker() {
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Stage</label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className={cn("h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 focus:ring-primary/25", statusFilter !== 'all' && "border-primary/45 bg-primary/5")}>
+                      <SelectTrigger className={cn("client-tracker-gold-interaction h-11 rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 focus:ring-primary/30", statusFilter !== 'all' && "border-primary/45 bg-primary/5")}>
                         <Filter className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Filter by stage" />
                       </SelectTrigger>
@@ -1192,7 +1192,7 @@ export default function ClientTracker() {
             <>
               {/* Desktop: Inline filters */}
               <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[230px]", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                <SelectTrigger className={cn("client-tracker-gold-interaction h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 hover:bg-background/95 focus:ring-primary/30 md:w-[230px]", selectedPipelineId !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
                   <Layers className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Select Pipeline" />
                 </SelectTrigger>
@@ -1207,7 +1207,7 @@ export default function ClientTracker() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className={cn("h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/30 hover:bg-background/95 focus:ring-primary/25 md:w-[215px]", statusFilter !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
+                <SelectTrigger className={cn("client-tracker-gold-interaction h-11 w-full rounded-xl border-border/70 bg-background/85 shadow-inner transition-all hover:border-primary/35 hover:bg-background/95 focus:ring-primary/30 md:w-[215px]", statusFilter !== 'all' && "border-primary/45 bg-primary/5 text-primary")}>
                   <Filter className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Filter by stage" />
                 </SelectTrigger>
@@ -1271,26 +1271,26 @@ export default function ClientTracker() {
               {!isMobile && (
                 <TabsTrigger
                   value="kanban"
-                  className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+                  className="client-tracker-gold-interaction rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/8 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
                 >
                   Kanban Board
                 </TabsTrigger>
               )}
               <TabsTrigger
                 value="pipeline"
-                className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+                className="client-tracker-gold-interaction rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/8 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
               >
                 {isMobile ? 'Cards' : 'Pipeline View'}
               </TabsTrigger>
               <TabsTrigger
                 value="table"
-                className="rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+                className="client-tracker-gold-interaction rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/8 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
               >
                 Table
               </TabsTrigger>
               <TabsTrigger
                 value="active"
-                className="group rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
+                className="client-tracker-gold-interaction group rounded-xl px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-primary/8 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25"
               >
                 <span className="flex items-center gap-2">
                   <UserCheck className="h-3.5 w-3.5" />
@@ -1336,9 +1336,9 @@ export default function ClientTracker() {
                       onDrop={isDragDropEnabled ? (e) => handleDrop(e, stage.id, stage.name) : undefined}
                     >
                       <Card className={cn(
-                        "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
+                        "client-tracker-gold-interaction flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-primary/10",
                         draggedClient && isDragDropEnabled && !isDragOver && "border-primary/20 bg-primary/[0.03]",
-                        isDragOver && isDragDropEnabled && "scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
+                        isDragOver && isDragDropEnabled && "client-tracker-drop-glow scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                       )}>
                         <CardHeader className={cn(
                           "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.58),hsl(var(--background)/0.42))] px-4 py-3.5 transition-colors",
@@ -1406,9 +1406,9 @@ export default function ClientTracker() {
                     onDrop={isDragDropEnabled ? (e) => handleDrop(e, null, 'Unassigned') : undefined}
                   >
                     <Card className={cn(
-                      "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-black/15 transition-all duration-300 hover:border-primary/25",
+                      "client-tracker-gold-interaction flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-black/15 transition-all duration-300 hover:border-primary/35",
                       draggedClient && isDragDropEnabled && dragOverStageId !== 'unassigned' && "border-primary/20 bg-primary/[0.03]",
-                      dragOverStageId === 'unassigned' && isDragDropEnabled && "scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
+                      dragOverStageId === 'unassigned' && isDragDropEnabled && "client-tracker-drop-glow scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                     )}>
                       <CardHeader className={cn(
                         "border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.48),hsl(var(--background)/0.34))] px-4 py-3.5 transition-colors",
@@ -1496,7 +1496,7 @@ export default function ClientTracker() {
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       
                       return (
-                        <div key={client.id} className="group relative p-4 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:bg-primary/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.75)] hover:before:bg-primary md:p-5">
+                        <div key={client.id} className="client-tracker-gold-interaction group relative p-4 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:bg-primary/5 hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.75)] hover:before:bg-primary md:p-5">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2.5">
@@ -1649,7 +1649,7 @@ export default function ClientTracker() {
                       const stageInfo = getStageInfo(client.current_stage_id, client.pipeline_status);
                       const pipeline = pipelines.find(p => p.id === client.current_pipeline_id);
                       return (
-                        <TableRow key={client.id} className="border-border/55 transition-colors hover:bg-primary/5">
+                        <TableRow key={client.id} className="client-tracker-gold-interaction border-border/55 transition-colors hover:bg-primary/5">
                           <TableCell className="max-w-[220px] font-semibold text-foreground">
                             <span className="block truncate" title={formatFullName(client.primary_first_name, client.primary_surname)}>
                               {formatFullName(client.primary_first_name, client.primary_surname)}
@@ -1908,9 +1908,9 @@ function KanbanCard({
   return (
     <Card 
       className={cn(
-        "group relative overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.72))] p-3.5 shadow-md shadow-black/15 transition-all duration-300 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:-translate-y-1 hover:border-primary/40 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/15 hover:before:bg-primary/80",
+        "client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.72))] p-3.5 shadow-md shadow-black/15 transition-all duration-300 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:-translate-y-1 hover:border-primary/40 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/15 hover:before:bg-primary/80",
         isDraggable && "cursor-grab active:cursor-grabbing",
-        isDragging && "z-20 -rotate-1 scale-[1.02] cursor-grabbing border-primary/80 bg-primary/12 opacity-90 shadow-2xl shadow-primary/30 ring-2 ring-primary/60 before:bg-primary"
+        isDragging && "client-tracker-drop-glow z-20 -rotate-1 scale-[1.02] cursor-grabbing border-primary/80 bg-primary/12 opacity-90 shadow-2xl shadow-primary/30 ring-2 ring-primary/60 before:bg-primary"
       )}
       onClick={onEdit}
       draggable={isDraggable}
