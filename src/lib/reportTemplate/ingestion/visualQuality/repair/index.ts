@@ -83,3 +83,16 @@ export {
   type VisualRepairOrchestrationPipelineResult,
   type VisualRepairOrchestrationSummary,
 } from './repairOrchestrationPipeline';
+
+export {
+  VISUAL_REPAIR_AUDIT_PERSISTENCE_VERSION,
+  buildVisualRepairAuditPayload,
+  loadVisualRepairAudit,
+  saveVisualRepairAudit,
+  visualRepairAuditPaths,
+  type LoadVisualRepairAuditResult,
+  type PersistedVisualRepairAudit,
+  type SaveVisualRepairAuditResult,
+  type VisualRepairAuditArtifactPaths,
+  type VisualRepairAuditPayload,
+} from './repairAuditPersistence';
