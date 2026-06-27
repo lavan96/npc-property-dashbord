@@ -4162,3 +4162,31 @@ html {
     color: hsl(30 26% 8%) !important;
   }
 }
+
+
+@layer utilities {
+  .client-tracker-kanban-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.42) hsl(var(--background) / 0.36);
+  }
+
+  .client-tracker-kanban-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .client-tracker-kanban-scroll::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: hsl(var(--background) / 0.36);
+  }
+
+  .client-tracker-kanban-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid hsl(var(--background) / 0.36);
+    border-radius: 999px;
+    background: linear-gradient(180deg, hsl(var(--primary) / 0.62), hsl(var(--primary) / 0.28));
+  }
+
+  .client-tracker-kanban-scroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, hsl(var(--primary) / 0.82), hsl(var(--primary) / 0.42));
+  }
+}
