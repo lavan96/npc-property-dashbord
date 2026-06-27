@@ -934,55 +934,59 @@ export default function ClientTracker() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Clients</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-foreground md:text-5xl">{stats.total}</p>
+              </div>
+              <div className="rounded-2xl border border-primary/25 bg-primary/10 p-3 shadow-inner transition-all duration-300 group-hover:border-primary/45 group-hover:bg-primary/15">
                 <Users className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-sm text-muted-foreground">Total Clients</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">With Follow-ups</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-amber-100 md:text-5xl">{stats.withFollowUp}</p>
+              </div>
+              <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-amber-400/45 group-hover:bg-amber-400/15">
+                <Clock className="h-5 w-5 text-amber-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/35 hover:shadow-xl hover:shadow-amber-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-amber-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500/10 rounded-lg">
-                <Clock className="h-5 w-5 text-amber-500" />
+        <Card className="group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-red-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overdue</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-red-300 md:text-5xl">{stats.overdue}</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.withFollowUp}</p>
-                <p className="text-sm text-muted-foreground">With Follow-ups</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-red-500/35 hover:shadow-xl hover:shadow-red-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-red-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.overdue}</p>
-                <p className="text-sm text-muted-foreground">Overdue</p>
+              <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-3 shadow-inner transition-all duration-300 group-hover:border-red-500/45 group-hover:bg-red-500/15">
+                <AlertCircle className="h-5 w-5 text-red-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="group overflow-hidden border-border/70 bg-card/80 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/35 hover:shadow-xl hover:shadow-emerald-500/10">
-          <CardContent className="relative p-4 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-emerald-500/70">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/10 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
+        <Card className="group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+          <CardContent className="relative p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">In Finance</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-emerald-300 md:text-5xl">{stats.financeStage}</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.financeStage}</p>
-                <p className="text-sm text-muted-foreground">In Finance</p>
+              <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-emerald-400/45 group-hover:bg-emerald-400/15">
+                <TrendingUp className="h-5 w-5 text-emerald-400" />
               </div>
             </div>
           </CardContent>
