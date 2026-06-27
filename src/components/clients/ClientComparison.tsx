@@ -399,11 +399,11 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                               {smartCapitalize(client.primary_first_name)}
                             </p>
                             <div className="mt-2 flex items-center justify-between gap-2">
-                              <p className={`text-lg font-bold tabular-nums ${metric.key === 'net_monthly_cash_flow' ? (value >= 0 ? 'text-green-600' : 'text-red-600') : 'text-slate-100'}`}>
+                              <p className={`text-lg font-bold tabular-nums ${metric.key === 'net_monthly_cash_flow' ? (value >= 0 ? 'text-emerald-200' : 'text-red-300') : 'text-slate-100'}`}>
                                 {metric.format(value)}
                               </p>
                               {isBest && (
-                                <Badge variant="secondary" className="shrink-0 rounded-full bg-green-500/10 text-xs text-green-600">
+                                <Badge variant="secondary" className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-400/10 text-xs text-emerald-100">
                                   Best
                                 </Badge>
                               )}

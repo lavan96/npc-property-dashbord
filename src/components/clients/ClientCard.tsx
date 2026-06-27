@@ -131,15 +131,15 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
 
   const getGHLStatusBadge = () => {
     if (isSyncing) {
-      return <Badge variant="secondary" className="gap-1 rounded-full border-amber-300/25 bg-amber-500/15 text-amber-100"><Loader2 className="h-3 w-3 animate-spin" />Syncing...</Badge>;
+      return <Badge variant="secondary" className="gap-1 rounded-full border-amber-300/30 bg-amber-400/15 px-2.5 text-amber-100 shadow-sm shadow-amber-950/20"><Loader2 className="h-3 w-3 animate-spin" />Syncing...</Badge>;
     }
     switch (client.ghl_sync_status) {
       case 'synced':
-        return <Badge variant="default" className="rounded-full border-emerald-300/25 bg-emerald-400/15 px-2.5 font-semibold text-emerald-300 shadow-sm shadow-emerald-950/20">Synced</Badge>;
+        return <Badge variant="default" className="rounded-full border border-emerald-300/35 bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(20,184,166,0.1))] px-2.5 font-semibold text-emerald-200 shadow-sm shadow-emerald-950/25">Synced</Badge>;
       case 'pending':
-        return <Badge variant="secondary" className="rounded-full border border-amber-300/25 bg-amber-500/15 px-2.5 text-amber-100">Pending Sync</Badge>;
+        return <Badge variant="secondary" className="rounded-full border border-amber-300/30 bg-amber-400/15 px-2.5 font-semibold text-amber-100 shadow-sm shadow-amber-950/20">Pending Sync</Badge>;
       case 'error':
-        return <Badge variant="destructive" className="rounded-full px-2.5">Sync Error</Badge>;
+        return <Badge variant="destructive" className="rounded-full border border-red-300/30 bg-red-500/15 px-2.5 text-red-100 shadow-sm shadow-red-950/20">Sync Error</Badge>;
       default:
         return <Badge variant="outline" className="rounded-full border-border/70 bg-background/60 px-2.5 text-muted-foreground">Not Synced</Badge>;
     }
@@ -286,7 +286,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
         </div>
 
         {/* Cash Flow */}
-        <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/35 px-3 py-2.5">
+        <div className={`flex items-center justify-between rounded-xl border px-3 py-2.5 shadow-inner shadow-black/10 ${isPositiveCashFlow ? 'border-emerald-300/15 bg-emerald-400/[0.06]' : 'border-red-300/15 bg-red-500/[0.06]'}`}>
           <div className="flex items-center gap-2">
             {isPositiveCashFlow ? (
               <TrendingUp className="h-4 w-4 text-emerald-400" />
@@ -295,7 +295,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
             )}
             <span className="text-sm font-medium text-muted-foreground">Monthly Cash Flow</span>
           </div>
-          <span className={`font-bold ${isPositiveCashFlow ? 'text-emerald-300' : 'text-red-400'}`}>
+          <span className={`font-bold tabular-nums ${isPositiveCashFlow ? 'text-emerald-200' : 'text-red-300'}`}>
             {formatCurrency(Number(client.net_monthly_cash_flow))}
           </span>
         </div>

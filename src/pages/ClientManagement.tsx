@@ -632,13 +632,13 @@ export default function ClientManagement() {
           </div>
           <div className="flex w-full flex-col items-stretch gap-2 rounded-3xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/30 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
           {/* Auto-sync toggle - compact on mobile */}
-          <div className="flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-amber-500/25 bg-white/[0.04] px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/30 sm:justify-start">
+          <div className={`flex min-h-11 items-center justify-between gap-2 rounded-2xl border px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/30 sm:justify-start ${autoSyncEnabled ? 'border-amber-300/35 bg-amber-400/10 shadow-amber-950/20' : 'border-white/10 bg-white/[0.04]'}`}>
             {isAutoSyncing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
               <Zap className={`h-3.5 w-3.5 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
             )}
-            <span className="text-xs font-medium hidden sm:inline">Auto-sync</span>
+            <span className={`text-xs font-semibold ${autoSyncEnabled ? 'text-amber-100' : 'text-muted-foreground'}`}>Auto-sync</span>
             <Switch
               checked={autoSyncEnabled}
               onCheckedChange={setAutoSyncEnabled}
