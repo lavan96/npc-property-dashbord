@@ -213,47 +213,44 @@ export default function Messages() {
   return (
     <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(217,164,65,0.12),transparent_30%),linear-gradient(180deg,rgba(8,8,10,0.96),rgba(12,12,14,0.98))] p-4 sm:p-6 lg:p-8">
       <div className="mx-auto flex max-w-[1520px] flex-col gap-5">
-        <div className="relative overflow-hidden rounded-3xl border border-amber-400/15 bg-black/45 p-5 shadow-2xl shadow-black/30 backdrop-blur xl:p-6">
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(18,18,20,0.95),rgba(5,5,6,0.96)_50%,rgba(28,22,10,0.88))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.38)] backdrop-blur-xl xl:p-6">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
-          <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-amber-400/10 blur-3xl" />
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="min-w-0">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
-                Command Centre inbox
-              </div>
+          <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
+          <div className="pointer-events-none absolute -left-16 bottom-0 h-36 w-36 rounded-full bg-emerald-400/5 blur-3xl" />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
               <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/25 bg-gradient-to-br from-amber-300/20 to-amber-600/10 text-amber-200 shadow-lg shadow-amber-950/20">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-gradient-to-br from-amber-300/20 to-amber-600/10 text-amber-200 shadow-lg shadow-amber-950/20">
                   <Inbox className="h-6 w-6" />
                 </span>
                 Portal Messages
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-[15px]">
                 All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Button
                 size="sm"
-                className="border border-amber-200/30 bg-gradient-to-r from-amber-300 to-yellow-600 font-semibold text-black shadow-lg shadow-amber-950/30 transition-all hover:-translate-y-0.5 hover:from-amber-200 hover:to-amber-500 focus-visible:ring-amber-300"
+                className="h-10 justify-center rounded-full border border-amber-200/35 bg-gradient-to-r from-amber-300 to-yellow-600 px-5 font-semibold text-black shadow-[0_14px_34px_rgba(245,158,11,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-200 hover:to-amber-500 hover:shadow-[0_18px_42px_rgba(245,158,11,0.34)] focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
                 onClick={() => {
                   setNewOpen(true);
                   if (allClients.length === 0) loadAllClients();
                 }}
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 New message
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="border-amber-300/20 bg-black/30 text-amber-100 transition-all hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-amber-300/10 focus-visible:ring-amber-300"
+                className="h-10 justify-center rounded-full border-amber-300/20 bg-black/35 px-5 text-amber-100 shadow-sm shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
                 onClick={() => {
                   loadClientThreads();
                   loadFinanceThreads();
                 }}
               >
-                <RefreshCcw className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')} />
+                <RefreshCcw className={cn('mr-2 h-4 w-4', refreshing && 'animate-spin')} />
                 Refresh
               </Button>
             </div>
