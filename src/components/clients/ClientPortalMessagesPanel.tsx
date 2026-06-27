@@ -91,6 +91,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
   const [route, setRoute] = useState<MessageRoute>('client_only');
   const [financeAllocationStatus, setFinanceAllocationStatus] = useState<FinanceAllocationStatus>('finance_action_required');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastCountRef = useRef(0);
 
   const load = useCallback(async (markRead = false) => {
@@ -131,6 +132,13 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
       supabase.removeChannel(channel);
     };
   }, [clientId, load]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+  }, [draft]);
 
   useEffect(() => {
     if (messages.length !== lastCountRef.current) {
@@ -299,7 +307,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
         )}
       </ScrollArea>
 
-      <div className="shrink-0 border-t border-amber-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
+      <div className="shrink-0 border-t border-amber-300/15 bg-[linear-gradient(180deg,rgba(39,39,42,0.98),rgba(9,9,11,0.99))] p-3 shadow-[0_-22px_55px_rgba(0,0,0,0.35)]">
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Route:</span>
           {ROUTING_PRESETS.map(preset => {
@@ -340,8 +348,10 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
             <p className="mt-1 text-[10px] text-muted-foreground">Finance receives access only to this allocated client-facing thread.</p>
           </div>
         )}
-        <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
+        <div className="relative flex items-end gap-2 overflow-hidden rounded-3xl border border-amber-300/20 bg-gradient-to-br from-zinc-900/95 via-black/60 to-zinc-950/95 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_45px_rgba(0,0,0,0.28)] transition-colors focus-within:border-amber-300/55 focus-within:ring-2 focus-within:ring-amber-300/25">
+          <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
           <Textarea
+            ref={textareaRef}
             placeholder={
               route === 'client_finance' ? 'Message the client and allocate this thread to Finance...'
               : route === 'internal' ? 'Add an internal staff-only note...'
@@ -357,10 +367,10 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
               }
             }}
             disabled={sending}
-            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-amber-300/30 disabled:cursor-not-allowed disabled:opacity-60"
+            className="max-h-40 min-h-[76px] flex-1 resize-none overflow-y-auto rounded-2xl border border-white/5 bg-black/20 px-3.5 py-3 text-sm leading-6 text-foreground shadow-inner shadow-black/20 placeholder:text-zinc-400 focus-visible:border-amber-300/30 focus-visible:ring-0 disabled:cursor-not-allowed disabled:bg-zinc-900/70 disabled:text-zinc-400 disabled:placeholder:text-zinc-500"
             maxLength={5000}
           />
-          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()} className="h-10 w-10 shrink-0 rounded-xl bg-amber-300 text-black shadow-lg shadow-amber-950/20 transition-all hover:bg-amber-200 focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none">
+          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()} className="h-12 w-12 shrink-0 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-300 to-yellow-500 text-zinc-950 shadow-[0_14px_32px_rgba(245,158,11,0.28)] transition-all hover:-translate-y-0.5 hover:from-amber-100 hover:to-yellow-400 focus-visible:ring-2 focus-visible:ring-amber-200 disabled:translate-y-0 disabled:bg-none disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>
