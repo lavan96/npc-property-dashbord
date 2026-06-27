@@ -290,12 +290,12 @@ export default function Messages() {
           </div>
 
           <TabsContent value="client" className="mt-0">
-            <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
+            <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[75vh] lg:grid-cols-[330px_1fr]">
+              <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-300/10 to-transparent pb-3">
                 <CardTitle className="text-sm font-semibold tracking-wide text-amber-100">Clients</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 p-0">
+              <CardContent className="min-h-0 flex-1 p-0">
                 {loadingClient ? (
                   <div className="flex items-center justify-center py-10">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -305,7 +305,7 @@ export default function Messages() {
                     No client portal messages yet.
                   </div>
                 ) : (
-                  <ScrollArea className="h-[70vh]">
+                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] lg:min-h-0">
                     <div className="divide-y divide-white/10 p-2">
                       {filteredClientThreads.map((t) => (
                         <button
@@ -338,11 +338,11 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
-              <CardContent className="flex-1 p-0 overflow-hidden">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
+                <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
-                  <div className="h-full overflow-auto">
-                    <ClientPortalMessagesPanel clientId={selectedClientId} />
+                  <div className="h-full overflow-auto overscroll-contain">
+                      <ClientPortalMessagesPanel clientId={selectedClientId} />
                   </div>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center p-8 text-center text-sm text-muted-foreground">
@@ -359,12 +359,12 @@ export default function Messages() {
         </TabsContent>
 
         <TabsContent value="finance" className="mt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
-            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
+          <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[75vh] lg:grid-cols-[330px_1fr]">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-300/10 to-transparent pb-3">
                 <CardTitle className="text-sm font-semibold tracking-wide text-amber-100">Clients with Finance threads</CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 p-0">
+              <CardContent className="min-h-0 flex-1 p-0">
                 {loadingFinance ? (
                   <div className="flex items-center justify-center py-10">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -374,7 +374,7 @@ export default function Messages() {
                     No finance portal threads yet.
                   </div>
                 ) : (
-                  <ScrollArea className="h-[70vh]">
+                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] lg:min-h-0">
                     <div className="divide-y divide-white/10 p-2">
                       {filteredFinanceGroups.map((g) => (
                         <button
@@ -415,10 +415,10 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="lg:h-[75vh] flex flex-col overflow-hidden rounded-3xl border-white/10 bg-zinc-950/85 shadow-2xl shadow-black/30">
-              <CardContent className="flex-1 p-0 overflow-hidden">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
+              <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedFinanceClientId ? (
-                  <div className="h-full overflow-auto p-4">
+                  <div className="h-full overflow-auto overscroll-contain p-4">
                     <StaffFinancePortalMessagesPanel clientId={selectedFinanceClientId} />
                   </div>
                 ) : (
