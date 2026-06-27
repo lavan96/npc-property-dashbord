@@ -388,7 +388,7 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
                     onClick={() => toggle(r.id)}
                     disabled={isExisting}
                     className={cn(
-                      'w-full text-left rounded-xl border bg-card px-4 py-3.5 shadow-sm flex items-start gap-3 transition-all',
+                      'report-qa-library-row w-full text-left rounded-xl border bg-card px-4 py-3.5 shadow-sm flex items-start gap-3 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                       checked ? 'border-primary bg-primary/10 shadow-md ring-1 ring-primary/15' : 'border-border hover:border-primary/30 hover:bg-primary/5 hover:shadow-md',
                       isExisting && 'opacity-50 cursor-not-allowed'
                     )}
