@@ -1802,11 +1802,11 @@ export default function ReportQA() {
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">New Chat</span>
           </Button>
-          <Button variant="outline" onClick={() => setShowHistory(true)} className="report-qa-history-button gap-1.5 h-9 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm" size="sm">
+          <Button variant="outline" onClick={() => setShowHistory(true)} className="report-qa-history-button gap-1.5 h-9 rounded-full border-primary/20 bg-background/80 px-3 text-xs font-semibold shadow-sm transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-md sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <History className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">History</span>
             {savedConversations.length > 0 && (
-              <Badge variant="secondary" className="report-qa-history-badge ml-0.5 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-bold tabular-nums sm:h-5 sm:px-1.5 sm:text-xs">
+              <Badge variant="secondary" className="report-qa-history-badge ml-0.5 h-5 min-w-5 rounded-full border border-primary/20 bg-primary text-primary-foreground px-1.5 text-[10px] font-bold tabular-nums shadow-sm sm:h-5 sm:px-1.5 sm:text-xs">
                 {savedConversations.length}
               </Badge>
             )}
@@ -2847,32 +2847,39 @@ export default function ReportQA() {
         setShowHistory(open);
         if (!open) setHistorySearchQuery('');
       }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Conversation History
+        <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col overflow-hidden p-0 sm:rounded-2xl">
+          <DialogHeader className="border-b bg-gradient-to-br from-primary/10 via-background to-background px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <History className="h-5 w-5" />
+              </span>
+              <span>
+                Conversation History
+                <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                  {savedConversations.length} saved Q&A session{savedConversations.length !== 1 ? 's' : ''}
+                </span>
+              </span>
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="pt-2">
               Search and load previous Q&A conversations (⌘K)
             </DialogDescription>
           </DialogHeader>
           
           {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative border-b bg-muted/20 px-5 py-4 sm:px-6">
+            <Search className="absolute left-8 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground sm:left-9" />
             <Input
               placeholder="Search conversations by title or report name..."
               value={historySearchQuery}
               onChange={(e) => setHistorySearchQuery(e.target.value)}
-              className="pl-9 pr-9"
+              className="h-10 rounded-xl bg-background pl-9 pr-9 shadow-sm"
               autoFocus
             />
             {historySearchQuery && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                className="absolute right-6 top-1/2 h-6 w-6 -translate-y-1/2 sm:right-7"
                 onClick={() => setHistorySearchQuery('')}
               >
                 <X className="h-3 w-3" />
@@ -2880,29 +2887,29 @@ export default function ReportQA() {
             )}
           </div>
           
-          <ScrollArea className="max-h-[450px]">
+          <ScrollArea className="min-h-0 flex-1 px-3 py-3 sm:px-4">
             {savedConversations.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
                 <Archive className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground font-medium">No conversations yet</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
+                <p className="font-medium text-foreground">No conversations yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   Start a new chat to create your first conversation
                 </p>
               </div>
             ) : filteredConversations.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-dashed bg-muted/20 p-8 text-center">
                 <Search className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-muted-foreground font-medium">No results found</p>
-                <p className="text-sm text-muted-foreground/70 mt-1">
+                <p className="font-medium text-foreground">No results found</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   Try a different search term
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {Object.entries(groupConversationsByDate(sortedConversations)).map(([group, convs]) => 
                   convs.length > 0 && (
                     <div key={group} className="space-y-2">
-                      <div className="flex items-center gap-2 px-1">
+                      <div className="flex items-center gap-2 px-1 pt-1">
                         {group === 'Pinned' ? (
                           <Pin className="h-3 w-3 text-primary" />
                         ) : (
@@ -2920,9 +2927,9 @@ export default function ReportQA() {
                         <div
                           key={conv.id}
                           className={cn(
-                            "p-3 border rounded-lg hover:bg-muted/50 transition-all group cursor-pointer",
-                            conversationId === conv.id && "border-primary/50 bg-primary/5",
-                            pinnedIds.includes(conv.id) && "border-primary/30"
+                            "group cursor-pointer rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-md",
+                            conversationId === conv.id && "border-primary bg-primary/10 shadow-md ring-1 ring-primary/15",
+                            pinnedIds.includes(conv.id) && "border-primary/40"
                           )}
                         >
                           {editingConversationId === conv.id ? (
@@ -2962,13 +2969,13 @@ export default function ReportQA() {
                                     {pinnedIds.includes(conv.id) && (
                                       <Pin className="h-3 w-3 text-primary fill-current flex-shrink-0" />
                                     )}
-                                    <p className="font-medium text-sm truncate">{conv.title}</p>
+                                    <p className="truncate text-sm font-semibold leading-5 text-foreground sm:text-base">{conv.title}</p>
                                   </div>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                                    <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px] font-semibold">
                                       {conv.report_names.length} report{conv.report_names.length !== 1 ? 's' : ''}
                                     </Badge>
-                                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                    <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                                       <Clock className="h-2.5 w-2.5" />
                                       {new Date(conv.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
@@ -3032,14 +3039,14 @@ export default function ReportQA() {
                                 </div>
                               </div>
                               {/* Report names preview */}
-                              <div className="mt-2 flex flex-wrap gap-1">
+                              <div className="mt-3 flex flex-wrap gap-1.5">
                                 {conv.report_names.slice(0, 2).map((name, idx) => (
-                                  <span key={idx} className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded truncate max-w-[120px]">
+                                  <span key={idx} className="max-w-[190px] truncate rounded-full border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground">
                                     {name.replace('.pdf', '')}
                                   </span>
                                 ))}
                                 {conv.report_names.length > 2 && (
-                                  <span className="text-[10px] text-muted-foreground">
+                                  <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-medium text-muted-foreground">
                                     +{conv.report_names.length - 2} more
                                   </span>
                                 )}
@@ -3057,7 +3064,7 @@ export default function ReportQA() {
           
           {/* Footer with count */}
           {savedConversations.length > 0 && (
-            <div className="flex items-center justify-between pt-2 border-t text-xs text-muted-foreground">
+            <div className="flex items-center justify-between border-t bg-muted/20 px-5 py-3 text-xs text-muted-foreground sm:px-6">
               <span>
                 {filteredConversations.length} of {savedConversations.length} conversation{savedConversations.length !== 1 ? 's' : ''}
                 {pinnedIds.length > 0 && ` • ${pinnedIds.length} pinned`}
