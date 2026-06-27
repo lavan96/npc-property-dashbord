@@ -73,12 +73,28 @@ const channelIcons: Record<string, any> = {
 };
 
 const channelColors: Record<string, string> = {
-  sms: 'bg-blue-500/10 text-blue-300 border-blue-400/30 shadow-[0_0_22px_rgba(59,130,246,0.12)]',
-  email: 'bg-amber-500/10 text-amber-200 border-amber-400/30 shadow-[0_0_22px_rgba(245,158,11,0.12)]',
-  whatsapp: 'bg-emerald-500/10 text-emerald-200 border-emerald-400/30 shadow-[0_0_22px_rgba(16,185,129,0.12)]',
-  instagram: 'bg-pink-500/10 text-pink-200 border-pink-400/30 shadow-[0_0_22px_rgba(236,72,153,0.12)]',
-  facebook: 'bg-indigo-500/10 text-indigo-200 border-indigo-400/30 shadow-[0_0_22px_rgba(99,102,241,0.12)]',
-  live_chat: 'bg-purple-500/10 text-purple-200 border-purple-400/30 shadow-[0_0_22px_rgba(168,85,247,0.12)]',
+  sms: 'bg-blue-500/10 text-blue-200 border-blue-300/35 shadow-[0_0_24px_rgba(59,130,246,0.16)]',
+  email: 'bg-violet-500/10 text-violet-100 border-violet-300/35 shadow-[0_0_24px_rgba(139,92,246,0.16)]',
+  whatsapp: 'bg-emerald-500/10 text-emerald-100 border-emerald-300/35 shadow-[0_0_26px_rgba(16,185,129,0.18)]',
+  instagram: 'bg-pink-500/10 text-pink-100 border-pink-300/35 shadow-[0_0_24px_rgba(236,72,153,0.16)]',
+  facebook: 'bg-indigo-500/10 text-indigo-100 border-indigo-300/35 shadow-[0_0_24px_rgba(99,102,241,0.16)]',
+  live_chat: 'bg-purple-500/10 text-purple-100 border-purple-300/35 shadow-[0_0_24px_rgba(168,85,247,0.16)]',
+};
+
+const avatarBackgrounds: Record<string, string> = {
+  sms: 'from-blue-400/24 via-sky-400/13 to-zinc-950/72',
+  email: 'from-violet-400/24 via-purple-400/13 to-zinc-950/72',
+  whatsapp: 'from-emerald-400/26 via-teal-400/14 to-zinc-950/72',
+  instagram: 'from-pink-400/24 via-fuchsia-400/13 to-zinc-950/72',
+  facebook: 'from-indigo-400/24 via-blue-400/13 to-zinc-950/72',
+  live_chat: 'from-purple-400/24 via-cyan-400/12 to-zinc-950/72',
+};
+
+const getContactInitials = (name?: string | null) => {
+  const label = (name || '').trim();
+  if (!label || ['unknown', 'unknown contact', 'unlinked contact'].includes(label.toLowerCase())) return '?';
+  const parts = label.split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 };
 
 const channelToGhlType = (ch: string): string => {
@@ -861,9 +877,12 @@ export default function Conversations() {
                         title={`${conv.client_name || 'Unknown contact'}${conv.last_message_body ? ` — ${conv.last_message_body}` : ' — No messages yet'}`}
                       >
                         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                        <div className={cn('relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.15rem] border shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_12px_26px_rgba(0,0,0,0.24)] transition-all duration-200 group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_14px_30px_rgba(245,158,11,0.10)]', channelColors[normalized] || 'bg-muted')}>
-                          <Icon className="h-5 w-5" />
-                          <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border border-zinc-950 bg-amber-300 opacity-0 shadow-[0_0_10px_rgba(251,191,36,0.9)] transition-opacity group-hover:opacity-100" />
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]', avatarBackgrounds[normalized] || 'from-zinc-500/18 via-zinc-600/12 to-zinc-950/72')}>
+                          <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-white drop-shadow">{getContactInitials(conv.client_name)}</span>
+                          <span className={cn('absolute -bottom-1.5 -right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-950/90 bg-zinc-950 shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-white/10', channelColors[normalized] || 'text-zinc-100')}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="absolute inset-0 rounded-[1.35rem] bg-gradient-to-br from-white/12 to-transparent opacity-60" />
                         </div>
                         <div className="relative min-w-0 flex-1 space-y-1">
                           <div className="flex items-start justify-between gap-3">
@@ -929,10 +948,11 @@ export default function Conversations() {
                 {/* Thread header with client context */}
                 <div className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-zinc-950/80 px-4 py-3.5 shadow-[0_12px_34px_rgba(0,0,0,0.18)]">
                   {!isMobile && (
-                    <div className={cn('h-10 w-10 rounded-2xl flex items-center justify-center border shrink-0',
-                      channelColors[normalizeChannel(selectedConversation.channel_type)] || 'bg-muted'
-                    )}>
-                      {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-4 w-4" />; })()}
+                    <div className={cn('relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.2rem] border border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_14px_30px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-zinc-500/18 via-zinc-600/12 to-zinc-950/72')}>
+                      <span className="relative z-10 text-sm font-bold tracking-[-0.03em] text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
+                      <span className={cn('absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-950/90 bg-zinc-950 shadow-[0_8px_16px_rgba(0,0,0,0.34)] ring-1 ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-zinc-100')}>
+                        {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3 w-3" />; })()}
+                      </span>
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
