@@ -1741,7 +1741,7 @@ export default function EmailCopilot() {
       read: { label: 'Read', className: 'bg-muted text-muted-foreground' },
       summarized: { label: 'Summarized', className: 'bg-green-500/10 text-green-600 border-green-500/20' },
       drafted: { label: 'Draft Ready', className: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
-      archived: { label: 'Archived', className: 'bg-muted text-muted-foreground' }
+      archived: { label: 'Archived', className: 'bg-slate-500/10 text-muted-foreground border-slate-500/20' }
     };
     const { label, className } = config[status] || config.read;
     return <Badge variant="outline" className={className}>{label}</Badge>;
@@ -2030,7 +2030,7 @@ export default function EmailCopilot() {
                     onClick={() => setShowArchived(!showArchived)}
                   >
                     <Archive className="h-3 w-3 mr-1" />
-                    {showArchived ? 'Hiding' : 'Show'} Archived
+                    {showArchived ? 'Showing' : 'Show'} Archived
                   </Badge>
                 </div>
               </div>
@@ -2078,12 +2078,14 @@ export default function EmailCopilot() {
                     <p className="text-sm font-medium text-muted-foreground">Loading emails...</p>
                   </div>
                 ) : filteredEmails.length === 0 ? (
-                  <div className="m-4 rounded-2xl border border-dashed border-primary/20 bg-card/45 p-8 text-center shadow-inner shadow-black/10">
-                    <Inbox className="mx-auto mb-3 h-12 w-12 text-primary/35" />
-                    <p className="text-sm font-medium text-muted-foreground">
+                  <div className="m-4 rounded-[1.75rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-black/10">
+                    <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10">
+                      <Inbox className="h-7 w-7 text-primary/45" />
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">
                       {searchQuery || statusFilter !== 'all' ? 'No matching emails' : 'No emails'}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Sync your inbox or add an email'}
                     </p>
                   </div>
@@ -2113,7 +2115,7 @@ export default function EmailCopilot() {
                               }
                             }}
                             className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-border/55 border-l-4 px-4 py-[1.125rem] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-l-primary/70 hover:border-primary/25 hover:bg-[linear-gradient(135deg,hsl(var(--primary)/0.075),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.72))] hover:shadow-[0_16px_36px_hsl(var(--primary)/0.11)] ${
-                              selectedEmail?.id === latestEmail.id ? 'border-l-primary border-primary/40 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--card)/0.95)_48%,hsl(var(--primary)/0.055))] shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/25' : 'border-l-transparent bg-card/72'
+                              selectedEmail?.id === latestEmail.id ? 'border-l-primary border-primary/40 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--card)/0.95)_48%,hsl(var(--primary)/0.055))] shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/25' : latestEmail.status === 'archived' ? 'border-l-slate-400/35 bg-muted/30 opacity-85' : 'border-l-transparent bg-card/72'
                             } ${hasUnread ? 'bg-[linear-gradient(135deg,hsl(var(--primary)/0.095),hsl(var(--card)/0.88)_52%,hsl(var(--background)/0.68))]' : ''}`}
                           >
                             <div className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-r-full bg-primary/0 transition-colors group-hover:bg-primary/70" />
@@ -2182,6 +2184,11 @@ export default function EmailCopilot() {
                                   {isNonEmptyArray(latestEmail.attachments) && (
                                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-foreground/75 border-primary/20 bg-primary/5">
                                       <Paperclip className="h-2.5 w-2.5 mr-0.5 text-primary" /> {latestEmail.attachments.length}
+                                    </Badge>
+                                  )}
+                                  {latestEmail.status === 'archived' && (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground border-slate-500/20 bg-slate-500/10">
+                                      <Archive className="h-2.5 w-2.5 mr-0.5" /> Archived
                                     </Badge>
                                   )}
                                   {isThreaded && (
@@ -2276,15 +2283,17 @@ export default function EmailCopilot() {
               // Sent view - shows both synced sent emails AND manually sent replies
               <>
                 {filteredEmails.length === 0 && sentReplies.length === 0 ? (
-                  <div className="m-4 rounded-2xl border border-dashed border-primary/20 bg-card/45 p-8 text-center shadow-inner shadow-black/10">
-                    <Send className="mx-auto mb-3 h-12 w-12 text-primary/35" />
-                    <p className="text-sm font-medium text-muted-foreground">No sent emails</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                  <div className="m-4 rounded-[1.75rem] border border-dashed border-green-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-black/10">
+                    <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-green-500/20 bg-green-500/10">
+                      <Send className="h-7 w-7 text-green-500/55" />
+                    </span>
+                    <p className="text-sm font-semibold text-foreground">No sent emails</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       Emails you send will appear here
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/45">
+                  <div className="space-y-2 p-3">
                     {/* Show synced sent emails from Outlook */}
                     {filteredEmails.map((email) => (
                       <div
@@ -2293,13 +2302,13 @@ export default function EmailCopilot() {
                           handleSelectEmail(email);
                           setSelectedSentReply(null);
                         }}
-                        className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
-                          selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
+                        className={`group cursor-pointer rounded-2xl border border-border/55 border-l-4 px-4 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-l-green-500/60 hover:border-green-500/25 hover:bg-green-500/5 hover:shadow-md ${
+                          selectedEmail?.id === email.id ? 'border-l-green-500 border-green-500/35 bg-green-500/10 ring-1 ring-green-500/20' : 'border-l-green-500/25 bg-card/70'
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)/0.14),hsl(var(--muted)/0.32))] shadow-sm ring-1 ring-primary/10">
-                            <Send className="h-4 w-4 text-primary" />
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-green-500/25 bg-[linear-gradient(135deg,hsl(var(--success)/0.12),hsl(var(--muted)/0.32))] shadow-sm ring-1 ring-green-500/10">
+                            <Send className="h-4 w-4 text-green-600" />
                           </div>
                           
                           <div className="flex-1 min-w-0 overflow-hidden">
@@ -2347,8 +2356,8 @@ export default function EmailCopilot() {
                           setSelectedEmail(null);
                           if (isMobile) setShowMobileDetail(true);
                         }}
-                        className={`px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50 ${
-                          selectedSentReply?.id === reply.id ? 'bg-muted border-l-2 border-l-green-500' : ''
+                        className={`group cursor-pointer rounded-2xl border border-border/55 border-l-4 px-4 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-l-green-500/60 hover:border-green-500/25 hover:bg-green-500/5 hover:shadow-md ${
+                          selectedSentReply?.id === reply.id ? 'border-l-green-500 border-green-500/35 bg-green-500/10 ring-1 ring-green-500/20' : 'border-l-green-500/25 bg-card/70'
                         }`}
                       >
                         <div className="flex items-start gap-3">
