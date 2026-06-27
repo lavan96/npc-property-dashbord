@@ -105,6 +105,7 @@ import { MessageFeedback } from '@/components/report-qa/MessageFeedback';
 import { MessageActions } from '@/components/report-qa/MessageActions';
 import { BranchedFromIndicator } from '@/components/report-qa/BranchedFromIndicator';
 import { PinnedAnswersStrip } from '@/components/report-qa/PinnedAnswersStrip';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface UploadProgress {
   fileName: string;
@@ -1775,16 +1776,17 @@ export default function ReportQA() {
     <>
       <SkipToContent targetId="chat-main" />
       <LiveRegion message={liveAnnouncement} />
-      <div 
+      <DashboardThemeFrame
+        as="main"
+        variant="page"
         className={cn(
           "report-qa-premium flex h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-2 pb-16 sm:h-[calc(100dvh-8rem)] sm:max-h-[calc(100dvh-8rem)] sm:gap-4 sm:p-4 sm:pb-20 md:h-[calc(100dvh-10rem)] md:max-h-[calc(100dvh-10rem)] md:gap-5 md:p-6 md:pb-0",
           isFullScreen && "report-qa-fullscreen"
         )}
-        role="main"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <div className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 md:flex-row md:items-center">
+      <DashboardThemeFrame as="header" variant="hero" className="report-qa-hero flex shrink-0 flex-col items-stretch justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 md:flex-row md:items-center">
         <div className="min-w-0 space-y-1.5">
           <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
             <Sparkles className="h-3 w-3" />
@@ -1835,12 +1837,12 @@ export default function ReportQA() {
             </Button>
           )}
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-y-auto overflow-x-hidden pr-1 sm:gap-4 md:gap-6 lg:grid-cols-3 lg:overflow-hidden lg:pr-0">
         {/* Upload Section - stacked on smaller screens, side-by-side on desktop */}
         {showReportsPanel && (
-        <Card className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[18rem] md:max-h-[46dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
+        <DashboardThemeFrame as="section" variant="section" className="report-qa-panel report-qa-reports-panel flex max-h-[42dvh] flex-col overflow-hidden min-h-[18rem] p-0 md:max-h-[46dvh] lg:col-span-1 lg:max-h-none lg:min-h-0">
           <CardHeader className="report-qa-reports-header pb-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 space-y-1">
@@ -2095,12 +2097,12 @@ export default function ReportQA() {
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
-        </Card>
+        </DashboardThemeFrame>
         )}
 
 
         {/* Chat Section */}
-        <Card className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 border shadow-sm rounded-2xl", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
+        <DashboardThemeFrame as="section" variant="section" className={cn("report-qa-panel report-qa-chat-panel flex flex-col overflow-hidden min-h-0 min-w-0 p-0", showReportsPanel ? "lg:col-span-2" : "lg:col-span-3")}>
           <CardHeader className="report-qa-chat-header pb-3 sm:pb-4 px-3 sm:px-5 py-3 sm:py-5 flex-shrink-0">
             {/* Mobile: single compact row — title + model + overflow menu */}
             <div className="flex items-center gap-2 sm:hidden">
@@ -2786,7 +2788,7 @@ export default function ReportQA() {
               <CharacterCount current={inputMessage.length} max={MAX_MESSAGE_LENGTH} />
             </div>
           </CardContent>
-        </Card>
+        </DashboardThemeFrame>
       </div>
 
       {/* Mobile Reports Panel - floating button for managing uploaded reports on mobile */}
