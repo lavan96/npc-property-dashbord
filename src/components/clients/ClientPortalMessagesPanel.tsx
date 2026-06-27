@@ -81,9 +81,11 @@ const getInitials = (name?: string | null) => {
 interface Props {
   clientId: string;
   clientName?: string | null;
+  className?: string;
+  fillContainer?: boolean;
 }
 
-export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
+export function ClientPortalMessagesPanel({ clientId, clientName, className, fillContainer = false }: Props) {
   const [messages, setMessages] = useState<ClientPortalMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -209,7 +211,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
 
   return (
-    <div className="flex h-[600px] min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-zinc-950/90 shadow-xl shadow-black/25">
+    <div className={cn('flex min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-zinc-950/90 shadow-xl shadow-black/25', fillContainer ? 'h-full' : 'h-[600px]', className)}>
       <div className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-emerald-300/[0.04] to-transparent px-4 py-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">

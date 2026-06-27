@@ -19,6 +19,7 @@ import { FinanceMessagesThread } from '@/components/finance-portal/FinanceMessag
 
 interface Props {
   clientId: string;
+  className?: string;
 }
 
 interface ThreadRow {
@@ -56,7 +57,7 @@ const THREAD_TYPE_ORDER: Record<string, number> = GOVERNED_THREAD_TYPES.reduce(
   {} as Record<string, number>,
 );
 
-export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
+export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) {
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +152,7 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
 
   if (loading) {
     return (
-      <div className="mx-auto my-10 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center shadow-xl shadow-black/20">
+      <div className={cn('mx-auto my-10 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center shadow-xl shadow-black/20', className)}>
         <Loader2 className="mx-auto h-5 w-5 animate-spin text-violet-200/80" />
         <p className="mt-3 text-sm font-medium text-foreground">Loading finance threads…</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">Preparing partner communication channels.</p>
@@ -172,9 +173,9 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+    <div className={cn('grid min-h-0 gap-4 md:grid-cols-[260px_1fr]', className)}>
       {/* Thread list */}
-      <div className="space-y-2 rounded-3xl border border-violet-300/15 bg-black/25 p-2 shadow-xl shadow-black/15">
+      <div className="flex min-h-0 flex-col space-y-2 rounded-3xl border border-violet-300/15 bg-black/25 p-2 shadow-xl shadow-black/15">
         <div className="flex items-center justify-between px-2 py-1">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-100">
             Threads ({sortedThreads.length})
@@ -183,7 +184,7 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
             <RefreshCcw className="h-3 w-3" />
           </Button>
         </div>
-        <ScrollArea className="h-[480px] pr-2 [scrollbar-color:rgba(139,92,246,0.4)_rgba(24,24,27,0.9)]">
+        <ScrollArea className="h-[480px] min-h-0 pr-2 [scrollbar-color:rgba(139,92,246,0.4)_rgba(24,24,27,0.9)] md:h-full">
           <div className="space-y-1.5">
             {sortedThreads.map((t) => {
               const isActive = t.id === selectedThreadId;
@@ -223,9 +224,9 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
       </div>
 
       {/* Selected thread */}
-      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-violet-300/15 bg-zinc-950/90 shadow-xl shadow-black/20">
+      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-violet-300/15 bg-zinc-950/90 shadow-xl shadow-black/20 md:min-h-0">
         {selectedThreadId ? (
-          <div className="flex h-full min-h-[480px] flex-col">
+          <div className="flex h-full min-h-[480px] flex-col md:min-h-0">
             <div className="border-b border-violet-300/10 bg-gradient-to-r from-violet-300/12 via-blue-300/[0.04] to-transparent px-4 py-3.5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -256,6 +257,7 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
               viewerSide="staff"
               invoke={(fn, body) => invokeSecureFunction(fn, body)}
               onMessageSent={() => loadThreads(true)}
+              fillContainer
               className="h-full flex-1 rounded-none border-0 bg-transparent shadow-none"
             />
           </div>

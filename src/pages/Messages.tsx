@@ -293,8 +293,8 @@ export default function Messages() {
             </div>
           </div>
 
-          <TabsContent value="client" className="mt-0">
-            <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[75vh] lg:grid-cols-[330px_1fr]">
+          <TabsContent value="client" className="mt-0 min-h-0">
+            <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
               <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-amber-300/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/12 via-emerald-300/[0.04] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
@@ -318,7 +318,7 @@ export default function Messages() {
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)] lg:min-h-0">
+                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)] lg:h-full lg:min-h-0">
                     <div className="space-y-1.5 p-2">
                       {filteredClientThreads.map((t) => (
                         <button
@@ -354,11 +354,11 @@ export default function Messages() {
             <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
                 <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
-                  <div className="h-full overflow-auto overscroll-contain">
-                      <ClientPortalMessagesPanel clientId={selectedClientId} clientName={clientThreads.find((thread) => thread.client_id === selectedClientId)?.client_name} />
+                  <div className="h-full min-h-0 overflow-hidden overscroll-contain">
+                      <ClientPortalMessagesPanel fillContainer className="h-full min-h-0" clientId={selectedClientId} clientName={clientThreads.find((thread) => thread.client_id === selectedClientId)?.client_name} />
                   </div>
                 ) : (
-                  <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground">
+                  <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground lg:min-h-0">
                     <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-amber-300/25 to-transparent" />
                     <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
                     <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-300/25 bg-gradient-to-br from-amber-300/15 to-white/[0.03] text-amber-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
@@ -376,8 +376,8 @@ export default function Messages() {
           </div>
         </TabsContent>
 
-        <TabsContent value="finance" className="mt-0">
-          <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[75vh] lg:grid-cols-[330px_1fr]">
+        <TabsContent value="finance" className="mt-0 min-h-0">
+          <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
             <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-violet-300/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-violet-300/15 bg-gradient-to-r from-violet-300/12 via-blue-300/[0.05] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
@@ -401,7 +401,7 @@ export default function Messages() {
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(139,92,246,0.42)_rgba(24,24,27,0.9)] lg:min-h-0">
+                  <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(139,92,246,0.42)_rgba(24,24,27,0.9)] lg:h-full lg:min-h-0">
                     <div className="space-y-1.5 p-2">
                       {filteredFinanceGroups.map((g) => (
                         <button
@@ -445,11 +445,11 @@ export default function Messages() {
             <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-white/10 bg-zinc-950/90 shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/20">
               <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedFinanceClientId ? (
-                  <div className="h-full overflow-auto overscroll-contain p-4">
-                    <StaffFinancePortalMessagesPanel clientId={selectedFinanceClientId} />
+                  <div className="h-full min-h-0 overflow-hidden overscroll-contain p-4">
+                    <StaffFinancePortalMessagesPanel className="h-full min-h-0" clientId={selectedFinanceClientId} />
                   </div>
                 ) : (
-                  <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground">
+                  <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground lg:min-h-0">
                     <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-emerald-300/20 to-transparent" />
                     <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-emerald-300/10 blur-3xl" />
                     <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-emerald-300/25 bg-gradient-to-br from-emerald-300/15 to-white/[0.03] text-emerald-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
