@@ -10,7 +10,7 @@ interface CashFlowModalShellProps {
 
 export function CashFlowModalShell({ header, children, footer }: CashFlowModalShellProps) {
   return (
-    <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 overflow-hidden">
+    <DialogContent className="h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] md:h-[95vh] md:max-w-[95vw] flex flex-col gap-0 p-0 overflow-hidden">
       <div className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4">
         {header}
       </div>

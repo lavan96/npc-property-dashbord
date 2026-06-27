@@ -65,13 +65,13 @@ export function CashFlowCommandHeader({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="default"
               size="sm"
               onClick={onSaveChanges}
               disabled={isSaving || !hasChanges}
-              className="shrink-0"
+              className="min-h-9 flex-1 shrink-0 sm:flex-none"
             >
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? 'Saving...' : 'Save Changes'}
@@ -101,7 +101,7 @@ function HeaderMoreMenu({ hasOverrides, onResetAll, exportMenu }: {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0">
+        <Button variant="outline" size="sm" className="min-h-9 shrink-0">
           <MoreHorizontal className="h-4 w-4 md:mr-2" />
           <span className="hidden md:inline">More</span>
         </Button>

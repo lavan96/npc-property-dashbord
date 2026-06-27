@@ -30,7 +30,7 @@ export function CashFlowMetricsGrid({ baseFinancialData, projections, formatCurr
           </div>
         </div>
 
-        <div className="grid gap-px bg-white/10 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-px bg-white/10 min-[460px]:grid-cols-2 xl:grid-cols-6">
           <KpiTile
             icon={Home}
             label="Current Market Value"
@@ -90,7 +90,7 @@ function KpiTile({ icon: Icon, label, sublabel, value, tone, positive = false }:
   const isNegative = resolvedTone === 'negative';
 
   return (
-    <div className="min-h-[150px] bg-slate-950/40 p-4 md:p-5">
+    <div className="min-h-[140px] bg-slate-950/40 p-4 md:min-h-[150px] md:p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
         <span className="rounded-2xl bg-white/10 p-2 text-amber-100">
           <Icon className="h-4 w-4" />
@@ -109,7 +109,7 @@ function KpiTile({ icon: Icon, label, sublabel, value, tone, positive = false }:
       <div className="space-y-1">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
         <p className={cn(
-          'break-words text-2xl font-bold tracking-tight text-white',
+          'break-words text-xl font-bold tracking-tight text-white md:text-2xl',
           isPositive && 'text-emerald-200',
           isNegative && 'text-red-200'
         )}>

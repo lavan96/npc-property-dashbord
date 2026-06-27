@@ -86,14 +86,14 @@ export function CashFlowComparisonBar({
                       variant="outline"
                       role="combobox"
                       size="sm"
-                      className="w-full justify-between text-sm font-normal md:w-[300px]"
+                      className="min-h-9 w-full justify-between text-sm font-normal md:w-[300px]"
                       disabled={loadingReports || selectedComparisonReportIds.length >= 4}
                     >
                       {loadingReports ? "Loading..." : `Add property (${selectedComparisonReportIds.length}/4)`}
                       <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[350px] p-0" align="start">
+                  <PopoverContent className="w-[calc(100vw-2rem)] max-w-[350px] p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Search properties..." />
                       <CommandList>

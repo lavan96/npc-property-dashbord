@@ -35,13 +35,13 @@ export function CashFlowExportMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0">
+        <Button variant="outline" size="sm" className="min-h-9 shrink-0">
           <FileText className="h-4 w-4 mr-2" />
           Export
           <ChevronDown className="h-3 w-3 ml-1" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 bg-background border p-0">
+      <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-80 bg-background border p-0">
         <div className="border-b bg-muted/30 p-3">
           <DropdownMenuLabel className="p-0 text-sm">Export & publishing</DropdownMenuLabel>
           <p className="mt-1 text-xs text-muted-foreground">Download, print, or publish this cash-flow analysis.</p>
@@ -98,7 +98,7 @@ export function CashFlowExportMenu({
           </div>
 
           <div className="grid gap-2">
-            <Button size="sm" className="w-full justify-start" onClick={() => onExportPdf()}>
+            <Button size="sm" className="min-h-9 w-full justify-start" onClick={() => onExportPdf()}>
               <FileText className="h-4 w-4 mr-2" />
               Generate PDF
             </Button>
@@ -106,7 +106,7 @@ export function CashFlowExportMenu({
               inline
               variant="outline"
               size="sm"
-              className="w-full justify-start"
+              className="min-h-9 w-full justify-start"
               label="Generate Flattened PDF"
               getPdfBlob={async () => {
                 const b = await onExportPdf({ returnBlob: true });

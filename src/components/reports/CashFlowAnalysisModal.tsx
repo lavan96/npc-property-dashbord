@@ -4061,7 +4061,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={cashFlowChartRef} className="h-[420px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={cashFlowChartRef} className="h-[320px] w-full rounded-2xl border bg-white p-3 sm:h-[380px] xl:h-[420px]" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={chartData}
@@ -4395,7 +4395,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={yieldChartRef} className="h-[320px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={yieldChartRef} className="h-[280px] w-full rounded-2xl border bg-white p-3 sm:h-[320px]" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={yieldData}
@@ -4620,7 +4620,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </div>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <div ref={comparisonChartRef} className="h-[420px] w-full rounded-2xl border bg-white p-3" style={{ backgroundColor: '#ffffff' }}>
+                  <div ref={comparisonChartRef} className="h-[320px] w-full rounded-2xl border bg-white p-3 sm:h-[380px] xl:h-[420px]" style={{ backgroundColor: '#ffffff' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={projections.filter(p => p.year >= 1).map((p, i) => {
@@ -5553,7 +5553,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         <h4 className="text-sm font-semibold">Build Progress Table</h4>
                         <p className="text-xs text-muted-foreground">{constructionProgressSchedule.durationMonths} month construction schedule</p>
                       </div>
-                      <div className="max-w-full overflow-x-auto rounded-2xl border bg-background">
+                      <div className="max-w-full overflow-x-auto rounded-2xl border bg-background [-webkit-overflow-scrolling:touch]">
                       <Table className="min-w-[980px]">
                         <TableHeader>
                           <TableRow className="bg-slate-900 hover:bg-slate-900">
@@ -5618,7 +5618,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="max-w-full overflow-x-auto overscroll-x-contain">
+                <div className="max-w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
                   <Table className="min-w-[1280px] border-separate border-spacing-0">
                     <TableHeader className="sticky top-0 z-20">
                       <TableRow className="bg-slate-900 hover:bg-slate-900">
@@ -5899,6 +5899,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </CardContent>
             </Card>
           </div>
+        </div>
       </CashFlowModalShell>
     </Dialog>
 
