@@ -1799,19 +1799,22 @@ export default function EmailCopilot() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.18))]">
       {/* Header */}
-      <div className="mx-3 md:mx-6 mt-3 md:mt-5 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-primary/15 bg-card/85 px-4 md:px-5 py-3 md:py-4 shadow-2xl shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+      <div className="mx-3 md:mx-6 mt-3 md:mt-5 mb-3 flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.78))] px-4 md:px-5 py-3 md:py-4 shadow-2xl shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-card/70">
         <div className="flex items-center gap-2 md:gap-3">
-          <div className="p-1.5 md:p-2 bg-primary/15 rounded-xl ring-1 ring-primary/25 shadow-lg shadow-primary/10">
+          <div className="relative p-2 md:p-2.5 bg-primary/15 rounded-2xl ring-1 ring-primary/30 shadow-lg shadow-primary/10">
             <Mail className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+            <span className="absolute -right-1 -top-1 rounded-full border border-background bg-background p-0.5 shadow-sm">
+              <Sparkles className="h-2.5 w-2.5 text-primary" />
+            </span>
           </div>
           <div>
-            <h1 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
               Email Copilot
               {unreadCount > 0 && (
-                <Badge variant="secondary" className="text-xs bg-primary/15 text-primary border border-primary/25 shadow-sm">{unreadCount}</Badge>
+                <Badge variant="secondary" className="rounded-full border border-primary/30 bg-primary/15 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-primary shadow-sm" title={`${unreadCount} unread emails`}>{unreadCount}</Badge>
               )}
             </h1>
-            <p className="text-xs text-muted-foreground hidden sm:block">AI-powered email summaries & draft replies</p>
+            <p className="text-xs md:text-sm text-muted-foreground/90 hidden sm:block">AI-powered email summaries & draft replies</p>
           </div>
         </div>
         <div className="flex items-center gap-1 md:gap-2">
