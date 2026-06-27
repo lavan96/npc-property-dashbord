@@ -582,19 +582,21 @@ export default function ClientManagement() {
       />
 
       {/* Header */}
-      <section className="rounded-2xl border border-amber-500/20 bg-card/80 p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-6">
+      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-6">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+        <div className="pointer-events-none absolute -right-14 -top-20 h-44 w-44 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-2">
-          <div className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-200">Premium client workspace</div>
-          <h1 className="bg-gradient-to-r from-foreground via-amber-100 to-amber-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent md:text-4xl">Client Management</h1>
-          <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-            Manage clients, properties, and sync with GoHighLevel
-          </p>
-          <p className="text-xs text-muted-foreground">Last auto-sync: {formatLastSync(lastSyncTime)}</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap rounded-xl border border-border/70 bg-background/50 p-2 shadow-inner">
+          <div className="space-y-2">
+            <div className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-200">Premium client workspace</div>
+            <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-5xl">Client Management</h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              Manage clients, properties, and sync with GoHighLevel
+            </p>
+            <p className="text-xs text-muted-foreground">Last auto-sync: {formatLastSync(lastSyncTime)}</p>
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner backdrop-blur lg:w-auto lg:justify-end">
           {/* Auto-sync toggle - compact on mobile */}
-          <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-muted/70 px-2 py-1 shadow-sm transition-colors hover:border-amber-400/40 hover:bg-amber-500/10">
+          <div className="flex min-h-10 items-center gap-2 rounded-xl border border-amber-500/25 bg-background/70 px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10">
             {isAutoSyncing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
@@ -604,7 +606,7 @@ export default function ClientManagement() {
             <Switch
               checked={autoSyncEnabled}
               onCheckedChange={setAutoSyncEnabled}
-              className="scale-75 sm:scale-90"
+              className="scale-90 data-[state=checked]:bg-amber-400"
             />
           </div>
 
@@ -613,7 +615,7 @@ export default function ClientManagement() {
             variant="default" 
             size="sm"
             disabled={isImportingFromGHL}
-            className="h-8 text-xs shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 sm:text-sm"
+            className="h-10 rounded-xl border border-amber-300/25 bg-amber-500/15 px-4 text-xs font-semibold text-amber-100 shadow-lg shadow-amber-950/20 transition-all hover:-translate-y-0.5 hover:bg-amber-500/25 hover:text-amber-50 sm:text-sm"
           >
             {isImportingFromGHL ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -631,7 +633,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-8 border-amber-500/25 bg-background/70 text-xs transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10 sm:text-sm"
+            className="h-10 rounded-xl border-amber-500/25 bg-background/70 px-4 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10 sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -643,7 +645,7 @@ export default function ClientManagement() {
               onClick={() => setShowAddClientModal(true)} 
               variant="default" 
               size="sm"
-              className="h-8 text-xs shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 sm:text-sm"
+              className="h-10 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 text-xs font-bold text-black shadow-lg shadow-amber-500/25 transition-all hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400 hover:shadow-amber-500/35 sm:text-sm"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Add Client</span>
@@ -654,7 +656,7 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 border-amber-500/25 bg-background/70 transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10">
+              <Button variant="outline" size="sm" className="h-10 rounded-xl border-amber-500/25 bg-background/70 px-3 transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
