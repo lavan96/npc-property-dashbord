@@ -775,14 +775,16 @@ export default function ClientTracker() {
   return (
     <div className="min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
       {/* Header */}
-      <div className="rounded-2xl border border-primary/15 bg-card/80 p-4 shadow-xl shadow-black/20 backdrop-blur md:p-5">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-5">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary shadow-inner">
             <Target className="h-3.5 w-3.5" /> CRM Workspace
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">Client Tracker</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">Client Tracker</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground md:text-[15px]">
             Track clients through your GHL pipelines
             {pipelines.length > 0 && (
               <span className="ml-2 text-xs md:text-sm">
@@ -794,8 +796,8 @@ export default function ClientTracker() {
         
         {/* Mobile: Compact action bar */}
         {isMobile ? (
-          <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/70 p-2 shadow-inner">
-            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-muted/50 border">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-background/70 p-2 shadow-inner">
+            <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
               {isAutoSyncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
               ) : (
@@ -812,7 +814,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
-              className="h-8 text-xs"
+              className="h-9 rounded-xl px-3 text-xs font-semibold shadow-md shadow-primary/20"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -828,13 +830,13 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
-              className="h-8"
+              className="h-9 rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs">
+                <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/70 bg-background/80 text-xs hover:border-primary/30 hover:bg-primary/5">
                   <Download className="h-3.5 w-3.5 mr-1" />
                   Export
                 </Button>
@@ -848,12 +850,12 @@ export default function ClientTracker() {
             </DropdownMenu>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/70 bg-background/60 p-2 shadow-inner">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-background/65 p-2 shadow-inner lg:justify-end">
             {/* Auto-sync toggle */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 rounded-lg border border-primary/15 bg-primary/10 px-3 py-1.5 shadow-sm">
+                  <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 shadow-sm transition-colors hover:border-primary/35 hover:bg-primary/15">
                     {isAutoSyncing ? (
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                     ) : (
@@ -890,6 +892,7 @@ export default function ClientTracker() {
               disabled={isSyncingPipelines}
               variant="default"
               size="sm"
+              className="rounded-xl px-4 font-semibold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25"
             >
               {isSyncingPipelines ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -906,13 +909,14 @@ export default function ClientTracker() {
               }} 
               variant="outline" 
               size="sm"
+              className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-xl border-border/70 bg-background/80 hover:border-primary/30 hover:bg-primary/5">
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
