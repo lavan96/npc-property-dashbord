@@ -179,11 +179,11 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
 
   return (
     <div className={cn('flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden', className)}>
-      <ScrollArea className="flex-1 p-4" ref={scrollRef as any}>
+      <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.05),transparent_34%)] p-4 [scrollbar-color:rgba(16,185,129,0.32)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-emerald-200/80" /></div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground py-12">
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
             No messages yet. Start the conversation below.
           </div>
         ) : (
@@ -193,11 +193,11 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
               return (
                 <div key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
                   <div className={cn(
-                    'max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words',
-                    mine ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+                    'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15',
+                    mine ? 'border-emerald-300/30 bg-gradient-to-br from-emerald-300 to-teal-600 text-black' : 'border-white/10 bg-zinc-900/95 text-foreground'
                   )}>
                     {!mine && (
-                      <div className="text-[10px] uppercase opacity-70 mb-1">
+                      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
                         {m.sender_name || (m.sender_type === 'staff' ? 'Staff' : m.sender_type === 'client' ? 'Client' : 'Finance Partner')}
                       </div>
                     )}
@@ -206,7 +206,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                       <button
                         onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
                         className={cn(
-                          'mt-2 flex items-center gap-2 text-xs underline-offset-2 hover:underline',
+                          'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 hover:underline',
                           mine ? 'text-primary-foreground/90' : 'text-foreground/80'
                         )}
                       >
@@ -216,7 +216,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                       </button>
                     )}
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1 px-1">{formatStamp(m.created_at)}</div>
+                  <div className="mt-1.5 px-1 text-[10px] text-muted-foreground/85">{formatStamp(m.created_at)}</div>
                 </div>
               );
             })}
