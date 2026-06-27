@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2 } from 'lucide-react';
+import { Download, Maximize2, FileText, Calendar, ExternalLink, Trash2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { renderChartImage, type ChartData } from './ChartCard';
@@ -21,7 +21,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
 
   return (
     <div
-      className={`flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-card/80 p-3 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-primary/10 ${isSelected ? 'ring-2 ring-primary bg-primary/10' : ''}`}
+      className={`relative flex cursor-pointer items-center gap-3 rounded-xl border bg-card/80 p-3 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-primary/10 ${selectionMode && isSelected ? 'border-amber-300/80 bg-amber-500/10 ring-2 ring-amber-400/70 shadow-[0_16px_34px_hsl(43_74%_49%/0.16)]' : 'border-border/60'}`}
       onClick={() => {
         if (selectionMode) {
           onToggleSelect(chart.id);
@@ -33,7 +33,14 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
           checked={isSelected}
           onCheckedChange={() => onToggleSelect(chart.id)}
           onClick={(e) => e.stopPropagation()}
+          className="border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground"
+          aria-label={`Select ${chart.title}`}
         />
+      )}
+      {selectionMode && isSelected && (
+        <div className="pointer-events-none absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-amber-100/70 bg-gradient-to-br from-amber-300 to-primary text-primary-foreground shadow-lg shadow-amber-950/20" aria-hidden="true">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        </div>
       )}
 
       <div
