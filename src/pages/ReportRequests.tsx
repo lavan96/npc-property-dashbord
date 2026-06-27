@@ -390,14 +390,18 @@ export default function ReportRequests() {
 
       {/* Detail / Action Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}>
-        <DialogContent className="border-amber-300/20 bg-zinc-950 text-zinc-100 shadow-2xl shadow-black/60 sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <Send className="h-4 w-4 text-amber-200" />
+        <DialogContent className="max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-amber-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-amber-300/40 [&>button:hover]:bg-amber-300/10 [&>button:hover]:text-amber-100 [&>button:focus-visible]:ring-amber-300/40">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+          <DialogHeader className="border-b border-white/10 bg-white/[0.02] px-6 pb-5 pt-6 text-left">
+            <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-white">
+              <span className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-2 text-amber-200 shadow-inner shadow-black/20">
+                <Send className="h-4 w-4" />
+              </span>
               Report Request Details
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">Review and manage this client report request.</DialogDescription>
+            <DialogDescription className="pt-1 text-sm leading-6 text-zinc-400">Review and manage this client report request.</DialogDescription>
           </DialogHeader>
+          <div className="px-6 py-5">
 
           {selectedRequest && (() => {
             const typeConf = requestTypeConfig[selectedRequest.request_type] || requestTypeConfig.portfolio_review;
@@ -468,6 +472,7 @@ export default function ReportRequests() {
               </div>
             );
           })()}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
