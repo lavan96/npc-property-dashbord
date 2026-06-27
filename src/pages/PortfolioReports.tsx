@@ -2,7 +2,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { PortfolioAnalysisReportsList } from '@/components/clients/PortfolioAnalysisReportsList';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+import { BarChart3, Sparkles, X } from 'lucide-react';
 
 export default function PortfolioReports() {
   const { canEdit: canEditPortfolio, canDelete: canDeletePortfolio } = useModulePermissions('portfolio_reports');
@@ -11,34 +12,46 @@ export default function PortfolioReports() {
   const clientId = searchParams.get('clientId');
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Portfolio Performance Reports</h1>
-          <p className="text-muted-foreground">
-            {clientId 
-              ? 'Viewing reports for selected client' 
-              : 'View all generated portfolio performance analysis reports across clients'}
-          </p>
+    <DashboardThemeFrame variant="hero" className="px-3 py-4 sm:px-5 sm:py-6 lg:px-8">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-7">
+        {/* Header */}
+        <div className="flex flex-col gap-5 rounded-3xl border border-border/70 bg-card/70 p-5 shadow-lg shadow-black/10 backdrop-blur dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25 sm:flex-row sm:items-center sm:justify-between lg:p-7">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-200 shadow-lg shadow-amber-950/30">
+              <BarChart3 className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-amber-200">
+                <Sparkles className="h-3.5 w-3.5" />
+                Portfolio Intelligence
+              </div>
+              <h1 className="break-words text-2xl font-bold tracking-[-0.03em] text-white sm:text-4xl lg:text-5xl">Portfolio Performance Reports</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300/90 sm:text-base">
+                {clientId
+                  ? 'Viewing reports for selected client'
+                  : 'View all generated portfolio performance analysis reports across clients'}
+              </p>
+            </div>
+          </div>
+          {clientId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/portfolio-reports')}
+              className="w-full justify-center border-primary/35 bg-background/40 text-primary transition-all hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-auto"
+            >
+              <X className="mr-2 h-4 w-4" />
+              Clear Filter
+            </Button>
+          )}
         </div>
-        {clientId && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/portfolio-reports')}
-          >
-            <X className="h-4 w-4 mr-2" />
-            Clear Filter
-          </Button>
-        )}
-      </div>
 
-      {/* Reports List */}
-      <PortfolioAnalysisReportsList 
-        clientId={clientId || undefined} 
-        showHeader={true} 
-      />
-    </div>
+        {/* Reports List */}
+        <PortfolioAnalysisReportsList
+          clientId={clientId || undefined}
+          showHeader={true}
+        />
+      </div>
+    </DashboardThemeFrame>
   );
 }
