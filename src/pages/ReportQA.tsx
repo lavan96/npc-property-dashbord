@@ -1776,14 +1776,14 @@ export default function ReportQA() {
       <LiveRegion message={liveAnnouncement} />
       <div 
         className={cn(
-          "report-qa-premium p-2 sm:p-4 md:p-6 sm:space-y-4 md:space-y-5 h-[calc(100vh-4rem)] pb-16 sm:pb-20 md:pb-0 min-w-0 overflow-hidden",
+          "report-qa-premium flex h-[calc(100dvh-8rem)] max-h-[calc(100dvh-8rem)] min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-2 pb-16 sm:h-[calc(100dvh-9rem)] sm:max-h-[calc(100dvh-9rem)] sm:gap-4 sm:p-4 sm:pb-20 md:h-[calc(100dvh-10rem)] md:max-h-[calc(100dvh-10rem)] md:gap-5 md:p-6 md:pb-0",
           isFullScreen && "report-qa-fullscreen"
         )}
         role="main"
         aria-label="Report Q&A Chat"
       >
       {/* Header - compact on mobile */}
-      <div className="report-qa-hero flex items-start justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start md:flex-row md:items-center">
+      <div className="report-qa-hero flex shrink-0 items-start justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4 sm:flex-col sm:items-start md:flex-row md:items-center">
         <div className="min-w-0 space-y-1.5">
           <div className="report-qa-eyebrow inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]">
             <Sparkles className="h-3 w-3" />
@@ -1836,7 +1836,7 @@ export default function ReportQA() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 h-[calc(100%-4.5rem)] sm:h-[calc(100%-5.5rem)] md:h-[calc(100%-6rem)] min-w-0">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 overflow-hidden sm:gap-4 md:gap-6 lg:grid-cols-3">
         {/* Upload Section - Hidden on mobile, accessible via MobileReportsPanel */}
         {showReportsPanel && (
         <Card className="report-qa-panel report-qa-reports-panel hidden lg:flex lg:col-span-1 flex-col overflow-hidden min-h-0">
@@ -1979,7 +1979,7 @@ export default function ReportQA() {
 
             {/* Uploaded Reports — compact list */}
             {uploadedReports.length > 0 && (
-              <ScrollArea className="report-qa-report-list flex-1 -mx-1 px-1">
+              <ScrollArea className="report-qa-report-list -mx-1 min-h-0 flex-1 px-1">
                 <div className="space-y-1.5">
                   {uploadedReports.map((report, index) => {
                     const isActive = activeReportIndex === index;
@@ -2278,7 +2278,7 @@ export default function ReportQA() {
           </CardHeader>
           <CardContent id="chat-main" className="report-qa-chat-content flex-1 flex flex-col min-h-0 overflow-hidden px-2 pb-2 sm:px-5 sm:pb-4">
             {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className="report-qa-message-area flex-1 pr-1 sm:pr-4 mb-2 sm:mb-4" aria-label="Chat messages" role="log" aria-live="polite">
+            <ScrollArea ref={scrollAreaRef} className="report-qa-message-area mb-2 min-h-0 flex-1 overflow-hidden pr-1 sm:mb-4 sm:pr-4" aria-label="Chat messages" role="log" aria-live="polite">
               {/* Load older messages button */}
               {hasOlderMessages && messages.length > 0 && (
                 <div className="flex justify-center py-2">
@@ -2617,13 +2617,13 @@ export default function ReportQA() {
                 duration={recordingDuration}
                 maxDuration={MAX_RECORDING_DURATION}
                 accumulatedText={accumulatedTranscript}
-                className="mb-2" 
+                className="mb-2 shrink-0"
               />
             )}
 
             {/* Pending audio preview */}
             {pendingAudioUrl && !isRecording && (
-              <div className="mb-2 p-2 rounded-lg bg-muted/50 border">
+              <div className="mb-2 shrink-0 rounded-lg border bg-muted/50 p-2">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-muted-foreground">Voice message ready</span>
                   <Button
@@ -2642,14 +2642,14 @@ export default function ReportQA() {
 
             {/* Indexing indicator */}
             {isIndexing && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm text-muted-foreground">
+              <div className="flex shrink-0 items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Indexing reports for intelligent retrieval… Chat will be available shortly.</span>
               </div>
             )}
 
             {/* Input */}
-            <div className="report-qa-composer space-y-1 pt-2 sm:pt-3 border-t flex-shrink-0">
+            <div className="report-qa-composer max-h-[13rem] shrink-0 space-y-1 overflow-hidden border-t pt-2 sm:pt-3">
               <div className="flex gap-1.5 sm:gap-2 items-end">
                 <Textarea
                   ref={inputRef}
@@ -2664,7 +2664,7 @@ export default function ReportQA() {
                   onChange={(e) => {
                     setInputMessage(e.target.value);
                     e.target.style.height = 'auto';
-                    e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -2673,7 +2673,7 @@ export default function ReportQA() {
                     }
                   }}
                   disabled={isProcessing || isRecording || isTranscribing || isIndexing}
-                  className="flex-1 min-h-[44px] max-h-[300px] resize-none overflow-y-auto rounded-2xl"
+                  className="max-h-40 min-h-[44px] flex-1 resize-none overflow-y-auto rounded-2xl"
                   rows={1}
                 />
               {/* Recording controls */}
