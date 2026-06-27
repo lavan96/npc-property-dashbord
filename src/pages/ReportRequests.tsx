@@ -278,27 +278,33 @@ export default function ReportRequests() {
         </div>
 
         {/* Filters */}
-        <div className="rounded-3xl border border-white/10 bg-zinc-950/70 p-3 shadow-xl shadow-black/20 backdrop-blur sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(9,9,11,0.78))] p-3 shadow-xl shadow-black/25 backdrop-blur sm:p-4">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent" />
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="group/search relative flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 transition-colors group-focus-within/search:text-amber-200" />
               <Input
                 placeholder="Search by client, property, or notes..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-12 rounded-2xl border-white/10 bg-black/40 pl-11 text-zinc-100 placeholder:text-zinc-600 transition-all focus-visible:border-amber-300/50 focus-visible:ring-amber-300/20"
+                className="h-12 rounded-2xl border-white/10 bg-black/45 pl-11 pr-4 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20"
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-12 w-full rounded-2xl border-white/10 bg-black/40 text-zinc-100 transition-all focus:border-amber-300/50 focus:ring-amber-300/20 sm:w-56">
+              <SelectTrigger
+                className={cn(
+                  'h-12 w-full rounded-2xl border-white/10 bg-black/45 px-4 text-sm font-medium text-zinc-100 shadow-inner shadow-black/30 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus:border-amber-300/55 focus:ring-2 focus:ring-amber-300/20 lg:w-60',
+                  typeFilter !== 'all' && 'border-amber-300/35 bg-amber-300/10 text-amber-100'
+                )}
+              >
                 <Filter className="mr-2 h-3.5 w-3.5 text-amber-200" />
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
-              <SelectContent className="border-white/10 bg-zinc-950 text-zinc-100">
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="portfolio_review">Portfolio Review</SelectItem>
-                <SelectItem value="borrowing_capacity">Borrowing Capacity</SelectItem>
-                <SelectItem value="investment_property">Investment Property</SelectItem>
+              <SelectContent className="overflow-hidden rounded-2xl border-white/10 bg-zinc-950/95 p-1 text-zinc-100 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                <SelectItem className="rounded-xl font-medium focus:bg-amber-300/10 focus:text-amber-100" value="all">All Types</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100" value="portfolio_review">Portfolio Review</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100" value="borrowing_capacity">Borrowing Capacity</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100" value="investment_property">Investment Property</SelectItem>
               </SelectContent>
             </Select>
           </div>
