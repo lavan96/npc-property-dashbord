@@ -2088,7 +2088,7 @@ export default function EmailCopilot() {
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/45">
+                  <div className="space-y-2 p-3">
                     {sortedThreadKeys.map((threadKey) => {
                       const threadEmails = emailThreads.get(threadKey)!;
                       const isThreaded = threadEmails.length > 1;
@@ -2112,29 +2112,32 @@ export default function EmailCopilot() {
                                 handleSelectEmail(latestEmail);
                               }
                             }}
-                            className={`group border-l-4 px-4 py-4 cursor-pointer transition-all hover:border-l-primary/50 hover:bg-primary/5 hover:shadow-inner ${
-                              selectedEmail?.id === latestEmail.id ? 'border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]' : 'border-l-transparent'
-                            } ${hasUnread ? 'bg-primary/5' : ''}`}
+                            className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-border/55 border-l-4 px-4 py-[1.125rem] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-l-primary/70 hover:border-primary/25 hover:bg-[linear-gradient(135deg,hsl(var(--primary)/0.075),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.72))] hover:shadow-[0_16px_36px_hsl(var(--primary)/0.11)] ${
+                              selectedEmail?.id === latestEmail.id ? 'border-l-primary border-primary/40 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--card)/0.95)_48%,hsl(var(--primary)/0.055))] shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/25' : 'border-l-transparent bg-card/72'
+                            } ${hasUnread ? 'bg-[linear-gradient(135deg,hsl(var(--primary)/0.095),hsl(var(--card)/0.88)_52%,hsl(var(--background)/0.68))]' : ''}`}
                           >
-                            <div className="flex items-start gap-3">
+                            <div className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-r-full bg-primary/0 transition-colors group-hover:bg-primary/70" />
+                            <div className="flex items-start gap-3.5">
                               {/* Avatar */}
-                              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/15 shadow-sm ring-1 ring-primary/20">
-                                <span className="text-[11px] font-bold tracking-wide text-primary">
+                              <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_hsl(var(--background)/0.45),0_10px_24px_hsl(var(--primary)/0.12)] ring-1 transition-all group-hover:scale-[1.03] ${
+                                hasUnread ? 'border-primary/35 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.32),hsl(var(--primary)/0.13)_60%,hsl(var(--card)/0.9))] ring-primary/25' : 'border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--muted)/0.38))] ring-primary/15'
+                              }`}>
+                                <span className="text-[11px] font-black uppercase tracking-[0.16em] text-primary drop-shadow-sm">
                                   {getSenderInitials(latestEmail.sender)}
                                 </span>
                               </div>
                               
                               <div className="flex-1 min-w-0">
                                 {/* Row 1: Sender + Date — date always visible */}
-                                <div className="flex items-center mb-0.5">
-                                  <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-                                    {hasUnread && <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.45)]" />}
-                                    <span title={extractSenderName(latestEmail.sender)} className={`truncate text-sm ${hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/85'}`}>
+                                <div className="mb-1 flex items-center">
+                                  <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                                    {hasUnread && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.65)]" />}
+                                    <span title={extractSenderName(latestEmail.sender)} className={`truncate text-[0.92rem] leading-5 tracking-[-0.01em] ${hasUnread ? 'font-bold text-foreground' : 'font-semibold text-foreground/90'}`}>
                                       {extractSenderName(latestEmail.sender)}
                                     </span>
                                     {isThreaded && (
-                                      <Badge variant="secondary" className="flex-shrink-0 rounded-full border border-primary/20 bg-primary/10 px-1.5 py-0 text-[10px] font-semibold text-primary">
-                                        <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
+                                      <Badge variant="secondary" className="flex-shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-primary shadow-sm">
+                                        <MessageCircle className="mr-1 h-2.5 w-2.5" />
                                         {threadEmails.length}
                                       </Badge>
                                     )}
@@ -2144,16 +2147,16 @@ export default function EmailCopilot() {
                                   </span>
                                 </div>
                                 {/* Row 2: Subject */}
-                                <p title={latestEmail.subject || '(No Subject)'} className={`truncate text-sm ${hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/75'}`}>
+                                <p title={latestEmail.subject || '(No Subject)'} className={`truncate text-sm leading-5 tracking-[-0.005em] ${hasUnread ? 'font-bold text-foreground' : 'font-semibold text-foreground/80'}`}>
                                   {latestEmail.subject || '(No Subject)'}
                                 </p>
                                 {/* Row 3: Body preview */}
-                                <p title={latestEmail.body?.replace(/\n/g, ' ')} className="mt-1 truncate text-xs leading-5 text-muted-foreground/85">
+                                <p title={latestEmail.body?.replace(/\n/g, ' ')} className="mt-1.5 truncate text-xs leading-5 text-muted-foreground/90 transition-colors group-hover:text-foreground/68">
                                   {latestEmail.body?.slice(0, 50).replace(/\n/g, ' ')}…
                                 </p>
                                 
                                 {/* Status indicators */}
-                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
                                   {latestEmail.urgency_level && latestEmail.urgency_level !== 'low' && (
                                     <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${
                                       latestEmail.urgency_level === 'high' ? 'text-destructive border-destructive/30' : 'text-warning border-warning/30'
