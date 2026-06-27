@@ -111,7 +111,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
   const queryClient = useQueryClient();
 
   // Fetch portfolio analysis reports via secure function
-  const { data: reports = [], isLoading, refetch } = useQuery({
+  const { data: reports = [], isLoading, isRefetching, refetch } = useQuery({
     queryKey: ['portfolio-analysis-reports', clientId],
     queryFn: async () => {
       const { data, error } = await invokeSecureFunction('get-client-data', {
@@ -298,18 +298,25 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
           </div>
 
           {/* Search and Actions */}
-          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/30 p-3 shadow-lg shadow-black/15 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-            <div className="relative flex-1 sm:max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
+          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(0,0,0,0.42))] p-3 shadow-lg shadow-black/15 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <div className="relative flex-1 sm:max-w-lg">
+              <div className="pointer-events-none absolute left-3.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-300/10 text-amber-200/80">
+                <Search className="h-4 w-4" />
+              </div>
               <Input
                 placeholder="Search by client name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 rounded-2xl border-white/10 bg-slate-950/70 pl-10 text-slate-100 placeholder:text-slate-500 transition-all focus-visible:border-amber-300/60 focus-visible:ring-amber-300/25"
+                className="h-12 rounded-2xl border-white/10 bg-slate-950/80 pl-14 pr-4 text-sm font-medium text-slate-100 shadow-inner shadow-black/20 transition-all placeholder:text-slate-500 hover:border-amber-300/25 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/25 focus-visible:ring-offset-0"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()} className="h-11 rounded-2xl border-amber-400/30 bg-amber-400/10 px-5 text-amber-100 transition-all hover:border-amber-300 hover:bg-amber-400/20 hover:text-amber-50 active:scale-[0.98]">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="h-12 justify-center rounded-2xl border-amber-300/25 bg-white/[0.03] px-5 font-semibold text-amber-100 shadow-sm shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-300/12 hover:text-amber-50 hover:shadow-[0_14px_34px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/30 active:translate-y-0 sm:min-w-[124px]"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin text-amber-200' : 'text-amber-200/85'}`} />
               Refresh
             </Button>
           </div>
