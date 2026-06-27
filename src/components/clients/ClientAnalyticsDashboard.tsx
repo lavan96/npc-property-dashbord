@@ -275,27 +275,35 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
           </CardHeader>
           <CardContent className="p-5">
             <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={analytics.cashFlowData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={58}
-                    outerRadius={86}
-                    dataKey="value"
-                    paddingAngle={4}
-                    labelLine={false}
-                    stroke="rgba(2,6,23,0.92)"
-                    strokeWidth={3}
-                  >
-                    {analytics.cashFlowData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip contentStyle={chartTooltipStyle} itemStyle={chartItemStyle} />
-                </PieChart>
-              </ResponsiveContainer>
+              {clients.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analytics.cashFlowData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={86}
+                      dataKey="value"
+                      paddingAngle={4}
+                      labelLine={false}
+                      stroke="rgba(2,6,23,0.92)"
+                      strokeWidth={3}
+                    >
+                      {analytics.cashFlowData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip contentStyle={chartTooltipStyle} itemStyle={chartItemStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
+                  <Info className="mb-3 h-8 w-8 text-amber-100/70" />
+                  <p className="text-sm font-semibold text-slate-200">No cash flow data yet</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Import or add clients to populate this chart.</p>
+                </div>
+              )}
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <div className="flex items-center justify-between rounded-2xl border border-emerald-300/15 bg-emerald-400/10 px-3 py-2">
@@ -334,8 +342,10 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.025] text-sm font-medium text-slate-400">
-                  No portfolio size data
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
+                  <Info className="mb-3 h-8 w-8 text-amber-100/70" />
+                  <p className="text-sm font-semibold text-slate-200">No portfolio size data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Portfolio values will appear here once client records include property data.</p>
                 </div>
               )}
             </div>
@@ -372,8 +382,10 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.025] text-sm font-medium text-slate-400">
-                  No property count data
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
+                  <Building2 className="mb-3 h-8 w-8 text-amber-100/70" />
+                  <p className="text-sm font-semibold text-slate-200">No property count data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Property distribution will populate as client portfolios are added.</p>
                 </div>
               )}
             </div>
@@ -427,7 +439,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                           </div>
                           <span className={`rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-bold tabular-nums ${valueClass}`}>{value}</span>
                         </div>
-                        <Progress value={percentage} className={`h-3 border border-white/10 ${progressClass}`} />
+                        <Progress value={Number.isFinite(percentage) ? percentage : 0} className={`h-3 border border-white/10 ${progressClass}`} />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[240px] text-xs">

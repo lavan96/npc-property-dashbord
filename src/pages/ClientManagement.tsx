@@ -819,18 +819,52 @@ export default function ClientManagement() {
           {isLoading ? (
             <div className="grid items-stretch gap-5 sm:grid-cols-2 2xl:grid-cols-3">
               {[1, 2, 3].map((i) => (
-                <Card key={i} className="min-h-[22rem] animate-pulse rounded-2xl border-border/70 bg-card/80">
-                  <CardContent className="h-56" />
+                <Card key={i} className="relative min-h-[22rem] overflow-hidden rounded-3xl border-amber-300/15 bg-[linear-gradient(145deg,rgba(24,24,27,0.86),rgba(3,7,18,0.72))] shadow-xl shadow-black/20">
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
+                  <CardContent className="space-y-5 p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 animate-pulse rounded-2xl bg-amber-300/15" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10" />
+                        <div className="h-3 w-1/2 animate-pulse rounded-full bg-white/5" />
+                      </div>
+                    </div>
+                    <div className="grid gap-3">
+                      <div className="h-16 animate-pulse rounded-2xl bg-white/[0.045]" />
+                      <div className="h-16 animate-pulse rounded-2xl bg-white/[0.035]" />
+                      <div className="h-16 animate-pulse rounded-2xl bg-white/[0.03]" />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-100/70">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading client records...
+                    </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>
           ) : displayClients.length === 0 ? (
-            <Card className="border-dashed border-border/70 bg-card/70">
-              <CardContent className="flex flex-col items-center justify-center py-14">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">No clients found</h3>
-                <p className="text-muted-foreground text-center mt-1">
-                  {searchQuery || filters !== defaultFilters || showActiveOnly ? 'Try adjusting your filters' : 'Import clients using the Import tab'}
+            <Card className="relative overflow-hidden rounded-3xl border-dashed border-amber-300/20 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.1),transparent_35%),linear-gradient(145deg,rgba(24,24,27,0.78),rgba(3,7,18,0.62))] shadow-xl shadow-black/20">
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
+              <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
+                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-300/20 bg-amber-300/10 text-amber-100 shadow-lg shadow-amber-950/20">
+                  {searchQuery || filters !== defaultFilters || showActiveOnly ? (
+                    <Search className="h-7 w-7" />
+                  ) : (
+                    <Users className="h-7 w-7" />
+                  )}
+                </div>
+                <h3 className="text-xl font-bold tracking-tight text-white">
+                  {showActiveOnly
+                    ? 'No active clients found'
+                    : searchQuery || filters !== defaultFilters
+                      ? 'No clients match your filters'
+                      : 'No clients found'
+                  }
+                </h3>
+                <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+                  {searchQuery || filters !== defaultFilters || showActiveOnly
+                    ? 'Try adjusting your filters'
+                    : 'Import clients using the Import tab'}
                 </p>
               </CardContent>
             </Card>
