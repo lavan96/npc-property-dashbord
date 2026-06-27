@@ -2112,14 +2112,14 @@ export default function EmailCopilot() {
                                 handleSelectEmail(latestEmail);
                               }
                             }}
-                            className={`group px-4 py-3.5 cursor-pointer transition-all hover:bg-primary/5 hover:shadow-inner ${
-                              selectedEmail?.id === latestEmail.id ? 'bg-primary/10 border-l-4 border-l-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]' : ''
+                            className={`group border-l-4 px-4 py-4 cursor-pointer transition-all hover:border-l-primary/50 hover:bg-primary/5 hover:shadow-inner ${
+                              selectedEmail?.id === latestEmail.id ? 'border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]' : 'border-l-transparent'
                             } ${hasUnread ? 'bg-primary/5' : ''}`}
                           >
-                            <div className="flex items-start gap-2.5">
+                            <div className="flex items-start gap-3">
                               {/* Avatar */}
-                              <div className="w-8 h-8 rounded-full bg-primary/15 ring-1 ring-primary/25 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
-                                <span className="text-[11px] font-semibold text-primary">
+                              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/15 shadow-sm ring-1 ring-primary/20">
+                                <span className="text-[11px] font-bold tracking-wide text-primary">
                                   {getSenderInitials(latestEmail.sender)}
                                 </span>
                               </div>
@@ -2127,27 +2127,28 @@ export default function EmailCopilot() {
                               <div className="flex-1 min-w-0">
                                 {/* Row 1: Sender + Date — date always visible */}
                                 <div className="flex items-center mb-0.5">
-                                  <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-                                    <span className={`text-sm truncate ${hasUnread ? 'font-semibold' : 'font-medium'}`}>
+                                  <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                                    {hasUnread && <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary)/0.45)]" />}
+                                    <span title={extractSenderName(latestEmail.sender)} className={`truncate text-sm ${hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/85'}`}>
                                       {extractSenderName(latestEmail.sender)}
                                     </span>
                                     {isThreaded && (
-                                      <Badge variant="secondary" className="text-[10px] px-1 py-0 flex-shrink-0">
+                                      <Badge variant="secondary" className="flex-shrink-0 rounded-full border border-primary/20 bg-primary/10 px-1.5 py-0 text-[10px] font-semibold text-primary">
                                         <MessageCircle className="h-2.5 w-2.5 mr-0.5" />
                                         {threadEmails.length}
                                       </Badge>
                                     )}
                                   </div>
-                                  <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap pl-2">
+                                  <span className="flex-shrink-0 whitespace-nowrap pl-2 text-[10px] font-medium text-muted-foreground/80">
                                     {formatEmailDate(latestEmail.received_at)}
                                   </span>
                                 </div>
                                 {/* Row 2: Subject */}
-                                <p className={`text-sm truncate ${hasUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                                <p title={latestEmail.subject || '(No Subject)'} className={`truncate text-sm ${hasUnread ? 'font-semibold text-foreground' : 'font-medium text-foreground/75'}`}>
                                   {latestEmail.subject || '(No Subject)'}
                                 </p>
                                 {/* Row 3: Body preview */}
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                <p title={latestEmail.body?.replace(/\n/g, ' ')} className="mt-1 truncate text-xs leading-5 text-muted-foreground/85">
                                   {latestEmail.body?.slice(0, 50).replace(/\n/g, ' ')}…
                                 </p>
                                 
@@ -2181,7 +2182,7 @@ export default function EmailCopilot() {
                                         e.stopPropagation();
                                         toggleThread(threadKey);
                                       }}
-                                      className="ml-auto text-muted-foreground hover:text-foreground"
+                                      className="ml-auto rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                                     >
                                       {isExpanded ? (
                                         <ChevronUp className="h-4 w-4" />
@@ -2197,23 +2198,23 @@ export default function EmailCopilot() {
                           
                           {/* Expanded Thread Emails */}
                           {isThreaded && isExpanded && (
-                            <div className="bg-muted/20 border-l-2 border-l-muted">
+                            <div className="border-l-2 border-l-primary/20 bg-background/30">
                               {threadEmails.map((email, index) => (
                                 <div
                                   key={email.id}
                                   onClick={() => handleSelectEmail(email)}
-                                  className={`pl-8 pr-4 py-2 cursor-pointer transition-colors hover:bg-muted/50 border-t border-border/50 ${
-                                    selectedEmail?.id === email.id ? 'bg-muted border-l-2 border-l-primary' : ''
+                                  className={`border-t border-border/45 py-2.5 pl-8 pr-4 cursor-pointer transition-colors hover:bg-primary/5 ${
+                                    selectedEmail?.id === email.id ? 'border-l-2 border-l-primary bg-primary/10' : ''
                                   }`}
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10">
                                       <span className="text-[10px] font-semibold text-primary">
                                         {getSenderInitials(email.sender)}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
-                                      <span className={`text-xs truncate ${email.status === 'unread' ? 'font-semibold' : ''}`}>
+                                      <span title={extractSenderName(email.sender)} className={`truncate text-xs ${email.status === 'unread' ? 'font-semibold text-foreground' : 'text-foreground/75'}`}>
                                         {extractSenderName(email.sender)}
                                       </span>
                                       {email.summary && (
@@ -2223,11 +2224,11 @@ export default function EmailCopilot() {
                                         <MessageSquare className="h-3 w-3 text-purple-500 flex-shrink-0" />
                                       )}
                                     </div>
-                                    <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap pl-2">
+                                    <span className="flex-shrink-0 whitespace-nowrap pl-2 text-[10px] font-medium text-muted-foreground/80">
                                       {formatEmailDate(email.received_at)}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-muted-foreground truncate mt-0.5 pl-8">
+                                  <p title={email.body?.replace(/\n/g, ' ')} className="mt-1 truncate pl-8 text-xs text-muted-foreground/85">
                                     {email.body?.slice(0, 50).replace(/\n/g, ' ')}…
                                   </p>
                                 </div>
