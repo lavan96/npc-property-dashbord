@@ -56,7 +56,13 @@ export function ConversationTags({ tags, onAddTag, onRemoveTag, compact }: Conve
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="report-qa-toolbar-control h-8 gap-1.5 px-3 text-xs font-medium"
+          data-active={tags.length > 0 ? 'true' : undefined}
+          title="Conversation tags"
+        >
           <Tag className="h-3 w-3" />
           Tags
           {tags.length > 0 && (
