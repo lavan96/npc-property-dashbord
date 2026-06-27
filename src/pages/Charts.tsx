@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { BarChart3, Download, RefreshCw, ChevronDown, FileText } from 'lucide-react';
+import { AlertCircle, BarChart3, Download, RefreshCw, ChevronDown, FileText, CheckCircle2, SearchX, SlidersHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { subDays, subMonths, subYears } from 'date-fns';
 import { ChartCard, type ChartData } from '@/components/charts/ChartCard';
@@ -22,6 +22,7 @@ export default function Charts() {
   const { canEdit: canEditCharts } = useModulePermissions('charts');
   const [charts, setCharts] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Filters & view state
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +48,7 @@ export default function Charts() {
   const fetchCharts = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const { data: chartsResult, error: chartsError } = await invokeSecureFunction('manage-templates', {
         operation: 'list',
         table: 'charts',
@@ -56,6 +58,7 @@ export default function Charts() {
       if (chartsError) {
         console.error('Error fetching charts:', chartsError);
         toast.error('Failed to load charts');
+        setLoadError('Charts could not be loaded. Please retry when your connection is stable.');
         return;
       }
 
@@ -109,6 +112,7 @@ export default function Charts() {
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to load charts');
+      setLoadError('Charts could not be loaded. Please retry when your connection is stable.');
     } finally {
       setLoading(false);
     }
@@ -225,7 +229,11 @@ export default function Charts() {
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
@@ -284,35 +292,51 @@ export default function Charts() {
     selectionMode,
   }), [selectedIds, toggleSelect, exportSingle, canEditCharts, selectionMode]);
 
+  const isRefreshing = loading && charts.length > 0;
+
   // Loading skeleton
-  if (loading) {
+  if (loading && charts.length === 0) {
     return (
-      <div className="min-h-screen animate-fade-in space-y-6 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] p-4 sm:p-6">
-        <div className="flex items-center gap-4">
-          <div className="relative h-12 w-12 overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20 ring-1 ring-primary/40">
-            <div className="absolute inset-x-2 top-0 h-px bg-amber-100/80" />
-            <BarChart3 className="h-5 w-5 text-primary-foreground" />
+      <div className="min-h-screen animate-fade-in overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(245,158,11,0.12),transparent_30%)] p-4 sm:p-6">
+        <div className="mx-auto max-w-[1700px] space-y-6">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-primary/20 bg-card/85 p-6 shadow-2xl shadow-black/15 backdrop-blur-xl">
+            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
+            <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-300/15 blur-3xl" />
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-amber-200/45">
+                <RefreshCw className="h-6 w-6 animate-spin text-primary-foreground" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">Preparing charts</h1>
+                <p className="text-sm leading-6 text-muted-foreground">Loading saved visual analytics, report links and chart insights.</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Charts</h1>
-            <p className="text-sm text-muted-foreground">Loading chart data...</p>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden border-border/60 bg-card/80 shadow-lg">
+                <CardContent className="space-y-3 p-4">
+                  <div className="h-3 w-16 animate-pulse rounded-full bg-muted" />
+                  <div className="h-8 w-24 animate-pulse rounded-lg bg-muted/80" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse"><CardContent className="p-3"><div className="h-14 bg-muted rounded" /></CardContent></Card>
-          ))}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4 space-y-3">
-                <div className="h-4 bg-muted rounded w-3/4" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-                <div className="h-48 bg-muted rounded" />
-              </CardContent>
-            </Card>
-          ))}
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden rounded-[1.35rem] border-border/60 bg-card/80 shadow-xl">
+                <CardContent className="space-y-4 p-4">
+                  <div className="space-y-2">
+                    <div className="h-4 w-3/4 animate-pulse rounded-full bg-muted" />
+                    <div className="h-3 w-1/2 animate-pulse rounded-full bg-muted/80" />
+                  </div>
+                  <div className="relative h-52 overflow-hidden rounded-xl border bg-muted/40">
+                    <div className="absolute inset-y-0 -left-1/2 w-1/2 animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -326,33 +350,57 @@ export default function Charts() {
           <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
           <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-20 bottom-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
+          <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 flex-col gap-4 min-[420px]:flex-row min-[420px]:items-start">
               <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-amber-200/45">
                 <div className="absolute inset-x-3 top-0 h-px bg-amber-100/90" />
                 <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-white/20 blur-md" />
                 <BarChart3 className="relative h-6 w-6 text-primary-foreground drop-shadow-sm" />
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <h1 className="text-3xl font-bold tracking-[-0.035em] text-foreground sm:text-4xl">Charts</h1>
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">Visual analytics generated from reports</p>
               </div>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
               <Badge variant="secondary" className="h-9 justify-center rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-500/15 via-primary/10 to-amber-500/10 px-4 text-xs font-semibold tracking-wide text-primary shadow-sm shadow-amber-950/5">
                 {charts.length} charts
               </Badge>
               <Button
                 variant="outline"
                 size="sm"
-                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0"
+                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/45"
                 onClick={fetchCharts}
+                aria-label="Refresh chart gallery"
               >
                 <RefreshCw className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-45" /> Refresh
               </Button>
             </div>
           </div>
         </div>
+
+        {isRefreshing && (
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 shadow-sm dark:text-amber-200">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span className="font-medium">Refreshing chart gallery…</span>
+            <span className="text-muted-foreground">Your current results remain visible while the latest charts load.</span>
+          </div>
+        )}
+
+        {loadError && !loading && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-destructive/25 bg-destructive/8 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Unable to load charts</p>
+                <p className="text-sm text-muted-foreground">{loadError}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" className="gap-2 rounded-full" onClick={fetchCharts}>
+              <RefreshCw className="h-3.5 w-3.5" /> Retry
+            </Button>
+          </div>
+        )}
 
         {/* Stats */}
       {charts.length > 0 && <div className="pt-1"><ChartStats charts={charts} /></div>}
@@ -382,17 +430,23 @@ export default function Charts() {
 
         {/* Bulk actions bar */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 p-3 shadow-lg shadow-primary/5 backdrop-blur">
-          <Badge variant="default" className="text-xs">{selectedIds.size} selected</Badge>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={selectAll}>
-            Select all ({filteredCharts.length})
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setSelectedIds(new Set())}>
-            Clear
-          </Button>
+        <div className="sticky top-3 z-20 flex flex-col gap-3 overflow-hidden rounded-2xl border border-amber-300/55 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.22),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.90))] p-3 shadow-[0_18px_48px_hsl(43_74%_49%/0.18),0_0_0_1px_hsl(43_96%_56%/0.18)] backdrop-blur-xl sm:flex-row sm:items-center">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
+          <Badge variant="default" className="h-8 w-fit gap-1.5 rounded-full border border-amber-100/45 bg-gradient-to-r from-primary via-amber-500 to-amber-400 px-3 text-xs font-black shadow-lg shadow-amber-950/10">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {selectedIds.size} selected
+          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" className="h-10 rounded-full border-amber-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/80 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={selectAll} aria-label={`Select all ${filteredCharts.length} filtered charts`}>
+              Select all ({filteredCharts.length})
+            </Button>
+            <Button variant="outline" size="sm" className="h-10 gap-1 rounded-full border-amber-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => setSelectedIds(new Set())} aria-label="Clear selected charts">
+              <X className="h-3 w-3" /> Clear
+            </Button>
+          </div>
           <div className="flex-1" />
-          <Button size="sm" className="h-7 text-xs gap-1" onClick={handleBulkExport}>
-            <Download className="h-3 w-3" /> Export selected
+          <Button size="sm" className="h-11 w-full gap-1.5 rounded-full bg-gradient-to-r sm:w-auto from-primary via-amber-500 to-amber-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/55" onClick={handleBulkExport} aria-label={`Export ${selectedIds.size} selected charts`}>
+            <Download className="h-3.5 w-3.5" /> Export selected
           </Button>
         </div>
       )}
@@ -401,27 +455,28 @@ export default function Charts() {
       {charts.length === 0 ? (
         <Card className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
           <CardContent className="flex flex-col items-center justify-center h-80 space-y-4">
-            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
-              <BarChart3 className="h-8 w-8 text-muted-foreground" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/12 via-amber-500/10 to-background shadow-inner">
+              <BarChart3 className="h-9 w-9 text-primary" />
             </div>
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold">No charts generated yet</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Charts are automatically generated when you create investment reports. Generate your first report to see visual analytics here.
+                Charts appear here automatically after investment reports generate visual analytics. Create a report to start building your chart gallery.
               </p>
             </div>
           </CardContent>
         </Card>
       ) : filteredCharts.length === 0 ? (
         <Card className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
-          <CardContent className="flex flex-col items-center justify-center h-48 space-y-3">
-            <p className="text-muted-foreground text-sm">No charts match your filters</p>
+          <CardContent className="flex flex-col items-center justify-center h-64 space-y-4 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border/70 bg-muted/45"><SearchX className="h-7 w-7 text-muted-foreground" /></div>
+            <div className="space-y-1"><h3 className="text-lg font-semibold">No matching charts</h3><p className="max-w-sm text-sm text-muted-foreground">Your search, report, chart type or date filters do not match any saved charts.</p></div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => { setSearchQuery(''); setChartTypeFilter('all'); setReportFilter('all'); setDateRange('all'); }}
             >
-              Clear filters
+              <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />Clear filters
             </Button>
           </CardContent>
         </Card>
@@ -431,7 +486,7 @@ export default function Charts() {
           {groupedByReport.map(group => (
             <Collapsible key={group.reportId} defaultOpen>
               <CollapsibleTrigger asChild>
-                <button className="group/trigger flex w-full items-center gap-2 rounded-xl border border-border/60 bg-card/80 p-3 text-left shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/5">
+                <button className="group/trigger flex w-full items-center gap-2 rounded-xl border border-border/60 bg-card/80 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-500/10 hover:shadow-lg hover:shadow-amber-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/45">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="font-medium text-sm flex-1 truncate">{group.reportTitle}</span>
                   <Badge variant="secondary" className="text-[10px] shrink-0">{group.charts.length}</Badge>
@@ -439,7 +494,7 @@ export default function Charts() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="mt-4 grid auto-rows-fr grid-cols-1 gap-4 min-[520px]:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-5 xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
                   {group.charts.map(chart => (
                     <ChartCard key={chart.id} {...cardProps(chart)} />
                   ))}
@@ -449,7 +504,7 @@ export default function Charts() {
           ))}
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid auto-rows-fr grid-cols-1 gap-4 min-[520px]:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] lg:gap-5 xl:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] 2xl:gap-6">
           {paginatedCharts.map(chart => (
             <ChartCard key={chart.id} {...cardProps(chart)} />
           ))}
@@ -468,7 +523,7 @@ export default function Charts() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 border-primary/25 bg-card/80 hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+            className="gap-2 border-primary/25 bg-card/80 hover:-translate-y-0.5 hover:border-amber-300/65 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_10px_26px_hsl(43_74%_49%/0.14)] focus-visible:ring-2 focus-visible:ring-amber-300/45"
             onClick={() => setVisibleCount(prev => prev + CHARTS_PER_PAGE)}
           >
             Load more ({filteredCharts.length - visibleCount} remaining)
@@ -497,7 +552,7 @@ export default function Charts() {
 
         {/* Delete confirmation dialog (Enhancement #4) */}
       <AlertDialog open={!!chartToDelete} onOpenChange={(open) => !open && setChartToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border-amber-300/25 shadow-[0_24px_70px_rgba(0,0,0,0.35),0_0_0_1px_rgba(245,158,11,0.10)]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete chart?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -505,8 +560,8 @@ export default function Charts() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogCancel className="rounded-full transition-all hover:border-amber-300/60 hover:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/45">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="rounded-full bg-destructive text-destructive-foreground transition-all hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-destructive/40">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
