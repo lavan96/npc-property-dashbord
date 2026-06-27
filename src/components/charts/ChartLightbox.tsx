@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { renderChartImage, type ChartData } from './ChartCard';
+import { getChartTypeConfig, renderChartImage, type ChartData } from './ChartCard';
 
 interface ChartLightboxProps {
   chart: ChartData | null;
@@ -21,6 +21,7 @@ interface ChartLightboxProps {
 
 export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPrev, hasNext }: ChartLightboxProps) {
   const navigate = useNavigate();
+  const cfg = chart ? getChartTypeConfig(chart.chart_type) : null;
 
   // Keyboard navigation (Enhancement #3)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -80,8 +81,9 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                     <span className="rounded-full border border-dashed border-amber-300/35 bg-amber-500/10 px-3 py-1.5 font-medium text-amber-700 dark:text-amber-300">Use ← → to navigate</span>
                   </DialogDescription>
                 </div>
-                <Badge variant="outline" className="w-fit shrink-0 rounded-full border-amber-300/45 bg-gradient-to-r from-amber-500/15 via-primary/10 to-amber-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
-                  {chart.chart_type}
+                <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] shadow-sm ${cfg?.color ?? ''}`}>
+                  <span className="mr-1 text-xs" aria-hidden="true">{cfg?.emoji}</span>
+                  {cfg?.label ?? chart.chart_type}
                 </Badge>
               </div>
             </DialogHeader>
