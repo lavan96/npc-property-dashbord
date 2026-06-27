@@ -324,19 +324,23 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       )}
 
       {/* Reports Table */}
-      <Card className="overflow-hidden rounded-3xl border-white/10 bg-gradient-to-b from-zinc-950/95 to-black/90 shadow-2xl shadow-black/30">
-        <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-4">
-          <CardTitle className="text-xl font-semibold text-white">
+      <Card className="group/register overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(12,12,14,0.98),rgba(0,0,0,0.94))] shadow-2xl shadow-black/30 transition-all duration-300 hover:border-amber-300/25 hover:shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+        <CardHeader className="relative border-b border-white/10 bg-white/[0.035] px-5 py-5 sm:px-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-60 transition-opacity duration-300 group-hover/register:opacity-100" />
+          <CardTitle className="flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-200 shadow-lg shadow-amber-950/20">
+              <FileText className="h-5 w-5" />
+            </span>
             {clientId ? 'Client Reports' : 'All Portfolio Analysis Reports'}
           </CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
             {clientId
               ? 'Previously generated portfolio performance reports for this client'
               : 'View all generated portfolio performance analysis reports across all clients'
             }
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="bg-black/15 p-0">
           {filteredReports.length === 0 ? (
             <div className="m-5 flex flex-col items-center justify-center rounded-3xl border border-dashed border-amber-300/20 bg-amber-400/[0.03] py-14 text-center transition-all duration-300">
               <div className="mb-4 rounded-3xl border border-white/10 bg-white/5 p-4">
@@ -351,10 +355,11 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </p>
             </div>
           ) : (
-            <ScrollArea className="h-[440px]">
+            <div className="p-4 sm:p-5">
+              <ScrollArea className="h-[440px] rounded-2xl border border-white/10 bg-slate-950/45 shadow-inner shadow-black/25">
               <Table className="min-w-[980px]">
                 <TableHeader>
-                  <TableRow className="border-white/10 bg-white/[0.02] hover:bg-white/[0.02]">
+                  <TableRow className="sticky top-0 z-10 border-white/10 bg-zinc-950/95 shadow-sm shadow-black/20 backdrop-blur hover:bg-zinc-950/95">
                     {!clientId && <TableHead className="text-slate-300">Client</TableHead>}
                     <TableHead className="text-slate-300">Health</TableHead>
                     <TableHead className="text-slate-300">Score</TableHead>
@@ -448,6 +453,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                 </TableBody>
               </Table>
             </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
