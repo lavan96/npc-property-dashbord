@@ -5087,27 +5087,27 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   )}
                   
                   {aiAnalysis && (
-                    <div className="space-y-4">
+                    <div className="max-h-[min(70vh,900px)] space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-amber-300/25 bg-slate-950/95 p-3 shadow-2xl shadow-slate-950/20 ring-1 ring-amber-400/15 sm:p-4 [scrollbar-gutter:stable]">
                       {/* Executive Summary */}
                       {aiAnalysis.executiveSummary && (
-                        <div className="rounded-2xl border bg-background p-4 shadow-sm">
-                          <h4 className="font-semibold text-sm mb-2 flex items-center gap-2"><Zap className="h-4 w-4 text-blue-600" />Executive Summary</h4>
-                          <p className="text-sm text-muted-foreground whitespace-pre-line">{aiAnalysis.executiveSummary}</p>
+                        <div className="min-w-0 rounded-2xl border border-amber-300/30 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Executive Summary</span></h4>
+                          <p className="whitespace-normal text-sm leading-7 text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.executiveSummary}</p>
                         </div>
                       )}
                       
                       {/* Final Rankings */}
                       {aiAnalysis.finalRankings && aiAnalysis.finalRankings.length > 0 && (
-                        <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-500/10 to-transparent p-4 shadow-sm">
-                          <h4 className="font-semibold text-sm mb-3">Property Rankings</h4>
+                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950/40 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Property Rankings</span></h4>
                           <div className="space-y-2">
                             {aiAnalysis.finalRankings.map((ranking: any, idx: number) => (
-                              <div key={idx} className={`rounded-xl p-3 ${idx === 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/30 border'}`}>
-                                <div className="flex items-center gap-2 mb-1">
+                              <div key={idx} className={`min-w-0 rounded-xl p-3 ${idx === 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-slate-800/60 border border-slate-700/80'}`}>
+                                <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
                                   <Badge variant={idx === 0 ? 'default' : 'outline'} className="text-xs">
                                     #{ranking.rank}
                                   </Badge>
-                                  <span className="font-medium text-sm">{ranking.address}</span>
+                                  <span className="min-w-0 text-sm font-medium text-slate-100 [overflow-wrap:anywhere]">{ranking.address}</span>
                                   {ranking.score && (
                                     <Badge variant="secondary" className="text-xs ml-auto">
                                       Score: {typeof ranking.score === 'number' ? ranking.score.toFixed(1) : ranking.score}
@@ -5115,12 +5115,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                   )}
                                 </div>
                                 {ranking.verdict && (
-                                  <p className="text-xs text-muted-foreground mt-1">{ranking.verdict}</p>
+                                  <p className="mt-1 whitespace-normal text-xs leading-6 text-slate-300 [overflow-wrap:anywhere]">{ranking.verdict}</p>
                                 )}
                                 {ranking.strengths && ranking.strengths.length > 0 && (
                                   <div className="mt-2">
                                     <span className="text-[10px] text-green-600 font-medium">Strengths: </span>
-                                    <span className="text-[10px] text-muted-foreground">{ranking.strengths.join(', ')}</span>
+                                    <span className="whitespace-normal text-[10px] leading-5 text-slate-300 [overflow-wrap:anywhere]">{ranking.strengths.join(', ')}</span>
                                   </div>
                                 )}
                               </div>
@@ -5131,31 +5131,31 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Investor Recommendations */}
                       {aiAnalysis.investorRecommendations && (
-                        <div className="rounded-2xl border bg-muted/20 p-4">
-                          <h4 className="font-semibold text-sm mb-2">Investor Profile Recommendations</h4>
-                          <div className="grid gap-2 text-xs md:grid-cols-2">
+                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Investor Profile Recommendations</span></h4>
+                          <div className="grid min-w-0 gap-3 text-xs md:grid-cols-2">
                             {aiAnalysis.investorRecommendations.growthFocused && (
-                              <div className="p-2 bg-blue-500/10 rounded">
+                              <div className="min-w-0 rounded-xl border border-blue-400/20 bg-blue-500/10 p-3">
                                 <span className="font-medium text-blue-600">Growth Focused:</span>
-                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.growthFocused.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.growthFocused.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.incomeFocused && (
-                              <div className="p-2 bg-green-500/10 rounded">
+                              <div className="min-w-0 rounded-xl border border-green-400/20 bg-green-500/10 p-3">
                                 <span className="font-medium text-green-600">Income Focused:</span>
-                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.incomeFocused.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.incomeFocused.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.balanced && (
-                              <div className="p-2 bg-purple-500/10 rounded">
+                              <div className="min-w-0 rounded-xl border border-purple-400/20 bg-purple-500/10 p-3">
                                 <span className="font-medium text-purple-600">Balanced:</span>
-                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.balanced.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.balanced.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.riskAverse && (
-                              <div className="p-2 bg-amber-500/10 rounded">
+                              <div className="min-w-0 rounded-xl border border-amber-400/20 bg-amber-500/10 p-3">
                                 <span className="font-medium text-amber-600">Risk Averse:</span>
-                                <p className="text-muted-foreground mt-1">{aiAnalysis.investorRecommendations.riskAverse.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.riskAverse.reason}</p>
                               </div>
                             )}
                           </div>
@@ -5164,9 +5164,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Overall Recommendation */}
                       {aiAnalysis.overallRecommendation?.bestProperty && (
-                        <div className="rounded-2xl border-2 border-green-500/40 bg-green-500/5 p-4">
-                          <h4 className="font-semibold text-sm text-green-600 mb-1">Best Overall Property</h4>
-                          <p className="text-sm">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
+                        <div className="min-w-0 rounded-2xl border border-amber-300/35 bg-gradient-to-br from-green-950/50 via-slate-950 to-slate-900 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Best Overall Property</span></h4>
+                          <p className="whitespace-normal text-sm leading-7 text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
                         </div>
                       )}
                     </div>
