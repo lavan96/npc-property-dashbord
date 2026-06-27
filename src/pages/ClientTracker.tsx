@@ -1278,19 +1278,21 @@ export default function ClientTracker() {
           <TabsContent value="kanban" className="mt-5">
             {/* Drag and drop hint */}
             {isDragDropEnabled && (
-              <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
-                <GripVertical className="h-3 w-3" />
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-inner">
+                <GripVertical className="h-3.5 w-3.5 text-primary" />
                 Drag cards to move opportunities between stages
-              </p>
+              </div>
             )}
             {!isDragDropEnabled && stagesForPipeline.length > 0 && (
-              <p className="text-xs text-muted-foreground mb-3">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-inner">
+                <Layers className="h-3.5 w-3.5 text-primary" />
                 Select a specific pipeline to enable drag-and-drop between stages
-              </p>
+              </div>
             )}
             
-            <ScrollArea className="w-full whitespace-nowrap">
-              <div className="flex gap-4 pb-4">
+            <div className="rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(135deg,hsl(var(--background)/0.72),hsl(var(--card)/0.62))] p-3 shadow-inner shadow-black/20">
+              <ScrollArea className="client-tracker-kanban-scroll w-full whitespace-nowrap rounded-[1.15rem]">
+                <div className="flex gap-5 pb-5 pr-3">
                 {/* Render stages in order */}
                 {stagesForPipeline.map(stage => {
                   const stageClients = groupedByStage[stage.id] || [];
@@ -1299,37 +1301,37 @@ export default function ClientTracker() {
                   return (
                     <div 
                       key={stage.id} 
-                      className="w-80 flex-shrink-0"
+                      className="w-[21rem] flex-shrink-0"
                       onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, stage.id) : undefined}
                       onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
                       onDrop={isDragDropEnabled ? (e) => handleDrop(e, stage.id, stage.name) : undefined}
                     >
                       <Card className={cn(
-                        "h-full border-border/70 bg-background/70 shadow-lg shadow-black/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
+                        "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-primary/10",
                         isDragOver && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
                       )}>
-                        <CardHeader className="py-3 px-4">
+                        <CardHeader className="border-b border-border/60 px-4 py-3 bg-card/35">
                           <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <CardTitle className="flex min-w-0 items-center gap-2 text-sm font-semibold">
                               <span 
                                 className="w-3 h-3 rounded-full" 
                                 style={{ backgroundColor: stage.color }}
                               />
                               {stage.name}
                             </CardTitle>
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="rounded-full border border-border/70 bg-background/80 px-2.5 text-xs tabular-nums">
                               {stageClients.length}
                             </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="px-3 pb-3">
+                        <CardContent className="flex-1 px-3 pb-3 pt-3">
                           <div className={cn(
-                            "min-h-[100px] max-h-[560px] space-y-2 overflow-y-auto rounded-xl pr-1",
-                            isDragOver && isDragDropEnabled && "bg-primary/5 rounded-md"
+                            "client-tracker-kanban-scroll min-h-[500px] max-h-[58vh] space-y-2 overflow-y-auto rounded-xl pr-1",
+                            isDragOver && isDragDropEnabled && "bg-primary/5 ring-1 ring-primary/20"
                           )}>
                             {stageClients.length === 0 ? (
                               <div className={cn(
-                                "text-center py-8 text-muted-foreground text-sm",
+                                "rounded-xl border border-dashed border-border/70 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground",
                                 isDragOver && isDragDropEnabled && "text-primary font-medium"
                               )}>
                                 {isDragOver && isDragDropEnabled ? 'Drop here' : 'No clients'}
@@ -1360,34 +1362,34 @@ export default function ClientTracker() {
                 {/* Unassigned column */}
                 {(groupedByStage['unassigned']?.length > 0 || isDragDropEnabled) && (
                   <div 
-                    className="flex-shrink-0 w-80"
+                    className="w-[21rem] flex-shrink-0"
                     onDragOver={isDragDropEnabled ? (e) => handleDragOver(e, 'unassigned') : undefined}
                     onDragLeave={isDragDropEnabled ? handleDragLeave : undefined}
                     onDrop={isDragDropEnabled ? (e) => handleDrop(e, null, 'Unassigned') : undefined}
                   >
                     <Card className={cn(
-                      "h-full border-dashed border-border/70 bg-background/60 shadow-lg shadow-black/10 transition-all duration-300 hover:border-primary/25",
+                      "flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-black/15 transition-all duration-300 hover:border-primary/25",
                       dragOverStageId === 'unassigned' && isDragDropEnabled && "border-primary/60 bg-primary/10 ring-2 ring-primary/40 shadow-primary/20"
                     )}>
-                      <CardHeader className="py-3 px-4">
+                      <CardHeader className="border-b border-border/60 bg-card/30 px-4 py-3">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                          <CardTitle className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                             <span className="w-3 h-3 rounded-full bg-gray-400" />
                             Unassigned
                           </CardTitle>
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="rounded-full border border-border/70 bg-background/80 px-2.5 text-xs tabular-nums">
                             {groupedByStage['unassigned']?.length || 0}
                           </Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="px-3 pb-3">
+                      <CardContent className="flex-1 px-3 pb-3 pt-3">
                         <div className={cn(
-                          "min-h-[100px] max-h-[560px] space-y-2 overflow-y-auto rounded-xl pr-1",
-                          dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/5 rounded-md"
+                          "client-tracker-kanban-scroll min-h-[500px] max-h-[58vh] space-y-2 overflow-y-auto rounded-xl pr-1",
+                          dragOverStageId === 'unassigned' && isDragDropEnabled && "bg-primary/5 ring-1 ring-primary/20"
                         )}>
                           {!groupedByStage['unassigned']?.length ? (
                             <div className={cn(
-                              "text-center py-8 text-muted-foreground text-sm",
+                              "rounded-xl border border-dashed border-border/70 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground",
                               dragOverStageId === 'unassigned' && isDragDropEnabled && "text-primary font-medium"
                             )}>
                               {dragOverStageId === 'unassigned' && isDragDropEnabled ? 'Drop here' : 'No clients'}
@@ -1413,9 +1415,10 @@ export default function ClientTracker() {
                     </Card>
                   </div>
                 )}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+                </div>
+                <ScrollBar orientation="horizontal" className="h-3" />
+              </ScrollArea>
+            </div>
           </TabsContent>
 
           {/* Pipeline List View */}
