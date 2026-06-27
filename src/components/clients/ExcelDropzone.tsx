@@ -360,7 +360,10 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
     <div className="space-y-5">
       {status === 'idle' && (
         <div
-          {...getRootProps()}
+          {...getRootProps({
+            role: 'button',
+            'aria-label': 'Upload Excel client import file',
+          })}
           className={`
             group relative min-h-[280px] cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-all duration-300 sm:p-8 md:p-10
             ${isDragActive

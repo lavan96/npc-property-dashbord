@@ -90,6 +90,7 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
               <Input
                 type="number"
                 placeholder="Min"
+                aria-label="Minimum portfolio value"
                 value={filters.portfolioMin ?? ''}
                 onChange={(e) => onFiltersChange({
                   ...filters,
@@ -101,6 +102,7 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
               <Input
                 type="number"
                 placeholder="Max"
+                aria-label="Maximum portfolio value"
                 value={filters.portfolioMax ?? ''}
                 onChange={(e) => onFiltersChange({
                   ...filters,

@@ -181,6 +181,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-100/55" />
               <Input
                 placeholder="Search clients by name or email..."
+                aria-label="Search clients to compare"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-12 rounded-2xl border-amber-300/15 bg-black/20 pl-11 pr-4 text-sm text-white shadow-inner shadow-black/20 placeholder:text-slate-500 transition-all hover:border-amber-300/30 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
@@ -189,6 +190,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
             <Button
               variant={showActiveOnly ? 'default' : 'outline'}
               size="sm"
+              aria-pressed={showActiveOnly}
               className={`h-12 shrink-0 gap-2 rounded-2xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                 showActiveOnly
                   ? 'border-amber-300/30 bg-gradient-to-r from-amber-300 to-yellow-500 text-black shadow-lg shadow-amber-500/20 hover:from-amber-200 hover:to-yellow-400'
@@ -206,7 +208,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
             </Button>
           </div>
 
-          <ScrollArea className="h-[280px] rounded-2xl border border-white/10 bg-black/15 p-3 shadow-inner shadow-black/25">
+          <ScrollArea className="h-[320px] rounded-2xl border border-white/10 bg-black/15 p-3 shadow-inner shadow-black/25 sm:h-[280px]">
             {filteredClients.length === 0 ? (
               <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-amber-300/20 bg-amber-300/[0.03] px-6 py-8 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-100">
@@ -244,6 +246,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                         <Checkbox 
                           checked={isSelected}
                           onCheckedChange={() => toggleClient(client.id)}
+                          aria-label={`Select ${smartCapitalize(client.primary_first_name)} ${smartCapitalize(client.primary_surname)} for comparison`}
                           className="border-current data-[state=checked]:border-amber-300 data-[state=checked]:bg-amber-400 data-[state=checked]:text-black"
                         />
                       </div>

@@ -274,7 +274,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
             <CardTitle className="text-base font-semibold tracking-tight text-white">Cash Flow Status</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Cash flow status chart showing positive and negative client counts">
               {clients.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -330,7 +330,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
             <CardTitle className="text-base font-semibold tracking-tight text-white">Portfolio Size Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Portfolio size distribution chart">
               {analytics.portfolioDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analytics.portfolioDistribution} margin={{ top: 12, right: 8, left: -16, bottom: 8 }} barCategoryGap="22%">
@@ -358,7 +358,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
             <CardTitle className="text-base font-semibold tracking-tight text-white">Property Count Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Property count distribution chart">
               {analytics.propertyDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>

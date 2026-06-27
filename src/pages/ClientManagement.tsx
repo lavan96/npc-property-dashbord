@@ -622,7 +622,7 @@ export default function ClientManagement() {
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
         <div className="pointer-events-none absolute -right-14 -top-20 h-44 w-44 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <div className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-200">Premium client workspace</div>
             <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-5xl">Client Management</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
@@ -630,9 +630,9 @@ export default function ClientManagement() {
             </p>
             <p className="text-xs text-muted-foreground">Last auto-sync: {formatLastSync(lastSyncTime)}</p>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 rounded-3xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/30 backdrop-blur lg:w-auto lg:justify-end">
+          <div className="flex w-full flex-col items-stretch gap-2 rounded-3xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/30 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
           {/* Auto-sync toggle - compact on mobile */}
-          <div className="flex min-h-11 items-center gap-2 rounded-2xl border border-amber-500/25 bg-white/[0.04] px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/30">
+          <div className="flex min-h-11 items-center justify-between gap-2 rounded-2xl border border-amber-500/25 bg-white/[0.04] px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/30 sm:justify-start">
             {isAutoSyncing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
@@ -651,7 +651,7 @@ export default function ClientManagement() {
             variant="default" 
             size="sm"
             disabled={isImportingFromGHL}
-            className="h-11 rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(120,53,15,0.12))] px-4 text-xs font-bold text-amber-100 shadow-lg shadow-amber-950/25 transition-all hover:-translate-y-0.5 hover:border-amber-200/55 hover:bg-amber-500/25 hover:text-amber-50 hover:shadow-[0_14px_38px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-amber-300/55 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+            className="h-11 flex-1 rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(120,53,15,0.12))] px-4 text-xs font-bold text-amber-100 shadow-lg shadow-amber-950/25 transition-all hover:-translate-y-0.5 hover:border-amber-200/55 hover:bg-amber-500/25 hover:text-amber-50 hover:shadow-[0_14px_38px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-amber-300/55 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:text-sm"
           >
             {isImportingFromGHL ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -669,7 +669,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-4 text-xs font-semibold text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+            className="h-11 flex-1 rounded-2xl border-white/15 bg-white/[0.04] px-4 text-xs font-semibold text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -681,7 +681,7 @@ export default function ClientManagement() {
               onClick={() => setShowAddClientModal(true)} 
               variant="default" 
               size="sm"
-              className="h-12 rounded-2xl border border-amber-200/50 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-5 text-xs font-black text-black shadow-xl shadow-amber-500/30 transition-all hover:-translate-y-1 hover:from-amber-200 hover:via-yellow-300 hover:to-amber-400 hover:shadow-[0_18px_46px_rgba(251,191,36,0.32)] focus-visible:ring-2 focus-visible:ring-amber-200/75 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:text-sm"
+              className="h-12 flex-1 rounded-2xl border border-amber-200/50 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-5 text-xs font-black text-black shadow-xl shadow-amber-500/30 transition-all hover:-translate-y-1 hover:from-amber-200 hover:via-yellow-300 hover:to-amber-400 hover:shadow-[0_18px_46px_rgba(251,191,36,0.32)] focus-visible:ring-2 focus-visible:ring-amber-200/75 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:flex-none sm:text-sm"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Add Client</span>
@@ -692,7 +692,7 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-3 text-slate-200 transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-amber-300/50 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-100" aria-label="More actions">
+              <Button variant="outline" size="sm" className="h-11 flex-1 rounded-2xl border-white/15 bg-white/[0.04] px-3 text-slate-200 transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-amber-300/50 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-100 sm:flex-none" aria-label="More actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -748,7 +748,7 @@ export default function ClientManagement() {
       {/* Main Content */}
       <Tabs defaultValue="clients" className="space-y-5 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-2xl shadow-black/20 backdrop-blur md:p-4">
         <div className="-mx-3 overflow-x-auto px-3 pb-1 md:mx-0 md:px-0">
-          <TabsList className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+          <TabsList aria-label="Client management sections" className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] p-1.5 shadow-inner shadow-black/30 backdrop-blur">
             <TabsTrigger value="clients" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Clients</TabsTrigger>
             <TabsTrigger value="portfolio-reports" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Portfolio</TabsTrigger>
             <TabsTrigger value="analytics" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Analytics</TabsTrigger>
@@ -768,10 +768,11 @@ export default function ClientManagement() {
 
           {/* Search & Filters */}
           <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(24,24,27,0.76),rgba(3,7,18,0.62))] p-3 shadow-inner shadow-black/25 backdrop-blur">
-            <div className="relative min-w-[240px] flex-1 md:max-w-md">
+            <div className="relative min-w-full flex-1 sm:min-w-[240px] md:max-w-md">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
               <Input
                 placeholder="Search clients..."
+                aria-label="Search clients"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-11 rounded-xl border-amber-500/20 bg-background/75 pl-10 pr-4 text-sm shadow-sm shadow-black/20 placeholder:text-muted-foreground/75 transition-all hover:border-amber-400/35 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
@@ -781,6 +782,7 @@ export default function ClientManagement() {
               variant={showActiveOnly ? "default" : "outline"}
               size="sm"
               onClick={() => setShowActiveOnly(!showActiveOnly)}
+              aria-pressed={showActiveOnly}
               className={`h-11 gap-2 rounded-xl px-4 font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/50 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                 showActiveOnly
                   ? 'border-amber-300/40 bg-amber-400 text-black shadow-amber-500/20 hover:bg-amber-300 hover:text-black'

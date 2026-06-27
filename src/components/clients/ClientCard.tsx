@@ -171,6 +171,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
               }`}
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
+              aria-label={client.is_favorite ? `Remove ${fullName} from active clients` : `Mark ${fullName} as active client`}
             >
               <Star 
                 className={`h-4 w-4 transition-all duration-200 group-hover:drop-shadow-[0_0_8px_rgba(250,204,21,0.45)] ${
@@ -222,7 +223,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/50 bg-background/45 text-muted-foreground shadow-sm transition-all duration-200 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0 data-[state=open]:border-amber-400/60 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-200">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/50 bg-background/45 text-muted-foreground shadow-sm transition-all duration-200 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0 data-[state=open]:border-amber-400/60 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-200" aria-label={`Open actions for ${fullName}`}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
