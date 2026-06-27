@@ -630,9 +630,9 @@ export default function ClientManagement() {
             </p>
             <p className="text-xs text-muted-foreground">Last auto-sync: {formatLastSync(lastSyncTime)}</p>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner backdrop-blur lg:w-auto lg:justify-end">
+          <div className="flex w-full flex-wrap items-center gap-2 rounded-3xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/30 backdrop-blur lg:w-auto lg:justify-end">
           {/* Auto-sync toggle - compact on mobile */}
-          <div className="flex min-h-10 items-center gap-2 rounded-xl border border-amber-500/25 bg-background/70 px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10">
+          <div className="flex min-h-11 items-center gap-2 rounded-2xl border border-amber-500/25 bg-white/[0.04] px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/30">
             {isAutoSyncing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
@@ -651,7 +651,7 @@ export default function ClientManagement() {
             variant="default" 
             size="sm"
             disabled={isImportingFromGHL}
-            className="h-10 rounded-xl border border-amber-300/25 bg-amber-500/15 px-4 text-xs font-semibold text-amber-100 shadow-lg shadow-amber-950/20 transition-all hover:-translate-y-0.5 hover:bg-amber-500/25 hover:text-amber-50 sm:text-sm"
+            className="h-11 rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(120,53,15,0.12))] px-4 text-xs font-bold text-amber-100 shadow-lg shadow-amber-950/25 transition-all hover:-translate-y-0.5 hover:border-amber-200/55 hover:bg-amber-500/25 hover:text-amber-50 hover:shadow-amber-500/15 focus-visible:ring-2 focus-visible:ring-amber-300/50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
           >
             {isImportingFromGHL ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -669,7 +669,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-10 rounded-xl border-amber-500/25 bg-background/70 px-4 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10 sm:text-sm"
+            className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-4 text-xs font-semibold text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/40 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -681,7 +681,7 @@ export default function ClientManagement() {
               onClick={() => setShowAddClientModal(true)} 
               variant="default" 
               size="sm"
-              className="h-10 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 text-xs font-bold text-black shadow-lg shadow-amber-500/25 transition-all hover:-translate-y-0.5 hover:from-amber-300 hover:to-yellow-400 hover:shadow-amber-500/35 sm:text-sm"
+              className="h-12 rounded-2xl border border-amber-200/50 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-5 text-xs font-black text-black shadow-xl shadow-amber-500/30 transition-all hover:-translate-y-1 hover:from-amber-200 hover:via-yellow-300 hover:to-amber-400 hover:shadow-amber-400/40 focus-visible:ring-2 focus-visible:ring-amber-200/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:text-sm"
             >
               <UserPlus className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Add Client</span>
@@ -692,27 +692,27 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-10 rounded-xl border-amber-500/25 bg-background/70 px-3 transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-500/10">
+              <Button variant="outline" size="sm" className="h-11 rounded-2xl border-white/15 bg-white/[0.04] px-3 text-slate-200 transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/40" aria-label="More actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleClearAndReimport} disabled={isImportingFromGHL}>
-                <Trash2 className="h-4 w-4 mr-2" />
+            <DropdownMenuContent align="end" className="min-w-56 rounded-2xl border-amber-500/20 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-2 shadow-2xl shadow-black/30">
+              <DropdownMenuItem onClick={handleClearAndReimport} disabled={isImportingFromGHL} className="rounded-xl text-red-200 focus:bg-red-500/10 focus:text-red-100 disabled:opacity-50">
+                <Trash2 className="h-4 w-4 mr-2 text-red-300" />
                 Clear & Reimport
               </DropdownMenuItem>
               {pendingSyncCount > 0 && (
-                <DropdownMenuItem onClick={handleSyncAllPending} disabled={isSyncingAll}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={handleSyncAllPending} disabled={isSyncingAll} className="rounded-xl focus:bg-amber-500/10 focus:text-amber-100 disabled:opacity-50">
+                  <RefreshCw className="h-4 w-4 mr-2 text-amber-300" />
                   Sync All ({pendingSyncCount})
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => refetch()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => refetch()} className="rounded-xl focus:bg-amber-500/10 focus:text-amber-100">
+                <RefreshCw className="h-4 w-4 mr-2 text-slate-300" />
                 Refresh
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = '/client-tracker'}>
-                <Target className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => window.location.href = '/client-tracker'} className="rounded-xl focus:bg-amber-500/10 focus:text-amber-100">
+                <Target className="h-4 w-4 mr-2 text-slate-300" />
                 Client Tracker
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -860,38 +860,48 @@ export default function ClientManagement() {
           <ClientComparison clients={clients} />
         </TabsContent>
 
-        <TabsContent value="portfolio-reports" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/70 p-4 shadow-inner">
-            <div>
-              <h2 className="text-lg font-semibold">Portfolio Performance Reports</h2>
-              <p className="text-sm text-muted-foreground">
+        <TabsContent value="portfolio-reports" className="space-y-5 rounded-2xl border border-amber-400/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.09),transparent_34%),linear-gradient(180deg,rgba(15,15,18,0.78),rgba(0,0,0,0.48))] p-3 shadow-2xl shadow-black/20 md:p-5">
+          <div className="relative overflow-hidden rounded-3xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-black/25">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-3xl space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
+                  Portfolio Intelligence
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight text-white">Portfolio Performance Reports</h2>
+                <p className="text-sm leading-6 text-slate-400">
                 Quick view of recent portfolio analysis reports — open the full page for search, stats, and bulk actions
-              </p>
+                </p>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => window.location.href = '/portfolio-reports'}
+                className="h-11 rounded-2xl bg-gradient-to-r from-amber-300 to-yellow-500 px-5 font-semibold text-black shadow-lg shadow-amber-950/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-200 hover:to-yellow-400 hover:shadow-amber-500/20 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                Full Reports Page
+              </Button>
             </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => window.location.href = '/portfolio-reports'}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Full Reports Page
-            </Button>
           </div>
           <PortfolioAnalysisReportsList showHeader={false} />
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
-          <Card className="border-amber-500/20 bg-card/80 shadow-xl shadow-black/20 transition-colors hover:border-amber-400/40">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
+          <Card className="relative overflow-hidden rounded-3xl border-amber-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] shadow-2xl shadow-black/25 transition-colors hover:border-amber-400/40">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+            <CardHeader className="border-b border-white/10 pb-4">
+              <CardTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-white sm:text-2xl">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/15 text-amber-100 shadow-lg shadow-amber-950/20">
+                  <Upload className="h-5 w-5" />
+                </span>
                 Import Clients from Excel
               </CardTitle>
-              <CardDescription>
-                Drag and drop your client intake form Excel file to import clients and their properties
+              <CardDescription className="max-w-2xl text-sm leading-6 text-slate-400">
+                Drag and drop your client intake form Excel file to import clients and their properties into the dashboard.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6">
               <ExcelDropzone onImportComplete={() => refetch()} />
             </CardContent>
           </Card>
