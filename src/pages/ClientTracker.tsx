@@ -142,6 +142,30 @@ const FALLBACK_STAGES = [
   { value: 'Lost', label: 'Lost', color: '#EF4444' },
 ];
 
+const badgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
+const compactBadgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 shadow-sm";
+
+const getStageBadgeStyle = (color: string) => ({
+  backgroundColor: `${color}20`,
+  borderColor: `${color}80`,
+  color,
+});
+
+const getOpportunityStatusBadgeClass = (status?: string | null, compact = false) => {
+  const base = compact ? compactBadgeBaseClass : badgeBaseClass;
+  const normalizedStatus = status?.toLowerCase();
+
+  return cn(
+    base,
+    "border shadow-inner",
+    normalizedStatus === 'won' && 'border-emerald-500/35 bg-emerald-500/10 text-emerald-400',
+    normalizedStatus === 'lost' && 'border-red-500/35 bg-red-500/10 text-red-400',
+    normalizedStatus === 'abandoned' && 'border-red-500/35 bg-red-500/10 text-red-400',
+    normalizedStatus === 'open' && 'border-sky-500/35 bg-sky-500/10 text-sky-300',
+    normalizedStatus && !['won', 'lost', 'abandoned', 'open'].includes(normalizedStatus) && 'border-border/70 bg-background/70 text-muted-foreground'
+  );
+};
+
 export default function ClientTracker() {
   const queryClient = useQueryClient();
   const { canEdit: canEditTracker } = useModulePermissions('client_tracker');
@@ -1001,7 +1025,7 @@ export default function ClientTracker() {
               <CardTitle className="text-base font-medium flex items-center gap-2">
                 <Video className="h-4 w-4 text-primary" />
                 Upcoming Appointments
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-bold tabular-nums text-primary shadow-inner">
                   {upcomingAppointments.length}
                 </Badge>
               </CardTitle>
@@ -1044,7 +1068,7 @@ export default function ClientTracker() {
                         {event.calendarName && (
                           <Badge 
                             variant="outline" 
-                            className="text-[10px]"
+                            className="max-w-full rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 shadow-sm"
                             style={{ 
                               borderColor: event.calendarColor || 'hsl(var(--border))',
                               color: event.calendarColor || 'hsl(var(--muted-foreground))'
@@ -1056,7 +1080,7 @@ export default function ClientTracker() {
                         {(event.appointmentStatus || event.status) && (
                           <Badge 
                             variant="outline"
-                            className={cn("text-[10px]", getEventStatusColor(event.status, event.appointmentStatus))}
+                            className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 shadow-sm", getEventStatusColor(event.status, event.appointmentStatus))}
                           >
                             {event.appointmentStatus || event.status}
                           </Badge>
@@ -1325,7 +1349,7 @@ export default function ClientTracker() {
                               </span>
                               <span className="truncate">{stage.name}</span>
                             </CardTitle>
-                            <Badge variant="secondary" className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-bold tabular-nums text-primary shadow-inner">
+                            <Badge variant="secondary" className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-bold leading-5 tabular-nums text-primary shadow-inner">
                               {stageClients.length}
                             </Badge>
                           </div>
@@ -1390,7 +1414,7 @@ export default function ClientTracker() {
                             </span>
                             <span className="truncate">Unassigned</span>
                           </CardTitle>
-                          <Badge variant="secondary" className="shrink-0 rounded-full border border-border/70 bg-background/80 px-2.5 py-0.5 text-xs font-bold tabular-nums text-muted-foreground shadow-inner">
+                          <Badge variant="secondary" className="shrink-0 rounded-full border border-border/70 bg-background/80 px-2.5 py-0.5 text-xs font-bold leading-5 tabular-nums text-muted-foreground shadow-inner">
                             {groupedByStage['unassigned']?.length || 0}
                           </Badge>
                         </div>
@@ -1462,18 +1486,19 @@ export default function ClientTracker() {
                                   {formatFullName(client.primary_first_name, client.primary_surname)}
                                 </h3>
                                 {pipeline && (
-                                  <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
+                                  <Badge variant="outline" className={cn(badgeBaseClass, "min-w-0 truncate border-primary/25 bg-primary/5 text-primary")}>
                                     {pipeline.name}
                                   </Badge>
                                 )}
                                 <Badge 
-                                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
-                                  style={{ backgroundColor: stageInfo.color }}
+                                  variant="outline"
+                                  className={cn(badgeBaseClass, "min-w-0 truncate border")}
+                                  style={getStageBadgeStyle(stageInfo.color)}
                                 >
                                   {stageInfo.name}
                                 </Badge>
                                 {isOverdue && (
-                                  <Badge variant="destructive" className="rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm shadow-red-500/15">Overdue</Badge>
+                                  <Badge variant="destructive" className={cn(badgeBaseClass, "bg-red-500/15 text-red-100 shadow-red-500/15")}>Overdue</Badge>
                                 )}
                               </div>
                               <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -1587,27 +1612,23 @@ export default function ClientTracker() {
                           </TableCell>
                           <TableCell>
                             {pipeline ? (
-                              <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
+                              <Badge variant="outline" className={cn(badgeBaseClass, "max-w-[12rem] truncate border-primary/25 bg-primary/5 text-primary")}>
                                 {pipeline.name}
                               </Badge>
                             ) : <span className="text-muted-foreground/55">-</span>}
                           </TableCell>
                           <TableCell>
                             <Badge 
-                              className="rounded-full px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm"
-                              style={{ backgroundColor: stageInfo.color }}
+                              variant="outline"
+                              className={cn(badgeBaseClass, "max-w-[12rem] truncate border")}
+                              style={getStageBadgeStyle(stageInfo.color)}
                             >
                               {stageInfo.name}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             {client.opportunity_status ? (
-                              <Badge variant="outline" className={cn(
-                                "rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-inner",
-                                client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600',
-                                client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500',
-                                client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600',
-                              )}>
+                              <Badge variant="outline" className={getOpportunityStatusBadgeClass(client.opportunity_status)}>
                                 {client.opportunity_status.charAt(0).toUpperCase() + client.opportunity_status.slice(1)}
                               </Badge>
                             ) : <span className="text-muted-foreground/55">-</span>}
@@ -1857,12 +1878,12 @@ function KanbanCard({
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {isOverdue && (
-            <Badge variant="destructive" className="rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm shadow-red-500/15">
+            <Badge variant="destructive" className={cn(compactBadgeBaseClass, "bg-red-500/15 text-red-100 shadow-red-500/15")}>
               Overdue
             </Badge>
           )}
           {client.deal_status === 'closed' && (
-            <Badge variant="default" className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] shadow-sm shadow-emerald-500/15">
+            <Badge variant="default" className={cn(compactBadgeBaseClass, "bg-emerald-500/15 text-emerald-100 shadow-emerald-500/15")}>
               🏆
             </Badge>
           )}
@@ -1895,19 +1916,13 @@ function KanbanCard({
           {client.opportunity_status && (
             <Badge 
               variant="outline" 
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-semibold shadow-inner",
-                client.opportunity_status === 'won' && 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10',
-                client.opportunity_status === 'lost' && 'border-red-500/30 text-red-500 bg-red-500/10',
-                client.opportunity_status === 'open' && 'border-blue-500/30 text-blue-600 bg-blue-500/10',
-                client.opportunity_status === 'abandoned' && 'border-orange-500/30 text-orange-600 bg-orange-500/10',
-              )}
+              className={getOpportunityStatusBadgeClass(client.opportunity_status, true)}
             >
               {client.opportunity_status.charAt(0).toUpperCase() + client.opportunity_status.slice(1)}
             </Badge>
           )}
           {client.pipeline_updated_at && (
-            <span className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
               <Clock className="h-2.5 w-2.5 text-primary/70" />
               {format(new Date(client.pipeline_updated_at), 'MMM d')}
             </span>
@@ -1918,7 +1933,7 @@ function KanbanCard({
       <div className="mt-3 flex items-center justify-between gap-2">
         {client.follow_up_date && (
           <p className={cn(
-            "flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-xs",
+            "flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-xs font-medium",
             isOverdue ? 'text-red-500' : 'text-muted-foreground'
           )}>
             <CalendarIcon className="h-3 w-3 shrink-0" />
@@ -1926,7 +1941,7 @@ function KanbanCard({
           </p>
         )}
         {client.borrowing_capacity && (
-          <p className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-400 shadow-inner">
+          <p className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold leading-5 text-emerald-400 shadow-inner">
             {formatCurrency(client.borrowing_capacity)}
           </p>
         )}
@@ -1947,12 +1962,12 @@ function KanbanCard({
         <div className="mt-3 border-t border-border/70 pt-2.5">
           <div className="flex flex-wrap gap-1.5">
             {uniquePipelines.slice(0, 2).map(name => (
-              <Badge key={name} variant="outline" className="rounded-full border-primary/20 bg-primary/5 px-1.5 py-0 text-[9px] text-muted-foreground">
+              <Badge key={name} variant="outline" className="max-w-full rounded-full border-border/70 bg-background/70 px-1.5 py-0 text-[9px] font-medium leading-4 text-muted-foreground">
                 {name && name.length > 15 ? name.substring(0, 13) + '...' : name}
               </Badge>
             ))}
             {uniquePipelines.length > 2 && (
-              <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 px-1.5 py-0 text-[9px] text-muted-foreground">
+              <Badge variant="outline" className="rounded-full border-border/70 bg-background/70 px-1.5 py-0 text-[9px] font-medium leading-4 text-muted-foreground">
                 +{uniquePipelines.length - 2}
               </Badge>
             )}

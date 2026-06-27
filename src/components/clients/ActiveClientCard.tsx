@@ -88,6 +88,13 @@ type NoteType = typeof noteTypes[number]['value'];
 // Character limit for note truncation
 const NOTE_TRUNCATE_LENGTH = 150;
 const PAGE_SIZE = 10;
+const activeClientBadgeClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
+
+const getActiveStageBadgeStyle = (color: string) => ({
+  backgroundColor: `${color}20`,
+  borderColor: `${color}80`,
+  color,
+});
 
 /**
  * Fetch notes with pagination for infinite scrolling
@@ -372,18 +379,14 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge 
-              className="max-w-full truncate rounded-full border px-2.5 py-0.5 text-xs font-semibold shadow-sm"
-              style={{ 
-                backgroundColor: stageInfo.color + '20',
-                color: stageInfo.color,
-                borderColor: stageInfo.color 
-              }}
+              className={cn(activeClientBadgeClass, "truncate border")}
+              style={getActiveStageBadgeStyle(stageInfo.color)}
               variant="outline"
             >
               {stageInfo.name}
             </Badge>
             {client.deal_status === 'closed' && (
-              <Badge variant="default" className="rounded-full bg-emerald-600/90 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm shadow-emerald-500/15 hover:bg-emerald-700">
+              <Badge variant="default" className={cn(activeClientBadgeClass, "border border-emerald-500/30 bg-emerald-500/15 text-emerald-100 shadow-emerald-500/15 hover:bg-emerald-500/20")}>
                 🏆 Deal Closed
               </Badge>
             )}
