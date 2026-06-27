@@ -105,6 +105,13 @@ type YearlyOverrides = {
 };
 
 // Editable field configuration
+// Phase 0 UI/UX non-regression lock: presentational refactors must not alter
+// projection, override persistence, export, comparison, AI, send-to-client,
+// chart-ref/data, print, or construction-schedule behavior. The imported
+// rule list keeps those constraints discoverable for future modal component
+// extraction while preserving all runtime logic below.
+void CASH_FLOW_NON_REGRESSION_RULES;
+
 const EDITABLE_FIELDS = [
   { key: 'capitalGrowthRate', label: 'Capital Growth %', type: 'percent', step: 0.1 },
   { key: 'cpiGrowthRate', label: 'CPI Growth %', type: 'percent', step: 0.1 },
