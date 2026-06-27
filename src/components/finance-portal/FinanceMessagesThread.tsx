@@ -207,7 +207,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
               return (
                 <div key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
                   <div className={cn(
-                    'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
+                    'max-w-[92%] rounded-2xl sm:max-w-[82%] border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
                     mine ? 'border-violet-300/30 bg-gradient-to-br from-violet-300 to-blue-500 text-black' : 'border-blue-300/15 bg-zinc-900/95 text-foreground'
                   )}>
                     {!mine && (
@@ -219,6 +219,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                     {m.attachment_path && m.attachment_filename && (
                       <button
                         onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
+                        aria-label={`Download attachment ${m.attachment_filename}`}
                         className={cn(
                           'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/40',
                           mine ? 'text-primary-foreground/90' : 'text-foreground/80'
@@ -244,13 +245,14 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
             <Paperclip className="h-3.5 w-3.5" />
             <span className="truncate flex-1">{attachment.name}</span>
             <span className="text-muted-foreground">{formatBytes(attachment.size)}</span>
-            <button onClick={() => { setAttachment(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+            <button aria-label="Remove selected attachment" onClick={() => { setAttachment(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
               className="rounded-full text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"><X className="h-3.5 w-3.5" /></button>
           </div>
         )}
         <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
             ref={textareaRef}
+            aria-label="Compose Finance Portal message"
             placeholder="Write a message..."
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -263,10 +265,10 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
           />
           <div className="flex flex-col gap-1.5">
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleAttach} />
-            <Button type="button" variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} className="h-9 w-9 rounded-xl border-white/10 bg-black/25 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:text-violet-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] focus-visible:ring-violet-300/40 disabled:opacity-50 disabled:hover:translate-y-0">
+            <Button type="button" variant="outline" size="icon" aria-label="Attach file to Finance Portal message" onClick={() => fileInputRef.current?.click()} disabled={sending} className="h-9 w-9 rounded-xl border-white/10 bg-black/25 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-300/10 hover:text-violet-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] focus-visible:ring-violet-300/40 disabled:opacity-50 disabled:hover:translate-y-0">
               <Paperclip className="h-4 w-4" />
             </Button>
-            <Button type="button" size="icon" onClick={send} disabled={sending || (!draft.trim() && !attachment)} className="h-9 w-9 rounded-xl bg-violet-300 text-black shadow-lg shadow-violet-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-200 hover:shadow-[0_14px_32px_rgba(139,92,246,0.22)] focus-visible:ring-violet-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
+            <Button type="button" size="icon" aria-label="Send Finance Portal message" onClick={send} disabled={sending || (!draft.trim() && !attachment)} className="h-9 w-9 rounded-xl bg-violet-300 text-black shadow-lg shadow-violet-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-200 hover:shadow-[0_14px_32px_rgba(139,92,246,0.22)] focus-visible:ring-violet-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
               {sending || uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>

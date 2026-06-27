@@ -266,7 +266,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
                       {mine ? <Headphones className="h-3.5 w-3.5" /> : getInitials(m.sender_name || clientName)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={cn('max-w-[82%] flex flex-col', mine ? 'items-end' : 'items-start')}>
+                  <div className={cn('flex max-w-[92%] flex-col sm:max-w-[82%]', mine ? 'items-end' : 'items-start')}>
                     <div className={cn(
                       'rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
                       m.is_internal
@@ -356,6 +356,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
         <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
             ref={textareaRef}
+            aria-label="Compose Client Portal message"
             placeholder={
               route === 'client_finance' ? 'Message the client and allocate this thread to Finance...'
               : route === 'internal' ? 'Add an internal staff-only note...'
@@ -374,7 +375,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
             className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 transition-all placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-amber-300/30 disabled:cursor-not-allowed disabled:opacity-60"
             maxLength={5000}
           />
-          <Button type="button" size="icon" onClick={send} disabled={sending || !draft.trim()} className="h-10 w-10 shrink-0 rounded-xl bg-amber-300 text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
+          <Button type="button" size="icon" aria-label="Send Client Portal message" onClick={send} disabled={sending || !draft.trim()} className="h-10 w-10 shrink-0 rounded-xl bg-amber-300 text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

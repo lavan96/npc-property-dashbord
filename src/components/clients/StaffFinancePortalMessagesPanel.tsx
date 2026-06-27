@@ -128,7 +128,6 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
     loadThreads(false);
     const id = setInterval(() => loadThreads(true), 20000);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
   const sortedThreads = useMemo(
@@ -173,18 +172,18 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
   }
 
   return (
-    <div className={cn('grid min-h-0 gap-4 md:grid-cols-[260px_1fr]', className)}>
+    <div className={cn('grid min-h-0 gap-4 lg:grid-cols-[minmax(220px,280px)_1fr]', className)}>
       {/* Thread list */}
       <div className="flex min-h-0 flex-col space-y-2 rounded-3xl border border-violet-300/15 bg-black/25 p-2 shadow-xl shadow-black/15">
         <div className="flex items-center justify-between px-2 py-1">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-100">
             Threads ({sortedThreads.length})
           </span>
-          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-violet-100 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-300/10 hover:text-violet-50 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] focus-visible:ring-violet-300/40" onClick={() => loadThreads(true)}>
+          <Button variant="ghost" size="icon" aria-label="Refresh finance portal threads" className="h-7 w-7 rounded-full text-violet-100 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-300/10 hover:text-violet-50 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)] focus-visible:ring-violet-300/40" onClick={() => loadThreads(true)}>
             <RefreshCcw className="h-3 w-3" />
           </Button>
         </div>
-        <ScrollArea className="h-[480px] min-h-0 pr-2 [scrollbar-color:rgba(139,92,246,0.4)_rgba(24,24,27,0.9)] md:h-full">
+        <ScrollArea className="h-[480px] min-h-0 pr-2 [scrollbar-color:rgba(139,92,246,0.4)_rgba(24,24,27,0.9)] lg:h-full">
           <div className="space-y-1.5">
             {sortedThreads.map((t) => {
               const isActive = t.id === selectedThreadId;
@@ -193,6 +192,8 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
                 <button
                   key={t.id}
                   onClick={() => setSelectedThreadId(t.id)}
+                  aria-pressed={isActive}
+                  aria-label={`Open finance thread ${label}`}
                   className={cn(
                     'group relative w-full overflow-hidden rounded-2xl border px-3.5 py-3 text-left transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-violet-300 before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/45',
                     isActive
@@ -224,9 +225,9 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
       </div>
 
       {/* Selected thread */}
-      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-violet-300/15 bg-zinc-950/90 shadow-xl shadow-black/20 md:min-h-0">
+      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-violet-300/15 bg-zinc-950/90 shadow-xl shadow-black/20 lg:min-h-0">
         {selectedThreadId ? (
-          <div className="flex h-full min-h-[480px] flex-col md:min-h-0">
+          <div className="flex h-full min-h-[480px] flex-col lg:min-h-0">
             <div className="border-b border-violet-300/10 bg-gradient-to-r from-violet-300/12 via-blue-300/[0.04] to-transparent px-4 py-3.5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
