@@ -312,11 +312,13 @@ export default function ReportRequests() {
 
         {/* Request List */}
         {isLoading ? (
-          <div className="flex items-center justify-center rounded-3xl border border-white/10 bg-zinc-950/70 py-16 shadow-xl shadow-black/20">
-            <Loader2 className="h-8 w-8 animate-spin text-amber-200" />
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] p-4 shadow-xl shadow-black/25">
+            <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-black/25 py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-amber-200" />
+            </div>
           </div>
         ) : error ? (
-          <Card className="border-red-400/20 bg-red-950/20 shadow-xl shadow-black/20">
+          <Card className="overflow-hidden border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.24),rgba(9,9,11,0.84))] shadow-xl shadow-black/25">
             <CardContent className="py-12 text-center">
               <XCircle className="mx-auto mb-3 h-12 w-12 text-red-300/70" />
               <p className="font-medium text-red-100">Unable to load report requests.</p>
@@ -324,7 +326,7 @@ export default function ReportRequests() {
             </CardContent>
           </Card>
         ) : filtered.length === 0 ? (
-          <Card className="border-white/10 bg-zinc-950/70 shadow-xl shadow-black/20">
+          <Card className="overflow-hidden border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] shadow-xl shadow-black/25">
             <CardContent className="py-14 text-center">
               <Inbox className="mx-auto mb-3 h-12 w-12 text-amber-200/40" />
               <p className="text-zinc-400">
@@ -333,19 +335,22 @@ export default function ReportRequests() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
-            {filtered.map((req: ReportRequest) => {
-              const typeConf = requestTypeConfig[req.request_type] || requestTypeConfig.portfolio_review;
-              const statConf = statusConfig[req.status] || statusConfig.pending;
-              const TypeIcon = typeConf.icon;
-              return (
-                <Card
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] p-3 shadow-xl shadow-black/25 sm:p-4">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
+            <div className="space-y-3 sm:space-y-4">
+              {filtered.map((req: ReportRequest) => {
+                const typeConf = requestTypeConfig[req.request_type] || requestTypeConfig.portfolio_review;
+                const statConf = statusConfig[req.status] || statusConfig.pending;
+                const TypeIcon = typeConf.icon;
+                return (
+                  <Card
                   key={req.id}
-                  className="group cursor-pointer overflow-hidden border-white/10 bg-zinc-950/75 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-zinc-900/80 hover:shadow-amber-950/25"
+                  className="group cursor-pointer overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(9,9,11,0.84))] shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-[0_18px_46px_rgba(245,158,11,0.12)]"
                   onClick={() => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); }}
                 >
                   <CardContent className="relative p-4 sm:p-5">
                     <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-300/0 transition-colors group-hover:bg-amber-300/70" />
+                    <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                     <div className="flex items-start gap-3 sm:gap-4">
                       <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner', typeConf.color)}>
                         <TypeIcon className="h-5 w-5" />
@@ -367,17 +372,18 @@ export default function ReportRequests() {
                               {req.notes && <p className="mt-1.5 line-clamp-1 text-zinc-400">💬 {req.notes}</p>}
                             </div>
                           </div>
-                          <div className="shrink-0 rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-right">
-                            <p className="text-xs font-medium text-zinc-300">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
+                          <div className="ml-auto shrink-0 rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-right shadow-inner shadow-black/25">
+                            <p className="text-xs font-medium tabular-nums text-zinc-300">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
                             <p className="mt-0.5 text-[10px] text-zinc-500">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
                           </div>
                         </div>
                       </div>
                     </div>
                   </CardContent>
-                </Card>
-              );
-            })}
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
