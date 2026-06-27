@@ -36,13 +36,13 @@ interface ChartCardProps {
 }
 
 const CHART_TYPE_CONFIG: Record<string, { color: string; emoji: string; label: string }> = {
-  bar: { color: 'bg-blue-500/10 text-blue-600 border-blue-500/20', emoji: '📊', label: 'Bar' },
-  pie: { color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', emoji: '🥧', label: 'Pie' },
-  line: { color: 'bg-violet-500/10 text-violet-600 border-violet-500/20', emoji: '📈', label: 'Line' },
-  doughnut: { color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', emoji: '🍩', label: 'Doughnut' },
-  scatter: { color: 'bg-rose-500/10 text-rose-600 border-rose-500/20', emoji: '🔵', label: 'Scatter' },
-  radar: { color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20', emoji: '🕸️', label: 'Radar' },
-  area: { color: 'bg-teal-500/10 text-teal-600 border-teal-500/20', emoji: '📉', label: 'Area' },
+  bar: { color: 'border-blue-400/35 bg-gradient-to-r from-blue-500/12 to-violet-500/12 text-blue-700 shadow-blue-500/10 dark:text-blue-200', emoji: '📊', label: 'Bar' },
+  pie: { color: 'border-emerald-400/35 bg-gradient-to-r from-emerald-500/12 to-teal-500/12 text-emerald-700 shadow-emerald-500/10 dark:text-emerald-200', emoji: '🥧', label: 'Pie' },
+  line: { color: 'border-violet-400/35 bg-gradient-to-r from-violet-500/12 to-blue-500/12 text-violet-700 shadow-violet-500/10 dark:text-violet-200', emoji: '📈', label: 'Line' },
+  doughnut: { color: 'border-amber-400/35 bg-gradient-to-r from-amber-500/12 to-orange-500/12 text-amber-700 shadow-amber-500/10 dark:text-amber-200', emoji: '🍩', label: 'Doughnut' },
+  scatter: { color: 'border-rose-400/35 bg-gradient-to-r from-rose-500/12 to-pink-500/12 text-rose-700 shadow-rose-500/10 dark:text-rose-200', emoji: '🔵', label: 'Scatter' },
+  radar: { color: 'border-cyan-400/35 bg-gradient-to-r from-cyan-500/12 to-sky-500/12 text-cyan-700 shadow-cyan-500/10 dark:text-cyan-200', emoji: '🕸️', label: 'Radar' },
+  area: { color: 'border-teal-400/35 bg-gradient-to-r from-teal-500/12 to-emerald-500/12 text-teal-700 shadow-teal-500/10 dark:text-teal-200', emoji: '📉', label: 'Area' },
 };
 
 function renderChartImage(chart: ChartData) {
@@ -94,7 +94,7 @@ function renderChartImage(chart: ChartData) {
 }
 
 export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExport, onDelete, selectionMode }: ChartCardProps) {
-  const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'bg-muted text-muted-foreground border-border', emoji: '📊', label: chart.chart_type };
+  const cfg = CHART_TYPE_CONFIG[chart.chart_type] || { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: chart.chart_type };
   const navigate = useNavigate();
   const [showAnalysis, setShowAnalysis] = useState(false);
 
@@ -109,7 +109,10 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
       <CardHeader className="space-y-3 border-b border-border/40 bg-gradient-to-b from-muted/25 to-transparent px-4 pb-4 pt-4 sm:px-5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className="line-clamp-2 text-sm font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+            <CardTitle
+              className="line-clamp-2 text-base font-semibold leading-snug tracking-[-0.01em] text-foreground transition-colors group-hover:text-primary sm:text-[17px]"
+              title={chart.title}
+            >
               {chart.title}
             </CardTitle>
           </div>
@@ -121,32 +124,33 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
                 className="mr-1 border-amber-300/60 data-[state=checked]:border-amber-400 data-[state=checked]:bg-amber-500 data-[state=checked]:text-primary-foreground" aria-label={`Select ${chart.title}`}
               />
             )}
-            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${cfg.color}`}>
-              {cfg.emoji} {cfg.label}
+            <Badge variant="outline" className={`h-6 rounded-full px-2 py-0 text-[10px] font-semibold leading-none tracking-wide shadow-sm backdrop-blur-sm ${cfg.color}`}>
+              <span className="text-[11px] leading-none" aria-hidden="true">{cfg.emoji}</span>
+              <span>{cfg.label}</span>
             </Badge>
           </div>
         </div>
 
-        <div className="flex min-h-[1rem] flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+        <div className="flex min-h-[1rem] flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] font-medium text-muted-foreground">
           {chart.generated_reports && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="flex max-w-[160px] items-center gap-1 truncate rounded-md outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="flex max-w-[180px] items-center gap-1.5 truncate rounded-full border border-border/45 bg-background/55 px-2 py-1 outline-none transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
                     onClick={() => navigate(`/report/${chart.report_id}`)}
                   >
-                    <FileText className="h-3 w-3 shrink-0" />
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-primary/70" />
                     <span className="truncate">{chart.generated_reports.title}</span>
-                    <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-0 group-hover:opacity-100" />
+                    <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent><p>View report: {chart.generated_reports.title}</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
-          <span className="flex items-center gap-1 shrink-0">
-            <Calendar className="h-3 w-3" />
+          <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full border border-border/45 bg-background/55 px-2 py-1 tabular-nums">
+            <Calendar className="h-3.5 w-3.5 text-primary/70" />
             {format(new Date(chart.created_at), 'dd MMM yyyy')}
           </span>
         </div>
