@@ -3035,15 +3035,81 @@ html {
 
   .report-qa-chat-header {
     border-bottom: 1px solid hsl(43 24% 38% / 0.22);
-    background: linear-gradient(180deg, hsl(43 74% 49% / 0.08), transparent);
+    background:
+      radial-gradient(circle at 10% 0%, hsl(43 84% 58% / 0.16), transparent 18rem),
+      linear-gradient(180deg, hsl(43 74% 49% / 0.095), hsl(0 0% 100% / 0.018) 72%, transparent);
+  }
+
+  .report-qa-chat-panel {
+    border-color: hsl(43 42% 44% / 0.34) !important;
+    background:
+      radial-gradient(circle at 78% -12%, hsl(43 86% 58% / 0.13), transparent 22rem),
+      radial-gradient(circle at 4% 42%, hsl(43 74% 49% / 0.08), transparent 19rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.085), hsl(0 0% 100% / 0.027)),
+      hsl(220 18% 7% / 0.97) !important;
+    box-shadow:
+      0 32px 90px hsl(0 0% 0% / 0.46),
+      0 0 0 1px hsl(43 74% 49% / 0.08),
+      inset 0 1px 0 hsl(0 0% 100% / 0.09) !important;
+  }
+
+  .report-qa-chat-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, transparent, hsl(43 74% 49% / 0.08), transparent) 0 0 / 100% 1px no-repeat,
+      radial-gradient(circle at 50% 0%, hsl(43 90% 62% / 0.08), transparent 26rem);
+  }
+
+  .report-qa-chat-panel > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-qa-chat-title-icon {
+    border: 1px solid hsl(43 74% 49% / 0.28);
+    background: linear-gradient(135deg, hsl(43 74% 49% / 0.22), hsl(43 74% 49% / 0.07));
+    color: hsl(var(--primary));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1), 0 12px 28px hsl(43 74% 20% / 0.18);
+  }
+
+  .report-qa-chat-title {
+    color: hsl(var(--foreground));
+    text-shadow: 0 1px 0 hsl(0 0% 0% / 0.28);
+  }
+
+  .report-qa-chat-subtitle {
+    color: hsl(var(--muted-foreground) / 0.92);
+    line-height: 1.45;
+  }
+
+  .report-qa-chat-content {
+    padding-top: 0.9rem;
+    background: linear-gradient(180deg, hsl(0 0% 0% / 0.06), transparent 7rem);
+  }
+
+  .report-qa-message-area {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid hsl(43 22% 38% / 0.18);
+    border-radius: 1.35rem;
+    padding: 0.85rem 0.25rem 0.85rem 0.85rem;
+    background:
+      radial-gradient(circle at 16% 0%, hsl(43 74% 49% / 0.08), transparent 18rem),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.04), hsl(0 0% 100% / 0.018));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.055),
+      inset 0 -1px 0 hsl(0 0% 0% / 0.18);
   }
 
   .report-qa-toolbar {
-    border: 1px solid hsl(43 24% 38% / 0.16);
+    border: 1px solid hsl(43 30% 42% / 0.24);
     border-radius: 999px;
-    padding: 0.2rem;
-    background: hsl(0 0% 100% / 0.026);
-    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+    padding: 0.25rem;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.07), hsl(0 0% 100% / 0.03));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 10px 24px hsl(0 0% 0% / 0.12);
   }
 
   .report-qa-toolbar button:hover,
@@ -3247,11 +3313,15 @@ html {
 
   .report-qa-empty-state > div {
     max-width: 30rem;
-    border: 1px solid hsl(43 30% 38% / 0.26);
-    border-radius: 1.5rem;
-    padding: 2rem;
-    background: radial-gradient(circle at top, hsl(43 74% 49% / 0.12), transparent 65%), hsl(0 0% 100% / 0.035);
-    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.07);
+    border: 1px solid hsl(43 36% 46% / 0.32);
+    border-radius: 1.75rem;
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    background:
+      radial-gradient(circle at top, hsl(43 84% 58% / 0.16), transparent 68%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.07), hsl(0 0% 100% / 0.03));
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.08),
+      0 18px 44px hsl(0 0% 0% / 0.16);
   }
 
   .report-qa-chat-panel .qa-chat-bubble-assistant {
@@ -3266,7 +3336,15 @@ html {
 
   .report-qa-composer {
     border-color: hsl(43 24% 38% / 0.24) !important;
-    background: linear-gradient(180deg, transparent, hsl(0 0% 0% / 0.18));
+    margin-inline: -0.15rem;
+    padding: 0.8rem 0.2rem 0;
+    background: linear-gradient(180deg, hsl(0 0% 100% / 0.025), hsl(0 0% 0% / 0.2));
+  }
+
+  .report-qa-composer textarea {
+    border-color: hsl(43 26% 42% / 0.24);
+    background: hsl(220 16% 9% / 0.88);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06), 0 12px 28px hsl(0 0% 0% / 0.14);
   }
 
   .report-qa-composer textarea:focus-visible {
