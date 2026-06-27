@@ -135,7 +135,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     }
     switch (client.ghl_sync_status) {
       case 'synced':
-        return <Badge variant="default" className="bg-green-500/10 text-green-600 border-green-500/20">Synced</Badge>;
+        return <Badge variant="default" className="bg-green-500/10 text-emerald-400 border-green-500/20">Synced</Badge>;
       case 'pending':
         return <Badge variant="secondary">Pending Sync</Badge>;
       case 'error':
@@ -152,14 +152,16 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     : null;
 
   return (
-    <Card className={`hover:shadow-md transition-shadow ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''}`}>
-      <CardHeader className="pb-3">
+    <Card className={`group relative overflow-hidden border-border/70 bg-card/85 shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400/40 hover:shadow-2xl hover:shadow-amber-950/30 ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''} ${isSelected ? 'border-amber-400/60 shadow-amber-950/30' : ''}`}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-amber-400/70 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <CardHeader className="relative pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0"
+              className="h-8 w-8 shrink-0 transition-colors hover:bg-amber-500/10"
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
             >
@@ -199,12 +201,12 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={onSelect}
-                className="mr-1"
+                className="mr-1 border-amber-500/40 data-[state=checked]:bg-amber-500 data-[state=checked]:text-black"
               />
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8 transition-colors hover:bg-amber-500/10 hover:text-amber-200">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -247,17 +249,17 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="relative space-y-4">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
+          <div className="space-y-1 rounded-xl border border-border/60 bg-background/45 p-3 transition-colors group-hover:border-amber-500/20">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Building2 className="h-3.5 w-3.5" />
               <span className="text-xs">Properties</span>
             </div>
             <p className="text-lg font-semibold">{propertyCount}</p>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 rounded-xl border border-border/60 bg-background/45 p-3 transition-colors group-hover:border-amber-500/20">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <DollarSign className="h-3.5 w-3.5" />
               <span className="text-xs">Portfolio</span>
@@ -267,7 +269,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
         </div>
 
         {/* Cash Flow */}
-        <div className="flex items-center justify-between pt-2 border-t">
+        <div className="flex items-center justify-between border-t border-border/60 pt-2">
           <div className="flex items-center gap-2">
             {isPositiveCashFlow ? (
               <TrendingUp className="h-4 w-4 text-green-500" />
@@ -276,14 +278,14 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
             )}
             <span className="text-sm text-muted-foreground">Monthly Cash Flow</span>
           </div>
-          <span className={`font-medium ${isPositiveCashFlow ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`font-medium ${isPositiveCashFlow ? 'text-emerald-400' : 'text-red-400'}`}>
             {formatCurrency(Number(client.net_monthly_cash_flow))}
           </span>
         </div>
 
         {/* Pipeline Status */}
         {client.pipeline_status && client.pipeline_status !== 'New Lead' && (
-          <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center justify-between border-t border-border/60 pt-2">
             <div className="flex items-center gap-1.5">
               <Target className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Pipeline</span>
@@ -299,7 +301,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
 
         {/* Deal Status */}
         {client.deal_status === 'closed' && (
-          <div className="flex items-center justify-between pt-2 border-t">
+          <div className="flex items-center justify-between border-t border-border/60 pt-2">
             <span className="text-xs text-muted-foreground">Deal Status</span>
             <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
               🏆 Deal Closed
@@ -308,7 +310,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
         )}
 
         {/* GHL Status */}
-        <div className="flex items-center justify-between pt-2 border-t">
+        <div className="flex items-center justify-between border-t border-border/60 pt-2">
           <span className="text-xs text-muted-foreground">GHL Status</span>
           {getGHLStatusBadge()}
         </div>
