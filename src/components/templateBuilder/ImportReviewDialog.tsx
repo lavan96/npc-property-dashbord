@@ -48,6 +48,9 @@ interface Props {
   repairBusy?: boolean;
   repairSummary?: VisualRepairOrchestrationSummary | null;
   repairAuditPath?: string | null;
+  onApplyRepair?: () => Promise<void> | void;
+  applyRepairAvailable?: boolean;
+  applyRepairBusy?: boolean;
 }
 
 function flattenLayers(layers: CdirLayer[]): CdirLayer[] {
@@ -73,7 +76,7 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, onApplyRepair, applyRepairAvailable, applyRepairBusy }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
@@ -380,6 +383,12 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
             <Button variant="secondary" onClick={onRunRepair} disabled={!repairAvailable || !!repairBusy}>
               {repairBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wrench className="h-4 w-4 mr-1" />}
               Run repair
+            </Button>
+          )}
+          {onApplyRepair && (
+            <Button variant="default" onClick={onApplyRepair} disabled={!applyRepairAvailable || !!applyRepairBusy}>
+              {applyRepairBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+              Apply repair
             </Button>
           )}
           {onRunReconciliation && (

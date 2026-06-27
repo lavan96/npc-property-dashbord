@@ -218,3 +218,10 @@ export {
   type VisualRepairAuditArtifactPaths,
   type VisualRepairAuditPayload,
 } from './repair';
+
+export {
+  REPAIRED_TEMPLATE_APPLICATION_VERSION,
+  applyRepairedTemplateToRecord,
+  type ApplyRepairedTemplateOptions,
+  type ApplyRepairedTemplateResult,
+} from './repair';
