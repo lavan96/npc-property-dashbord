@@ -71,8 +71,8 @@ function ChannelThread({ channel, messages, displayName, onSend, sending, disabl
   };
 
   return (
-    <Card className="client-portal-soft-panel flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 340px)', minHeight: '400px' }}>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+    <Card className="client-portal-soft-panel flex flex-col overflow-hidden border-primary/15 bg-gradient-to-b from-card/95 to-background/95 shadow-2xl shadow-primary/5" style={{ height: 'calc(100vh - 340px)', minHeight: '400px' }}>
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-5 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%)] p-5 [scrollbar-color:hsl(var(--primary)/0.4)_transparent]">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="mb-4 rounded-full border border-primary/10 bg-primary/5 p-4 shadow-lg shadow-primary/5">
@@ -95,17 +95,17 @@ function ChannelThread({ channel, messages, displayName, onSend, sending, disabl
                     {isClient ? getInitials(displayName) : <Headphones className="h-3.5 w-3.5" />}
                   </AvatarFallback>
                 </Avatar>
-                <div className={`max-w-[75%] flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
-                  <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                <div className={`flex min-w-0 max-w-[min(78%,42rem)] flex-col ${isClient ? 'items-end' : 'items-start'}`}>
+                  <div className={`w-fit max-w-full rounded-2xl border px-4 py-3 text-sm leading-6 shadow-lg shadow-black/10 whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                     isClient
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'border border-border/60 bg-card/90 text-foreground rounded-bl-md shadow-sm shadow-primary/5'
+                      ? 'rounded-br-md border-primary/40 bg-gradient-to-br from-primary to-amber-500 text-primary-foreground'
+                      : 'rounded-bl-md border-border/60 bg-card/95 text-foreground shadow-primary/5'
                   }`}>
-                    {msg.subject && <p className="font-semibold mb-1">{msg.subject}</p>}
-                    <p className="whitespace-pre-wrap">{msg.body}</p>
+                    {msg.subject && <p className="mb-1 font-semibold break-words [overflow-wrap:anywhere]">{msg.subject}</p>}
+                    <p className="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.body}</p>
                   </div>
                   <div className={`flex items-center gap-1.5 mt-1 ${isClient ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <p className="text-[10px] text-muted-foreground/50">{formatMessageDate(new Date(msg.created_at))}</p>
+                    <p className="text-[10px] font-medium text-muted-foreground/75">{formatMessageDate(new Date(msg.created_at))}</p>
                     {channelBadge(msg.channel)}
                   </div>
                 </div>
@@ -115,7 +115,7 @@ function ChannelThread({ channel, messages, displayName, onSend, sending, disabl
         )}
       </div>
 
-      <div className="border-t border-border/60 bg-card/90 p-4 backdrop-blur-sm">
+      <div className="border-t border-primary/10 bg-card/95 p-4 shadow-[0_-18px_45px_rgba(0,0,0,0.08)] backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Input
             ref={inputRef}
