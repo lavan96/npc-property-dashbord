@@ -935,13 +935,28 @@ export default function Conversations() {
         {(selectedId || !isMobile) && (
           <div className={cn('flex min-w-0 flex-1 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.10),transparent_30%),linear-gradient(180deg,rgba(24,24,27,0.84),rgba(9,9,11,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]', !selectedId && 'items-center justify-center p-6')}>
             {!selectedId ? (
-              <div className="relative max-w-md overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.9),rgba(0,0,0,0.55))] p-10 text-center text-zinc-400 shadow-2xl shadow-black/30">
-                <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-200/20 bg-amber-300/10 shadow-[0_0_40px_rgba(234,179,8,0.12)]">
-                  <MessageSquare className="h-7 w-7 text-amber-100/70" />
+              <div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-[1.35rem] p-4 sm:p-8">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_12%_50%,rgba(250,204,21,0.07),transparent_18%),linear-gradient(135deg,rgba(255,255,255,0.035),transparent_38%,rgba(255,255,255,0.025))]" />
+                <div className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 items-center gap-2 rounded-full border border-amber-200/10 bg-black/20 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-amber-100/35 shadow-inner shadow-black/30 lg:flex">
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Inbox
                 </div>
-                <p className="text-base font-semibold text-zinc-100">Select a conversation</p>
-                <p className="mt-2 text-sm leading-relaxed">Choose a thread from the premium inbox to open the communication workspace.</p>
+                <div className="pointer-events-none absolute inset-x-12 top-10 h-px bg-gradient-to-r from-transparent via-amber-100/16 to-transparent" />
+                <div className="relative w-full max-w-md overflow-hidden rounded-[2.25rem] border border-amber-200/18 bg-[linear-gradient(145deg,rgba(24,24,27,0.86),rgba(9,9,11,0.74)_52%,rgba(0,0,0,0.70))] p-8 text-center text-zinc-400 shadow-[0_28px_90px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl sm:p-10">
+                  <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+                  <div className="pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-amber-300/10 blur-3xl" />
+                  <div className="pointer-events-none absolute -bottom-20 left-1/2 h-32 w-56 -translate-x-1/2 rounded-full bg-white/[0.035] blur-3xl" />
+                  <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-100/22 bg-[radial-gradient(circle_at_35%_25%,rgba(254,243,199,0.18),rgba(245,158,11,0.09)_45%,rgba(24,24,27,0.66))] shadow-[0_0_55px_rgba(234,179,8,0.16),inset_0_1px_0_rgba(255,255,255,0.16)] ring-1 ring-white/[0.055]">
+                    <div className="absolute inset-2 rounded-[1.3rem] border border-white/[0.055] bg-black/10" />
+                    <MessageSquare className="relative h-9 w-9 text-amber-100/78 drop-shadow-[0_0_18px_rgba(251,191,36,0.22)]" strokeWidth={1.7} />
+                  </div>
+                  <p className="text-lg font-semibold tracking-[-0.02em] text-zinc-50 sm:text-xl">Select a conversation</p>
+                  <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-zinc-400/90">Choose from the list to view messages</p>
+                  <div className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-medium text-amber-100/55 shadow-inner shadow-black/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300/70 shadow-[0_0_14px_rgba(251,191,36,0.65)]" />
+                    Your message workspace is ready
+                  </div>
+                </div>
               </div>
             ) : selectedConversation ? (
               <>
