@@ -5439,16 +5439,21 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             {/* Construction Progress Payment Schedule - Collapsible (New Builds Only) */}
             {isNewBuild && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 && (
               <Collapsible open={constructionScheduleOpen} onOpenChange={setConstructionScheduleOpen}>
-                <Card>
+                <Card className="overflow-hidden border-amber-200/70 bg-gradient-to-br from-amber-50/40 via-background to-background shadow-sm dark:border-amber-900/40 dark:from-amber-950/20">
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <CardTitle className="text-base flex items-center justify-between">
+                    <CardHeader className="cursor-pointer border-b bg-amber-50/50 transition-colors hover:bg-amber-50 dark:bg-amber-950/20 dark:hover:bg-amber-950/30">
+                      <CardTitle className="flex flex-col gap-3 text-base lg:flex-row lg:items-center lg:justify-between">
                         <span className="flex items-center gap-2">
-                          {constructionScheduleOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                          Construction Progress Payment Schedule
+                          <span className="rounded-xl bg-amber-500/10 p-2 text-amber-600">
+                            {constructionScheduleOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          </span>
+                          <span>
+                            Construction Progress Payment Schedule
+                            <span className="block text-xs font-normal text-muted-foreground">New build staged drawdown and interest workflow</span>
+                          </span>
                         </span>
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <label className="flex items-center gap-2 text-xs font-normal text-muted-foreground cursor-pointer">
+                          <label className="flex items-center gap-2 rounded-full border bg-background/80 px-3 py-1.5 text-xs font-normal text-muted-foreground cursor-pointer">
                             <Checkbox
                               checked={includeConstructionScheduleInExport}
                               onCheckedChange={(checked) => setIncludeConstructionScheduleInExport(checked === true)}
@@ -5460,13 +5465,13 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <CardContent className="pt-0">
+                    <CardContent className="space-y-4 p-4">
                       {/* Preset Selection */}
-                      <div className="flex flex-wrap items-center gap-4 mb-4 p-3 bg-muted/20 rounded-lg border">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-3 rounded-2xl border bg-background/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                           <span className="text-sm font-medium">Schedule Mode:</span>
                           <Select value={schedulePreset} onValueChange={(value: 'rapid' | 'even' | 'custom') => setSchedulePreset(value)}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-full sm:w-[220px]">
                               <SelectValue placeholder="Select mode" />
                             </SelectTrigger>
                             <SelectContent>
@@ -5476,7 +5481,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             </SelectContent>
                           </Select>
                         </div>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="max-w-2xl text-xs text-muted-foreground">
                           {schedulePreset === 'rapid' && 'Stages are fixed at months 2-7. Additional months show interest-only rows.'}
                           {schedulePreset === 'even' && `Stages are evenly distributed across ${constructionProgressSchedule.durationMonths} months.`}
                           {schedulePreset === 'custom' && 'Customize which month each stage occurs. Click on the month column to edit.'}
@@ -5485,9 +5490,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                       {/* Custom Stage Month Selection (only in custom mode) */}
                       {schedulePreset === 'custom' && (
-                        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
                           <h5 className="text-sm font-medium mb-3 text-blue-900 dark:text-blue-100">Custom Stage Positioning</h5>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
                             {[
                               { index: 0, label: 'Deposit' },
                               { index: 1, label: 'Slab/Base' },
@@ -5528,39 +5533,43 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       )}
 
                       {/* Project Summary */}
-                      <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-muted/30 rounded-lg">
-                        <div>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <div className="rounded-2xl border bg-background/80 p-4">
                           <span className="text-xs text-muted-foreground">Land Cost</span>
-                          <p className="font-semibold">{formatCurrency(constructionProgressSchedule.landPrice)}</p>
+                          <p className="mt-1 text-lg font-semibold">{formatCurrency(constructionProgressSchedule.landPrice)}</p>
                         </div>
-                        <div>
+                        <div className="rounded-2xl border bg-background/80 p-4">
                           <span className="text-xs text-muted-foreground">Build Contract</span>
-                          <p className="font-semibold">{formatCurrency(constructionProgressSchedule.buildPrice)}</p>
+                          <p className="mt-1 text-lg font-semibold">{formatCurrency(constructionProgressSchedule.buildPrice)}</p>
                         </div>
-                        <div>
+                        <div className="rounded-2xl border bg-primary/5 p-4">
                           <span className="text-xs text-muted-foreground">Total Project</span>
-                          <p className="font-semibold">{formatCurrency(constructionProgressSchedule.totalProject)}</p>
+                          <p className="mt-1 text-lg font-semibold text-primary">{formatCurrency(constructionProgressSchedule.totalProject)}</p>
                         </div>
                       </div>
 
                       {/* Build Contract Breakdown */}
-                      <h4 className="text-sm font-semibold mb-2">Build Contract Breakdown ({constructionProgressSchedule.durationMonths} Month Construction)</h4>
-                      <Table>
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                        <h4 className="text-sm font-semibold">Build Progress Table</h4>
+                        <p className="text-xs text-muted-foreground">{constructionProgressSchedule.durationMonths} month construction schedule</p>
+                      </div>
+                      <div className="max-w-full overflow-x-auto rounded-2xl border bg-background">
+                      <Table className="min-w-[980px]">
                         <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead className="font-semibold">Stage</TableHead>
-                            <TableHead className="font-semibold">Description</TableHead>
-                            <TableHead className="text-center font-semibold">Total Build Contract</TableHead>
-                            <TableHead className="text-right font-semibold">Stage Pricing</TableHead>
-                            <TableHead className="text-right font-semibold">Land Interest Charge (Monthly)</TableHead>
-                            <TableHead className="text-right font-semibold">Build Interest Charge (Monthly)</TableHead>
-                            <TableHead className="text-right font-semibold">Combined Repayment Breakdown</TableHead>
-                            <TableHead className="text-center font-semibold">Month</TableHead>
+                          <TableRow className="bg-slate-900 hover:bg-slate-900">
+                            <TableHead className="font-semibold text-white">Stage</TableHead>
+                            <TableHead className="font-semibold text-white">Description</TableHead>
+                            <TableHead className="text-center font-semibold text-white">Total Build Contract</TableHead>
+                            <TableHead className="text-right font-semibold text-white">Stage Pricing</TableHead>
+                            <TableHead className="text-right font-semibold text-white">Land Interest Charge (Monthly)</TableHead>
+                            <TableHead className="text-right font-semibold text-white">Build Interest Charge (Monthly)</TableHead>
+                            <TableHead className="text-right font-semibold text-white">Combined Repayment Breakdown</TableHead>
+                            <TableHead className="text-center font-semibold text-white">Month</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {constructionProgressSchedule.stages.map((stage, idx) => (
-                            <TableRow key={idx} className={idx === 0 ? 'bg-muted/20' : ''}>
+                            <TableRow key={idx} className={idx === 0 ? 'bg-muted/20 hover:bg-muted/30' : 'hover:bg-muted/30'}>
                               <TableCell className="font-medium">{stage.stage || ''}</TableCell>
                               <TableCell className="text-muted-foreground text-sm">{stage.description || ''}</TableCell>
                               <TableCell className="text-center">{stage.percentage > 0 ? `${stage.percentage}%` : ''}</TableCell>
@@ -5583,8 +5592,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           </TableRow>
                         </TableBody>
                       </Table>
+                      </div>
 
-                      <p className="text-xs text-muted-foreground mt-3">
+                      <p className="text-xs text-muted-foreground">
                         * Interest calculated at {constructionProgressSchedule.interestRate}% p.a. Land interest is constant; build interest increases as stages are drawn.
                       </p>
                     </CardContent>
