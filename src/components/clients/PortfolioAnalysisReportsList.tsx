@@ -88,10 +88,20 @@ const getHealthBadgeVariant = (health: string | null): 'default' | 'secondary' |
   }
 };
 
+const getHealthBadgeClassName = (health: string | null) => {
+  switch (health?.toLowerCase()) {
+    case 'excellent': return 'border-emerald-300/40 bg-emerald-400/15 text-emerald-100 shadow-emerald-950/20 hover:bg-emerald-400/20';
+    case 'good': return 'border-teal-300/40 bg-teal-400/15 text-teal-100 shadow-teal-950/20 hover:bg-teal-400/20';
+    case 'fair': return 'border-amber-300/45 bg-amber-400/15 text-amber-100 shadow-amber-950/20 hover:bg-amber-400/20';
+    case 'poor': return 'border-red-300/45 bg-red-500/15 text-red-100 shadow-red-950/20 hover:bg-red-500/20';
+    default: return 'border-slate-400/30 bg-slate-400/10 text-slate-200 hover:bg-slate-400/15';
+  }
+};
+
 const getCashflowIcon = (cashflow: number | null) => {
   if (cashflow === null) return <Minus className="h-4 w-4 text-muted-foreground" />;
-  if (cashflow > 0) return <TrendingUp className="h-4 w-4 text-green-600" />;
-  if (cashflow < 0) return <TrendingDown className="h-4 w-4 text-red-600" />;
+  if (cashflow > 0) return <TrendingUp className="h-4 w-4 text-emerald-300" />;
+  if (cashflow < 0) return <TrendingDown className="h-4 w-4 text-red-300" />;
   return <Minus className="h-4 w-4 text-muted-foreground" />;
 };
 
@@ -206,59 +216,52 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex min-h-[320px] items-center justify-center rounded-3xl border border-amber-400/15 bg-black/30 p-8 shadow-xl shadow-black/20">
+        <div className="flex flex-col items-center gap-3 text-slate-300">
+          <Loader2 className="h-8 w-8 animate-spin text-amber-300" />
+          <p className="text-sm font-medium">Loading portfolio intelligence...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {showHeader && (
         <>
           {/* Summary Cards */}
           <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalReports}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Health Score</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{avgHealthScore}/100</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Combined Portfolio</CardTitle>
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(totalPortfolioValue)}</div>
-              </CardContent>
-            </Card>
+            {[
+              { title: 'Total Reports', value: totalReports, icon: FileText, accent: 'text-amber-200' },
+              { title: 'Avg Health Score', value: `${avgHealthScore}/100`, icon: TrendingUp, accent: 'text-emerald-200' },
+              { title: 'Combined Portfolio', value: formatCurrency(totalPortfolioValue), icon: Building2, accent: 'text-amber-200' },
+            ].map((metric) => (
+              <Card key={metric.title} className="group overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-slate-950/90 via-zinc-950/85 to-black/80 shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-amber-950/25">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                  <CardTitle className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{metric.title}</CardTitle>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-2 transition-colors group-hover:border-amber-300/30 group-hover:bg-amber-400/10">
+                    <metric.icon className={`h-4 w-4 ${metric.accent}`} />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold tracking-tight text-white">{metric.value}</div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           {/* Search and Actions */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/30 p-3 shadow-lg shadow-black/15 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <div className="relative flex-1 sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
               <Input
                 placeholder="Search by client name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="h-11 rounded-2xl border-white/10 bg-slate-950/70 pl-10 text-slate-100 placeholder:text-slate-500 transition-all focus-visible:border-amber-300/60 focus-visible:ring-amber-300/25"
               />
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="h-11 rounded-2xl border-amber-400/30 bg-amber-400/10 px-5 text-amber-100 transition-all hover:border-amber-300 hover:bg-amber-400/20 hover:text-amber-50 active:scale-[0.98]">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -267,24 +270,26 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
       )}
 
       {/* Reports Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">
+      <Card className="overflow-hidden rounded-3xl border-white/10 bg-gradient-to-b from-zinc-950/95 to-black/90 shadow-2xl shadow-black/30">
+        <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-4">
+          <CardTitle className="text-xl font-semibold text-white">
             {clientId ? 'Client Reports' : 'All Portfolio Analysis Reports'}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-slate-400">
             {clientId
               ? 'Previously generated portfolio performance reports for this client'
               : 'View all generated portfolio performance analysis reports across all clients'
             }
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredReports.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">No reports found</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+            <div className="m-5 flex flex-col items-center justify-center rounded-3xl border border-dashed border-amber-300/20 bg-amber-400/[0.03] py-14 text-center transition-all duration-300">
+              <div className="mb-4 rounded-3xl border border-white/10 bg-white/5 p-4">
+                <FileText className="h-12 w-12 text-amber-200/80" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">No reports found</h3>
+              <p className="mt-1 text-sm text-slate-400">
                 {clientId
                   ? 'Generate a portfolio analysis to see reports here'
                   : 'No portfolio analysis reports have been generated yet'
@@ -292,64 +297,65 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </p>
             </div>
           ) : (
-            <ScrollArea className="h-[400px]">
-              <Table>
+            <ScrollArea className="h-[440px]">
+              <Table className="min-w-[980px]">
                 <TableHeader>
-                  <TableRow>
-                    {!clientId && <TableHead>Client</TableHead>}
-                    <TableHead>Health</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Portfolio Value</TableHead>
-                    <TableHead>Equity</TableHead>
-                    <TableHead>Cashflow</TableHead>
-                    <TableHead>Properties</TableHead>
-                    <TableHead>Generated</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="border-white/10 bg-white/[0.02] hover:bg-white/[0.02]">
+                    {!clientId && <TableHead className="text-slate-300">Client</TableHead>}
+                    <TableHead className="text-slate-300">Health</TableHead>
+                    <TableHead className="text-slate-300">Score</TableHead>
+                    <TableHead className="text-slate-300">Portfolio Value</TableHead>
+                    <TableHead className="text-slate-300">Equity</TableHead>
+                    <TableHead className="text-slate-300">Cashflow</TableHead>
+                    <TableHead className="text-slate-300">Properties</TableHead>
+                    <TableHead className="text-slate-300">Generated</TableHead>
+                    <TableHead className="text-right text-slate-300">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReports.map((report) => (
-                    <TableRow key={report.id}>
+                    <TableRow key={report.id} className="border-white/10 transition-colors duration-200 hover:bg-amber-400/[0.06] data-[state=selected]:bg-amber-400/10">
                       {!clientId && (
-                        <TableCell className="font-medium">
+                        <TableCell className="font-semibold text-slate-100">
                           {smartCapitalize(report.client_name)}
                         </TableCell>
                       )}
                       <TableCell>
-                        <Badge variant={getHealthBadgeVariant(report.overall_health)}>
+                        <Badge variant={getHealthBadgeVariant(report.overall_health)} className={`rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition-all ${getHealthBadgeClassName(report.overall_health)}`}>
                           {report.overall_health || 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-semibold">{report.health_score || '-'}</span>
-                        <span className="text-muted-foreground text-xs">/100</span>
+                        <span className="font-semibold text-white">{report.health_score || '-'}</span>
+                        <span className="text-slate-500 text-xs">/100</span>
                       </TableCell>
-                      <TableCell>{formatCurrency(Number(report.portfolio_value))}</TableCell>
-                      <TableCell>{formatCurrency(Number(report.total_equity))}</TableCell>
+                      <TableCell className="font-medium text-slate-200">{formatCurrency(Number(report.portfolio_value))}</TableCell>
+                      <TableCell className="font-medium text-slate-200">{formatCurrency(Number(report.total_equity))}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2 font-medium">
                           {getCashflowIcon(Number(report.net_monthly_cashflow))}
-                          <span className={Number(report.net_monthly_cashflow) < 0 ? 'text-red-600' : ''}>
+                          <span className={Number(report.net_monthly_cashflow) < 0 ? 'text-red-300' : Number(report.net_monthly_cashflow) > 0 ? 'text-emerald-200' : 'text-slate-300'}>
                             {formatCurrency(Number(report.net_monthly_cashflow))}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>{report.total_properties || '-'}</TableCell>
+                      <TableCell className="text-slate-200">{report.total_properties || '-'}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                          <Calendar className="h-3 w-3" />
+                        <div className="flex items-center gap-1.5 text-sm text-slate-400">
+                          <Calendar className="h-3.5 w-3.5 text-amber-200/70" />
                           {format(new Date(report.created_at), 'dd MMM yyyy')}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" className="rounded-xl text-slate-300 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-amber-300/30">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="border-white/10 bg-zinc-950/95 text-slate-100 shadow-2xl shadow-black/40 backdrop-blur">
                             <DropdownMenuItem
+                              className="focus:bg-amber-400/10 focus:text-amber-100"
                               disabled={!report.pdf_file_path}
                               onClick={() => handleViewPDF(report)}
                             >
@@ -357,6 +363,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
                               View Report
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              className="focus:bg-amber-400/10 focus:text-amber-100"
                               disabled={!report.pdf_file_path}
                               onClick={() => handleDownloadPDF(report)}
                             >
