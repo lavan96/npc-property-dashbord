@@ -1667,15 +1667,17 @@ export default function ClientTracker() {
           {/* Active Clients View */}
           <TabsContent value="active" className="mt-4">
             <div className="grid gap-4">
-              <Card className="border-border/70 bg-background/70 shadow-lg shadow-black/10">
-                <CardHeader>
+              <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.78),hsl(var(--card)/0.6))] shadow-xl shadow-black/15">
+                <CardHeader className="border-b border-border/60 bg-card/35">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <UserCheck className="h-5 w-5 text-primary" />
+                      <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+                          <UserCheck className="h-5 w-5" />
+                        </span>
                         Active Clients Notes
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="mt-2 text-sm text-muted-foreground">
                         {searchQuery 
                           ? `Showing ${filteredActiveClients.length} of ${activeClients.length} active clients`
                           : `View notes for ${activeClients.length} active clients`
@@ -1683,11 +1685,11 @@ export default function ClientTracker() {
                       </p>
                     </div>
                     {/* Deal Status Sub-Filters */}
-                    <div className="flex items-center gap-1 rounded-xl border border-border/70 bg-card/80 p-1 shadow-inner">
+                    <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-black/10">
                       <Button
                         variant={activeDealFilter === 'all' ? 'secondary' : 'ghost'}
                         size="sm"
-                        className="h-7 text-xs px-3"
+                        className={cn("h-8 rounded-xl px-3 text-xs font-semibold transition-all", activeDealFilter === 'all' ? "border border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10" : "text-muted-foreground hover:bg-primary/8 hover:text-primary")}
                         onClick={() => setActiveDealFilter('all')}
                       >
                         All ({activeClients.length})
@@ -1695,7 +1697,7 @@ export default function ClientTracker() {
                       <Button
                         variant={activeDealFilter === 'closed' ? 'secondary' : 'ghost'}
                         size="sm"
-                        className="h-7 text-xs px-3"
+                        className={cn("h-8 rounded-xl px-3 text-xs font-semibold transition-all", activeDealFilter === 'closed' ? "border border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10" : "text-muted-foreground hover:bg-primary/8 hover:text-primary")}
                         onClick={() => setActiveDealFilter('closed')}
                       >
                         🏆 Deals Closed ({dealsClosedCount})
@@ -1703,7 +1705,7 @@ export default function ClientTracker() {
                       <Button
                         variant={activeDealFilter === 'prospects' ? 'secondary' : 'ghost'}
                         size="sm"
-                        className="h-7 text-xs px-3"
+                        className={cn("h-8 rounded-xl px-3 text-xs font-semibold transition-all", activeDealFilter === 'prospects' ? "border border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10" : "text-muted-foreground hover:bg-primary/8 hover:text-primary")}
                         onClick={() => setActiveDealFilter('prospects')}
                       >
                         Prospects ({activeClients.length - dealsClosedCount})
@@ -1711,15 +1713,15 @@ export default function ClientTracker() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4 sm:p-5">
                   {filteredActiveClients.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="rounded-2xl border border-dashed border-border/70 bg-card/35 py-10 text-center text-sm text-muted-foreground">
                       {searchQuery ? 'No matching active clients found' : 'No active clients found'}
                     </div>
                   ) : (
                     <>
                       {/* Grid of client cards with infinite scroll */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {filteredActiveClients
                           .slice(0, displayedActiveCount)
                           .map(client => {
@@ -1741,7 +1743,7 @@ export default function ClientTracker() {
                           <Button
                             variant="outline"
                             onClick={() => setDisplayedActiveCount(prev => prev + LOAD_MORE_COUNT)}
-                            className="gap-2"
+                            className="gap-2 rounded-xl border-primary/25 bg-primary/5 text-primary transition-all hover:border-primary/45 hover:bg-primary/10"
                           >
                             <Loader2 className="h-4 w-4" />
                             Load More ({filteredActiveClients.length - displayedActiveCount} remaining)
