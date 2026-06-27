@@ -131,15 +131,15 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
 
   const getGHLStatusBadge = () => {
     if (isSyncing) {
-      return <Badge variant="secondary" className="gap-1 rounded-full border-amber-300/25 bg-amber-500/15 text-amber-100"><Loader2 className="h-3 w-3 animate-spin" />Syncing...</Badge>;
+      return <Badge variant="secondary" className="gap-1 rounded-full border-amber-300/30 bg-amber-400/15 px-2.5 text-amber-100 shadow-sm shadow-amber-950/20"><Loader2 className="h-3 w-3 animate-spin" />Syncing...</Badge>;
     }
     switch (client.ghl_sync_status) {
       case 'synced':
-        return <Badge variant="default" className="rounded-full border-emerald-300/25 bg-emerald-400/15 px-2.5 font-semibold text-emerald-300 shadow-sm shadow-emerald-950/20">Synced</Badge>;
+        return <Badge variant="default" className="rounded-full border border-emerald-300/35 bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(20,184,166,0.1))] px-2.5 font-semibold text-emerald-200 shadow-sm shadow-emerald-950/25">Synced</Badge>;
       case 'pending':
-        return <Badge variant="secondary" className="rounded-full border border-amber-300/25 bg-amber-500/15 px-2.5 text-amber-100">Pending Sync</Badge>;
+        return <Badge variant="secondary" className="rounded-full border border-amber-300/30 bg-amber-400/15 px-2.5 font-semibold text-amber-100 shadow-sm shadow-amber-950/20">Pending Sync</Badge>;
       case 'error':
-        return <Badge variant="destructive" className="rounded-full px-2.5">Sync Error</Badge>;
+        return <Badge variant="destructive" className="rounded-full border border-red-300/30 bg-red-500/15 px-2.5 text-red-100 shadow-sm shadow-red-950/20">Sync Error</Badge>;
       default:
         return <Badge variant="outline" className="rounded-full border-border/70 bg-background/60 px-2.5 text-muted-foreground">Not Synced</Badge>;
     }
@@ -152,7 +152,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
     : null;
 
   return (
-    <Card className={`group relative flex h-full min-h-[22rem] overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.9),rgba(3,7,18,0.84))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-950/35 focus-within:border-amber-400/60 focus-within:shadow-amber-950/30 ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''} ${isSelected ? 'border-amber-400/70 shadow-amber-950/40 ring-1 ring-amber-300/35' : ''}`}>
+    <Card className={`group relative flex h-full min-h-[22rem] overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.9),rgba(3,7,18,0.84))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-950/35 focus-within:border-amber-300/70 focus-within:ring-2 focus-within:ring-amber-300/25 focus-within:shadow-amber-950/30 ${client.is_favorite ? 'ring-2 ring-yellow-400/50' : ''} ${isSelected ? 'border-amber-400/70 shadow-amber-950/40 ring-1 ring-amber-300/35 hover:ring-amber-300/55' : ''}`}>
       {isSelected && (
         <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-amber-300 via-amber-500 to-yellow-600 shadow-[0_0_18px_rgba(245,158,11,0.55)]" />
       )}
@@ -166,14 +166,15 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
               size="icon"
               className={`h-8 w-8 shrink-0 rounded-full border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0 ${
                 client.is_favorite
-                  ? 'border-yellow-300/45 bg-yellow-400/15 text-yellow-300 shadow-sm shadow-yellow-950/30 hover:bg-yellow-400/20'
-                  : 'border-border/50 bg-background/35 text-muted-foreground hover:border-yellow-300/45 hover:bg-yellow-400/10 hover:text-yellow-300'
+                  ? 'border-yellow-300/45 bg-yellow-400/15 text-yellow-300 shadow-sm shadow-yellow-950/30 hover:scale-105 hover:bg-yellow-400/20 hover:shadow-yellow-400/20'
+                  : 'border-border/50 bg-background/35 text-muted-foreground hover:scale-105 hover:border-yellow-300/45 hover:bg-yellow-400/10 hover:text-yellow-300 hover:shadow-sm hover:shadow-yellow-400/15'
               }`}
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
+              aria-label={client.is_favorite ? `Remove ${fullName} from active clients` : `Mark ${fullName} as active client`}
             >
               <Star 
-                className={`h-4 w-4 transition-colors ${
+                className={`h-4 w-4 transition-all duration-200 group-hover:drop-shadow-[0_0_8px_rgba(250,204,21,0.45)] ${
                   client.is_favorite 
                     ? 'fill-yellow-400 text-yellow-400' 
                     : 'text-muted-foreground hover:text-yellow-400'
@@ -222,7 +223,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/50 bg-background/45 text-muted-foreground shadow-sm transition-all duration-200 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0 data-[state=open]:border-amber-400/60 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-200">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/50 bg-background/45 text-muted-foreground shadow-sm transition-all duration-200 hover:border-amber-400/50 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-0 data-[state=open]:border-amber-400/60 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-200" aria-label={`Open actions for ${fullName}`}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -285,7 +286,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
         </div>
 
         {/* Cash Flow */}
-        <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/35 px-3 py-2.5">
+        <div className={`flex items-center justify-between rounded-xl border px-3 py-2.5 shadow-inner shadow-black/10 ${isPositiveCashFlow ? 'border-emerald-300/15 bg-emerald-400/[0.06]' : 'border-red-300/15 bg-red-500/[0.06]'}`}>
           <div className="flex items-center gap-2">
             {isPositiveCashFlow ? (
               <TrendingUp className="h-4 w-4 text-emerald-400" />
@@ -294,7 +295,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
             )}
             <span className="text-sm font-medium text-muted-foreground">Monthly Cash Flow</span>
           </div>
-          <span className={`font-bold ${isPositiveCashFlow ? 'text-emerald-300' : 'text-red-400'}`}>
+          <span className={`font-bold tabular-nums ${isPositiveCashFlow ? 'text-emerald-200' : 'text-red-300'}`}>
             {formatCurrency(Number(client.net_monthly_cash_flow))}
           </span>
         </div>

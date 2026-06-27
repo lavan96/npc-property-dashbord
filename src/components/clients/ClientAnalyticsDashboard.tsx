@@ -21,7 +21,9 @@ import {
   Percent,
   AlertCircle,
   CheckCircle,
+  Clock3,
   Info,
+  XCircle,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -131,6 +133,51 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
     fontWeight: 600,
   };
 
+  const syncStatusItems = [
+    {
+      label: 'Synced',
+      value: analytics.syncedCount,
+      Icon: CheckCircle,
+      accent: 'emerald',
+      description: 'Clients successfully synced to GoHighLevel.',
+      containerClass: 'border-emerald-300/20 bg-emerald-400/10 hover:border-emerald-300/45 hover:bg-emerald-400/15',
+      iconClass: 'border-emerald-300/25 bg-emerald-300/15 text-emerald-200 shadow-emerald-950/20',
+      labelClass: 'text-emerald-100',
+      valueClass: 'text-emerald-100',
+      progressClass: 'bg-emerald-950/70 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-teal-300 [&>div]:via-emerald-300 [&>div]:to-emerald-500 [&>div]:shadow-[0_0_18px_rgba(45,212,191,0.42)]',
+    },
+    {
+      label: 'Pending',
+      value: analytics.pendingCount,
+      Icon: Clock3,
+      accent: 'amber',
+      description: 'Clients waiting for the next GoHighLevel sync action.',
+      containerClass: 'border-amber-300/20 bg-amber-400/10 hover:border-amber-300/45 hover:bg-amber-400/15',
+      iconClass: 'border-amber-300/25 bg-amber-300/15 text-amber-200 shadow-amber-950/20',
+      labelClass: 'text-amber-100',
+      valueClass: 'text-amber-100',
+      progressClass: 'bg-amber-950/70 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]',
+    },
+    {
+      label: 'Errors',
+      value: analytics.errorCount,
+      Icon: XCircle,
+      accent: 'red',
+      description: 'Clients with GoHighLevel sync errors that need attention.',
+      containerClass: analytics.errorCount > 0
+        ? 'border-red-300/25 bg-red-500/10 hover:border-red-300/50 hover:bg-red-500/15'
+        : 'border-slate-500/15 bg-slate-500/5 hover:border-slate-400/25 hover:bg-slate-500/10',
+      iconClass: analytics.errorCount > 0
+        ? 'border-red-300/25 bg-red-500/15 text-red-200 shadow-red-950/20'
+        : 'border-slate-500/20 bg-slate-500/10 text-slate-400 shadow-black/10',
+      labelClass: analytics.errorCount > 0 ? 'text-red-100' : 'text-slate-300',
+      valueClass: analytics.errorCount > 0 ? 'text-red-100' : 'text-slate-300',
+      progressClass: analytics.errorCount > 0
+        ? 'bg-red-950/70 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-red-300 [&>div]:via-red-500 [&>div]:to-rose-600 [&>div]:shadow-[0_0_18px_rgba(248,113,113,0.36)]'
+        : 'bg-slate-800/70 shadow-inner shadow-black/30 [&>div]:bg-slate-500/50',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -227,28 +274,36 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
             <CardTitle className="text-base font-semibold tracking-tight text-white">Cash Flow Status</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={analytics.cashFlowData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={58}
-                    outerRadius={86}
-                    dataKey="value"
-                    paddingAngle={4}
-                    labelLine={false}
-                    stroke="rgba(2,6,23,0.92)"
-                    strokeWidth={3}
-                  >
-                    {analytics.cashFlowData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip contentStyle={chartTooltipStyle} itemStyle={chartItemStyle} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Cash flow status chart showing positive and negative client counts">
+              {clients.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={analytics.cashFlowData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={86}
+                      dataKey="value"
+                      paddingAngle={4}
+                      labelLine={false}
+                      stroke="rgba(2,6,23,0.92)"
+                      strokeWidth={3}
+                    >
+                      {analytics.cashFlowData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip contentStyle={chartTooltipStyle} itemStyle={chartItemStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
+                  <Info className="mb-3 h-8 w-8 text-amber-100/70" />
+                  <p className="text-sm font-semibold text-slate-200">No cash flow data yet</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Import or add clients to populate this chart.</p>
+                </div>
+              )}
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <div className="flex items-center justify-between rounded-2xl border border-emerald-300/15 bg-emerald-400/10 px-3 py-2">
@@ -275,7 +330,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
             <CardTitle className="text-base font-semibold tracking-tight text-white">Portfolio Size Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Portfolio size distribution chart">
               {analytics.portfolioDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analytics.portfolioDistribution} margin={{ top: 12, right: 8, left: -16, bottom: 8 }} barCategoryGap="22%">
@@ -287,8 +342,10 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.025] text-sm font-medium text-slate-400">
-                  No portfolio size data
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
+                  <Info className="mb-3 h-8 w-8 text-amber-100/70" />
+                  <p className="text-sm font-semibold text-slate-200">No portfolio size data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Portfolio values will appear here once client records include property data.</p>
                 </div>
               )}
             </div>
@@ -301,7 +358,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
             <CardTitle className="text-base font-semibold tracking-tight text-white">Property Count Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25">
+            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Property count distribution chart">
               {analytics.propertyDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -325,8 +382,10 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.025] text-sm font-medium text-slate-400">
-                  No property count data
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
+                  <Building2 className="mb-3 h-8 w-8 text-amber-100/70" />
+                  <p className="text-sm font-semibold text-slate-200">No property count data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Property distribution will populate as client portfolios are added.</p>
                 </div>
               )}
             </div>
@@ -344,35 +403,53 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
         </Card>
       </div>
 
-      <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        <CardHeader className="border-b border-white/10 pb-3">
-          <CardTitle className="text-base font-semibold tracking-tight text-white">GoHighLevel Sync Status</CardTitle>
-        </CardHeader>
-        <CardContent className="p-5">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-3 rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4 transition-colors hover:border-emerald-300/30">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium text-emerald-100">Synced</span>
-                <span className="font-bold text-emerald-200">{analytics.syncedCount}</span>
-              </div>
-              <Progress value={(analytics.syncedCount / clients.length) * 100} className="h-2" />
+      <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(3,7,18,0.92))] shadow-xl shadow-black/25 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-teal-200/45 to-amber-200/45 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <CardHeader className="border-b border-white/10 pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold tracking-tight text-white">GoHighLevel Sync Status</CardTitle>
+              <p className="mt-1 text-xs font-medium text-slate-400">Operational health across {clients.length} client records</p>
             </div>
-            <div className="space-y-3 rounded-2xl border border-amber-300/15 bg-amber-400/10 p-4 transition-colors hover:border-amber-300/30">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium text-amber-100">Pending</span>
-                <span className="font-bold text-amber-200">{analytics.pendingCount}</span>
-              </div>
-              <Progress value={(analytics.pendingCount / clients.length) * 100} className="h-2" />
-            </div>
-            <div className="space-y-3 rounded-2xl border border-red-300/15 bg-red-500/10 p-4 transition-colors hover:border-red-300/30">
-              <div className="flex justify-between text-sm">
-                <span className="font-medium text-red-100">Errors</span>
-                <span className="font-bold text-red-200">{analytics.errorCount}</span>
-              </div>
-              <Progress value={(analytics.errorCount / clients.length) * 100} className="h-2" />
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-slate-300">
+              <span className={`h-2 w-2 rounded-full ${analytics.errorCount > 0 ? 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.7)]' : analytics.pendingCount > 0 ? 'bg-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.65)]' : 'bg-teal-300 shadow-[0_0_12px_rgba(45,212,191,0.65)]'}`} />
+              {analytics.errorCount > 0 ? 'Attention needed' : analytics.pendingCount > 0 ? 'Sync in progress' : 'Healthy'}
             </div>
           </div>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-5">
+          <TooltipProvider>
+            <div className="grid gap-4 md:grid-cols-3">
+              {syncStatusItems.map(({ label, value, Icon, description, containerClass, iconClass, labelClass, valueClass, progressClass }) => {
+                const percentage = (value / clients.length) * 100;
+
+                return (
+                  <Tooltip key={label}>
+                    <TooltipTrigger asChild>
+                      <div className={`space-y-4 rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${containerClass}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border shadow-lg ${iconClass}`}>
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className={`text-sm font-semibold ${labelClass}`}>{label}</p>
+                              <p className="text-xs text-slate-400">{Number.isFinite(percentage) ? percentage.toFixed(1) : '0.0'}% of clients</p>
+                            </div>
+                          </div>
+                          <span className={`rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-bold tabular-nums ${valueClass}`}>{value}</span>
+                        </div>
+                        <Progress value={Number.isFinite(percentage) ? percentage : 0} className={`h-3 border border-white/10 ${progressClass}`} />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] text-xs">
+                      {description} Count: {value}.
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </TooltipProvider>
         </CardContent>
       </Card>
     </div>
