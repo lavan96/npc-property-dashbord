@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { cn } from '@/lib/utils';
 
 const requestTypeConfig: Record<string, { label: string; icon: typeof BarChart3; color: string }> = {
@@ -246,13 +247,13 @@ export default function ReportRequests() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-6rem)] overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505] p-3 shadow-2xl shadow-black/40 selection:bg-amber-300/20 selection:text-amber-50 sm:rounded-[2rem] sm:p-6 lg:p-8">
+    <DashboardThemeFrame variant="page" className="relative min-h-[calc(100vh-6rem)] rounded-[1.5rem] border border-border/60 bg-background/80 p-3 shadow-2xl shadow-black/10 selection:bg-primary/20 selection:text-foreground dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/40 sm:rounded-[2rem] sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.18),transparent_32%),radial-gradient(circle_at_85%_12%,rgba(59,130,246,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%)]" />
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-3xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(9,9,11,0.88))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur sm:p-7">
+        <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-5 shadow-lg shadow-primary/5 sm:p-7">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -268,7 +269,7 @@ export default function ReportRequests() {
               <span className="ml-2">total requests</span>
             </div>
           </div>
-        </div>
+        </DashboardThemeFrame>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -313,7 +314,7 @@ export default function ReportRequests() {
         </div>
 
         {/* Filters */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(9,9,11,0.78))] p-3 shadow-xl shadow-black/25 backdrop-blur sm:p-4">
+        <DashboardThemeFrame variant="toolbar" className="relative overflow-hidden p-3 shadow-xl shadow-black/10 sm:p-4 dark:shadow-black/25">
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent" />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="group/search relative flex-1">
@@ -345,7 +346,7 @@ export default function ReportRequests() {
               </SelectContent>
             </Select>
           </div>
-        </div>
+        </DashboardThemeFrame>
 
         {/* Request List */}
         {isLoading ? (
@@ -383,7 +384,7 @@ export default function ReportRequests() {
             </CardContent>
           </Card>
         ) : (
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.84),rgba(9,9,11,0.8))] p-3 shadow-xl shadow-black/25 ring-1 ring-white/[0.03] sm:p-4">
+          <DashboardThemeFrame variant="section" className="relative p-3 shadow-xl shadow-black/10 ring-1 ring-white/[0.03] sm:p-4 dark:shadow-black/25">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
             <div className="space-y-3 sm:space-y-4">
               {filtered.map((req: ReportRequest) => {
@@ -436,7 +437,7 @@ export default function ReportRequests() {
                 );
               })}
             </div>
-          </div>
+          </DashboardThemeFrame>
         )}
       </div>
 
@@ -539,6 +540,6 @@ export default function ReportRequests() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardThemeFrame>
   );
 }
