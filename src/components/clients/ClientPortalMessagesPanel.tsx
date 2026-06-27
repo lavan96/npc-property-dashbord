@@ -231,13 +231,16 @@ export function ClientPortalMessagesPanel({ clientId, clientName }: Props) {
 
       <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.05),transparent_34%)] p-4 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-amber-200/80" />
+            <p className="mt-3 font-medium text-foreground">Loading client messages…</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Preparing the latest client portal conversation.</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
             <MessageCircle className="mx-auto mb-3 h-9 w-9 text-amber-200/65" />
-            <p>No messages yet. Send a message to start the conversation.</p>
+            <p className="font-medium text-foreground">No messages yet. Send a message to start the conversation.</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">This thread is ready when the client conversation begins.</p>
           </div>
         ) : (
           <div className="space-y-3">

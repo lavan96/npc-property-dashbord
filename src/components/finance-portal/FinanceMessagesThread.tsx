@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Send, Paperclip, Download, X, UserCircle2, ShieldCheck } from 'lucide-react';
+import { Loader2, Send, Paperclip, Download, X, ShieldCheck } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -177,15 +177,19 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
   };
 
   return (
-    <div className={cn('flex h-[600px] min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-zinc-950/95 shadow-xl shadow-black/25', className)}>
-      <ScrollArea className="min-h-0 flex-1 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.07),transparent_32%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-5 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
+    <div className={cn('flex flex-col h-[600px] min-h-0 border border-border rounded-lg bg-card overflow-hidden', className)}>
+      <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(139,92,246,0.07),transparent_34%)] p-4 [scrollbar-color:rgba(139,92,246,0.4)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-violet-200/80" /></div>
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-violet-200/80" />
+            <p className="mt-3 font-medium text-foreground">Loading finance messages…</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">Syncing the latest partner thread activity.</p>
+          </div>
         ) : messages.length === 0 ? (
-          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-black/30 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
-            <MessageSquare className="mx-auto mb-3 h-9 w-9 text-amber-200/60" />
-            <p className="font-medium text-foreground">No messages yet</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground/80">Start the conversation below.</p>
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+            <ShieldCheck className="mx-auto mb-3 h-9 w-9 text-violet-200/65" />
+            <p className="font-medium text-foreground">No messages yet. Start the conversation below.</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">This finance channel is ready for partner communication.</p>
           </div>
         ) : (
           <div className="space-y-4 pb-1">
@@ -200,8 +204,8 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                   )}
                   <div className={cn('flex min-w-0 max-w-[min(82%,42rem)] flex-col', mine ? 'items-end' : 'items-start')}>
                   <div className={cn(
-                    'w-fit max-w-full rounded-2xl border px-4 py-3 text-sm leading-6 shadow-lg shadow-black/20 [overflow-wrap:anywhere] whitespace-pre-wrap break-words',
-                    mine ? 'rounded-br-md border-amber-200/50 bg-gradient-to-br from-amber-200 via-amber-300 to-yellow-600 text-zinc-950' : 'rounded-bl-md border-white/10 bg-zinc-900/95 text-zinc-100'
+                    'max-w-[82%] rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15',
+                    mine ? 'border-violet-300/30 bg-gradient-to-br from-violet-300 to-blue-500 text-black' : 'border-blue-300/15 bg-zinc-900/95 text-foreground'
                   )}>
                     {!mine && (
                       <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
@@ -213,8 +217,8 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                       <button
                         onClick={() => downloadAttachment(m.id, m.attachment_filename!)}
                         className={cn(
-                          'mt-3 flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs underline-offset-2 transition-all hover:-translate-y-0.5 hover:underline',
-                          mine ? 'border-black/10 bg-black/10 text-zinc-950' : 'border-amber-300/15 bg-black/25 text-amber-100/90'
+                          'mt-3 flex items-center gap-2 rounded-xl border border-white/10 bg-black/15 px-2.5 py-2 text-xs underline-offset-2 hover:underline',
+                          mine ? 'text-primary-foreground/90' : 'text-foreground/80'
                         )}
                       >
                         <Download className="h-3.5 w-3.5" />
@@ -223,8 +227,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                       </button>
                     )}
                   </div>
-                  <div className={cn('mt-1.5 px-1 text-[10px] font-medium text-muted-foreground/90', mine ? 'text-right' : 'text-left')}>{formatStamp(m.created_at)}</div>
-                  </div>
+                  <div className="mt-1.5 px-1 text-[10px] text-muted-foreground/85">{formatStamp(m.created_at)}</div>
                 </div>
               );
             })}

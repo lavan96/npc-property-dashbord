@@ -244,7 +244,11 @@ export default function Messages() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-10 justify-center rounded-full border-amber-300/20 bg-black/35 px-5 text-amber-100 shadow-sm shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0"
+                aria-busy={refreshing}
+                className={cn(
+                  'h-10 justify-center rounded-full border-amber-300/20 bg-black/35 px-5 text-amber-100 shadow-sm shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0',
+                  refreshing && 'border-amber-300/45 bg-amber-300/10 shadow-[0_0_0_1px_rgba(251,191,36,0.18),0_14px_34px_rgba(245,158,11,0.12)]',
+                )}
                 onClick={() => {
                   loadClientThreads();
                   loadFinanceThreads();
@@ -300,13 +304,18 @@ export default function Messages() {
               </CardHeader>
               <CardContent className="min-h-0 flex-1 p-0">
                 {loadingClient ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-amber-300/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
+                    <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
+                    <p className="mt-3 text-sm font-medium text-foreground">Loading client portal threads…</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Syncing the latest client conversations.</p>
                   </div>
                 ) : filteredClientThreads.length === 0 ? (
                   <div className="m-4 rounded-3xl border border-dashed border-amber-300/15 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
                     <MessageSquare className="mx-auto mb-3 h-8 w-8 text-amber-200/60" />
-                    <p>No client portal messages yet.</p>
+                    <p className="font-medium text-foreground">{search.trim() ? 'No client portal matches found.' : 'No client portal messages yet.'}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {search.trim() ? 'Try a different client, email, or message search.' : 'Client conversations will appear here when portal messages arrive.'}
+                    </p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)] lg:min-h-0">
@@ -378,13 +387,18 @@ export default function Messages() {
               </CardHeader>
               <CardContent className="min-h-0 flex-1 p-0">
                 {loadingFinance ? (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-violet-300/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
+                    <Loader2 className="h-5 w-5 animate-spin text-violet-200/80" />
+                    <p className="mt-3 text-sm font-medium text-foreground">Loading finance portal threads…</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Checking partner-visible finance activity.</p>
                   </div>
                 ) : filteredFinanceGroups.length === 0 ? (
                   <div className="m-4 rounded-3xl border border-dashed border-violet-300/20 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
                     <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-violet-200/65" />
-                    <p>No finance portal threads yet.</p>
+                    <p className="font-medium text-foreground">{search.trim() ? 'No finance portal matches found.' : 'No finance portal threads yet.'}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {search.trim() ? 'Try another client, partner email, or message search.' : 'Finance partner threads will appear here once available.'}
+                    </p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[calc(75vh-72px)] min-h-[420px] [scrollbar-color:rgba(139,92,246,0.42)_rgba(24,24,27,0.9)] lg:min-h-0">

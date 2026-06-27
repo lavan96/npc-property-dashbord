@@ -150,7 +150,13 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
     : 'Finance Portal thread';
 
   if (loading) {
-    return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="mx-auto my-10 max-w-sm rounded-3xl border border-violet-300/15 bg-black/25 px-6 py-8 text-center shadow-xl shadow-black/20">
+        <Loader2 className="mx-auto h-5 w-5 animate-spin text-violet-200/80" />
+        <p className="mt-3 text-sm font-medium text-foreground">Loading finance threads…</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">Preparing partner communication channels.</p>
+      </div>
+    );
   }
 
   if (error && threads.length === 0) {
@@ -158,7 +164,8 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
       <Card className="rounded-3xl border-violet-300/15 bg-black/25 shadow-xl shadow-black/20">
         <CardContent className="py-12 text-center">
           <MessageSquare className="mx-auto mb-3 h-10 w-10 text-violet-200/55" />
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-sm font-medium text-foreground">Finance messages could not load.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{error}</p>
         </CardContent>
       </Card>
     );
@@ -256,7 +263,8 @@ export function StaffFinancePortalMessagesPanel({ clientId }: Props) {
           <Card className="rounded-3xl border-violet-300/15 bg-black/25 shadow-xl shadow-black/20">
             <CardContent className="py-12 text-center">
               <MessageSquare className="mx-auto mb-3 h-10 w-10 text-violet-200/55" />
-              <p className="text-sm text-muted-foreground">Select a thread to view messages</p>
+              <p className="text-sm font-medium text-foreground">Select a thread to view messages</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose one of the governed finance channels from the thread list.</p>
             </CardContent>
           </Card>
         )}
