@@ -74,6 +74,10 @@ const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rou
 const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400";
 const premiumMetricValue = "text-2xl font-bold leading-none tracking-tight md:text-[1.65rem]";
 const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner shadow-black/20 transition-colors hover:border-amber-400/40 hover:bg-amber-400/5 focus-visible:ring-2 focus-visible:ring-amber-400/70";
+const premiumFilterControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-amber-300/70";
+const premiumFilterControlActive = "border-amber-300/45 bg-amber-300/12 text-amber-50 shadow-amber-500/10";
+const premiumSearchInput = "h-11 rounded-2xl border-white/10 bg-black/55 pl-11 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-amber-300/30 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
+const premiumActiveFilterBadge = "rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-100 shadow-sm shadow-amber-500/10";
 const premiumActionBase = "min-h-9 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
 const premiumUtilityAction = `${premiumActionBase} border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-300/45 hover:bg-sky-400/15 hover:text-sky-50 focus-visible:ring-sky-300`;
@@ -695,22 +699,22 @@ const CallLogs = () => {
         <>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
               <Input
                 placeholder="Search calls..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={cn("pl-9", premiumControl)}
+                className={premiumSearchInput}
               />
             </div>
             <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="shrink-0">
+                <Button variant="outline" size="icon" className={cn("h-11 w-11 shrink-0", premiumFilterControl)}>
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
-                <SheetHeader className="p-4 border-b">
+              <SheetContent side="bottom" className="flex h-[70vh] flex-col border-white/10 bg-zinc-950/95 p-0 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                <SheetHeader className="border-b border-white/10 bg-amber-300/5 p-4">
                   <SheetTitle className="flex items-center gap-2">
                     <Filter className="h-5 w-5" />
                     Call Filters
@@ -721,7 +725,7 @@ const CallLogs = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Agent</label>
                       <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className={cn("w-full", premiumFilterControl, selectedAgent !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="All Agents" />
                         </SelectTrigger>
                         <SelectContent>
@@ -735,7 +739,7 @@ const CallLogs = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Outcome</label>
                       <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className={cn("w-full", premiumFilterControl, selectedOutcome !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="All Outcomes" />
                         </SelectTrigger>
                         <SelectContent>
@@ -760,7 +764,7 @@ const CallLogs = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Call Type</label>
                       <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className={cn("w-full", premiumFilterControl, selectedSquadType !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="Call Type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -773,7 +777,7 @@ const CallLogs = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Intent</label>
                       <Select value={selectedIntent} onValueChange={setSelectedIntent}>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className={cn("w-full", premiumFilterControl, selectedIntent !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="Intent" />
                         </SelectTrigger>
                         <SelectContent>
@@ -787,7 +791,7 @@ const CallLogs = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Tags</label>
-                      <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} />
+                      <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} triggerClassName={cn(premiumFilterControl, selectedTags.length > 0 && premiumFilterControlActive)} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Date Range</label>
@@ -800,7 +804,7 @@ const CallLogs = () => {
                     </div>
                     <Button 
                       variant="outline" 
-                      className="w-full"
+                      className={cn("w-full", premiumFilterControl)}
                       onClick={() => {
                         setSearchQuery('');
                         setSelectedAgent('all');
@@ -822,7 +826,7 @@ const CallLogs = () => {
           {/* Active filter count badge */}
           {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedIntent !== 'all' || selectedTags.length > 0 || dateRange) && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className={premiumActiveFilterBadge}>
                 {[selectedAgent !== 'all', selectedOutcome !== 'all', selectedSquadType !== 'all', selectedIntent !== 'all', selectedTags.length > 0, !!dateRange].filter(Boolean).length} filter(s) active
               </Badge>
               <Button 
@@ -846,22 +850,23 @@ const CallLogs = () => {
           )}
         </>
       ) : (
-        <Card className={cn(premiumPanel, "rounded-2xl")}>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-3">
-              <div className="flex-1 min-w-[200px]">
+        <Card className={cn(premiumPanel, "relative overflow-hidden rounded-3xl border-amber-300/10")}>
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
+          <CardContent className="p-4 md:p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="min-w-[260px] flex-[1.5]">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
                   <Input
                     placeholder="Search by phone, name, or summary..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className={cn("pl-9", premiumControl)}
+                    className={premiumSearchInput}
                   />
                 </div>
               </div>
               <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                <SelectTrigger className={cn("w-[180px]", premiumControl)}>
+                <SelectTrigger className={cn("w-[180px]", premiumFilterControl, selectedAgent !== 'all' && premiumFilterControlActive)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
@@ -873,7 +878,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
-                <SelectTrigger className={cn("w-[180px]", premiumControl)}>
+                <SelectTrigger className={cn("w-[180px]", premiumFilterControl, selectedOutcome !== 'all' && premiumFilterControlActive)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Outcomes" />
                 </SelectTrigger>
@@ -896,7 +901,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
-                <SelectTrigger className={cn("w-[160px]", premiumControl)}>
+                <SelectTrigger className={cn("w-[160px]", premiumFilterControl, selectedSquadType !== 'all' && premiumFilterControlActive)}>
                   <Users className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Call Type" />
                 </SelectTrigger>
@@ -908,7 +913,7 @@ const CallLogs = () => {
               </Select>
               {squads.length > 0 && (
                 <Select value={selectedSquad} onValueChange={setSelectedSquad}>
-                  <SelectTrigger className={cn("w-[200px]", premiumControl)}>
+                  <SelectTrigger className={cn("w-[200px]", premiumFilterControl, selectedSquad !== 'all' && premiumFilterControlActive)}>
                     <GitBranch className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="All Squads" />
                   </SelectTrigger>
@@ -921,7 +926,7 @@ const CallLogs = () => {
                 </Select>
               )}
               <Select value={selectedIntent} onValueChange={setSelectedIntent}>
-                <SelectTrigger className={cn("w-[160px]", premiumControl)}>
+                <SelectTrigger className={cn("w-[160px]", premiumFilterControl, selectedIntent !== 'all' && premiumFilterControlActive)}>
                   <Target className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Intent" />
                 </SelectTrigger>
@@ -933,7 +938,7 @@ const CallLogs = () => {
                   <SelectItem value="general_inquiry">General Inquiry</SelectItem>
                 </SelectContent>
               </Select>
-              <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} />
+              <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} triggerClassName={cn(premiumFilterControl, selectedTags.length > 0 && premiumFilterControlActive)} />
               
               {/* Date Range Picker */}
               <Popover>
@@ -941,8 +946,9 @@ const CallLogs = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal", premiumControl,
-                      !dateRange && "text-muted-foreground"
+                      "w-[240px] justify-start text-left font-normal", premiumFilterControl,
+                      dateRange && premiumFilterControlActive,
+                      !dateRange && "text-zinc-500"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -1035,12 +1041,12 @@ const CallLogs = () => {
             {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedSquad !== 'all' || selectedIntent !== 'all' || searchQuery || dateRange) && (
               <div className="flex items-center gap-2 flex-wrap">
                 {searchQuery && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className={premiumActiveFilterBadge}>
                     Search: "{searchQuery}"
                   </Badge>
                 )}
                 {dateRange?.from && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className={premiumActiveFilterBadge}>
                     <CalendarIcon className="w-3 h-3 mr-1" />
                     {dateRange.to 
                       ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d")}`
