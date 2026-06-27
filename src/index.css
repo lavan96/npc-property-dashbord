@@ -2975,6 +2975,59 @@ html {
     background: linear-gradient(180deg, hsl(43 74% 49% / 0.08), transparent);
   }
 
+  .report-qa-hero .report-qa-icon-button,
+  .report-qa-hero .report-qa-history-button {
+    border: 1px solid hsl(43 30% 52% / 0.28);
+    background: hsl(0 0% 100% / 0.045);
+    color: hsl(43 36% 88%);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+  }
+
+  .report-qa-hero .report-qa-icon-button:hover,
+  .report-qa-hero .report-qa-history-button:hover {
+    border-color: hsl(43 74% 62% / 0.55);
+    background: hsl(43 74% 49% / 0.1);
+    color: hsl(43 70% 92%);
+    box-shadow: 0 10px 28px hsl(0 0% 0% / 0.24), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+    transform: translateY(-1px);
+  }
+
+  .report-qa-hero .report-qa-icon-button:focus-visible,
+  .report-qa-hero .report-qa-history-button:focus-visible,
+  .report-qa-hero .report-qa-new-chat:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(43 74% 49% / 0.42), 0 14px 34px hsl(0 0% 0% / 0.28);
+  }
+
+  .report-qa-hero .report-qa-icon-button:active,
+  .report-qa-hero .report-qa-history-button:active,
+  .report-qa-hero .report-qa-new-chat:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .report-qa-hero .report-qa-new-chat {
+    border: 1px solid hsl(43 74% 66% / 0.55);
+    background: linear-gradient(135deg, hsl(43 91% 62%), hsl(38 84% 49%));
+    color: hsl(32 28% 8%);
+    box-shadow: 0 12px 32px hsl(43 74% 49% / 0.26), inset 0 1px 0 hsl(0 0% 100% / 0.35);
+    transition: transform 180ms ease, filter 180ms ease, box-shadow 180ms ease;
+  }
+
+  .report-qa-hero .report-qa-new-chat:hover {
+    filter: brightness(1.06);
+    box-shadow: 0 16px 42px hsl(43 74% 49% / 0.34), inset 0 1px 0 hsl(0 0% 100% / 0.4);
+    transform: translateY(-1px);
+  }
+
+  .report-qa-hero .report-qa-history-badge {
+    border: 1px solid hsl(43 74% 66% / 0.45);
+    background: hsl(43 74% 49% / 0.18);
+    color: hsl(43 85% 86%);
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.1);
+  }
+
+
   .report-qa-dropzone {
     background:
       linear-gradient(135deg, hsl(43 74% 49% / 0.07), transparent),
