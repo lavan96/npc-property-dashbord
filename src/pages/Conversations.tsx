@@ -37,6 +37,10 @@ import {
   CheckCircle2,
   XCircle,
   ShieldCheck,
+  AlertTriangle,
+  Inbox,
+  FilterX,
+  MessagesSquare,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -172,6 +176,7 @@ export default function Conversations() {
   const [selectedMailbox, setSelectedMailbox] = useState<string>('admin');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncErrorMessage, setSyncErrorMessage] = useState<string | null>(null);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isExportingHistory, setIsExportingHistory] = useState(false);
   const [exportJobStatus, setExportJobStatus] = useState<ExportJobStatus | null>(null);
@@ -185,6 +190,7 @@ export default function Conversations() {
   // ── Sync from GHL API then refetch local data ──
   const handleSyncAndRefresh = async () => {
     setIsSyncing(true);
+    setSyncErrorMessage(null);
     try {
       await triggerGhlSync();
       await refetchConversations();
@@ -192,9 +198,12 @@ export default function Conversations() {
         queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] });
       }
       toast.success('Conversations synced from GHL');
+      setSyncErrorMessage(null);
     } catch (err: any) {
       console.error('GHL sync failed:', err);
-      toast.error('Sync failed: ' + err.message);
+      const message = err?.message || 'Unknown sync error';
+      setSyncErrorMessage(message);
+      toast.error('Sync failed: ' + message);
       // Still refetch local data
       await refetchConversations();
     } finally {
@@ -250,7 +259,7 @@ export default function Conversations() {
   );
 
   // ── Fetch messages for selected conversation ──
-  const { data: messages = [], isLoading: loadingMessages } = useQuery({
+  const { data: messages = [], isLoading: loadingMessages, error: messagesError, refetch: refetchMessages } = useQuery({
     queryKey: ['conversation-messages', selectedId],
     queryFn: async () => {
       if (!selectedId) return [];
@@ -813,6 +822,33 @@ export default function Conversations() {
         </div>
       )}
 
+
+      {syncErrorMessage && (
+        <div className="mt-3 shrink-0 overflow-hidden rounded-2xl border border-amber-200/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(135deg,rgba(69,26,3,0.32),rgba(9,9,11,0.9))] px-4 py-3 shadow-xl shadow-black/25 backdrop-blur-xl">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-amber-200/35 bg-amber-300/12 text-amber-100 shadow-[0_0_22px_rgba(245,158,11,0.18)]">
+                <AlertTriangle className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-amber-50">Sync could not complete</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-amber-100/70">{syncErrorMessage}</p>
+                <p className="mt-1 text-[11px] text-zinc-400">Your current conversation data remains visible. Retry when the CRM connection is available.</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button size="sm" variant="outline" className="rounded-full border-amber-200/35 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15" onClick={handleSyncAndRefresh} disabled={isSyncing || loadingConversations}>
+                <RefreshCw className={cn('mr-1.5 h-3.5 w-3.5', isSyncing && 'animate-spin')} />
+                Retry sync
+              </Button>
+              <Button size="sm" variant="ghost" className="rounded-full text-zinc-300 hover:bg-white/10 hover:text-white" onClick={() => setSyncErrorMessage(null)}>
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
@@ -883,29 +919,51 @@ export default function Conversations() {
             <ScrollArea className="min-h-0 flex-1 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.055),transparent_34%)] [scrollbar-color:rgba(113,113,122,0.65)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-zinc-600/80">
               {loadingConversations ? (
                 <div className="space-y-3.5 p-4">
+                  <div className="mb-1 flex items-center gap-2 rounded-2xl border border-amber-200/15 bg-amber-300/[0.045] px-3 py-2 text-xs font-medium text-amber-100/80">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Preparing your CRM inbox…
+                  </div>
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 rounded-2xl border border-white/[0.055] bg-white/[0.025] p-3.5">
-                      <Skeleton className="h-10 w-10 rounded-full shrink-0" />
-                      <div className="flex-1 space-y-1.5">
-                        <Skeleton className="h-3.5 w-32" />
-                        <Skeleton className="h-3 w-full" />
+                    <div key={i} className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                      <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/[0.055] to-transparent" />
+                      <div className="relative flex items-center gap-3">
+                        <Skeleton className="h-12 w-12 shrink-0 rounded-2xl bg-white/10" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-3.5 w-36 bg-white/10" />
+                          <Skeleton className="h-3 w-full bg-white/10" />
+                          <Skeleton className="h-3 w-2/3 bg-white/10" />
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : conversationsError ? (
-                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-red-400/20 bg-red-500/[0.055] px-5 py-14 text-center shadow-inner shadow-black/20">
-                  <XCircle className="mb-3 h-8 w-8 text-red-300/80" />
-                  <p className="text-sm font-semibold text-red-100">Unable to load conversations</p>
-                  <p className="mt-1 max-w-[22rem] text-xs leading-5 text-red-100/60">Conversation data is unchanged. Try refreshing the inbox or syncing again.</p>
+                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-rose-300/20 bg-[radial-gradient(circle_at_top,rgba(244,63,94,0.12),transparent_34%),rgba(255,255,255,0.025)] px-5 py-14 text-center shadow-inner shadow-black/20">
+                  <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-200/25 bg-rose-400/10 text-rose-100"><AlertTriangle className="h-5 w-5" /></span>
+                  <p className="text-sm font-semibold text-rose-50">Unable to load conversations</p>
+                  <p className="mt-2 max-w-[22rem] text-xs leading-5 text-rose-100/65">Conversation data could not be refreshed. Your workflow has not been changed.</p>
+                  <Button size="sm" variant="outline" className="mt-4 rounded-full border-rose-200/25 bg-rose-400/10 text-rose-50 hover:bg-rose-400/15" onClick={() => refetchConversations()}>
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />Retry
+                  </Button>
                 </div>
               ) : filteredConversations.length === 0 ? (
-                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-white/[0.08] bg-white/[0.025] px-5 py-14 text-center text-zinc-400 shadow-inner shadow-black/20">
-                  <MessageSquare className="mb-3 h-8 w-8 text-amber-100/45" />
-                  <p className="text-sm font-semibold text-zinc-100">No conversations found</p>
-                  <p className="mt-1 max-w-[22rem] text-xs leading-5 text-zinc-500">
-                    {searchTerm || channelFilter !== 'all' ? 'Try adjusting your filters' : 'Conversations will appear when messages are synced'}
+                <div className="mx-3 mt-4 flex flex-col items-center justify-center rounded-3xl border border-white/[0.09] bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.10),transparent_34%),rgba(255,255,255,0.025)] px-5 py-14 text-center text-zinc-400 shadow-inner shadow-black/20">
+                  <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-100/20 bg-amber-300/10 text-amber-100/80">
+                    {conversations.length === 0 ? <Inbox className="h-5 w-5" /> : channelFilter !== 'all' ? <FilterX className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+                  </span>
+                  <p className="text-sm font-semibold text-zinc-100">{conversations.length === 0 ? 'No conversations yet' : channelFilter !== 'all' ? 'No conversations for this channel' : 'No search results'}</p>
+                  <p className="mt-2 max-w-[22rem] text-xs leading-5 text-zinc-500">
+                    {conversations.length === 0
+                      ? 'Synced CRM conversations will appear here without adding sample data.'
+                      : channelFilter !== 'all'
+                        ? 'Try another channel or reset filters to review the full inbox.'
+                        : 'Try a different contact name or message keyword.'}
                   </p>
+                  {(searchTerm || channelFilter !== 'all') && (
+                    <Button size="sm" variant="outline" className="mt-4 rounded-full border-amber-200/25 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15" onClick={() => { setSearchTerm(''); setChannelFilter('all'); }}>
+                      Reset filters
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2.5 p-3">
@@ -1086,13 +1144,35 @@ export default function Conversations() {
                 <ScrollArea className="min-h-0 flex-1 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.035),transparent_38%)]">
                   <div className="mx-auto w-full max-w-5xl px-4 py-5 md:px-6">
                     {loadingMessages ? (
-                      <div className="flex items-center justify-center py-16">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <div className="mx-auto max-w-3xl space-y-4 py-8">
+                        <div className="mx-auto mb-2 flex w-fit items-center gap-2 rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-3 py-2 text-xs font-medium text-amber-100/80">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Loading message thread…
+                        </div>
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className={cn('flex', i % 2 ? 'justify-end' : 'justify-start')}>
+                            <div className="w-[min(30rem,78%)] rounded-3xl border border-white/[0.07] bg-white/[0.035] p-3.5 shadow-lg">
+                              <Skeleton className="mb-2 h-3 w-24 bg-white/10" />
+                              <Skeleton className="h-3 w-full bg-white/10" />
+                              <Skeleton className="mt-2 h-3 w-2/3 bg-white/10" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : messagesError ? (
+                      <div className="mx-auto mt-8 flex max-w-md flex-col items-center justify-center rounded-3xl border border-rose-300/20 bg-[radial-gradient(circle_at_top,rgba(244,63,94,0.12),transparent_34%),rgba(255,255,255,0.025)] px-6 py-12 text-center shadow-inner shadow-black/20">
+                        <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-200/25 bg-rose-400/10 text-rose-100"><AlertTriangle className="h-5 w-5" /></span>
+                        <p className="text-sm font-semibold text-rose-50">Unable to load messages</p>
+                        <p className="mt-2 text-xs leading-5 text-rose-100/65">This conversation is selected, but the message thread could not be fetched.</p>
+                        <Button size="sm" variant="outline" className="mt-4 rounded-full border-rose-200/25 bg-rose-400/10 text-rose-50 hover:bg-rose-400/15" onClick={() => refetchMessages()}>
+                          <RefreshCw className="mr-1.5 h-3.5 w-3.5" />Retry messages
+                        </Button>
                       </div>
                     ) : messages.length === 0 ? (
-                      <div className="text-center py-16 text-muted-foreground">
-                        <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-40" />
-                        <p className="text-xs">No messages in this conversation</p>
+                      <div className="mx-auto mt-8 flex max-w-md flex-col items-center justify-center rounded-3xl border border-white/[0.09] bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.10),transparent_34%),rgba(255,255,255,0.025)] px-6 py-12 text-center text-zinc-400 shadow-inner shadow-black/20">
+                        <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-100/20 bg-amber-300/10 text-amber-100/80"><MessagesSquare className="h-5 w-5" /></span>
+                        <p className="text-sm font-semibold text-zinc-100">No messages in this conversation</p>
+                        <p className="mt-2 text-xs leading-5 text-zinc-500">When this contact sends or receives CRM messages, the thread will appear here.</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
