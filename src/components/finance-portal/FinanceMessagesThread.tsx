@@ -238,7 +238,6 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
                   <div className="mt-1.5 px-1 text-[10px] text-muted-foreground/85">{formatStamp(m.created_at)}</div>
                   </div>
                 </div>
-                </div>
               );
             })}
           </div>
