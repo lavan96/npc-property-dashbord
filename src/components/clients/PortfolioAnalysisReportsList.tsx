@@ -4,6 +4,7 @@ import { smartCapitalize } from '@/lib/nameUtils';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { secureStorageDownload } from '@/hooks/useSecureStorage';
 import { FlattenPdfMenuItem } from '@/components/common/FlattenPdfMenuItem';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -300,7 +301,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
         <>
           {/* Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-xl shadow-black/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:ring-1 hover:ring-primary/20 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.14)] dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/25 sm:min-h-[168px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Total Reports</CardTitle>
@@ -314,7 +315,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </CardContent>
             </Card>
 
-            <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.96),rgba(10,10,12,0.94)_52%,rgba(0,0,0,0.9))] shadow-xl shadow-black/25 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/40 hover:ring-1 hover:ring-amber-300/20 hover:shadow-[0_22px_60px_rgba(245,158,11,0.14)] sm:min-h-[168px]">
+            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-xl shadow-black/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:ring-1 hover:ring-primary/20 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.14)] dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/25 sm:min-h-[168px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Avg Health Score</CardTitle>
@@ -336,7 +337,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </CardContent>
             </Card>
 
-            <Card className="group relative overflow-hidden rounded-3xl border-amber-300/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_34%),linear-gradient(145deg,rgba(24,18,8,0.98),rgba(10,10,12,0.96)_55%,rgba(0,0,0,0.92))] shadow-xl shadow-black/25 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:ring-1 hover:ring-amber-200/25 hover:shadow-[0_24px_70px_rgba(245,158,11,0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
+            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-primary/25 bg-gradient-to-br from-primary/15 via-card/90 to-card shadow-xl shadow-primary/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/55 hover:ring-1 hover:ring-primary/25 hover:shadow-[0_24px_70px_hsl(var(--primary)/0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent opacity-80" />
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
                 <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-amber-100/75">Combined Portfolio</CardTitle>
@@ -352,7 +353,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
           </div>
 
           {/* Search and Actions */}
-          <div className="flex flex-col gap-3 rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(0,0,0,0.42))] p-3 shadow-lg shadow-black/15 backdrop-blur transition-all duration-300 hover:border-amber-300/20 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <DashboardThemeFrame variant="toolbar" className="flex-col rounded-3xl p-3 transition-all duration-300 hover:border-primary/30 sm:flex-row sm:items-center sm:justify-between sm:p-4">
             <div className="relative flex-1 sm:max-w-lg">
               <div className="pointer-events-none absolute left-3.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl border border-amber-300/15 bg-amber-300/10 text-amber-200/80">
                 <Search className="h-4 w-4" />
@@ -375,7 +376,7 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin text-amber-200' : 'text-amber-200/85'}`} />
               Refresh
             </Button>
-          </div>
+          </DashboardThemeFrame>
         </>
       )}
 
