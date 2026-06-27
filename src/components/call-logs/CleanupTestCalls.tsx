@@ -29,9 +29,11 @@ const DEFAULT_TEST_NUMBERS = [
 
 interface CleanupTestCallsProps {
   onComplete?: () => void;
+  testNumbersButtonClassName?: string;
+  flushButtonClassName?: string;
 }
 
-export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
+export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flushButtonClassName }: CleanupTestCallsProps) => {
   const { toast } = useToast();
   const { cleanupTestCalls } = useSecureCallLogs();
   const [isLoading, setIsLoading] = useState(false);
@@ -116,8 +118,8 @@ export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
       {/* Manage Numbers Popover */}
       <Popover open={isManageOpen} onOpenChange={setIsManageOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Settings2 className="w-4 h-4" />
+          <Button variant="outline" size="sm" className={`gap-2 ${testNumbersButtonClassName || ''}`}>
+            <Settings2 className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Test Numbers ({testNumbers.length})</span>
           </Button>
         </PopoverTrigger>
@@ -191,10 +193,10 @@ export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
           <Button 
             variant="outline" 
             size="sm" 
-            className="gap-2 text-destructive hover:text-destructive"
+            className={`gap-2 text-destructive hover:text-destructive ${flushButtonClassName || ''}`}
             disabled={testNumbers.length === 0}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Flush Test Calls</span>
           </Button>
         </AlertDialogTrigger>
