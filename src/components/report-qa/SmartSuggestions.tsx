@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Sparkles, TrendingUp, AlertTriangle, DollarSign, MapPin, BarChart3 } from 'lucide-react';
 
 interface SmartSuggestionsProps {
@@ -71,24 +70,26 @@ export function SmartSuggestions({
   const suggestions = getSuggestions();
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Sparkles className="h-3 w-3" />
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary shadow-sm">
+          <Sparkles className="h-3.5 w-3.5" />
+        </span>
         <span>Smart suggestions</span>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         {suggestions.map((s, idx) => {
           const Icon = iconMap[s.icon] || TrendingUp;
           return (
-            <Badge
+            <button
               key={idx}
-              variant="outline"
-              className="cursor-pointer hover:bg-primary/10 hover:border-primary/50 transition-colors flex items-center gap-1.5 py-1.5 px-3"
+              type="button"
+              className="report-qa-suggestion-chip group inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-left text-xs font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               onClick={() => onSelect(s.text)}
             >
-              <Icon className="h-3 w-3 text-primary" />
-              {s.text}
-            </Badge>
+              <Icon className="h-3.5 w-3.5 shrink-0 text-primary transition-transform duration-200 group-hover:scale-110" />
+              <span className="min-w-0 whitespace-normal leading-snug">{s.text}</span>
+            </button>
           );
         })}
       </div>
