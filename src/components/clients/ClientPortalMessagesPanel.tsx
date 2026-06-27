@@ -93,6 +93,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
   const [route, setRoute] = useState<MessageRoute>('client_only');
   const [financeAllocationStatus, setFinanceAllocationStatus] = useState<FinanceAllocationStatus>('finance_action_required');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastCountRef = useRef(0);
 
   const load = useCallback(async (markRead = false) => {
@@ -133,6 +134,13 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
       supabase.removeChannel(channel);
     };
   }, [clientId, load]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+  }, [draft]);
 
   useEffect(() => {
     if (messages.length !== lastCountRef.current) {
@@ -347,6 +355,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
         )}
         <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
+            ref={textareaRef}
             placeholder={
               route === 'client_finance' ? 'Message the client and allocate this thread to Finance...'
               : route === 'internal' ? 'Add an internal staff-only note...'

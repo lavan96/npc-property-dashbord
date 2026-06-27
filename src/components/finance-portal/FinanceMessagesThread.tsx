@@ -64,6 +64,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
   const [attachment, setAttachment] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastCountRef = useRef(0);
 
@@ -90,8 +91,14 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
     load(true);
     const id = setInterval(() => load(true), pollMs);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+  }, [draft]);
 
   useEffect(() => {
     if (messages.length !== lastCountRef.current) {
@@ -194,7 +201,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
             <p className="mt-1 text-xs leading-5 text-muted-foreground">This finance channel is ready for partner communication.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4 pb-1">
             {messages.map(m => {
               const mine = m.sender_type === viewerSide;
               return (
@@ -243,6 +250,7 @@ export function FinanceMessagesThread({ threadId, viewerSide, invoke, onMessageS
         )}
         <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
           <Textarea
+            ref={textareaRef}
             placeholder="Write a message..."
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
