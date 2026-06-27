@@ -1824,7 +1824,7 @@ export default function EmailCopilot() {
             size="icon" 
             onClick={toggleSoundNotifications}
             title={soundEnabled ? 'Disable sound notifications' : 'Enable sound notifications'}
-            className="h-9 w-9 rounded-xl border border-border/70 bg-background/65 shadow-sm hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+            className="h-9 w-9 rounded-xl border border-border/70 bg-background/65 shadow-sm transition-all hover:-translate-y-px hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_18px_hsl(var(--primary)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
           >
             {soundEnabled ? (
               <Bell className="h-4 w-4 text-primary" />
@@ -1837,7 +1837,7 @@ export default function EmailCopilot() {
             size="icon" 
             onClick={toggleBrowserNotifications}
             title={browserNotificationsEnabled ? 'Disable browser notifications' : 'Enable browser notifications'}
-            className="h-9 w-9 rounded-xl border border-border/70 bg-background/65 shadow-sm hover:border-green-400/35 hover:bg-green-500/10 hover:text-green-400 focus-visible:ring-green-400/35"
+            className="h-9 w-9 rounded-xl border border-border/70 bg-background/65 shadow-sm transition-all hover:-translate-y-px hover:border-green-400/45 hover:bg-green-500/10 hover:text-green-400 hover:shadow-[0_0_18px_hsl(142_71%_45%/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/40"
           >
             {browserNotificationsEnabled ? (
               <Bell className="h-4 w-4 text-green-500" />
@@ -1852,7 +1852,7 @@ export default function EmailCopilot() {
               value={selectedMailbox}
               onValueChange={(value: 'admin' | 'personal') => setSelectedMailbox(value)}
             >
-              <SelectTrigger className="h-9 w-auto min-w-[138px] rounded-xl border-primary/25 bg-background/75 text-xs shadow-sm hover:border-primary/45 hover:bg-primary/5 focus:ring-primary/30 md:min-w-[156px] md:text-sm">
+              <SelectTrigger className="h-9 w-auto min-w-[138px] rounded-xl border-primary/25 bg-background/75 text-xs shadow-sm transition-all hover:border-primary/55 hover:bg-primary/5 hover:shadow-[0_0_18px_hsl(var(--primary)/0.10)] focus:ring-2 focus:ring-primary/40 md:min-w-[156px] md:text-sm">
                 <Inbox className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                 <SelectValue placeholder="Select mailbox" />
               </SelectTrigger>
@@ -1871,17 +1871,17 @@ export default function EmailCopilot() {
             </Select>
           )}
 
-          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl border-border/70 bg-background/65 px-2.5 shadow-sm hover:border-amber-300/40 hover:bg-amber-500/10 hover:text-amber-200 focus-visible:ring-amber-300/35" onClick={() => setShowScheduledList(true)} title="Scheduled sends">
+          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl border-border/70 bg-background/65 px-2.5 shadow-sm transition-all hover:-translate-y-px hover:border-amber-300/50 hover:bg-amber-500/10 hover:text-amber-200 hover:shadow-[0_0_18px_hsl(43_74%_49%/0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40" onClick={() => setShowScheduledList(true)} title="Scheduled sends">
             <Clock className="h-3.5 w-3.5" />
             {scheduledSends.length > 0 && <Badge variant="secondary" className="h-4 px-1 text-[10px]">{scheduledSends.length}</Badge>}
           </Button>
-          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl border-purple-400/20 bg-background/65 px-2.5 shadow-sm hover:border-purple-300/40 hover:bg-purple-500/10 hover:text-purple-200 focus-visible:ring-purple-300/35" onClick={() => setShowSnippetManager(true)} title="Snippet library">
+          <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-xl border-purple-400/20 bg-background/65 px-2.5 shadow-sm transition-all hover:-translate-y-px hover:border-purple-300/45 hover:bg-purple-500/10 hover:text-purple-200 hover:shadow-[0_0_18px_hsl(270_91%_65%/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/40" onClick={() => setShowSnippetManager(true)} title="Snippet library">
             <Sparkles className="h-3.5 w-3.5" />
           </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/70 bg-background/65 shadow-sm hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/35 md:w-auto md:px-3">
+              <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/70 bg-background/65 shadow-sm transition-all hover:-translate-y-px hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_18px_hsl(var(--primary)/0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:w-auto md:px-3">
                 <MoreVertical className="h-4 w-4 md:mr-2" />
                 <span className="hidden md:inline">Options</span>
               </Button>
@@ -1889,7 +1889,7 @@ export default function EmailCopilot() {
             <DropdownMenuContent align="end" className="rounded-xl border-primary/15 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur">
               {!personalMailbox && (
                 <>
-                  <DropdownMenuItem onClick={() => setShowMailboxSettings(true)}>
+                  <DropdownMenuItem onClick={() => setShowMailboxSettings(true)} className="rounded-lg transition-colors focus:bg-primary/10 focus:text-primary">
                     <Settings className="h-4 w-4 mr-2" />
                     Configure Personal Mailbox
                   </DropdownMenuItem>
@@ -1898,27 +1898,27 @@ export default function EmailCopilot() {
               )}
               {personalMailbox && (
                 <>
-                  <DropdownMenuItem onClick={() => setShowMailboxSettings(true)}>
+                  <DropdownMenuItem onClick={() => setShowMailboxSettings(true)} className="rounded-lg transition-colors focus:bg-primary/10 focus:text-primary">
                     <Settings className="h-4 w-4 mr-2" />
                     Edit Personal Mailbox
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuItem onClick={handleClearAllEmails} className="text-destructive">
+              <DropdownMenuItem onClick={handleClearAllEmails} className="rounded-lg text-destructive transition-colors focus:bg-destructive/10 focus:text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Clear All Emails
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-emerald-400/25 bg-background/65 shadow-sm transition-all hover:border-emerald-300/45 hover:bg-emerald-500/10 hover:text-emerald-200 focus-visible:ring-emerald-300/35 disabled:cursor-not-allowed disabled:border-amber-300/25 disabled:bg-amber-500/10 disabled:text-amber-100 disabled:opacity-80 md:w-auto md:px-3" onClick={handleSyncOutlook} disabled={isSyncing}>
+          <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-emerald-400/25 bg-background/65 shadow-sm transition-all hover:-translate-y-px hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_0_20px_hsl(43_74%_49%/0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/40 disabled:cursor-not-allowed disabled:border-amber-300/25 disabled:bg-amber-500/10 disabled:text-amber-100 disabled:opacity-80 md:w-auto md:px-3" onClick={handleSyncOutlook} disabled={isSyncing}>
             <span className="relative inline-flex">
               {isSyncing && <span className="absolute -right-1 -top-1 h-2 w-2 animate-ping rounded-full bg-amber-300/70" />}
               <RefreshCw className={`h-4 w-4 md:mr-2 ${isSyncing ? 'animate-spin text-amber-200' : ''}`} />
             </span>
             <span className="hidden md:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
           </Button>
-          <Button size="icon" className="h-9 w-9 rounded-xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary)/0.82))] text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40 hover:brightness-110 focus-visible:ring-primary/45 active:translate-y-0 md:w-auto md:px-4" onClick={() => setShowComposeModal(true)}>
+          <Button size="icon" className="h-9 w-9 rounded-xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary)/0.82))] text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_0_28px_hsl(var(--primary)/0.28)] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 active:translate-y-0 md:w-auto md:px-4" onClick={() => setShowComposeModal(true)}>
             <Plus className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">Compose</span>
           </Button>
@@ -1959,10 +1959,10 @@ export default function EmailCopilot() {
             <div className="mb-3 flex gap-1.5 rounded-2xl border border-primary/10 bg-background/45 p-1.5 shadow-inner shadow-black/10">
               <button
                 onClick={() => { setViewMode('inbox'); setSelectedSentReply(null); }}
-                className={`flex-1 flex items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                className={`flex-1 flex items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-0 ${
                   viewMode === 'inbox'
-                    ? 'bg-primary/15 text-primary shadow-md shadow-primary/10 ring-1 ring-primary/35'
-                    : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
+                    ? 'bg-primary/15 text-primary shadow-md shadow-primary/15 ring-1 ring-primary/45'
+                    : 'text-muted-foreground hover:-translate-y-px hover:bg-primary/10 hover:text-foreground hover:shadow-[0_0_18px_hsl(var(--primary)/0.10)]'
                 }`}
               >
                 <Inbox className="h-4 w-4 shrink-0" />
@@ -1973,10 +1973,10 @@ export default function EmailCopilot() {
               </button>
               <button
                 onClick={() => { setViewMode('sent'); setSelectedEmail(null); }}
-                className={`flex-1 flex items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                className={`flex-1 flex items-center justify-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-0 ${
                   viewMode === 'sent'
-                    ? 'bg-primary/15 text-primary shadow-md shadow-primary/10 ring-1 ring-primary/35'
-                    : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
+                    ? 'bg-primary/15 text-primary shadow-md shadow-primary/15 ring-1 ring-primary/45'
+                    : 'text-muted-foreground hover:-translate-y-px hover:bg-primary/10 hover:text-foreground hover:shadow-[0_0_18px_hsl(var(--primary)/0.10)]'
                 }`}
               >
                 <Send className="h-4 w-4 shrink-0" />
@@ -1997,12 +1997,12 @@ export default function EmailCopilot() {
                     placeholder="Search emails..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-10 rounded-2xl border-primary/15 bg-background/75 pl-10 pr-9 text-sm shadow-inner shadow-black/10 placeholder:text-muted-foreground/70 transition-all focus-visible:border-primary/55 focus-visible:ring-2 focus-visible:ring-primary/35"
+                    className="h-10 rounded-2xl border-primary/15 bg-background/75 pl-10 pr-9 text-sm shadow-inner shadow-black/10 placeholder:text-muted-foreground/70 transition-all focus-visible:border-primary/65 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_14px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -2012,7 +2012,7 @@ export default function EmailCopilot() {
                 {/* Filters */}
                 <div className="flex flex-wrap items-center gap-2">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-9 min-w-[150px] flex-1 rounded-xl border-primary/15 bg-background/75 text-xs shadow-sm transition-colors hover:border-primary/45 hover:bg-primary/5 focus:ring-primary/35">
+                    <SelectTrigger className="h-9 min-w-[150px] flex-1 rounded-xl border-primary/15 bg-background/75 text-xs shadow-sm transition-all hover:border-primary/55 hover:bg-primary/5 hover:shadow-[0_0_18px_hsl(var(--primary)/0.10)] focus:ring-2 focus:ring-primary/40">
                       <Filter className="h-3 w-3 mr-1" />
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
@@ -2029,7 +2029,7 @@ export default function EmailCopilot() {
                   
                   <Badge 
                     variant={showArchived ? "default" : "outline"} 
-                    className={`h-9 cursor-pointer rounded-xl px-3 text-xs font-semibold transition-all hover:border-primary/40 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 ${showArchived ? 'border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10' : 'border-border/70 bg-background/70 text-muted-foreground hover:text-foreground'}`}
+                    className={`h-9 cursor-pointer rounded-xl px-3 text-xs font-semibold transition-all hover:-translate-y-px hover:border-primary/50 hover:bg-primary/10 hover:shadow-[0_0_18px_hsl(var(--primary)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 ${showArchived ? 'border-primary/35 bg-primary/15 text-primary shadow-sm shadow-primary/10' : 'border-border/70 bg-background/70 text-muted-foreground hover:text-foreground'}`}
                     onClick={() => setShowArchived(!showArchived)}
                   >
                     <Archive className="h-3 w-3 mr-1" />
@@ -2121,14 +2121,14 @@ export default function EmailCopilot() {
                                 handleSelectEmail(latestEmail);
                               }
                             }}
-                            className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-border/55 border-l-4 px-4 py-[1.125rem] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-l-primary/70 hover:border-primary/25 hover:bg-[linear-gradient(135deg,hsl(var(--primary)/0.075),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.72))] hover:shadow-[0_16px_36px_hsl(var(--primary)/0.11)] ${
-                              selectedEmail?.id === latestEmail.id ? 'border-l-primary border-primary/40 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--card)/0.95)_48%,hsl(var(--primary)/0.055))] shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/25' : latestEmail.status === 'archived' ? 'border-l-slate-400/35 bg-muted/30 opacity-85' : 'border-l-transparent bg-card/72'
+                            className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-border/55 border-l-4 px-4 py-[1.125rem] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-l-primary hover:border-primary/35 hover:ring-1 hover:ring-primary/20 hover:bg-[linear-gradient(135deg,hsl(var(--primary)/0.075),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.72))] hover:shadow-[0_16px_36px_hsl(var(--primary)/0.11)] ${
+                              selectedEmail?.id === latestEmail.id ? 'border-l-primary border-primary/40 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--card)/0.95)_48%,hsl(var(--primary)/0.055))] shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.24),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/35' : latestEmail.status === 'archived' ? 'border-l-slate-400/35 bg-muted/30 opacity-85' : 'border-l-transparent bg-card/72'
                             } ${hasUnread ? 'bg-[linear-gradient(135deg,hsl(var(--primary)/0.095),hsl(var(--card)/0.88)_52%,hsl(var(--background)/0.68))]' : ''}`}
                           >
                             <div className="pointer-events-none absolute inset-y-3 left-0 w-0.5 rounded-r-full bg-primary/0 transition-colors group-hover:bg-primary/70" />
                             <div className="flex items-start gap-3.5">
                               {/* Avatar */}
-                              <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_hsl(var(--background)/0.45),0_10px_24px_hsl(var(--primary)/0.12)] ring-1 transition-all group-hover:scale-[1.03] ${
+                              <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border shadow-[inset_0_1px_0_hsl(var(--background)/0.45),0_10px_24px_hsl(var(--primary)/0.12)] ring-1 transition-all group-hover:scale-[1.04] group-hover:border-primary/45 group-hover:ring-primary/35 group-hover:shadow-[0_12px_28px_hsl(var(--primary)/0.18)] ${
                                 hasUnread ? 'border-primary/35 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.32),hsl(var(--primary)/0.13)_60%,hsl(var(--card)/0.9))] ring-primary/25' : 'border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--muted)/0.38))] ring-primary/15'
                               }`}>
                                 <span className="text-[11px] font-black uppercase tracking-[0.16em] text-primary drop-shadow-sm">
@@ -2204,7 +2204,7 @@ export default function EmailCopilot() {
                                         e.stopPropagation();
                                         toggleThread(threadKey);
                                       }}
-                                      className="ml-auto rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                                      className="ml-auto rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_14px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                                     >
                                       {isExpanded ? (
                                         <ChevronUp className="h-4 w-4" />
@@ -2309,7 +2309,7 @@ export default function EmailCopilot() {
                           handleSelectEmail(email);
                           setSelectedSentReply(null);
                         }}
-                        className={`group cursor-pointer rounded-2xl border border-border/55 border-l-4 px-4 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-l-green-500/60 hover:border-green-500/25 hover:bg-green-500/5 hover:shadow-md ${
+                        className={`group cursor-pointer rounded-2xl border border-border/55 border-l-4 px-4 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-l-green-500/60 hover:border-green-500/25 hover:bg-green-500/5 hover:shadow-[0_14px_32px_hsl(142_71%_45%/0.10)] ${
                           selectedEmail?.id === email.id ? 'border-l-green-500 border-green-500/35 bg-green-500/10 ring-1 ring-green-500/20' : 'border-l-green-500/25 bg-card/70'
                         }`}
                       >
@@ -2363,7 +2363,7 @@ export default function EmailCopilot() {
                           setSelectedEmail(null);
                           if (isMobile) setShowMobileDetail(true);
                         }}
-                        className={`group cursor-pointer rounded-2xl border border-border/55 border-l-4 px-4 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-l-green-500/60 hover:border-green-500/25 hover:bg-green-500/5 hover:shadow-md ${
+                        className={`group cursor-pointer rounded-2xl border border-border/55 border-l-4 px-4 py-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-l-green-500/60 hover:border-green-500/25 hover:bg-green-500/5 hover:shadow-[0_14px_32px_hsl(142_71%_45%/0.10)] ${
                           selectedSentReply?.id === reply.id ? 'border-l-green-500 border-green-500/35 bg-green-500/10 ring-1 ring-green-500/20' : 'border-l-green-500/25 bg-card/70'
                         }`}
                       >
@@ -2610,7 +2610,7 @@ export default function EmailCopilot() {
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/60 bg-card/50 hover:bg-primary/10 hover:text-primary">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border/60 bg-card/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_14px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -2705,7 +2705,7 @@ export default function EmailCopilot() {
                             <span className="block text-xs text-muted-foreground">Generated insight for review</span>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setShowSummaryModal(true)} className="shrink-0 rounded-full hover:bg-primary/10 hover:text-primary">
+                        <Button variant="ghost" size="sm" onClick={() => setShowSummaryModal(true)} className="shrink-0 rounded-full hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_14px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                           View Full Summary
                         </Button>
                       </div>
@@ -2757,7 +2757,7 @@ export default function EmailCopilot() {
                             <span className="block text-xs text-amber-700 dark:text-amber-300">Review required before sending</span>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="shrink-0 rounded-full hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-300" onClick={() => {
+                        <Button variant="ghost" size="sm" className="shrink-0 rounded-full hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_0_16px_hsl(43_74%_49%/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/35 dark:hover:text-amber-300" onClick={() => {
                           setCurrentDraft(selectedEmail.draft_reply || '');
                           initializeReplyFields();
                           setShowDraftModal(true);
@@ -3015,7 +3015,7 @@ export default function EmailCopilot() {
                     value={replyTo}
                     onChange={(e) => setReplyTo(e.target.value)}
                     placeholder="recipient@example.com"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] sm:text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
@@ -3024,7 +3024,7 @@ export default function EmailCopilot() {
                     value={replySubject}
                     onChange={(e) => setReplySubject(e.target.value)}
                     placeholder="Email subject"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] sm:text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
@@ -3033,7 +3033,7 @@ export default function EmailCopilot() {
                     value={replyCc}
                     onChange={(e) => setReplyCc(e.target.value)}
                     placeholder="cc@example.com"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] sm:text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-[44px_1fr] sm:grid-cols-[60px_1fr] gap-2 items-center">
@@ -3042,7 +3042,7 @@ export default function EmailCopilot() {
                     value={replyBcc}
                     onChange={(e) => setReplyBcc(e.target.value)}
                     placeholder="bcc@example.com"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/45 focus-visible:ring-primary/35 sm:text-sm"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 text-xs focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] sm:text-sm"
                   />
                 </div>
               </div>
@@ -3096,7 +3096,7 @@ export default function EmailCopilot() {
                   className={`cursor-pointer rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
                     replyDragActive 
                       ? 'border-primary bg-primary/10 shadow-inner' 
-                      : 'border-muted-foreground/25 bg-background/45 hover:border-primary/35 hover:bg-primary/5'
+                      : 'border-muted-foreground/25 bg-background/45 hover:border-primary/45 hover:bg-primary/5 hover:shadow-[0_0_18px_hsl(var(--primary)/0.10)]'
                   }`}
                 >
                   <Upload className="mx-auto mb-2 h-6 w-6 text-primary/70" />
@@ -3123,7 +3123,7 @@ export default function EmailCopilot() {
                           variant="ghost"
                           size="sm"
                           onClick={(e) => { e.stopPropagation(); removeReplyAttachment(index); }}
-                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -3149,7 +3149,7 @@ export default function EmailCopilot() {
                   onChange={setCurrentDraft}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[250px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/45 focus-visible:ring-primary/35 lg:h-[340px] xl:h-[400px]"
+                  className="h-[250px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] lg:h-[340px] xl:h-[400px]"
                   placeholder="Draft reply will appear here..."
                   onKeyDown={(e) => {
                     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -3420,7 +3420,7 @@ export default function EmailCopilot() {
                     value={composeEmail.to}
                     onChange={(e) => setComposeEmail({ ...composeEmail, to: e.target.value })}
                     placeholder="recipient@example.com"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   />
                 </div>
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
@@ -3429,7 +3429,7 @@ export default function EmailCopilot() {
                     value={composeEmail.subject}
                     onChange={(e) => setComposeEmail({ ...composeEmail, subject: e.target.value })}
                     placeholder="Email subject"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   />
                 </div>
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
@@ -3438,7 +3438,7 @@ export default function EmailCopilot() {
                     value={composeEmail.cc}
                     onChange={(e) => setComposeEmail({ ...composeEmail, cc: e.target.value })}
                     placeholder="cc@example.com, another@example.com"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   />
                 </div>
                 <div className="grid grid-cols-[60px_1fr] gap-2 items-center">
@@ -3447,7 +3447,7 @@ export default function EmailCopilot() {
                     value={composeEmail.bcc}
                     onChange={(e) => setComposeEmail({ ...composeEmail, bcc: e.target.value })}
                     placeholder="bcc@example.com"
-                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/45 focus-visible:ring-primary/35"
+                    className="h-9 rounded-xl border-border/70 bg-background/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   />
                 </div>
               </div>
@@ -3470,7 +3470,7 @@ export default function EmailCopilot() {
                   className={`cursor-pointer rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
                     composeDragActive 
                       ? 'border-primary bg-primary/10 shadow-inner' 
-                      : 'border-muted-foreground/25 bg-background/45 hover:border-primary/35 hover:bg-primary/5'
+                      : 'border-muted-foreground/25 bg-background/45 hover:border-primary/45 hover:bg-primary/5 hover:shadow-[0_0_18px_hsl(var(--primary)/0.10)]'
                   }`}
                 >
                   <Upload className="mx-auto mb-2 h-6 w-6 text-primary/70" />
@@ -3512,7 +3512,7 @@ export default function EmailCopilot() {
                             prev.filter(f => f.name !== qaPDFAttachment.fileName)
                           );
                         }}
-                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -3541,7 +3541,7 @@ export default function EmailCopilot() {
                               variant="ghost"
                               size="sm"
                               onClick={(e) => { e.stopPropagation(); removeComposeAttachment(originalIndex); }}
-                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -3560,7 +3560,7 @@ export default function EmailCopilot() {
                   onChange={(v) => setComposeEmail({ ...composeEmail, body: v })}
                   snippets={snippets}
                   onManageSnippets={() => setShowSnippetManager(true)}
-                  className="h-[300px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/45 focus-visible:ring-primary/35"
+                  className="h-[300px] resize-none rounded-2xl border-border/70 bg-background/80 font-sans text-sm leading-6 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   placeholder="Type your email message here..."
                 />
                 <div className="mt-2">
@@ -3848,7 +3848,7 @@ export default function EmailCopilot() {
                           variant="ghost"
                           size="sm"
                           onClick={(e) => { e.stopPropagation(); removeForwardAttachment(index); }}
-                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
                         >
                           <X className="h-4 w-4" />
                         </Button>
