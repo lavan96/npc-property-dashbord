@@ -71,7 +71,7 @@ function renderChartImage(chart: ChartData) {
         return (
           <div
             dangerouslySetInnerHTML={{ __html: svgContent }}
-            className="w-full h-full flex items-center justify-center"
+            className="h-full w-full overflow-hidden [&>svg]:block [&>svg]:h-full [&>svg]:max-h-full [&>svg]:w-full [&>svg]:max-w-full"
           />
         );
       }
@@ -85,7 +85,7 @@ function renderChartImage(chart: ChartData) {
     <img
       src={chart.image_data}
       alt={`${chart.title} chart`}
-      className="w-full h-full object-contain"
+      className="block h-full w-full object-contain"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = 'none';
       }}
@@ -158,12 +158,13 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
 
       <CardContent className="flex flex-1 flex-col space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
         <div
-          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-background/80 shadow-inner transition-all duration-300 hover:border-amber-300/60 hover:bg-background hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_14px_34px_rgba(15,23,42,0.10)] ${selectionMode && isSelected ? 'border-amber-300/70 ring-1 ring-amber-300/45' : 'border-border/60'}`}
+          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode && isSelected ? 'border-amber-300/70 ring-1 ring-amber-300/45' : 'border-border/60'}`}
           onClick={() => onExpand(chart)}
         >
-          <div className="flex h-56 w-full items-center justify-center p-4 transition-transform duration-300 group-hover/img:scale-[1.015] sm:h-60">
+          <div className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
             {renderChartImage(chart)}
           </div>
+          <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-slate-950/5 transition-all duration-300 group-hover/img:ring-amber-400/25 dark:ring-white/10" />
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-black/5 group-hover/img:opacity-100">
             <div className="rounded-full border border-primary/25 bg-background/90 p-2 shadow-lg shadow-primary/10 backdrop-blur-sm">
               <Maximize2 className="h-4 w-4 text-foreground" />
