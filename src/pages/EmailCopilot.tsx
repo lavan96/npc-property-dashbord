@@ -2137,7 +2137,7 @@ export default function EmailCopilot() {
                                     </span>
                                     {isThreaded && (
                                       <Badge variant="secondary" className="flex-shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-primary shadow-sm">
-                                        <MessageCircle className="mr-1 h-2.5 w-2.5" />
+                                        <MessageCircle className="mr-1 h-2.5 w-2.5 text-primary" />
                                         {threadEmails.length}
                                       </Badge>
                                     )}
@@ -2170,13 +2170,18 @@ export default function EmailCopilot() {
                                     </Badge>
                                   )}
                                   {hasDraft && (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-purple-600 border-purple-500/30">
-                                      <MessageSquare className="h-2.5 w-2.5 mr-0.5" /> Draft
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-purple-600 border-purple-500/30 bg-purple-500/5">
+                                      <MessageSquare className="h-2.5 w-2.5 mr-0.5 text-purple-500" /> Draft
                                     </Badge>
                                   )}
                                   {latestEmail.status === 'replied' && (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-600 border-blue-500/30">
-                                      <Reply className="h-2.5 w-2.5 mr-0.5" /> Replied
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-blue-600 border-blue-500/30 bg-blue-500/5">
+                                      <Reply className="h-2.5 w-2.5 mr-0.5 text-blue-500" /> Replied
+                                    </Badge>
+                                  )}
+                                  {isNonEmptyArray(latestEmail.attachments) && (
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-foreground/75 border-primary/20 bg-primary/5">
+                                      <Paperclip className="h-2.5 w-2.5 mr-0.5 text-primary" /> {latestEmail.attachments.length}
                                     </Badge>
                                   )}
                                   {isThreaded && (
@@ -2206,13 +2211,13 @@ export default function EmailCopilot() {
                                 <div
                                   key={email.id}
                                   onClick={() => handleSelectEmail(email)}
-                                  className={`border-t border-border/45 py-2.5 pl-8 pr-4 cursor-pointer transition-colors hover:bg-primary/5 ${
+                                  className={`group/thread border-t border-border/45 py-3 pl-8 pr-4 cursor-pointer transition-colors hover:bg-primary/5 ${
                                     selectedEmail?.id === email.id ? 'border-l-2 border-l-primary bg-primary/10' : ''
                                   }`}
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10">
-                                      <span className="text-[10px] font-semibold text-primary">
+                                    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)/0.14),hsl(var(--muted)/0.32))] shadow-sm ring-1 ring-primary/10 transition-transform group-hover/thread:scale-[1.03]">
+                                      <span className="text-[10px] font-black uppercase tracking-[0.12em] text-primary">
                                         {getSenderInitials(email.sender)}
                                       </span>
                                     </div>
@@ -2225,6 +2230,9 @@ export default function EmailCopilot() {
                                       )}
                                       {email.draft_reply && (
                                         <MessageSquare className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                                      )}
+                                      {isNonEmptyArray(email.attachments) && (
+                                        <Paperclip className="h-3 w-3 text-primary flex-shrink-0" />
                                       )}
                                     </div>
                                     <span className="flex-shrink-0 whitespace-nowrap pl-2 text-[10px] font-medium text-muted-foreground/80">
@@ -2290,7 +2298,7 @@ export default function EmailCopilot() {
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)/0.14),hsl(var(--muted)/0.32))] shadow-sm ring-1 ring-primary/10">
                             <Send className="h-4 w-4 text-primary" />
                           </div>
                           
@@ -2315,8 +2323,8 @@ export default function EmailCopilot() {
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent
                               </Badge>
                               {isNonEmptyArray(email.attachments) && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                  <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {email.attachments.length}
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-foreground/75 border-primary/20 bg-primary/5">
+                                  <Paperclip className="h-2.5 w-2.5 mr-0.5 text-primary" /> {email.attachments.length}
                                 </Badge>
                               )}
                               {isNonEmptyArray(email.cc_recipients) && (
@@ -2344,7 +2352,7 @@ export default function EmailCopilot() {
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-green-500/25 bg-[linear-gradient(135deg,hsl(var(--success)/0.12),hsl(var(--muted)/0.32))] shadow-sm ring-1 ring-green-500/10">
                             <Send className="h-4 w-4 text-green-600" />
                           </div>
                           
@@ -2368,8 +2376,8 @@ export default function EmailCopilot() {
                                 <CheckCircle className="h-2.5 w-2.5 mr-0.5" /> Sent via Copilot
                               </Badge>
                               {isNonEmptyArray(reply.attachments) && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                  <Paperclip className="h-2.5 w-2.5 mr-0.5" /> {reply.attachments.length}
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-foreground/75 border-green-500/25 bg-green-500/5">
+                                  <Paperclip className="h-2.5 w-2.5 mr-0.5 text-green-600" /> {reply.attachments.length}
                                 </Badge>
                               )}
                               {isNonEmptyArray(reply.cc_recipients) && (
@@ -2512,8 +2520,8 @@ export default function EmailCopilot() {
                       </Button>
                     )}
                     {!isMobile && (
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-base font-semibold text-primary">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.26),hsl(var(--primary)/0.12)_58%,hsl(var(--card)/0.92))] shadow-[inset_0_1px_0_hsl(var(--background)/0.45),0_12px_28px_hsl(var(--primary)/0.13)] ring-1 ring-primary/20">
+                      <span className="text-base font-black uppercase tracking-[0.16em] text-primary drop-shadow-sm">
                         {getSenderInitials(selectedEmail.sender)}
                       </span>
                     </div>
@@ -2521,8 +2529,13 @@ export default function EmailCopilot() {
                     <div className="min-w-0 flex-1">
                       <h2 className="text-base md:text-lg font-semibold text-foreground truncate">{selectedEmail.subject || '(No Subject)'}</h2>
                       <div className="flex items-center gap-1 md:gap-2 mt-0.5 md:mt-1 flex-wrap">
-                        <span className="text-xs md:text-sm font-medium">{extractSenderName(selectedEmail.sender)}</span>
-                        {!isMobile && <span className="text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>}
+                        <span title={extractSenderName(selectedEmail.sender)} className="text-xs md:text-sm font-bold text-foreground">{extractSenderName(selectedEmail.sender)}</span>
+                        {!isMobile && <span title={selectedEmail.sender} className="truncate text-sm text-muted-foreground">&lt;{selectedEmail.sender}&gt;</span>}
+                        {isNonEmptyArray(selectedEmail.attachments) && (
+                          <Badge variant="outline" className="h-5 rounded-full border-primary/25 bg-primary/5 px-2 text-[10px] font-semibold text-primary">
+                            <Paperclip className="mr-1 h-2.5 w-2.5" /> {selectedEmail.attachments.length}
+                          </Badge>
+                        )}
                       </div>
                       {/* To Recipients */}
                       {isNonEmptyArray(selectedEmail.to_recipients) && (
