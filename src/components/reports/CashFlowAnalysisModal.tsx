@@ -2190,12 +2190,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
       return (
         <button
           onClick={() => handleCellEditStart(year, field, displayValue)}
-          className={`group relative w-full min-w-[88px] rounded-lg border px-2 py-1.5 text-center text-xs transition-all hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm ${
+          className={`group relative w-full min-w-[88px] rounded-xl border px-2 py-1.5 text-center text-xs transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/5 hover:shadow-md ${
             hasOverrideValue ? 'border-primary/30 bg-primary/10 font-semibold text-primary shadow-sm' : 'border-transparent bg-transparent'
           }`}
           title={hasOverrideValue ? 'Click to edit (overridden)' : 'Click to edit'}
         >
-          {hasOverrideValue && <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
+          {hasOverrideValue && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background" aria-hidden="true" />}
           <span className="block">{formatFn(displayValue)}</span>
           <span className="mt-0.5 hidden text-[9px] font-normal text-muted-foreground group-hover:block">Edit</span>
         </button>
@@ -4000,8 +4000,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             <CashFlowChartsWorkspace>
             {/* Cash Flow Trends Chart */}
-            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
-              <CardHeader className="border-b bg-muted/20 pb-4">
+            <Card className="overflow-hidden border-slate-200/80 bg-background/95 shadow-lg ring-1 ring-slate-900/5">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 via-background to-slate-100/70 pb-4 dark:from-slate-950/40 dark:via-background dark:to-slate-900/30">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -4027,7 +4027,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           key={key}
                           type="button"
                           onClick={() => setChartMetrics(prev => ({ ...prev, [key]: !prev[key] }))}
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-colors ${chartMetrics[key] ? 'border-primary/30 bg-primary/10 text-foreground' : 'border-border bg-background text-muted-foreground hover:bg-muted'}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 ${chartMetrics[key] ? 'border-primary/30 bg-primary/10 text-foreground ring-1 ring-primary/10' : 'border-border bg-background text-muted-foreground hover:bg-muted'}`}
                         >
                           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
                           {label}
@@ -4038,7 +4038,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       variant="outline"
                       size="sm"
                       onClick={() => exportChartAsPNG(cashFlowChartRef, 'cash-flow-trends')}
-                      className="h-8 w-full justify-center gap-2 sm:w-auto"
+                      className="h-8 w-full justify-center gap-2 rounded-xl sm:w-auto"
                     >
                       <Image className="h-4 w-4" />
                       Export PNG
@@ -4075,7 +4075,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={cashFlowChartRef} className="h-[320px] w-full rounded-2xl border bg-white p-3 sm:h-[380px] xl:h-[420px]" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={cashFlowChartRef} className="h-[320px] w-full rounded-3xl border bg-white p-3 shadow-inner sm:h-[380px] xl:h-[420px]" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={chartData}
@@ -4370,8 +4370,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             </Card>
 
             {/* Yield Percentages Chart */}
-            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
-              <CardHeader className="border-b bg-muted/20 pb-4">
+            <Card className="overflow-hidden border-slate-200/80 bg-background/95 shadow-lg ring-1 ring-slate-900/5">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 via-background to-slate-100/70 pb-4 dark:from-slate-950/40 dark:via-background dark:to-slate-900/30">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -4386,7 +4386,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     variant="outline"
                     size="sm"
                     onClick={() => exportChartAsPNG(yieldChartRef, 'yield-percentages')}
-                    className="h-8 w-full justify-center gap-2 sm:w-auto"
+                    className="h-8 w-full justify-center gap-2 rounded-xl sm:w-auto"
                   >
                     <Image className="h-4 w-4" />
                     Export PNG
@@ -4409,7 +4409,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                   return (
                     <>
-                      <div ref={yieldChartRef} className="h-[280px] w-full rounded-2xl border bg-white p-3 sm:h-[320px]" style={{ backgroundColor: '#ffffff' }}>
+                      <div ref={yieldChartRef} className="h-[280px] w-full rounded-3xl border bg-white p-3 shadow-inner sm:h-[320px]" style={{ backgroundColor: '#ffffff' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart
                             data={yieldData}
@@ -4605,8 +4605,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* Comparison Chart - Side by Side (Up to 5 Properties) */}
             {comparisonMode && comparisonReports.length > 0 && allComparisonProjections.length > 0 && (
-              <Card className="overflow-hidden border-primary/30 shadow-sm">
-                <CardHeader className="border-b bg-primary/5 pb-4">
+              <Card className="overflow-hidden border-primary/30 bg-background/95 shadow-lg ring-1 ring-primary/10">
+                <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-background to-slate-100/70 pb-4 dark:to-slate-900/30">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
                       <CardTitle className="text-base flex items-center gap-2">
@@ -4625,7 +4625,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         variant="outline"
                         size="sm"
                         onClick={() => exportChartAsPNG(comparisonChartRef, 'property-comparison')}
-                        className="h-8 w-full justify-center gap-2 sm:w-auto"
+                        className="h-8 w-full justify-center gap-2 rounded-xl sm:w-auto"
                       >
                         <Image className="h-4 w-4" />
                         Export PNG
@@ -4634,7 +4634,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </div>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <div ref={comparisonChartRef} className="h-[320px] w-full rounded-2xl border bg-white p-3 sm:h-[380px] xl:h-[420px]" style={{ backgroundColor: '#ffffff' }}>
+                  <div ref={comparisonChartRef} className="h-[320px] w-full rounded-3xl border bg-white p-3 shadow-inner sm:h-[380px] xl:h-[420px]" style={{ backgroundColor: '#ffffff' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart
                         data={projections.filter(p => p.year >= 1).map((p, i) => {
@@ -4956,7 +4956,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             </CashFlowChartsWorkspace>
 
-            <CashFlowAiPanel>
+            <CashFlowAiPanel active={comparisonMode && comparisonReports.length > 0}>
             {/* AI-Powered Comparison Analysis */}
             {comparisonMode && comparisonReports.length > 0 && (
               <Card className="overflow-hidden border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-background shadow-sm">
@@ -5455,7 +5455,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
               </Card>
             </Collapsible>
 
-            <CashFlowConstructionPanel>
+            <CashFlowConstructionPanel active={isNewBuild && !!constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0}>
             {/* Construction Progress Payment Schedule - Collapsible (New Builds Only) */}
             {isNewBuild && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 && (
               <Collapsible open={constructionScheduleOpen} onOpenChange={setConstructionScheduleOpen}>
@@ -5627,8 +5627,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             <CashFlowProjectionTable>
             {/* 10-Year Projection Table with Inline Editing */}
-            <Card className="overflow-hidden border-slate-200/80 shadow-sm">
-              <CardHeader className="border-b bg-muted/20 pb-4">
+            <Card className="overflow-hidden border-slate-200/80 bg-background/95 shadow-lg ring-1 ring-slate-900/5">
+              <CardHeader className="border-b bg-gradient-to-r from-slate-50 via-background to-slate-100/70 pb-4 dark:from-slate-950/40 dark:via-background dark:to-slate-900/30">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <CardTitle className="text-base">10-Year Projection Overview</CardTitle>
@@ -5641,9 +5641,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="max-w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-                  <Table className="min-w-[1280px] border-separate border-spacing-0">
-                    <TableHeader className="sticky top-0 z-20">
+                <div className="max-w-full overflow-x-auto rounded-b-2xl overscroll-x-contain border-t bg-background [-webkit-overflow-scrolling:touch]">
+                  <Table className="min-w-[1280px] border-separate border-spacing-0 text-sm">
+                    <TableHeader className="sticky top-0 z-30 shadow-sm">
                       <TableRow className="bg-slate-900 hover:bg-slate-900">
                         <TableHead className="sticky left-0 z-30 min-w-[220px] bg-slate-900 text-white shadow-[6px_0_12px_-12px_rgba(15,23,42,0.7)]">Overview</TableHead>
                         {projections.map(p => (
@@ -5656,10 +5656,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                     </TableHeader>
                     <TableBody>
                       {/* Capital Growth Rate - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Capital Growth %</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? '' : renderEditableCell(
                               p.year,
                               'capitalGrowthRate',
@@ -5671,10 +5671,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* CPI Growth Rate - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">CPI Growth %</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? '' : renderEditableCell(
                               p.year,
                               'cpiGrowthRate',
@@ -5686,10 +5686,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Property Value - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Property Value $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {renderEditableCell(
                               p.year,
                               'propertyMarketValue',
@@ -5700,7 +5700,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Loan Amount $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.loanAmount.toLocaleString()}</TableCell>
@@ -5711,14 +5711,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         <TableCell className="sticky left-0 z-10 bg-primary/5 py-3 text-xs font-bold uppercase tracking-wide text-primary" colSpan={12}>Statistics</TableCell>
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Equity $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center text-green-600">{p.equityInProperty.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">LVR %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.loanToValueRatio}</TableCell>
@@ -5726,10 +5726,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Rental Income - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Rental Income $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? `${baseFinancialData.weeklyRent}pw` : renderEditableCell(
                               p.year,
                               'rentalIncome',
@@ -5740,14 +5740,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Gross Yield %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.year === 0 ? '' : p.grossYield}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Net Yield %</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.year === 0 ? '' : p.netYield}</TableCell>
@@ -5759,10 +5759,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Property Expenses - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Property Expenses $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? '0' : renderEditableCell(
                               p.year,
                               'propertyExpenses',
@@ -5775,10 +5775,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Land Tax - Editable (moved from Summary to Cash Deductions) */}
                       {!excludeLandTaxFromCashFlow && (
-                        <TableRow>
+                        <TableRow className="transition-colors hover:bg-primary/5">
                           <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Land Tax $</TableCell>
                           {projections.map(p => (
-                            <TableCell key={p.year} className="text-center p-1">
+                            <TableCell key={p.year} className="p-1 text-center align-middle">
                               {p.year === 0 ? '' : renderEditableCell(
                                 p.year,
                                 'landTax',
@@ -5791,10 +5791,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       )}
                       
                       {/* Interest Rate - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Interest Rate %</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? '' : renderEditableCell(
                               p.year,
                               'interestRate',
@@ -5806,10 +5806,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Interest Payments - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Interest Payments $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? '0' : renderEditableCell(
                               p.year,
                               'interestPayment',
@@ -5821,10 +5821,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Principal Payments - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Principal Payments $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? '0' : renderEditableCell(
                               p.year,
                               'principalPayment',
@@ -5835,7 +5835,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Pre-Tax Cash Flow p/a $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPA < 0 ? 'text-red-500' : 'text-green-600'}`}>
@@ -5844,7 +5844,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Pre-Tax Cash Flow p/w $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPW < 0 ? 'text-red-500' : 'text-green-600'}`}>
@@ -5858,10 +5858,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       </TableRow>
                       
                       {/* Depreciation - Editable */}
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Depreciation $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center p-1">
+                          <TableCell key={p.year} className="p-1 text-center align-middle">
                             {p.year === 0 ? '' : renderEditableCell(
                               p.year,
                               'depreciation',
@@ -5876,14 +5876,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         <TableCell className="sticky left-0 z-10 bg-primary/5 py-3 text-xs font-bold uppercase tracking-wide text-primary" colSpan={12}>Summary</TableCell>
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Total Deductions $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center">{p.year === 0 ? '' : p.totalDeductions.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Net Profit/Loss $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className={`text-center ${p.netProfitLoss < 0 ? 'text-red-500' : 'text-green-600'}`}>
@@ -5892,7 +5892,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         ))}
                       </TableRow>
                       
-                      <TableRow className="hover:bg-muted/30">
+                      <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Tax Refund $</TableCell>
                         {projections.map(p => (
                           <TableCell key={p.year} className="text-center text-green-600">{p.year === 0 ? '' : p.taxRefund.toLocaleString()}</TableCell>

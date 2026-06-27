@@ -1777,17 +1777,17 @@ export default function ReportQA() {
         <div className="flex items-center gap-2 min-w-0">
           <h1 className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate tracking-tight">Report Q&A</h1>
         </div>
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} />
-          <Button onClick={handleNewChat} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm" size="sm">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 md:justify-end">
+          <FullScreenToggle isFullScreen={isFullScreen} onToggle={toggleFullScreen} className="report-qa-icon-button h-9 w-9 rounded-full sm:h-10 sm:w-10" />
+          <Button onClick={handleNewChat} className="report-qa-new-chat gap-1.5 h-9 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">New Chat</span>
           </Button>
-          <Button variant="outline" onClick={() => setShowHistory(true)} className="gap-1.5 h-8 text-xs sm:h-9 sm:text-sm" size="sm">
+          <Button variant="outline" onClick={() => setShowHistory(true)} className="report-qa-history-button gap-1.5 h-9 rounded-full px-3 text-xs font-semibold sm:h-10 sm:px-4 sm:text-sm" size="sm">
             <History className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">History</span>
             {savedConversations.length > 0 && (
-              <Badge variant="secondary" className="ml-0.5 h-4 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs">
+              <Badge variant="secondary" className="report-qa-history-badge ml-0.5 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-bold tabular-nums sm:h-5 sm:px-1.5 sm:text-xs">
                 {savedConversations.length}
               </Badge>
             )}
@@ -1814,9 +1814,6 @@ export default function ReportQA() {
               <span className="hidden sm:inline">Clear All</span>
             </Button>
           )}
-          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block w-full">
-            Upload investment reports and ask questions to generate summaries
-          </p>
         </div>
       </div>
 

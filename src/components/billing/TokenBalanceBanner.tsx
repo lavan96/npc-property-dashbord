@@ -16,12 +16,39 @@ export function TokenBalanceBanner() {
   const isListingsPage = pathname === "/listings";
   const isCalendarPage = pathname === "/calendar";
   const isReportsPage = pathname === "/reports";
+  const isReportQAPage = pathname === "/report-qa";
 
   if (!lowBalance || !balance) return null;
 
   const pct = balance.allowance > 0
     ? Math.round((balance.available / balance.allowance) * 100)
     : 0;
+
+
+  if (isReportQAPage) {
+    return (
+      <Alert className="relative overflow-hidden rounded-3xl border-amber-300/45 bg-[linear-gradient(135deg,hsl(43_74%_49%/0.18),hsl(220_18%_7%/0.96)_48%,hsl(30_22%_8%/0.94))] px-4 py-3 shadow-[0_18px_55px_hsl(0_0%_0%/0.35)] backdrop-blur-xl dark:border-amber-300/30">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
+        <div className="pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full bg-amber-300/15 blur-3xl" />
+        <Sparkles className="h-4 w-4 text-amber-200" />
+        <AlertTitle className="text-sm font-semibold tracking-tight text-amber-100">Token balance low</AlertTitle>
+        <AlertDescription className="flex flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="max-w-3xl text-amber-50/78">
+            <span className="font-semibold tabular-nums text-amber-50">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-amber-200/60 bg-amber-300 px-4 font-semibold text-amber-950 shadow-[0_10px_28px_hsl(43_74%_49%/0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-100 hover:bg-amber-200 hover:text-amber-950 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.32)] focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:translate-y-0 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (isOverviewPage || isListingsPage) {
     return (
