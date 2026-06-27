@@ -187,3 +187,13 @@ export {
   type RepairExpectationStrategy,
   type RepairLoopBridgeInput,
 } from './repair';
+
+export {
+  DETERMINISTIC_REPAIR_RUNNER_VERSION,
+  runDeterministicVisualRepair,
+  type DeterministicRepairSkipReason,
+  type DeterministicRepairStatus,
+  type DeterministicRepairSummary,
+  type DeterministicVisualRepairResult,
+  type RunDeterministicVisualRepairOptions,
+} from './repair';
