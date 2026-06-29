@@ -52,23 +52,31 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create Game Plan</DialogTitle>
+      <DialogContent className="max-h-[92dvh] overflow-y-auto border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-black/20 sm:max-w-xl dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
+        <DialogHeader className="border-b border-border/60 px-5 py-4 dark:border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-2xl shadow-inner shadow-primary/10">
+              {icon}
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-bold tracking-tight text-foreground">Create Game Plan</DialogTitle>
+              <p className="text-sm text-muted-foreground">Set up the strategic playbook details.</p>
+            </div>
+          </div>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
+        <div className="space-y-5 px-5 py-5">
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label>Name</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Q2 Growth Strategy" className="mt-1" />
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Q2 Growth Strategy" className="mt-1.5 h-11 rounded-xl bg-card/80" />
           </div>
-          <div>
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label>Description</Label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Key objectives and strategy..." rows={3} className="mt-1" />
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Key objectives and strategy..." rows={3} className="mt-1.5 rounded-xl bg-card/80" />
           </div>
-          <div>
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label>Initial Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as 'planning' | 'active' | 'completed' | 'archived')}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className="mt-1.5 h-11 rounded-xl bg-card/80">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -79,64 +87,66 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
               <Label>Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-9 text-sm', !startDate && 'text-muted-foreground')}>
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !startDate && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
                     {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className={cn("p-3 pointer-events-auto")} />
+                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className={cn('p-3 pointer-events-auto')} />
                 </PopoverContent>
               </Popover>
             </div>
-            <div>
+            <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
               <Label>End Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-9 text-sm', !endDate && 'text-muted-foreground')}>
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !endDate && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
                     {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar mode="single" selected={endDate} onSelect={setEndDate}
-                    disabled={d => startDate ? d < startDate : false} initialFocus className={cn("p-3 pointer-events-auto")} />
+                    disabled={d => startDate ? d < startDate : false} initialFocus className={cn('p-3 pointer-events-auto')} />
                 </PopoverContent>
               </Popover>
             </div>
           </div>
-          <div>
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label>Icon</Label>
-            <div className="flex flex-wrap gap-2 mt-1.5">
+            <div className="mt-2 flex flex-wrap gap-2">
               {ICONS.map(i => (
                 <button key={i} onClick={() => setIcon(i)}
-                  className={cn('text-xl w-9 h-9 rounded-lg flex items-center justify-center transition-all',
-                    icon === i ? 'bg-primary/20 ring-2 ring-primary scale-110' : 'hover:bg-muted')}>
+                  className={cn('flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-xl transition-all hover:border-primary/20 hover:bg-primary/10',
+                    icon === i ? 'scale-110 border-primary/30 bg-primary/15 ring-2 ring-primary/30' : 'hover:bg-muted')}
+                  type="button">
                   {i}
                 </button>
               ))}
             </div>
           </div>
-          <div>
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label>Accent Color</Label>
-            <div className="flex flex-wrap gap-2 mt-1.5">
+            <div className="mt-2 flex flex-wrap gap-2">
               {COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
-                  className={cn('w-7 h-7 rounded-full transition-all',
-                    color === c ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105')}
-                  style={{ backgroundColor: c }} />
+                  className={cn('h-8 w-8 rounded-full border border-white/40 shadow-sm transition-all hover:scale-105',
+                    color === c ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background' : '')}
+                  style={{ backgroundColor: c }}
+                  type="button" />
               ))}
             </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleCreate} disabled={!name.trim() || loading}>
+        <DialogFooter className="border-t border-border/60 bg-background/60 px-5 py-4 dark:border-white/10 dark:bg-slate-950/45">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
+          <Button onClick={handleCreate} disabled={!name.trim() || loading} className="rounded-xl shadow-lg shadow-primary/20">
             {loading ? 'Creating...' : 'Create Plan'}
           </Button>
         </DialogFooter>
