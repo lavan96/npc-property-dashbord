@@ -32,15 +32,13 @@ import { CleanupTestCalls } from '@/components/call-logs/CleanupTestCalls';
 import { NegativeCallAnalysis } from '@/components/call-logs/NegativeCallAnalysis';
 import { CallToolCalls } from '@/components/call-logs/CallToolCalls';
 import { CallTranscriptChat } from '@/components/call-logs/CallTranscriptChat';
-import { callLogBadgeTone } from '@/components/call-logs/badgeStyles';
-import { CallStatePanel } from '@/components/call-logs/CallStatePanel';
-import { 
-  Phone, 
-  PhoneIncoming, 
-  PhoneOutgoing, 
-  Clock, 
-  DollarSign, 
-  Search, 
+import {
+  Phone,
+  PhoneIncoming,
+  PhoneOutgoing,
+  Clock,
+  DollarSign,
+  Search,
   Filter,
   TrendingUp,
   Users,
@@ -69,17 +67,20 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 
 
 const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_34%),radial-gradient(circle_at_80%_8%,rgba(124,58,237,0.10),transparent_28%),linear-gradient(135deg,hsl(222_47%_5%),hsl(220_34%_8%)_46%,hsl(0_0%_4%))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
-const premiumPanel = "border-white/10 bg-black/35 shadow-2xl shadow-black/30 backdrop-blur-xl";
+const premiumPanel = "border-white/10 bg-gradient-to-br from-zinc-950/80 via-black/60 to-zinc-950/85 shadow-2xl shadow-black/30 backdrop-blur-xl";
 const premiumCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
+const premiumModalCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25";
+const premiumMutedSurface = "rounded-2xl border border-white/10 bg-black/35 shadow-inner shadow-black/20";
+const premiumSelectContent = "border-white/10 bg-zinc-950/95 text-zinc-100 shadow-2xl shadow-black/40 backdrop-blur-xl";
 const premiumMetricCard = "group relative overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10";
 const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105";
-const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400";
+const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400";
 const premiumMetricValue = "text-2xl font-bold leading-none tracking-tight md:text-[1.65rem]";
 const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner shadow-black/20 transition-colors hover:border-amber-400/40 hover:bg-amber-400/5 focus-visible:ring-2 focus-visible:ring-amber-400/70";
 const premiumFilterControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-amber-300/70";
 const premiumFilterControlActive = "border-amber-300/45 bg-amber-300/12 text-amber-50 shadow-amber-500/10";
 const premiumSearchInput = "h-11 rounded-2xl border-white/10 bg-black/55 pl-11 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-amber-300/30 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
-const premiumActiveFilterBadge = "rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-100 shadow-sm shadow-amber-500/10";
+const premiumActiveFilterBadge = "rounded-full border border-amber-300/35 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-100 shadow-sm shadow-amber-500/10";
 const premiumActionBase = "min-h-10 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
 const premiumUtilityAction = `${premiumActionBase} border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-300/45 hover:bg-sky-400/15 hover:text-sky-50 focus-visible:ring-sky-300`;
@@ -215,7 +216,7 @@ const CallLogs = () => {
 
   useEffect(() => {
     fetchCalls();
-    
+
     // Set up realtime subscription
     const channel = supabase
       .channel('vapi-call-logs-changes')
@@ -360,7 +361,7 @@ const CallLogs = () => {
     }
 
     if (selectedTags.length > 0) {
-      filtered = filtered.filter(call => 
+      filtered = filtered.filter(call =>
         selectedTags.some(tag => call.tags?.includes(tag))
       );
     }
@@ -369,7 +370,7 @@ const CallLogs = () => {
     if (dateRange?.from) {
       const fromDate = startOfDay(dateRange.from);
       const toDate = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
-      
+
       filtered = filtered.filter(call => {
         // Use started_at if available, otherwise use created_at (for failed/unanswered calls)
         const callDate = call.started_at ? new Date(call.started_at) : (call.created_at ? new Date(call.created_at) : null);
@@ -392,12 +393,12 @@ const CallLogs = () => {
     const totalCalls = filteredCalls.length;
     const completedCalls = filteredCalls.filter(c => getOutcomeCategory(c.call_outcome) === 'success').length;
     const successRate = totalCalls > 0 ? Math.round((completedCalls / totalCalls) * 100) : 0;
-    
+
     const callsWithDuration = filteredCalls.filter(c => c.duration_seconds);
     const avgDuration = callsWithDuration.length > 0
       ? Math.round(callsWithDuration.reduce((sum, c) => sum + (c.duration_seconds || 0), 0) / callsWithDuration.length)
       : 0;
-    
+
     const totalCost = filteredCalls.reduce((sum, c) => sum + (c.cost || 0), 0);
     const inboundCalls = filteredCalls.filter(c => c.call_direction === 'inbound').length;
     const outboundCalls = filteredCalls.filter(c => c.call_direction === 'outbound').length;
@@ -731,7 +732,7 @@ const CallLogs = () => {
                         <SelectTrigger className={cn("w-full", premiumFilterControl, selectedAgent !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="All Agents" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className={premiumSelectContent}>
                           <SelectItem value="all">All Agents</SelectItem>
                           {agents.map(agent => (
                             <SelectItem key={agent.name} value={agent.name}>{agent.name} ({agent.count})</SelectItem>
@@ -745,7 +746,7 @@ const CallLogs = () => {
                         <SelectTrigger className={cn("w-full", premiumFilterControl, selectedOutcome !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="All Outcomes" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className={premiumSelectContent}>
                           <SelectItem value="all">All Outcomes</SelectItem>
                           {(() => {
                             const outcomeCounts = new Map<string, number>();
@@ -770,7 +771,7 @@ const CallLogs = () => {
                         <SelectTrigger className={cn("w-full", premiumFilterControl, selectedSquadType !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="Call Type" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className={premiumSelectContent}>
                           <SelectItem value="all">All Call Types</SelectItem>
                           <SelectItem value="squad">Squad Calls</SelectItem>
                           <SelectItem value="non-squad">Non-Squad Calls</SelectItem>
@@ -783,7 +784,7 @@ const CallLogs = () => {
                         <SelectTrigger className={cn("w-full", premiumFilterControl, selectedIntent !== 'all' && premiumFilterControlActive)}>
                           <SelectValue placeholder="Intent" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className={premiumSelectContent}>
                           <SelectItem value="all">All Intents</SelectItem>
                           <SelectItem value="discovery_booking">Discovery</SelectItem>
                           <SelectItem value="strategy_booking">Strategy</SelectItem>
@@ -805,8 +806,8 @@ const CallLogs = () => {
                         <Button variant="outline" size="sm" onClick={() => setDateRange({ from: subDays(new Date(), 30), to: new Date() })}>30 days</Button>
                       </div>
                     </div>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className={cn("w-full", premiumFilterControl)}
                       onClick={() => {
                         setSearchQuery('');
@@ -832,9 +833,9 @@ const CallLogs = () => {
               <Badge variant="secondary" className={premiumActiveFilterBadge}>
                 {[selectedAgent !== 'all', selectedOutcome !== 'all', selectedSquadType !== 'all', selectedIntent !== 'all', selectedTags.length > 0, !!dateRange].filter(Boolean).length} filter(s) active
               </Badge>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-6 px-2 text-xs"
                 onClick={() => {
                   setSearchQuery('');
@@ -874,7 +875,7 @@ const CallLogs = () => {
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={premiumSelectContent}>
                   <SelectItem value="all">All Agents</SelectItem>
                   {agents.map(agent => (
                     <SelectItem key={agent.name} value={agent.name}>{agent.name} ({agent.count})</SelectItem>
@@ -886,7 +887,7 @@ const CallLogs = () => {
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Outcomes" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={premiumSelectContent}>
                   <SelectItem value="all">All Outcomes</SelectItem>
                   {(() => {
                     const outcomeCounts = new Map<string, number>();
@@ -909,7 +910,7 @@ const CallLogs = () => {
                   <Users className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Call Type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={premiumSelectContent}>
                   <SelectItem value="all">All Call Types</SelectItem>
                   <SelectItem value="squad">Squad Calls</SelectItem>
                   <SelectItem value="non-squad">Non-Squad Calls</SelectItem>
@@ -921,7 +922,7 @@ const CallLogs = () => {
                     <GitBranch className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="All Squads" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={premiumSelectContent}>
                     <SelectItem value="all">All Squads</SelectItem>
                     {squads.map(squad => (
                       <SelectItem key={squad.id} value={squad.id}>{squad.name}</SelectItem>
@@ -934,7 +935,7 @@ const CallLogs = () => {
                   <Target className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Intent" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={premiumSelectContent}>
                   <SelectItem value="all">All Intents</SelectItem>
                   <SelectItem value="discovery_booking">Discovery</SelectItem>
                   <SelectItem value="strategy_booking">Strategy</SelectItem>
@@ -943,7 +944,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <CallTagFilter selectedTags={selectedTags} onTagsChange={setSelectedTags} triggerClassName={cn(premiumFilterControl, selectedTags.length > 0 && premiumFilterControlActive)} />
-              
+
               {/* Date Range Picker */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -969,8 +970,8 @@ const CallLogs = () => {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <div className="p-3 border-b space-y-2">
+                <PopoverContent className={cn("w-auto overflow-hidden rounded-3xl p-0", premiumSelectContent)} align="start">
+                  <div className="space-y-2 border-b border-white/10 bg-black/25 p-3">
                     <p className="text-sm font-medium">Quick Select</p>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -1012,7 +1013,7 @@ const CallLogs = () => {
                     selected={dateRange}
                     onSelect={setDateRange}
                     numberOfMonths={2}
-                    className="pointer-events-auto"
+                    className="pointer-events-auto bg-transparent text-zinc-100"
                   />
                 </PopoverContent>
               </Popover>
@@ -1054,7 +1055,7 @@ const CallLogs = () => {
                 {dateRange?.from && (
                   <Badge variant="secondary" className={premiumActiveFilterBadge}>
                     <CalendarIcon className="w-3 h-3 mr-1" />
-                    {dateRange.to 
+                    {dateRange.to
                       ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d")}`
                       : format(dateRange.from, "MMM d, yyyy")
                     }
@@ -1070,10 +1071,10 @@ const CallLogs = () => {
                     Intent: {selectedIntent.replace(/_/g, ' ')}
                   </Badge>
                 )}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 rounded-full px-3 text-xs text-zinc-300 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.99]"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1092,29 +1093,26 @@ const CallLogs = () => {
         </CardHeader>
         <CardContent className="relative min-h-0 p-0">
           {loading ? (
-            <CallStatePanel
-              className="mx-4 my-5 sm:mx-6"
-              tone="amber"
-              icon={<RefreshCw className="h-8 w-8 animate-spin" />}
-              title="Loading call logs..."
-              description="Refreshing the voice activity register while preserving your current filters."
-            />
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <RefreshCw className="w-8 h-8 animate-spin text-amber-300" />
+              <p className="text-sm text-muted-foreground">Loading call logs...</p>
+            </div>
           ) : filteredCalls.length === 0 ? (
-            <CallStatePanel
-              className="mx-4 my-5 sm:mx-6"
-              tone={calls.length > 0 ? 'amber' : 'neutral'}
-              icon={<Phone className="h-8 w-8" />}
-              title={calls.length > 0 ? 'No matching calls found' : 'No call logs found'}
-              description={
-                calls.length > 0
-                  ? 'No calls match the current search, filters, tags, or date range. Reset filters to return to the full voice activity register.'
-                  : 'Calls will appear here once your Vapi agents start making calls.'
-              }
-              action={calls.length > 0 && (
+            <div className="text-center py-16">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 shadow-inner shadow-amber-500/10">
+                <Phone className="w-8 h-8 text-amber-200/80" />
+              </div>
+              <p className="font-medium text-foreground mb-1">No call logs found</p>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                {calls.length > 0
+                  ? 'Try adjusting your filters to see more results'
+                  : 'Calls will appear here once your Vapi agents start making calls'}
+              </p>
+              {calls.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className={premiumSecondaryAction}
+                  className={cn("mt-4", premiumSecondaryAction)}
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1137,7 +1135,7 @@ const CallLogs = () => {
                   role="button"
                   tabIndex={0}
                   aria-label={`Open details for ${call.customer_name || call.phone_number || 'Unknown Caller'}`}
-                  className={`group relative p-3 sm:p-4 rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/90 via-zinc-900/75 to-black/80 cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${
+                  className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/95 via-zinc-900/80 to-black/90 p-3 cursor-pointer shadow-lg shadow-black/20 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-gradient-to-b before:from-transparent before:via-amber-300/35 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/5 hover:shadow-xl hover:shadow-amber-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-4 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
                   tabIndex={0}
@@ -1153,10 +1151,10 @@ const CallLogs = () => {
                     {/* Left section */}
                     <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
                       {/* Direction icon */}
-                      <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105 group-hover:shadow-lg sm:h-14 sm:w-14 ${
-                        call.call_direction === 'inbound' 
-                          ? 'border-emerald-300/25 bg-emerald-500/10 text-emerald-300 group-hover:shadow-emerald-500/10' 
-                          : 'border-sky-300/25 bg-sky-500/10 text-sky-300 group-hover:shadow-sky-500/10'
+                      <div className={`rounded-2xl border p-2.5 shadow-inner ${
+                        call.call_direction === 'inbound'
+                          ? 'border-emerald-300/20 bg-emerald-500/10 text-emerald-300'
+                          : 'border-blue-300/20 bg-blue-500/10 text-blue-300'
                       }`}>
                         <span className={`absolute right-2 top-2 h-2 w-2 rounded-full ${
                           call.call_direction === 'inbound' ? 'bg-emerald-300' : 'bg-sky-300'
@@ -1167,7 +1165,7 @@ const CallLogs = () => {
                           <PhoneOutgoing className="h-5 w-5" />
                         )}
                       </div>
-                      
+
                       {/* Main content */}
                       <div className="min-w-0 flex-1">
                         {/* Header row */}
@@ -1175,7 +1173,7 @@ const CallLogs = () => {
                           <span className="min-w-0 max-w-full truncate text-base font-semibold tracking-tight text-zinc-50 sm:text-lg">
                             {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
-                          
+
                           {/* Squad badge with name */}
                           {call.is_squad_call && (
                             <Badge className={callLogBadgeTone('squad', cn('max-w-[220px]', premiumInteractiveBadge))}>
@@ -1183,7 +1181,7 @@ const CallLogs = () => {
                               <span className="truncate">{call.squad_name || 'Squad Call'}</span>
                             </Badge>
                           )}
-                          
+
                           {/* Intent badge */}
                           {call.call_intent && (
                             <Badge className={callLogBadgeTone('success', cn('max-w-[220px]', premiumInteractiveBadge))}>
@@ -1191,24 +1189,21 @@ const CallLogs = () => {
                               <span className="truncate">{call.call_intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                             </Badge>
                           )}
-                          
+
                           {/* Agent badge for non-squad calls */}
                           {call.agent_name && !call.is_squad_call && (
-                            <Badge className={callLogBadgeTone('info', cn('max-w-[220px]', premiumInteractiveBadge))}>
-                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-300" />
-                              <span className="truncate">{call.agent_name}</span>
-                            </Badge>
+                            <Badge className="border border-white/10 bg-white/5 text-xs text-zinc-200">{call.agent_name}</Badge>
                           )}
                         </div>
-                        
+
                         {/* Handoff flow visualization for squad calls */}
                         {call.is_squad_call && call.assistants_involved && call.assistants_involved.length > 0 && (
                           <div className="mb-3 flex flex-wrap items-center gap-1.5">
                             {call.assistants_involved.map((assistant, i) => (
                               <div key={assistant.id} className="flex items-center">
-                                <span className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-purple-300/20 bg-purple-400/10 px-2.5 py-1 text-xs font-medium text-purple-200 transition-all duration-200 group-hover:border-purple-200/35 group-hover:bg-purple-400/15 group-hover:shadow-sm group-hover:shadow-purple-500/10">
-                                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-purple-300" />
-                                  <span className="truncate">{assistant.name || `Agent ${i + 1}`}</span>
+                                <span className="inline-flex items-center gap-1 rounded-md border border-purple-300/20 bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-100">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                  {assistant.name || `Agent ${i + 1}`}
                                 </span>
                                 {i < call.assistants_involved!.length - 1 && (
                                   <ArrowRight className="mx-1 h-3 w-3 text-zinc-500" />
@@ -1216,25 +1211,25 @@ const CallLogs = () => {
                               </div>
                             ))}
                             {call.handoff_sequence && call.handoff_sequence.length > 0 && (
-                              <Badge variant="secondary" className={callLogBadgeTone('neutral', cn('ml-1', premiumInteractiveBadge))}>
-                                <GitBranch className="mr-1 h-3 w-3" />
+                              <Badge variant="secondary" className="ml-2 border border-purple-300/25 bg-purple-500/15 text-xs text-purple-100">
+                                <GitBranch className="w-3 h-3 mr-1" />
                                 {call.handoff_sequence.length} handoff{call.handoff_sequence.length > 1 ? 's' : ''}
                               </Badge>
                             )}
                           </div>
                         )}
-                        
+
                         {/* Meta info row */}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
                           {call.phone_number && call.customer_name && (
                             <span className="rounded-full border border-white/10 bg-black/25 px-2.5 py-1 font-mono text-xs text-zinc-300">{call.phone_number}</span>
                           )}
-                          <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-2.5 py-1">
-                            <Clock className="h-3.5 w-3.5 text-zinc-500" />
-                            {call.started_at 
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {call.started_at
                               ? format(new Date(call.started_at), 'MMM d, h:mm a')
-                              : call.created_at 
-                                ? <span className="text-zinc-500">{format(new Date(call.created_at), 'MMM d, h:mm a')} (initiated)</span>
+                              : call.created_at
+                                ? <span className="text-muted-foreground/70">{format(new Date(call.created_at), 'MMM d, h:mm a')} (initiated)</span>
                                 : '-'
                             }
                           </span>
@@ -1260,7 +1255,7 @@ const CallLogs = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Right section - badges */}
                     <div className="flex flex-wrap items-center gap-2 lg:flex-shrink-0 lg:justify-end">
                       <CallQualityBadge
@@ -1287,23 +1282,13 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "flex flex-col border-white/10 bg-zinc-950/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl",
+          "flex flex-col overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-950/95 to-black/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl",
           isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "w-[calc(100vw-32px)] max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
-          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-          <div className="pointer-events-none absolute -right-20 -top-24 h-60 w-60 rounded-full bg-amber-500/10 blur-3xl" />
-          <DialogHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_36%),linear-gradient(90deg,rgba(24,24,27,0.96),rgba(0,0,0,0.82),rgba(120,53,15,0.16))] px-5 py-4 sm:px-6 sm:py-5">
-            <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
-              <FileText className="h-3 w-3" />
-              Voice Intelligence Case File
-            </div>
-            <DialogTitle className="flex min-w-0 items-center gap-3 text-xl text-zinc-50 sm:text-2xl">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-500/10 text-amber-200 shadow-inner shadow-amber-950/40">
-                <Phone className="h-5 w-5" />
-              </span>
-              <span className="min-w-0 truncate">
-                {selectedCall?.customer_name || selectedCall?.phone_number || 'Call Details'}
-              </span>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 bg-gradient-to-r from-amber-100 via-zinc-100 to-amber-300 bg-clip-text text-transparent">
+              <Phone className="h-5 w-5 text-amber-300" />
+              Call Details
             </DialogTitle>
             {selectedCall && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1318,7 +1303,7 @@ const CallLogs = () => {
           {selectedCall && (
             <Tabs defaultValue="overview" className="w-full flex flex-col flex-1 min-h-0 overflow-hidden max-w-full">
               <div className="-mx-1 overflow-x-auto px-1 [scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)]">
-                <TabsList className={cn("h-auto min-w-max gap-0.5 p-0.5", isMobile ? "inline-flex w-auto" : `grid w-full ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`)}>
+                <TabsList className={cn("h-auto min-w-max gap-1 rounded-2xl border border-white/10 bg-black/45 p-1", isMobile ? "inline-flex w-auto" : `grid w-full ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`)}>
                   <TabsTrigger value="overview" className={isMobile ? "text-xs" : ""}>Overview</TabsTrigger>
                   {selectedCall.is_squad_call && (
                     <TabsTrigger value="squad" className={cn(detailTabTrigger, "flex items-center gap-1 data-[state=active]:bg-purple-400/15 data-[state=active]:text-purple-100", isMobile && "text-xs")}>
@@ -1332,8 +1317,8 @@ const CallLogs = () => {
                   <TabsTrigger value="metadata" className={cn(detailTabTrigger, "data-[state=active]:bg-zinc-700/70 data-[state=active]:text-zinc-100", isMobile ? "text-xs" : "")}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
                 </TabsList>
               </div>
-              
-              <ScrollArea className={cn("mt-4 min-h-0 max-w-full rounded-3xl border border-white/10 bg-black/20 p-3", premiumScrollbar, isMobile ? "h-[60dvh]" : "flex-1")}>
+
+              <ScrollArea className={cn("mt-2 max-w-full", isMobile ? "h-[60vh]" : "flex-1")}>
                 <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 min-w-0", isMobile ? "px-1 max-w-[calc(100vw-56px)] overflow-hidden" : "pr-4")}>
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
@@ -1353,21 +1338,21 @@ const CallLogs = () => {
                       )}
                     </div>
                   )}
-                  
+
                   {isMobile ? (
                     /* Mobile: single-column stack */
                     <div className="space-y-2 max-w-full overflow-hidden">
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">Customer</p>
                         <p className="font-medium text-sm break-words overflow-hidden">{selectedCall.customer_name || 'Unknown'}</p>
                         <p className="text-xs text-muted-foreground break-all overflow-hidden">{selectedCall.phone_number || '-'}</p>
                       </div>
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">{selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}</p>
                         <p className="font-medium text-sm break-words overflow-hidden">{selectedCall.agent_name || 'Unknown'}</p>
                         <p className="text-xs text-muted-foreground break-all overflow-hidden">{selectedCall.agent_id || '-'}</p>
                       </div>
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">Direction</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {selectedCall.call_direction === 'inbound' ? (
@@ -1383,25 +1368,25 @@ const CallLogs = () => {
                           )}
                         </div>
                       </div>
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">Outcome</p>
                         <div className="mt-0.5">{getOutcomeBadge(selectedCall.call_outcome)}</div>
                       </div>
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">Duration</p>
                         <p className="font-medium text-sm">{formatDuration(selectedCall.duration_seconds)}</p>
                       </div>
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">Cost</p>
                         <p className="font-medium text-sm">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
                       </div>
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">Started</p>
                         <p className="font-medium text-sm break-words">
                           {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'PPpp') : '-'}
                         </p>
                       </div>
-                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
+                      <div className={cn(premiumMutedSurface, "max-w-full overflow-hidden p-3")}>
                         <p className="text-xs text-muted-foreground">Ended</p>
                         <p className="font-medium text-sm break-words">
                           {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'PPpp') : '-'}
@@ -1411,14 +1396,14 @@ const CallLogs = () => {
                   ) : (
                     /* Desktop: original 3-column grid */
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      <Card>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className={detailLabel}>Customer</p>
                           <p className={detailValue}>{selectedCall.customer_name || 'Unknown'}</p>
                           <p className="text-sm text-muted-foreground">{selectedCall.phone_number || '-'}</p>
                         </CardContent>
                       </Card>
-                      <Card className={detailCard}>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">
                             {selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}
@@ -1427,7 +1412,7 @@ const CallLogs = () => {
                           <p className="text-sm text-muted-foreground">{selectedCall.agent_id || '-'}</p>
                         </CardContent>
                       </Card>
-                      <Card className={detailCard}>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Direction</p>
                           <div className="flex items-center gap-1.5 mt-1">
@@ -1445,25 +1430,25 @@ const CallLogs = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      <Card className={detailCard}>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Outcome</p>
                           <div className="mt-1">{getOutcomeBadge(selectedCall.call_outcome)}</div>
                         </CardContent>
                       </Card>
-                      <Card className={detailCard}>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Duration</p>
                           <p className="font-medium">{formatDuration(selectedCall.duration_seconds)}</p>
                         </CardContent>
                       </Card>
-                      <Card className={detailCard}>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Cost</p>
                           <p className="font-medium">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
                         </CardContent>
                       </Card>
-                      <Card className={detailCard}>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Started</p>
                           <p className="font-medium">
@@ -1471,7 +1456,7 @@ const CallLogs = () => {
                           </p>
                         </CardContent>
                       </Card>
-                      <Card className={detailCard}>
+                      <Card className={premiumModalCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Ended</p>
                           <p className="font-medium">
@@ -1483,7 +1468,7 @@ const CallLogs = () => {
                   )}
 
                   {selectedCall.summary && (
-                    <Card className={cn(detailCard, "max-w-full")}>
+                    <Card className={cn(premiumModalCard, "max-w-full overflow-hidden")}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                           <FileText className="w-4 h-4 flex-shrink-0" />
@@ -1497,10 +1482,10 @@ const CallLogs = () => {
                   )}
 
                   {selectedCall.recording_url && (
-                    <CallRecordingPlayer 
+                    <CallRecordingPlayer
                       ref={recordingPlayerRef}
                       key={selectedCall.id}
-                      recordingUrl={selectedCall.recording_url} 
+                      recordingUrl={selectedCall.recording_url}
                       duration={selectedCall.duration_seconds}
                     />
                   )}
@@ -1511,8 +1496,8 @@ const CallLogs = () => {
                   <TabsContent value="squad" className="space-y-4 p-1 sm:p-2 overflow-hidden">
                     {/* Call Intent */}
                     {selectedCall.call_intent && (
-                      <Card className={detailCard}>
-                        <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                      <Card className={premiumModalCard}>
+                        <CardHeader className="pb-2">
                           <CardTitle className="text-base flex items-center gap-2">
                             <Target className="w-4 h-4" />
                             Call Intent
@@ -1527,8 +1512,8 @@ const CallLogs = () => {
                     )}
 
                     {/* Assistants Involved */}
-                    <Card className={detailCard}>
-                      <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                    <Card className={premiumModalCard}>
+                      <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                           <Users className="w-4 h-4" />
                           Assistants Involved ({selectedCall.assistants_involved?.length || 0})
@@ -1538,7 +1523,7 @@ const CallLogs = () => {
                         {selectedCall.assistants_involved && selectedCall.assistants_involved.length > 0 ? (
                           <div className="space-y-2">
                             {selectedCall.assistants_involved.map((assistant, i) => (
-                              <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                              <div key={i} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/35 p-3 shadow-inner shadow-black/20">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
                                     <span className="text-purple-400 font-medium text-sm">{i + 1}</span>
@@ -1563,8 +1548,8 @@ const CallLogs = () => {
                     </Card>
 
                     {/* Handoff Sequence */}
-                    <Card className={detailCard}>
-                      <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                    <Card className={premiumModalCard}>
+                      <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                           <GitBranch className="w-4 h-4" />
                           Handoff Sequence
@@ -1600,8 +1585,8 @@ const CallLogs = () => {
 
                     {/* Structured Data from Each Assistant */}
                     {selectedCall.structured_data_multi && selectedCall.structured_data_multi.length > 0 && (
-                      <Card className={detailCard}>
-                        <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                      <Card className={premiumModalCard}>
+                        <CardHeader className="pb-2">
                           <CardTitle className="text-base flex items-center gap-2">
                             <Zap className="w-4 h-4" />
                             Collected Data
@@ -1618,7 +1603,7 @@ const CallLogs = () => {
                                       {assistant?.name || item.assistant.slice(0, 8)}
                                     </Badge>
                                   </div>
-                                  <pre className="max-h-64 overflow-auto rounded-2xl border border-white/10 bg-black/40 p-3 font-mono text-xs text-zinc-300 whitespace-pre-wrap">
+                                  <pre className="overflow-auto rounded-2xl border border-white/10 bg-black/45 p-3 font-mono text-xs text-zinc-200">
                                     {JSON.stringify(item.data, null, 2)}
                                   </pre>
                                 </div>
@@ -1632,7 +1617,7 @@ const CallLogs = () => {
                 )}
 
                 <TabsContent value="transcript" className="p-1 sm:p-2 overflow-hidden">
-                  <CallTranscriptChat 
+                  <CallTranscriptChat
                     artifactMessages={selectedCall.artifact_messages as any[]}
                     plainTranscript={selectedCall.transcript}
                   />
@@ -1645,8 +1630,8 @@ const CallLogs = () => {
                 <TabsContent value="analysis" className="p-1 sm:p-2 overflow-hidden">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Call Quality Score */}
-                  <Card className={detailCard}>
-                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                  <Card className={premiumModalCard}>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-base">Call Quality Score</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1660,8 +1645,8 @@ const CallLogs = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className={detailCard}>
-                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                  <Card className={premiumModalCard}>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-base">Sentiment</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1669,8 +1654,8 @@ const CallLogs = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className={detailCard}>
-                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                  <Card className={premiumModalCard}>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-base flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Key Topics
@@ -1689,8 +1674,8 @@ const CallLogs = () => {
                     </CardContent>
                   </Card>
 
-                  <Card className={detailCard}>
-                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                  <Card className={premiumModalCard}>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-base flex items-center gap-2">
                         <CheckCircle className="w-4 h-4" />
                         Action Items
@@ -1712,12 +1697,12 @@ const CallLogs = () => {
                 </TabsContent>
 
                 <TabsContent value="metadata" className="p-1 sm:p-2 overflow-hidden">
-                  <Card className={detailCard}>
-                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
+                  <Card className={premiumModalCard}>
+                    <CardHeader className="pb-2">
                       <CardTitle className="text-base">Raw Metadata</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <pre className="max-h-[45vh] overflow-auto rounded-2xl border border-white/10 bg-black/45 p-4 font-mono text-xs text-zinc-300 whitespace-pre-wrap">
+                      <pre className="overflow-auto rounded-2xl border border-white/10 bg-black/45 p-4 font-mono text-xs text-zinc-200">
                         {JSON.stringify(selectedCall.metadata, null, 2)}
                       </pre>
                     </CardContent>
