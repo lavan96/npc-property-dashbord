@@ -191,6 +191,7 @@ export default function Agreements() {
   const [signingPdfUrl, setSigningPdfUrl] = useState<string>("");
   const [statusAgreement, setStatusAgreement] =
     useState<AgencyAgreement | null>(null);
+  const searchInputId = "agreements-search-input";
   const navigate = useNavigate();
   const { canEdit: canEditAgreements } = useModulePermissions("agreements");
 
@@ -533,9 +534,9 @@ export default function Agreements() {
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="isolate flex flex-col gap-6 overflow-hidden border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_14%_12%,hsl(43_84%_52%/0.18),transparent_28%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.9)_52%,hsl(var(--muted)/0.45))] py-7 shadow-[0_24px_70px_rgba(15,23,42,0.11)] shadow-primary/5 before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent dark:bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.20),transparent_36%),radial-gradient(circle_at_14%_12%,hsl(43_84%_52%/0.14),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.76)_52%,hsl(var(--muted)/0.18))] sm:flex-row sm:items-center sm:justify-between"
+        className="isolate flex flex-col gap-5 overflow-hidden border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_14%_12%,hsl(43_84%_52%/0.18),transparent_28%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.9)_52%,hsl(var(--muted)/0.45))] py-7 shadow-[0_24px_70px_rgba(15,23,42,0.11)] shadow-primary/5 before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent dark:bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.20),transparent_36%),radial-gradient(circle_at_14%_12%,hsl(43_84%_52%/0.14),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.76)_52%,hsl(var(--muted)/0.18))] sm:flex-row sm:items-center sm:justify-between"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center">
           <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.35rem] border border-amber-300/40 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.20),hsl(var(--primary)/0.14))] text-primary shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35),0_16px_36px_hsl(43_74%_28%/0.16)] dark:border-amber-200/25 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(var(--primary)/0.16))]">
             <span className="absolute inset-2 rounded-2xl border border-white/30 dark:border-white/10" />
             <FileSignature className="relative h-7 w-7 drop-shadow-sm" />
@@ -552,13 +553,13 @@ export default function Agreements() {
             </p>
           </div>
         </div>
-        <div className="rounded-full border border-amber-300/40 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm shadow-amber-950/5 dark:border-amber-200/25 dark:bg-amber-300/10 dark:text-amber-100">
+        <div className="w-fit max-w-full rounded-full border border-amber-300/40 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-800 shadow-sm shadow-amber-950/5 dark:border-amber-200/25 dark:bg-amber-300/10 dark:text-amber-100">
           {pending} awaiting signature
         </div>
       </DashboardThemeFrame>
 
       <section
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 xl:grid-cols-4"
         aria-label="Agreement KPI summary"
       >
         {[
@@ -676,11 +677,15 @@ export default function Agreements() {
               status, signature milestones, and actions.
             </p>
           </div>
-          <div className="group/search relative w-full sm:w-80 lg:w-96">
+          <div className="group/search relative w-full sm:min-w-80 sm:max-w-md lg:w-96">
+            <label htmlFor={searchInputId} className="sr-only">Search agreements by buyer name, email, or status</label>
             <div className="pointer-events-none absolute inset-y-1.5 left-1.5 z-10 flex w-10 items-center justify-center rounded-xl border border-transparent bg-primary/8 text-primary shadow-[inset_0_1px_0_hsl(0_0%_100%/0.32)] transition-all duration-300 group-hover/search:border-amber-300/35 group-hover/search:bg-amber-400/12 group-focus-within/search:border-amber-300/55 group-focus-within/search:bg-amber-400/18 group-focus-within/search:text-amber-700 dark:bg-amber-300/10 dark:text-amber-200 dark:group-hover/search:bg-amber-200/12 dark:group-focus-within/search:bg-amber-200/16 dark:group-focus-within/search:text-amber-100">
               <Search className="h-4 w-4" aria-hidden="true" />
             </div>
             <Input
+              id={searchInputId}
+              type="search"
+              aria-label="Search agreements by buyer name, email, or status"
               placeholder="Search by name, email, status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -714,27 +719,27 @@ export default function Agreements() {
               )}
             </div>
           ) : (
-            <ScrollArea className="min-h-[22rem] max-h-[min(58dvh,46rem)] rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_18px_44px_rgba(15,23,42,0.10)] [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&_[data-radix-scroll-area-viewport]]:overscroll-contain dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+            <ScrollArea role="region" aria-label="Agreements table with horizontal scrolling" className="min-h-[22rem] max-h-[min(58dvh,46rem)] rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_18px_44px_rgba(15,23,42,0.10)] [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&_[data-radix-scroll-area-viewport]]:overscroll-contain dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
               <div className="min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-                <Table className="min-w-[880px]">
+                <Table aria-label="Agency agreements" className="min-w-[1040px]">
                   <TableHeader className="sticky top-0 z-10 border-b border-border/70 bg-muted/90 shadow-[0_1px_0_hsl(var(--border)/0.95),0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-slate-900/90">
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableHead className="h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90">
                         Buyer
                       </TableHead>
-                      <TableHead className="hidden h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90 md:table-cell">
+                      <TableHead className="h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90">
                         Email
                       </TableHead>
                       <TableHead className="h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90">
                         Status
                       </TableHead>
-                      <TableHead className="hidden h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90 sm:table-cell">
+                      <TableHead className="h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90">
                         Date
                       </TableHead>
-                      <TableHead className="hidden h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90 lg:table-cell">
+                      <TableHead className="h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90">
                         Sent
                       </TableHead>
-                      <TableHead className="hidden h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90 lg:table-cell">
+                      <TableHead className="h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90">
                         Signed
                       </TableHead>
                       <TableHead className="h-12 w-12"></TableHead>
@@ -765,7 +770,7 @@ export default function Agreements() {
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="hidden max-w-[17rem] py-4 pr-5 text-sm font-medium text-muted-foreground md:table-cell">
+                        <TableCell className="max-w-[17rem] py-4 pr-5 text-sm font-medium text-muted-foreground">
                           {agreement.buyer_email ? (
                             <span
                               className="block max-w-[15.5rem] truncate rounded-lg px-0.5 py-1 transition-colors group-hover:text-foreground/75"
@@ -782,10 +787,10 @@ export default function Agreements() {
                         <TableCell className="py-4 pr-5 align-middle">
                           {renderDocuSignTracking(agreement)}
                         </TableCell>
-                        <TableCell className="hidden py-4 pr-5 text-sm font-medium text-muted-foreground sm:table-cell">
+                        <TableCell className="py-4 pr-5 text-sm font-medium text-muted-foreground">
                           {renderAgreementDate(agreement.agreement_date)}
                         </TableCell>
-                        <TableCell className="hidden py-4 pr-5 align-middle lg:table-cell">
+                        <TableCell className="py-4 pr-5 align-middle">
                           {renderDocuSignTimelineDate(
                             "Sent",
                             agreement.docusign_sent_at,
@@ -793,7 +798,7 @@ export default function Agreements() {
                             CalendarDays,
                           )}
                         </TableCell>
-                        <TableCell className="hidden py-4 pr-5 align-middle lg:table-cell">
+                        <TableCell className="py-4 pr-5 align-middle">
                           {renderDocuSignTimelineDate(
                             "Signed",
                             agreement.docusign_signed_at,
@@ -810,13 +815,14 @@ export default function Agreements() {
                                 aria-label={`Open actions for agreement with ${agreement.buyer_names}`}
                                 className="ml-auto h-10 w-10 rounded-2xl border-border/80 bg-card/95 text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/12 hover:text-amber-700 hover:shadow-[0_10px_24px_hsl(43_84%_52%/0.18)] focus-visible:border-amber-400/70 focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 data-[state=open]:border-amber-400/60 data-[state=open]:bg-amber-500/14 data-[state=open]:text-amber-700 dark:bg-slate-950/55 dark:hover:border-amber-200/35 dark:hover:bg-amber-200/12 dark:hover:text-amber-100 dark:data-[state=open]:text-amber-100"
                               >
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                               align="end"
                               sideOffset={10}
                               collisionPadding={{ top: 16, right: 16, bottom: 24, left: 16 }}
+                              aria-label={`Actions for ${agreement.buyer_names}`}
                               className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border-border/80 bg-popover p-2 ring-1 ring-white/70 text-popover-foreground shadow-2xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-slate-700/70 dark:shadow-black/35"
                             >
                               <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -954,7 +960,7 @@ export default function Agreements() {
           }
         }}
       >
-        <DialogContent className="flex max-h-[min(90dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.28)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92))] dark:ring-white/10">
+        <DialogContent aria-describedby={undefined} className="flex max-h-[min(90dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.28)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92))] dark:ring-white/10">
           <DialogHeader>
             <DialogTitle>{previewTitle}</DialogTitle>
           </DialogHeader>

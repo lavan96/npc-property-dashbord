@@ -11,6 +11,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles, Layers3, AlertCircle, ArrowRight, ShieldCheck, RefreshCw } from 'lucide-react';
@@ -65,6 +69,7 @@ export default function GammaTemplateManager() {
   const { data: templates = [], isLoading, isError, error, refetch } = useGammaTemplates();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<GammaTemplate | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<GammaTemplate | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -189,7 +194,7 @@ export default function GammaTemplateManager() {
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Manage reusable Gamma agreement templates, safe placeholder mapping, and the default agreement blueprint used for client sends.</p>
           </div>
-          <Button size="sm" onClick={openCreate} className="h-10 rounded-xl bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_48%,hsl(38_92%_50%))] px-4 font-semibold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:translate-y-[-1px] hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.38),0_0_0_1px_hsl(43_84%_52%/0.22),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-slate-950">
+          <Button size="sm" onClick={openCreate} className="h-11 w-full rounded-xl bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_48%,hsl(38_92%_50%))] px-4 font-semibold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:translate-y-[-1px] hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.38),0_0_0_1px_hsl(43_84%_52%/0.22),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-slate-950">
             <Plus className="h-4 w-4 mr-1" /> Add Template
           </Button>
         </div>
@@ -238,12 +243,12 @@ export default function GammaTemplateManager() {
           </div>
         ) : (
           <div className="max-h-[min(46dvh,34rem)] min-h-[16rem] overflow-auto overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.58),0_18px_46px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_52px_rgba(0,0,0,0.28)]">
-            <Table className="min-w-[760px]">
+            <Table aria-label="Gamma agreement templates" className="min-w-[820px]">
             <TableHeader className="bg-muted/85 shadow-[0_1px_0_hsl(var(--border)/0.85)] dark:bg-white/[0.04]">
               <TableRow>
                 <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Name</TableHead>
-                <TableHead className="hidden h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground md:table-cell">Gamma ID</TableHead>
-                <TableHead className="hidden h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground sm:table-cell">Placeholders</TableHead>
+                <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Gamma ID</TableHead>
+                <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Placeholders</TableHead>
                 <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Status</TableHead>
                 <TableHead className="h-12 w-32 text-right text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Actions</TableHead>
               </TableRow>
@@ -260,12 +265,12 @@ export default function GammaTemplateManager() {
                     </div>
                     {t.description && <p className="mt-1 max-w-md truncate text-xs text-muted-foreground">{t.description}</p>}
                   </TableCell>
-                  <TableCell className="hidden py-4 md:table-cell">
+                  <TableCell className="py-4">
                     <code className="inline-flex max-w-[15rem] items-center rounded-xl border border-border/70 bg-muted/55 px-3 py-1.5 font-mono text-[0.72rem] font-semibold text-foreground/75 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45)] transition-colors group-hover:border-amber-300/45 group-hover:bg-amber-50/60 group-hover:text-amber-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:group-hover:border-amber-200/25 dark:group-hover:bg-amber-200/10 dark:group-hover:text-amber-50" title={t.gamma_template_id}>
                       <span className="truncate">{t.gamma_template_id}</span>
                     </code>
                   </TableCell>
-                  <TableCell className="hidden py-4 sm:table-cell">
+                  <TableCell className="py-4">
                     <Badge variant="secondary" className="gap-1.5 rounded-full border border-indigo-300/50 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-indigo-200/20 dark:bg-indigo-300/10 dark:text-indigo-100">
                       <Layers3 className="h-3 w-3" />
                       {t.placeholder_mappings.length} mappings
@@ -279,15 +284,13 @@ export default function GammaTemplateManager() {
                   </TableCell>
                   <TableCell className="py-4">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_18px_hsl(43_84%_52%/0.16)] focus-visible:border-amber-400/60 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:hover:border-amber-200/25 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
+                      <Button variant="ghost" size="icon" aria-label={t.is_default ? "Default template" : `Set ${t.name} as default template`} className="h-11 w-11 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_18px_hsl(43_84%_52%/0.16)] focus-visible:border-amber-400/60 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:hover:border-amber-200/25 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
                         {t.is_default ? <Star className="h-4 w-4 fill-amber-400 text-amber-500 drop-shadow-[0_0_7px_rgba(245,158,11,0.45)]" /> : <StarOff className="h-4 w-4" />}
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-sky-300/45 hover:bg-sky-500/10 hover:text-sky-700 hover:shadow-[0_8px_18px_rgba(14,165,233,0.14)] focus-visible:border-sky-400/60 focus-visible:ring-2 focus-visible:ring-sky-300/40 dark:hover:border-sky-200/25 dark:hover:text-sky-200" onClick={() => openEdit(t)} title="Edit template">
+                      <Button variant="ghost" size="icon" aria-label={`Edit ${t.name} template`} className="h-11 w-11 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-sky-300/45 hover:bg-sky-500/10 hover:text-sky-700 hover:shadow-[0_8px_18px_rgba(14,165,233,0.14)] focus-visible:border-sky-400/60 focus-visible:ring-2 focus-visible:ring-sky-300/40 dark:hover:border-sky-200/25 dark:hover:text-sky-200" onClick={() => openEdit(t)} title="Edit template">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-destructive/80 transition-all hover:-translate-y-0.5 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_8px_18px_hsl(var(--destructive)/0.12)] focus-visible:border-destructive/40 focus-visible:ring-2 focus-visible:ring-destructive/25" title="Delete template" onClick={() => {
-                        if (confirm('Delete this template?')) deleteMutation.mutate(t.id);
-                      }}>
+                      <Button variant="ghost" size="icon" aria-label={`Delete ${t.name} template`} className="h-11 w-11 rounded-xl border border-transparent text-destructive/80 transition-all hover:-translate-y-0.5 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_8px_18px_hsl(var(--destructive)/0.12)] focus-visible:border-destructive/40 focus-visible:ring-2 focus-visible:ring-destructive/25" title="Delete template" onClick={() => setDeleteTarget(t)}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -302,7 +305,7 @@ export default function GammaTemplateManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-        <DialogContent className="max-h-[min(92dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-300/50 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.97))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
+        <DialogContent aria-describedby={undefined} className="max-h-[min(92dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-300/50 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.97))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
           <div className="flex max-h-[min(92dvh,900px)] min-h-0 flex-col">
             <DialogHeader className="border-b border-border/70 bg-muted/45 px-6 py-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
               <div className="flex items-start gap-4">
@@ -347,19 +350,19 @@ export default function GammaTemplateManager() {
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Template Name</Label>
-                      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Buyer's Agent Agreement v2" className="h-11 rounded-xl border-border/70 bg-background/85 shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
+                      <Label htmlFor="gamma-template-name" className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Template Name</Label>
+                      <Input id="gamma-template-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Buyer's Agent Agreement v2" className="h-11 rounded-xl border-border/70 bg-background/85 shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
                       {!name && <p className="text-xs font-medium text-muted-foreground">Enter a recognizable name for admins and agreement senders.</p>}
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Gamma Template ID</Label>
-                      <Input value={gammaId} onChange={(e) => setGammaId(e.target.value)} placeholder="e.g. g_abc123xyz" className="h-11 rounded-xl border-border/70 bg-background/85 font-mono text-sm shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70 [overflow-wrap:anywhere]" />
+                      <Label htmlFor="gamma-template-id" className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Gamma Template ID</Label>
+                      <Input id="gamma-template-id" value={gammaId} onChange={(e) => setGammaId(e.target.value)} placeholder="e.g. g_abc123xyz" className="h-11 rounded-xl border-border/70 bg-background/85 font-mono text-sm shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70 [overflow-wrap:anywhere]" />
                       {!gammaId && <p className="text-xs font-medium text-muted-foreground">Use the Gamma ID already connected to the agreement automation.</p>}
                     </div>
                   </div>
                   <div className="mt-4 space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Description (optional)</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of this template..." rows={2} className="rounded-xl border-border/70 bg-background/85 shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
+                    <Label htmlFor="gamma-template-description" className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Description (optional)</Label>
+                    <Textarea id="gamma-template-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of this template..." rows={2} className="rounded-xl border-border/70 bg-background/85 shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
                   </div>
                 </section>
 
@@ -382,7 +385,7 @@ export default function GammaTemplateManager() {
                             value={m.placeholder}
                             onChange={(e) => updateMapping(idx, 'placeholder', e.target.value)}
                             placeholder="[Placeholder]"
-                            className="h-10 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65 [overflow-wrap:anywhere]"
+                            className="min-h-11 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65 [overflow-wrap:anywhere]"
                           />
                         </div>
                         <span className="hidden pb-3 text-amber-500 sm:block"><ArrowRight className="h-5 w-5" /></span>
@@ -391,7 +394,7 @@ export default function GammaTemplateManager() {
                           <select
                             value={m.field}
                             onChange={(e) => updateMapping(idx, 'field', e.target.value)}
-                            className="h-10 w-full rounded-xl border border-input bg-background/90 px-3 text-sm shadow-sm transition-all hover:border-amber-300/45 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65 dark:hover:border-amber-200/25"
+                            className="min-h-11 w-full rounded-xl border border-input bg-background/90 px-3 text-sm shadow-sm transition-all hover:border-amber-300/45 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65 dark:hover:border-amber-200/25"
                           >
                             <option value="">Select field...</option>
                             {AVAILABLE_FIELDS.map((f) => (
@@ -405,7 +408,7 @@ export default function GammaTemplateManager() {
                             value={m.defaultValue || ''}
                             onChange={(e) => updateMapping(idx, 'defaultValue', e.target.value)}
                             placeholder="Default"
-                            className="h-10 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
+                            className="min-h-11 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
                           />
                         </div>
                         <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl border border-transparent text-muted-foreground transition-all hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/35 focus-visible:ring-2 focus-visible:ring-destructive/25" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
@@ -441,6 +444,29 @@ export default function GammaTemplateManager() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-border/80 p-5 sm:p-6">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete template?</AlertDialogTitle>
+            <AlertDialogDescription className="leading-6">
+              This will delete {deleteTarget?.name ? `"${deleteTarget.name}"` : 'this template'}. Existing agreement data and rows are not changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="min-h-11 rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+            >
+              Delete template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardThemeFrame>
   );
 }
