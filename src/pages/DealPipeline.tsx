@@ -55,8 +55,8 @@ const premiumScrollbarClass =
   "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950/80 [&::-webkit-scrollbar-thumb]:bg-amber-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/75";
 
 const pipelineTabContentClass = cn(
-  "mt-4 min-h-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-border dark:border-white/10 bg-background dark:bg-zinc-950/35 p-2 shadow-inner sm:p-4",
-  "data-[state=active]:flex data-[state=active]:max-h-none data-[state=active]:flex-col md:data-[state=active]:max-h-[min(72dvh,calc(100dvh-12rem))]",
+  "mt-4 rounded-[1.25rem] border border-border dark:border-white/10 bg-background dark:bg-zinc-950/35 p-2 shadow-inner sm:p-4",
+  "data-[state=active]:flex data-[state=active]:flex-col",
   premiumScrollbarClass,
 );
 
