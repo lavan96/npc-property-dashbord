@@ -15,6 +15,7 @@ import { useChecklistTemplates, useChecklistInstances, useChecklistMutations, ty
 import { TemplateBuilder } from '@/components/checklists/TemplateBuilder';
 import { ChecklistInstanceView } from '@/components/checklists/ChecklistInstanceView';
 import { TemplateImportDialog } from '@/components/checklists/TemplateImportDialog';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import type { ParsedTemplate } from '@/utils/checklistTemplateParser';
 import { toast } from 'sonner';
 
@@ -52,8 +53,8 @@ export default function Checklists() {
   // If viewing a template builder
   if (selectedTemplate) {
     return (
-      <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
-        <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
+      <DashboardThemeFrame as="main" variant="page" className="flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-primary/15 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] p-4 text-foreground shadow-2xl shadow-black/30 md:p-6">
+        <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82)_52%,hsl(var(--primary)/0.12))] p-5 shadow-inner shadow-black/10">
           <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
               <ClipboardList className="h-6 w-6" />
@@ -63,19 +64,19 @@ export default function Checklists() {
               <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
+        </DashboardThemeFrame>
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 overscroll-contain [scrollbar-color:hsl(var(--primary)/0.35)_hsl(var(--muted)/0.72)]">
           <TemplateBuilder template={selectedTemplate} onBack={() => setSelectedTemplate(null)} />
         </div>
-      </div>
+      </DashboardThemeFrame>
     );
   }
 
   // If viewing an instance
   if (selectedInstance) {
     return (
-      <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
-        <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
+      <DashboardThemeFrame as="main" variant="page" className="flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-primary/15 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] p-4 text-foreground shadow-2xl shadow-black/30 md:p-6">
+        <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82)_52%,hsl(var(--primary)/0.12))] p-5 shadow-inner shadow-black/10">
           <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
               <ClipboardList className="h-6 w-6" />
@@ -85,11 +86,11 @@ export default function Checklists() {
               <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
+        </DashboardThemeFrame>
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 overscroll-contain [scrollbar-color:hsl(var(--primary)/0.35)_hsl(var(--muted)/0.72)]">
           <ChecklistInstanceView instance={selectedInstance} onBack={() => setSelectedInstance(null)} />
         </div>
-      </div>
+      </DashboardThemeFrame>
     );
   }
 
@@ -221,8 +222,8 @@ export default function Checklists() {
   };
 
   return (
-    <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
-      <div className="rounded-2xl border border-white/5 bg-black/35 p-5 shadow-inner shadow-amber-950/10">
+    <DashboardThemeFrame as="main" variant="page" className="flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-primary/15 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] p-4 text-foreground shadow-2xl shadow-black/30 md:p-6">
+      <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82)_52%,hsl(var(--primary)/0.12))] p-5 shadow-inner shadow-black/10">
         <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200 shadow-[0_18px_42px_rgba(245,158,11,0.16)]">
@@ -234,10 +235,10 @@ export default function Checklists() {
             </div>
           </div>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-0 flex-1 space-y-5">
-        <div className="overflow-x-auto overscroll-x-contain rounded-3xl [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border border-amber-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(9,9,11,0.92)_32%,rgba(3,3,3,0.96))] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+        <DashboardThemeFrame variant="toolbar" className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--card)/0.92)_32%,hsl(var(--background)/0.96))] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)] [scrollbar-color:hsl(var(--primary)/0.35)_hsl(var(--muted)/0.72)]">
           <TabsList className="inline-flex h-auto w-auto min-w-full gap-1 rounded-2xl border border-white/5 bg-black/70 p-1.5 md:grid md:w-full md:grid-cols-4">
             <TabsTrigger value="active" className="group flex min-h-12 min-w-[8rem] items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
               <ClipboardList className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
@@ -260,7 +261,7 @@ export default function Checklists() {
               <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{templates.length}</span>
             </TabsTrigger>
           </TabsList>
-        </div>
+        </DashboardThemeFrame>
 
         {/* Active Checklists */}
         <TabsContent value="active" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
@@ -480,6 +481,6 @@ export default function Checklists() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
