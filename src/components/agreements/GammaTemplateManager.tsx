@@ -14,7 +14,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles, Layers3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
@@ -174,26 +174,28 @@ export default function GammaTemplateManager() {
     <DashboardThemeFrame
       as="section"
       variant="section"
-      className="border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--card)/0.74))] p-0 shadow-[0_22px_70px_rgba(15,23,42,0.09)] ring-1 ring-white/45 dark:border-white/10 dark:bg-slate-950/45 dark:ring-white/10"
+      className="overflow-hidden border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.12),transparent_30%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--card)/0.82))] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
     >
-      <CardHeader className="bg-muted/15 pb-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader className="border-b border-border/55 bg-background/35 pb-5 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
-                <FileSignature className="h-4 w-4" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.20),hsl(var(--primary)/0.10))] text-amber-600 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.55),0_12px_30px_hsl(43_84%_52%/0.16)] dark:border-amber-200/20 dark:text-amber-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_18px_42px_rgba(0,0,0,0.32)]">
+                <FileSignature className="h-5 w-5" />
               </span>
-              <CardTitle className="text-base">Gamma Templates</CardTitle>
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-amber-600/90 dark:text-amber-200/80">Agreement blueprints</p>
+                <CardTitle className="mt-1 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Gamma Templates</CardTitle>
+              </div>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Manage reusable Gamma agreement templates and placeholder mappings.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Manage reusable Gamma agreement templates, safe placeholder mapping, and the default agreement blueprint used for client sends.</p>
           </div>
-          <Button size="sm" onClick={openCreate} className="shadow-sm shadow-primary/15">
+          <Button size="sm" onClick={openCreate} className="h-10 rounded-xl bg-[linear-gradient(135deg,hsl(43_84%_52%),hsl(38_92%_50%))] px-4 font-semibold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28)] transition-all hover:translate-y-[-1px] hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.34)] dark:text-slate-950">
             <Plus className="h-4 w-4 mr-1" /> Add Template
           </Button>
         </div>
       </CardHeader>
-      <Separator className="bg-border/60" />
-      <CardContent className="p-0">
+      <CardContent className="p-3 sm:p-5">
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -203,45 +205,55 @@ export default function GammaTemplateManager() {
             No templates configured. Add a Gamma template to get started.
           </div>
         ) : (
-          <Table>
-            <TableHeader className="bg-muted/45 dark:bg-slate-900/70">
+          <div className="overflow-hidden rounded-2xl border border-border/65 bg-background/80 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.58),0_18px_46px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_52px_rgba(0,0,0,0.28)]">
+            <Table>
+            <TableHeader className="bg-muted/55 dark:bg-white/[0.04]">
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden md:table-cell">Gamma ID</TableHead>
-                <TableHead className="hidden sm:table-cell">Placeholders</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Name</TableHead>
+                <TableHead className="hidden h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground md:table-cell">Gamma ID</TableHead>
+                <TableHead className="hidden h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground sm:table-cell">Placeholders</TableHead>
+                <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Status</TableHead>
+                <TableHead className="h-12 w-32 text-right text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {templates.map((t) => (
-                <TableRow key={t.id} className="border-border/55 transition-colors hover:bg-primary/5">
-                  <TableCell className="font-medium">
-                    {t.name}
+                <TableRow key={t.id} className="border-border/45 transition-colors hover:bg-amber-500/5 dark:hover:bg-amber-300/5">
+                  <TableCell className="py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground sm:text-base">{t.name}</span>
                     {t.is_default && (
-                      <Badge variant="default" className="ml-2 gap-1 border-primary/30 bg-primary/90 text-xs shadow-sm"><Sparkles className="h-3 w-3" />Default</Badge>
+                      <Badge variant="default" className="gap-1 rounded-full border-amber-300/40 bg-[linear-gradient(135deg,hsl(43_84%_52%),hsl(38_92%_50%))] px-2.5 py-1 text-[0.68rem] font-bold text-slate-950 shadow-[0_8px_22px_hsl(43_84%_52%/0.25)]"><Sparkles className="h-3 w-3" />Default</Badge>
                     )}
+                    </div>
+                    {t.description && <p className="mt-1 max-w-md truncate text-xs text-muted-foreground">{t.description}</p>}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground text-xs font-mono">
-                    {t.gamma_template_id.substring(0, 20)}…
+                  <TableCell className="hidden py-4 md:table-cell">
+                    <code className="inline-flex max-w-[15rem] items-center rounded-lg border border-border/60 bg-muted/45 px-2.5 py-1 font-mono text-[0.72rem] text-muted-foreground shadow-inner dark:border-white/10 dark:bg-white/[0.04]" title={t.gamma_template_id}>
+                      <span className="truncate">{t.gamma_template_id}</span>
+                    </code>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                    {t.placeholder_mappings.length} mappings
+                  <TableCell className="hidden py-4 sm:table-cell">
+                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary dark:border-amber-200/15 dark:bg-amber-200/10 dark:text-amber-100">
+                      <Layers3 className="h-3 w-3" />
+                      {t.placeholder_mappings.length} mappings
+                    </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={t.is_active ? 'outline' : 'secondary'}>
+                  <TableCell className="py-4">
+                    <Badge variant={t.is_active ? 'outline' : 'secondary'} className={t.is_active ? 'rounded-full border-emerald-400/35 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300' : 'rounded-full px-2.5 py-1 text-xs font-semibold'}>
+                      <span className={t.is_active ? 'mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.14)]' : 'mr-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
                       {t.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
+                  <TableCell className="py-4">
+                    <div className="flex justify-end gap-1.5">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
                         {t.is_default ? <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" /> : <StarOff className="h-3.5 w-3.5" />}
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(t)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200" onClick={() => openEdit(t)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => {
                         if (confirm('Delete this template?')) deleteMutation.mutate(t.id);
                       }}>
                         <Trash2 className="h-3.5 w-3.5" />
@@ -252,6 +264,7 @@ export default function GammaTemplateManager() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </CardContent>
 
