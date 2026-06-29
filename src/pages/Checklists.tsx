@@ -244,17 +244,19 @@ export default function Checklists() {
         </TabsContent>
 
         {/* Completed */}
-        <TabsContent value="completed" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
+        <TabsContent value="completed" className="space-y-4 rounded-2xl border border-emerald-400/10 bg-[linear-gradient(180deg,rgba(6,78,59,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20">
           {completedInstances.length === 0 ? (
-            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
-              <CardContent className="py-12 text-center">
-                <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="font-semibold mb-1">No completed checklists yet</h3>
-                <p className="text-sm text-muted-foreground">Completed checklists will appear here</p>
+            <Card className="overflow-hidden border-dashed border-emerald-400/25 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,7,18,0.96))] shadow-inner shadow-emerald-950/20">
+              <CardContent className="relative py-14 text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-400/10 text-emerald-200 shadow-[0_18px_45px_rgba(16,185,129,0.16)]">
+                  <CheckCircle2 className="h-8 w-8" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-50">No completed checklists yet</h3>
+                <p className="text-sm text-zinc-400">Completed checklists will appear here</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {completedInstances.map(renderInstanceCard)}
             </div>
           )}
