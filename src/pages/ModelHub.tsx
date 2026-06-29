@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Sparkles, Zap,
   Brain, Image as ImageIcon, Search, RefreshCw, ShieldCheck, Globe,
@@ -329,7 +328,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="w-full">
+            <div className="w-full overflow-x-auto overscroll-x-contain [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
               <Table className="min-w-[960px]">
                 <TableHeader className="bg-background/70 dark:bg-black/20">
                   <TableRow className="border-border/60 hover:bg-transparent">
@@ -400,7 +399,8 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                                     type="button"
                                     disabled={savingKey === a.agent_key}
                                     onClick={() => updateAssignment(a.agent_key, recommended.route, recommended.model_id)}
-                                    className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-1 text-[10px] font-medium text-success transition hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:text-emerald-300"
+                                    className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-1 text-[10px] font-medium text-success transition hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 dark:text-emerald-300"
+                                    aria-label={`Apply recommended model ${recommended.model_id} to ${a.agent_label}`}
                                   >
                                     <ArrowUpCircle className="h-3 w-3" />
                                     Upgrade to <span className="truncate font-mono" title={recommended.model_id}>{recommended.model_id}</span>
@@ -440,7 +440,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                   })}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
           </CardContent>
         </Card>
       ))}
@@ -497,9 +497,9 @@ function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
         </AlertDescription>
       </Alert>
       <DashboardThemeFrame variant="toolbar" className="items-center p-3">
-        <Input placeholder="Search models…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 min-w-[220px] max-w-sm flex-1 rounded-xl bg-background/80" />
+        <Input aria-label="Search OpenRouter models" placeholder="Search models…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 min-w-[220px] max-w-sm flex-1 rounded-xl bg-background/80 focus-visible:ring-ring" />
         <Select value={family} onValueChange={setFamily}>
-          <SelectTrigger className="h-9 w-full rounded-xl bg-background/80 sm:w-[220px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Filter OpenRouter model family" className="h-9 w-full rounded-xl bg-background/80 focus:ring-ring sm:w-[220px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {families.map((f) => <SelectItem key={f} value={f}>{f === 'all' ? 'All families' : f}</SelectItem>)}
           </SelectContent>
@@ -604,16 +604,16 @@ export default function ModelHub() {
         </section>
 
         <Tabs defaultValue="bindings" className="space-y-6">
-          <DashboardThemeFrame variant="toolbar" className="overflow-x-auto p-1.5">
-            <TabsList className="grid h-auto min-w-[620px] flex-1 grid-cols-4 gap-1 rounded-xl bg-muted/40 p-1 sm:min-w-0">
-              <TabsTrigger value="bindings" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
-              <TabsTrigger value="gateway" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
-              <TabsTrigger value="native" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
-              <TabsTrigger value="openrouter" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] border-pink-500/30 text-pink-300">on</Badge>}</TabsTrigger>
+          <DashboardThemeFrame variant="toolbar" className="p-1.5">
+            <TabsList aria-label="Model Hub route sections" className="flex h-auto w-full flex-wrap items-stretch justify-start gap-1 rounded-xl bg-muted/40 p-1">
+              <TabsTrigger value="bindings" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
+              <TabsTrigger value="gateway" className="min-w-[125px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
+              <TabsTrigger value="native" className="min-w-[115px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
+              <TabsTrigger value="openrouter" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] border-pink-500/30 text-pink-300">on</Badge>}</TabsTrigger>
             </TabsList>
           </DashboardThemeFrame>
 
-        <TabsContent value="bindings">
+        <TabsContent value="bindings" className="min-w-0">
           {loading ? <Skeleton className="h-96 w-full" /> : <AgentBindings catalog={data?.models ?? []} onRefresh={() => fetchAll(false)} />}
         </TabsContent>
 
@@ -668,7 +668,7 @@ export default function ModelHub() {
           )}
         </TabsContent>
 
-        <TabsContent value="openrouter">
+        <TabsContent value="openrouter" className="min-w-0">
           {loading ? <Skeleton className="h-96 w-full" /> : <OpenRouterCatalog models={data?.models ?? []} />}
         </TabsContent>
       </Tabs>
