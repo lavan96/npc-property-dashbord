@@ -96,7 +96,7 @@ LOG = logging.getLogger("pdf-parse-service")
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
 SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
 SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest+phase4j-capability-activation+phase2-fitz-vectors-typography"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest+phase4j-capability-activation+phase2-fitz-vectors-typography+phase3-fonts"
 DOCLING_CAPABILITY_ACTIVATION_VERSION = "docling-capability-activation-v1"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 # Phase 3 raster artifact config.
@@ -111,6 +111,9 @@ RASTER_DPI = int(os.environ.get("DOCLING_RASTER_DPI", "300"))
 ENABLE_FITZ_LAYERS = os.environ.get("DOCLING_ENABLE_FITZ_LAYERS", "true").strip().lower() not in {"", "0", "false", "no"}
 MAX_VECTORS_PER_PAGE = int(os.environ.get("DOCLING_MAX_VECTORS_PER_PAGE", "400"))
 MIN_VECTOR_SIZE_PT = float(os.environ.get("DOCLING_MIN_VECTOR_SIZE_PT", "1.0"))
+# Phase 3: font metadata extraction (names + embeddable programs).
+MAX_FONTS = int(os.environ.get("DOCLING_MAX_FONTS", "48"))
+MAX_FONT_BYTES = int(os.environ.get("DOCLING_MAX_FONT_BYTES", str(512 * 1024)))
 
 # Wave F-Option-3 storage upload config.
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -887,6 +890,78 @@ def _collect_vectors(fitz_by_page: dict[int, dict]) -> list[dict]:
     return vectors
 
 
+def _extract_fitz_fonts(pdf_bytes: bytes) -> list[dict]:
+    """Document fonts: names (for web-font matching) + embeddable programs.
+
+    Only attaches `base64` for fonts that are safe to reuse as @font-face — i.e.
+    NOT subsetted and carrying a usable unicode cmap. Subset/CID fonts (the common
+    case) are surfaced name-only so the frontend can match them to a web font.
+    """
+    out: list[dict] = []
+    if not (_FITZ_AVAILABLE and ENABLE_FITZ_LAYERS):
+        return out
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except Exception as exc:  # pragma: no cover
+        LOG.warning("fitz open (fonts) failed: %s", exc)
+        return out
+    try:
+        seen_xref: set[int] = set()
+        seen_name: set[str] = set()
+        for pno in range(doc.page_count):
+            if len(out) >= MAX_FONTS:
+                break
+            try:
+                fonts = doc.load_page(pno).get_fonts(full=True)
+            except Exception as exc:  # pragma: no cover
+                LOG.warning("fitz get_fonts page %d failed: %s", pno + 1, exc)
+                continue
+            for ent in fonts:
+                if len(out) >= MAX_FONTS:
+                    break
+                xref = ent[0]
+                if xref in seen_xref:
+                    continue
+                seen_xref.add(xref)
+                ext = str(ent[1] or "").lower()
+                basename = str(ent[3] or "")
+                stripped = re.sub(r"^[A-Z]{6}\+", "", basename)
+                # Dedup by family name — PDFs re-embed the same font (subset per
+                # page) under many xrefs; one entry per name keeps doc.fonts small.
+                if stripped.lower() in seen_name:
+                    continue
+                seen_name.add(stripped.lower())
+                low = stripped.lower()
+                entry: dict[str, Any] = {
+                    "basename": stripped,
+                    "psName": basename,
+                    "ext": ext,
+                    "subset": bool(re.match(r"^[A-Z]{6}\+", basename)),
+                    "bold": "bold" in low,
+                    "italic": ("italic" in low) or ("oblique" in low),
+                }
+                if ext in ("ttf", "otf"):
+                    try:
+                        _bn, e2, _st, buf = doc.extract_font(xref)
+                        if buf:
+                            entry["bytes"] = len(buf)
+                            entry["mimetype"] = "font/ttf" if e2 == "ttf" else "font/otf"
+                            font = fitz.Font(fontbuffer=buf)
+                            entry["glyphCount"] = int(getattr(font, "glyph_count", 0) or 0)
+                            hits = sum(1 for c in "AaEeRrTtOoNnIiSs" if font.has_glyph(ord(c)))
+                            entry["hasUnicodeCmap"] = hits >= 6
+                            # Embed only full (non-subset) fonts with a real cmap,
+                            # within the size cap, so reconstructed text renders.
+                            if (not entry["subset"]) and entry["hasUnicodeCmap"] and len(buf) <= MAX_FONT_BYTES:
+                                entry["base64"] = base64.b64encode(buf).decode("ascii")
+                    except Exception as exc:  # pragma: no cover
+                        LOG.warning("fitz extract_font xref=%s failed: %s", xref, exc)
+                out.append(entry)
+    finally:
+        doc.close()
+    return out
+
+
 def _do_parse(
     pdf_bytes: bytes,
     *,
@@ -925,6 +1000,7 @@ def _do_parse(
     # Phase 2: augment with PyMuPDF vector graphics + reconciled span typography.
     # Non-fatal — any failure leaves the Docling-only document intact.
     fitz_vectors = 0
+    fitz_fonts = 0
     if _FITZ_AVAILABLE and ENABLE_FITZ_LAYERS:
         try:
             fitz_layers = _extract_fitz_layers(pdf_bytes)
@@ -935,6 +1011,14 @@ def _do_parse(
                 fitz_vectors = len(vectors)
         except Exception as exc:  # pragma: no cover
             LOG.warning("fitz layer enrichment failed (non-fatal): %s", exc)
+        # Phase 3: document fonts (names + embeddable programs).
+        try:
+            fonts = _extract_fitz_fonts(pdf_bytes)
+            if fonts:
+                doc_dict["fonts"] = fonts
+                fitz_fonts = len(fonts)
+        except Exception as exc:  # pragma: no cover
+            LOG.warning("fitz font extraction failed (non-fatal): %s", exc)
 
     extras: dict[str, Any] = {}
     if include_doctags:
@@ -957,6 +1041,7 @@ def _do_parse(
 
     summary = _summarise_doc(doc_dict)
     summary["vector_count"] = fitz_vectors
+    summary["font_count"] = fitz_fonts
     if redact_pii:
         summary["pii_redaction"] = {"enabled": True, "redaction_count": pii_redactions}
     parsed_ms = int((time.monotonic() - t0) * 1000)
@@ -985,6 +1070,7 @@ def _do_parse(
             "images_scale": IMAGES_SCALE,
             "fitz_layers": bool(_FITZ_AVAILABLE and ENABLE_FITZ_LAYERS),
             "vector_count": fitz_vectors,
+            "font_count": fitz_fonts,
         },
         "docling_document": doc_dict,
         **extras,

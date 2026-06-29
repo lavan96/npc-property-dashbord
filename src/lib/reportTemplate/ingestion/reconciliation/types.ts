@@ -111,6 +111,10 @@ export interface RawImportBlock {
     language?: string;
     /** Phase D: cross-reference target ($ref form). */
     xref?: string;
+    /** Phase 3: original source PostScript font name (pre-resolution). */
+    sourceFont?: string;
+    /** Phase 3: true when the source font was not catalog-known and was substituted. */
+    fontSubstituted?: boolean;
     /** Phase 2: vector geometry for `vector` blocks (SVG paths + viewBox). */
     vector?: {
       viewBox: string;

@@ -162,6 +162,26 @@ export interface DoclingVectorItem {
   confidence?: number;
 }
 
+/**
+ * Phase 3: a document font surfaced by the PyMuPDF pass. `base64` is present
+ * only when the program is safely reusable as `@font-face` (non-subset + has a
+ * unicode cmap); otherwise the font is name-only and the frontend matches it to
+ * a web font via the catalog.
+ */
+export interface DoclingEmbeddedFont {
+  basename: string;         // tag-stripped font name, e.g. "Unbounded-Bold"
+  psName?: string;          // raw name incl. subset tag, e.g. "ABCDEF+Unbounded-Bold"
+  ext?: string;             // 'ttf' | 'otf' | ...
+  mimetype?: string;        // 'font/ttf' | 'font/otf'
+  subset?: boolean;
+  hasUnicodeCmap?: boolean;
+  glyphCount?: number;
+  bold?: boolean;
+  italic?: boolean;
+  bytes?: number;
+  base64?: string;          // present only when embeddable
+}
+
 export interface DoclingPageSize {
   width: number;
   height: number;
@@ -195,6 +215,8 @@ export interface DoclingDocument {
   pictures?: DoclingPictureItem[];
   /** Phase 2: vector graphics extracted by the PyMuPDF pass. */
   vectors?: DoclingVectorItem[];
+  /** Phase 3: document fonts (names + optional embeddable programs). */
+  fonts?: DoclingEmbeddedFont[];
   /** Wave F4: parser quality summary surfaced to reconciliation + manual review. */
   summary?: DoclingSummary;
   /** Phase D: outline / TOC nodes (optional, surfaced via sidecar). */
