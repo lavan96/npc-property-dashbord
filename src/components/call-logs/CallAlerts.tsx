@@ -66,6 +66,7 @@ interface CallLog {
 interface CallAlertsProps {
   calls: CallLog[];
   onAlertTriggered?: (alert: AlertHistory) => void;
+  triggerClassName?: string;
 }
 
 const CONDITION_TYPES = [
@@ -202,7 +203,7 @@ async function markAllReadSecure(): Promise<{ success: boolean; error?: string }
   return { success: true };
 }
 
-export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
+export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAlertsProps) => {
   const { toast } = useToast();
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [history, setHistory] = useState<AlertHistory[]>([]);
@@ -483,11 +484,11 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
       <div className="flex items-center gap-2">
         <Dialog open={showManager} onOpenChange={setShowManager}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 relative">
+            <Button variant="outline" size="sm" className={`gap-2 relative ${triggerClassName || ''}`}>
               {unreadCount > 0 ? (
                 <BellRing className="w-4 h-4 text-amber-500" />
               ) : (
-                <Bell className="w-4 h-4" />
+                <Bell className="w-4 h-4 shrink-0" />
               )}
               Alerts
               {unreadCount > 0 && (
