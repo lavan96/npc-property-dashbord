@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useAssignedTasks, type AssignedTask } from '@/hooks/useAssignedTasks';
 import { Card, CardContent } from '@/components/ui/card';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useGamePlanMutations } from '@/hooks/useGamePlans';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
-import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
+import { format, isToday, isTomorrow, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   Search,
   CheckCircle2,
@@ -26,23 +27,43 @@ import {
 type StatusFilter = 'all' | 'pending' | 'overdue' | 'completed';
 type SourceFilter = 'all' | 'game_plan' | 'reminder';
 
-const STATUS_CONFIG: Record<string, { icon: typeof Clock; color: string; label: string }> = {
-  pending: { icon: Clock, color: 'text-amber-500', label: 'Pending' },
-  in_progress: { icon: Clock, color: 'text-blue-500', label: 'In Progress' },
-  overdue: { icon: AlertTriangle, color: 'text-red-500', label: 'Overdue' },
-  completed: { icon: CheckCircle2, color: 'text-emerald-500', label: 'Completed' },
+const STATUS_CONFIG: Record<string, { icon: typeof Clock; color: string; badgeClass: string; label: string }> = {
+  pending: {
+    icon: Clock,
+    color: 'text-amber-500',
+    badgeClass: 'border-amber-400/35 bg-amber-500/10 text-amber-700 dark:text-amber-200',
+    label: 'Pending',
+  },
+  in_progress: {
+    icon: Clock,
+    color: 'text-blue-500',
+    badgeClass: 'border-blue-400/35 bg-blue-500/10 text-blue-700 dark:text-blue-200',
+    label: 'In Progress',
+  },
+  overdue: {
+    icon: AlertTriangle,
+    color: 'text-red-500',
+    badgeClass: 'border-red-400/35 bg-red-500/10 text-red-700 dark:text-red-200',
+    label: 'Overdue',
+  },
+  completed: {
+    icon: CheckCircle2,
+    color: 'text-emerald-500',
+    badgeClass: 'border-emerald-400/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200',
+    label: 'Completed',
+  },
 };
 
 const SOURCE_CONFIG: Record<string, { icon: typeof Map; color: string; label: string }> = {
-  game_plan: { icon: Map, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20', label: 'Game Plan' },
-  reminder: { icon: Bell, color: 'bg-amber-500/10 text-amber-600 border-amber-500/20', label: 'Reminder' },
+  game_plan: { icon: Map, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-200', label: 'Game Plan' },
+  reminder: { icon: Bell, color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-200', label: 'Reminder' },
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: 'bg-red-500/10 text-red-600 border-red-500/20',
-  high: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-  medium: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-  low: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
+  urgent: 'bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-200',
+  high: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-200',
+  medium: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-200',
+  low: 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-300',
 };
 
 function formatDueDate(date: string | null) {
@@ -117,7 +138,7 @@ export function AssignedTasksTab() {
       }
       toast.success(task.status === 'completed' ? 'Task reopened' : 'Task completed');
       refetch();
-    } catch (e: any) {
+    } catch {
       toast.error('Failed to update task');
     } finally {
       setTogglingIds((prev) => {
@@ -130,12 +151,18 @@ export function AssignedTasksTab() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" aria-busy="true" aria-label="Loading assigned tasks">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-              <div className="h-3 bg-muted rounded w-1/2" />
+          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20" aria-hidden="true">
+            <CardContent className="flex items-start gap-3 p-4">
+              <div className="h-5 w-5 rounded-md bg-muted" />
+              <div className="flex-1 space-y-3">
+                <div className="h-4 w-3/4 rounded bg-muted" />
+                <div className="flex gap-2">
+                  <div className="h-5 w-20 rounded-full bg-muted" />
+                  <div className="h-5 w-24 rounded-full bg-muted" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -144,41 +171,44 @@ export function AssignedTasksTab() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
           { label: 'Total Assigned', value: counts.total, icon: ListChecks, color: 'text-foreground' },
           { label: 'Pending', value: counts.pending, icon: Clock, color: 'text-amber-500' },
           { label: 'Overdue', value: counts.overdue, icon: AlertTriangle, color: 'text-red-500' },
           { label: 'Completed', value: counts.completed, icon: CheckCircle2, color: 'text-emerald-500' },
         ].map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <stat.icon className={`h-5 w-5 ${stat.color} shrink-0`} />
-              <div>
-                <p className="text-lg font-bold">{stat.value}</p>
-                <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+          <DashboardThemeFrame key={stat.label} variant="card" className="p-3 shadow-lg shadow-black/5 dark:shadow-black/20">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/70 dark:border-white/10 dark:bg-slate-950/45">
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-lg font-bold text-foreground">{stat.value}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{stat.label}</p>
+              </div>
+            </div>
+          </DashboardThemeFrame>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <DashboardThemeFrame variant="toolbar" className="flex-col gap-2 border-primary/10 bg-card/55 p-2 dark:bg-slate-950/35 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
+            aria-label="Search assigned tasks"
+            className="h-10 rounded-xl bg-background/70 pl-9"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v: StatusFilter) => setStatusFilter(v)}>
-          <SelectTrigger className="w-[140px] h-9">
-            <Filter className="h-3.5 w-3.5 mr-1.5" />
+          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]" aria-label="Filter assigned tasks by status">
+            <Filter className="mr-1.5 h-3.5 w-3.5" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -189,7 +219,7 @@ export function AssignedTasksTab() {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={(v: SourceFilter) => setSourceFilter(v)}>
-          <SelectTrigger className="w-[140px] h-9">
+          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]" aria-label="Filter assigned tasks by source">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -198,15 +228,17 @@ export function AssignedTasksTab() {
             <SelectItem value="reminder">Reminders</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Task List */}
       {filtered.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 space-y-3">
-            <ListChecks className="h-10 w-10 text-muted-foreground" />
-            <div className="text-center space-y-1">
-              <h3 className="font-semibold">No assigned tasks</h3>
+        <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20" role="status">
+          <CardContent className="flex flex-col items-center justify-center space-y-3 py-12">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
+              <ListChecks className="h-7 w-7 text-primary" />
+            </div>
+            <div className="space-y-1 text-center">
+              <h3 className="font-semibold text-foreground">No assigned tasks</h3>
               <p className="text-sm text-muted-foreground">
                 {tasks.length > 0
                   ? 'No tasks match your current filters.'
@@ -216,7 +248,7 @@ export function AssignedTasksTab() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5" role="list" aria-label="Assigned tasks">
           {filtered.map((task) => {
             const statusCfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
             const sourceCfg = SOURCE_CONFIG[task.source];
@@ -228,67 +260,72 @@ export function AssignedTasksTab() {
             return (
               <Card
                 key={task.id}
-                className={`transition-all duration-200 hover:shadow-md ${
-                  task.status === 'overdue'
-                    ? 'border-red-500/30 bg-red-500/5'
-                    : task.status === 'completed'
-                    ? 'opacity-60'
-                    : ''
-                }`}
+                role="listitem"
+                className={cn(
+                  'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20',
+                  task.status === 'overdue' && 'border-red-500/30 bg-red-500/5',
+                  task.status === 'completed' && 'opacity-70'
+                )}
               >
-                <CardContent className="p-3 sm:p-4 flex items-start gap-3">
+                <CardContent className="relative flex items-start gap-3 p-3 sm:p-4">
+                  <div className={cn('absolute inset-y-3 left-0 w-1 rounded-r-full bg-primary/30 opacity-0 transition-opacity group-hover:opacity-100', task.status === 'overdue' && 'bg-red-500/60 opacity-100')} />
+
                   {/* Completion toggle */}
-                  <div className="pt-0.5">
+                  <div className="pt-1">
                     {isToggling ? (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     ) : (
                       <Checkbox
                         checked={task.status === 'completed'}
                         onCheckedChange={() => handleToggleComplete(task)}
-                        className="h-4.5 w-4.5"
+                        aria-label={`${task.status === 'completed' ? 'Reopen' : 'Complete'} task ${task.title}`}
+                        className="h-5 w-5 rounded-md border-primary/30"
                       />
                     )}
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <p
-                        className={`text-sm font-medium leading-tight ${
-                          task.status === 'completed' ? 'line-through text-muted-foreground' : ''
-                        }`}
+                        className={cn(
+                          'text-sm font-semibold leading-snug text-foreground',
+                          task.status === 'completed' && 'line-through text-muted-foreground'
+                        )}
                       >
                         {task.title}
                       </p>
-                      <StatusIcon className={`h-4 w-4 shrink-0 ${statusCfg.color}`} />
+                      <Badge variant="outline" className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', statusCfg.badgeClass)}>
+                        <StatusIcon className={`mr-1 h-3 w-3 ${statusCfg.color}`} />
+                        {statusCfg.label}
+                      </Badge>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${sourceCfg.color}`}>
-                        <SourceIcon className="h-3 w-3 mr-1" />
+                      <Badge variant="outline" className={`h-5 px-1.5 py-0 text-[10px] ${sourceCfg.color}`}>
+                        <SourceIcon className="mr-1 h-3 w-3" />
                         {sourceCfg.label}
                       </Badge>
                       {task.priority && (
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 ${PRIORITY_COLORS[task.priority] || ''}`}>
+                        <Badge variant="outline" className={`h-5 px-1.5 py-0 text-[10px] ${PRIORITY_COLORS[task.priority] || ''}`}>
                           {task.priority}
                         </Badge>
                       )}
                       {task.sourceContext && (
-                        <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">
+                        <span className="max-w-full truncate break-words rounded-full bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground sm:max-w-[320px]">
                           {task.sourceContext}
                         </span>
                       )}
                     </div>
 
                     {dueDateLabel && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <span
-                          className={`text-[11px] ${
-                            task.status === 'overdue'
-                              ? 'text-red-500 font-medium'
-                              : 'text-muted-foreground'
-                          }`}
+                          className={cn(
+                            'text-[11px] text-muted-foreground',
+                            task.status === 'overdue' && 'font-semibold text-red-500'
+                          )}
                         >
                           {dueDateLabel}
                         </span>

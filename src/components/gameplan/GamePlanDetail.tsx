@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { type GamePlan, type GamePlanPhase, type GamePlanMilestone, type GamePlanKPI, type GamePlanNote, type GamePlanAction, useGamePlanPhases, useGamePlanMilestones, useGamePlanKPIs, useGamePlanNotes, useGamePlanActions, useGamePlanMutations } from '@/hooks/useGamePlans';
 import { Button } from '@/components/ui/button';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -195,22 +196,32 @@ export function GamePlanDetail({ plan, onBack }: Props) {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.16)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
+    >
       {/* Header */}
-      <div>
-        <Button variant="ghost" size="sm" onClick={onBack} className="mb-3 gap-1.5 text-muted-foreground hover:text-foreground">
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.13))] p-4 shadow-xl shadow-black/10 dark:shadow-black/30 sm:p-5 lg:p-6"
+      >
+        <Button variant="ghost" size="sm" onClick={onBack} className="mb-4 gap-1.5 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Game Plans
         </Button>
 
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           {editingPlan ? (
-            <div className="flex-1 space-y-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+            <div className="flex-1 space-y-4 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-inner shadow-primary/5">
               <div className="flex gap-3">
                 <div>
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Icon</span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {PLAN_ICONS.map(i => (
                       <button key={i} onClick={() => setEditIcon(i)}
+                        type="button"
+                        aria-label={`Use ${i} icon`}
                         className={cn('text-lg w-8 h-8 rounded-md flex items-center justify-center transition-all',
                           editIcon === i ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-muted')}>
                         {i}
@@ -224,20 +235,22 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {PLAN_COLORS.map(c => (
                     <button key={c} onClick={() => setEditColor(c)}
+                      type="button"
+                      aria-label={`Use accent colour ${c}`}
                       className={cn('w-6 h-6 rounded-full transition-all',
                         editColor === c ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105')}
                       style={{ backgroundColor: c }} />
                   ))}
                 </div>
               </div>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="text-lg font-bold" placeholder="Plan name" />
-              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description..." rows={2} />
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="text-lg font-bold" placeholder="Plan name" aria-label="Plan name" />
+              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description..." rows={2} aria-label="Plan description" />
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editStartDate && 'text-muted-foreground')}>
+                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editStartDate && 'text-muted-foreground')} aria-label="Select plan start date">
                         <CalendarIcon className="mr-1.5 h-3 w-3" />
                         {editStartDate ? format(editStartDate, 'MMM d, yyyy') : 'Pick date'}
                       </Button>
@@ -251,7 +264,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">End Date</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editEndDate && 'text-muted-foreground')}>
+                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editEndDate && 'text-muted-foreground')} aria-label="Select plan end date">
                         <CalendarIcon className="mr-1.5 h-3 w-3" />
                         {editEndDate ? format(editEndDate, 'MMM d, yyyy') : 'Pick date'}
                       </Button>
@@ -269,18 +282,18 @@ export function GamePlanDetail({ plan, onBack }: Props) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-4">
               <div
-                className="h-12 w-12 rounded-xl flex items-center justify-center text-2xl shadow-lg shrink-0"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 text-2xl shadow-lg ring-1 ring-white/30 dark:ring-white/10"
                 style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}80)` }}
               >
                 {plan.icon}
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold text-foreground">{plan.name}</h1>
+                  <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{plan.name}</h1>
                   <Select value={plan.status} onValueChange={(v) => handleStatusChange(v as 'planning' | 'active' | 'completed' | 'archived')}>
-                    <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs">
+                    <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs" aria-label="Change game plan status">
                       <Badge variant={cfg.variant}>{cfg.emoji} {cfg.label}</Badge>
                     </SelectTrigger>
                     <SelectContent>
@@ -291,7 +304,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingPlan(true)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingPlan(true)} aria-label={`Edit ${plan.name}`}>
                     <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                 </div>
@@ -306,14 +319,14 @@ export function GamePlanDetail({ plan, onBack }: Props) {
               </div>
             </div>
           )}
-          <Button onClick={() => setShowAddPhase(true)} className="gap-2 shrink-0">
+          <Button onClick={() => setShowAddPhase(true)} className="h-11 shrink-0 gap-2 rounded-xl shadow-lg shadow-primary/20" aria-label={`Add a phase to ${plan.name}`}>
             <Plus className="h-4 w-4" /> Add Phase
           </Button>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Summary Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { label: 'Phases', value: phases.length, emoji: '📋' },
           { label: 'Milestones', value: `${completedMilestones}/${totalMilestones}`, emoji: '🏁' },
@@ -321,16 +334,16 @@ export function GamePlanDetail({ plan, onBack }: Props) {
           { label: 'KPIs Tracked', value: kpis.length, emoji: '📊' },
           { label: 'Progress', value: `${overallProgress}%`, emoji: '🚀' },
         ].map(stat => (
-          <div key={stat.label} className="rounded-xl border border-border/50 bg-card p-3 text-center">
+          <DashboardThemeFrame key={stat.label} variant="card" className="p-3 text-center shadow-lg shadow-black/5 dark:shadow-black/20">
             <span className="text-lg">{stat.emoji}</span>
-            <div className="text-lg font-bold text-foreground mt-0.5">{stat.value}</div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</div>
-          </div>
+            <div className="mt-0.5 text-lg font-bold text-foreground">{stat.value}</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</div>
+          </DashboardThemeFrame>
         ))}
       </div>
 
       {/* Overall Progress Bar */}
-      <div className="relative h-3 rounded-full bg-muted overflow-hidden">
+      <div className="relative h-3 overflow-hidden rounded-full border border-border/50 bg-muted shadow-inner dark:border-white/10">
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
           style={{
@@ -345,17 +358,19 @@ export function GamePlanDetail({ plan, onBack }: Props) {
 
       {/* Search bar */}
       {phases.length > 0 && (
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative rounded-2xl border border-border/60 bg-card/60 p-2 shadow-lg shadow-black/5 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/20">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search phases, milestones, actions, notes..."
-            className="pl-9 pr-8 h-9"
+            aria-label="Search phases, milestones, actions, notes"
+            className="h-10 rounded-xl bg-background/70 pl-9 pr-8"
           />
           {searchQuery && (
             <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-              onClick={() => setSearchQuery('')}>
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear phase search">
               <X className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           )}
@@ -364,17 +379,17 @@ export function GamePlanDetail({ plan, onBack }: Props) {
 
       {/* Phase Cards */}
       {phases.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <div className="text-3xl mb-2">📌</div>
-          <p className="font-medium">No phases yet</p>
+        <DashboardThemeFrame variant="section" className="py-12 text-center text-muted-foreground" role="status">
+          <div className="mb-2 text-3xl">📌</div>
+          <p className="font-medium text-foreground">No phases yet</p>
           <p className="text-sm">Add your first phase to start building your roadmap.</p>
-        </div>
+        </DashboardThemeFrame>
       ) : visiblePhases.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
+        <DashboardThemeFrame variant="section" className="py-8 text-center text-muted-foreground" role="status">
           <p className="text-sm">No phases match "{searchQuery}"</p>
-        </div>
+        </DashboardThemeFrame>
       ) : (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {visiblePhases.map((phase, i) => (
             <PhaseCard
               key={phase.id}
@@ -403,6 +418,6 @@ export function GamePlanDetail({ plan, onBack }: Props) {
           setShowAddPhase(false);
         }}
       />
-    </div>
+    </DashboardThemeFrame>
   );
 }
