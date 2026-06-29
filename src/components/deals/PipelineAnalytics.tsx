@@ -8,7 +8,6 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
-  LineChart,
   Line,
   AreaChart,
   Area,
@@ -17,13 +16,9 @@ import {
   Cell,
   Tooltip,
   Legend,
-  FunnelChart,
-  Funnel,
-  LabelList,
 } from 'recharts';
 import {
   TrendingUp,
-  TrendingDown,
   Clock,
   DollarSign,
   Target,
@@ -36,13 +31,30 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
   deals: DealWithClient[];
   isLoading: boolean;
 }
+
+const analyticsPanelClass = 'overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 ring-1 ring-white/5 backdrop-blur-sm';
+const analyticsPanelHeaderClass = 'border-b border-border/60 bg-gradient-to-br from-muted/45 via-background/70 to-background px-5 pb-3 pt-4';
+const analyticsPanelContentClass = 'px-5 pb-5 pt-4';
+const analyticsTitleClass = 'text-sm font-bold tracking-tight text-foreground flex items-center gap-2';
+const analyticsDescriptionClass = 'text-[11px] leading-relaxed text-muted-foreground/90';
+const chartTooltipContentStyle = {
+  borderRadius: 14,
+  border: '1px solid hsl(var(--border))',
+  background: 'hsl(var(--popover) / 0.96)',
+  boxShadow: '0 18px 45px hsl(var(--foreground) / 0.12)',
+  color: 'hsl(var(--popover-foreground))',
+  fontSize: 12,
+} as const;
+const chartTooltipLabelStyle = { fontWeight: 700, fontSize: 12, marginBottom: 4, color: 'hsl(var(--foreground))' } as const;
+const chartAxisTick = { fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 } as const;
+const chartGridStroke = 'hsl(var(--border) / 0.28)';
+const emptyStateClass = 'flex h-40 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 text-center text-xs font-medium text-muted-foreground';
 
 const CHART_COLORS = [
   'hsl(var(--chart-1))',
@@ -96,25 +108,37 @@ function AnalyticsKPIs({ deals }: { deals: DealWithClient[] }) {
   }, [deals]);
 
   const cards = [
-    { label: 'Pipeline Value', value: formatCurrency(kpis.totalValue), icon: DollarSign, color: 'text-primary' },
-    { label: 'Avg Deal Value', value: formatCurrency(kpis.avgValue), icon: Target, color: 'text-chart-1' },
-    { label: 'Est. Commission', value: formatCurrency(kpis.totalCommission), sub: `${formatCurrency(kpis.commissionReceived)} received`, icon: TrendingUp, color: 'text-success' },
-    { label: 'Avg Deal Age', value: `${kpis.avgAge} days`, icon: Clock, color: 'text-chart-6' },
-    { label: 'Conversion Rate', value: `${kpis.conversionRate}%`, sub: `${kpis.completedDeals} settled`, icon: Zap, color: 'text-warning' },
-    { label: 'New (30d)', value: String(kpis.recentDeals), icon: Activity, color: 'text-chart-4' },
+    { label: 'Pipeline Value', value: formatCurrency(kpis.totalValue), icon: DollarSign, color: 'text-amber-500', tone: 'gold' },
+    { label: 'Avg Deal Value', value: formatCurrency(kpis.avgValue), icon: Target, color: 'text-amber-500', tone: 'gold' },
+    { label: 'Est. Commission', value: formatCurrency(kpis.totalCommission), sub: `${formatCurrency(kpis.commissionReceived)} received`, icon: TrendingUp, color: 'text-amber-500', tone: 'gold' },
+    { label: 'Avg Deal Age', value: `${kpis.avgAge} days`, icon: Clock, color: 'text-sky-500', tone: 'analytical' },
+    { label: 'Conversion Rate', value: `${kpis.conversionRate}%`, sub: `${kpis.completedDeals} settled`, icon: Zap, color: 'text-violet-500', tone: 'conversion' },
+    { label: 'New (30d)', value: String(kpis.recentDeals), icon: Activity, color: 'text-rose-500', tone: 'urgent' },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-3">
       {cards.map(c => (
-        <Card key={c.label}>
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-1.5 mb-1">
-              <c.icon className={cn('h-3.5 w-3.5', c.color)} />
-              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{c.label}</p>
+        <Card
+          key={c.label}
+          className={cn(
+            'group relative overflow-hidden border-border/70 bg-card/95 shadow-md shadow-black/5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl',
+            c.tone === 'gold' && 'bg-gradient-to-br from-amber-500/15 via-card to-card ring-1 ring-amber-400/20',
+            c.tone === 'conversion' && 'bg-gradient-to-br from-violet-500/12 via-card to-card ring-1 ring-violet-400/15',
+            c.tone === 'urgent' && 'bg-gradient-to-br from-rose-500/12 via-card to-card ring-1 ring-rose-400/15',
+            c.tone === 'analytical' && 'bg-gradient-to-br from-sky-500/10 via-card to-card ring-1 ring-sky-400/15'
+          )}
+        >
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent opacity-40" />
+          <CardContent className="p-4">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/90 truncate">{c.label}</p>
+              <div className="rounded-xl border border-border/60 bg-background/70 p-2 shadow-inner">
+                <c.icon className={cn('h-4 w-4', c.color)} />
+              </div>
             </div>
-            <p className="text-lg sm:text-xl font-bold leading-tight">{c.value}</p>
-            {c.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{c.sub}</p>}
+            <p className="text-xl font-black leading-none tracking-tight text-foreground sm:text-2xl">{c.value}</p>
+            {c.sub && <p className="mt-2 text-[11px] font-medium text-muted-foreground">{c.sub}</p>}
           </CardContent>
         </Card>
       ))}
@@ -155,35 +179,35 @@ function ConversionFunnel({ deals }: { deals: DealWithClient[] }) {
   }, [deals]);
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+    <Card className={analyticsPanelClass}>
+      <CardHeader className={analyticsPanelHeaderClass}>
+        <CardTitle className={analyticsTitleClass}>
           <ArrowRight className="h-4 w-4 text-primary" />
           Conversion Funnel
         </CardTitle>
-        <CardDescription className="text-xs">Deals reaching each pipeline stage</CardDescription>
+        <CardDescription className={analyticsDescriptionClass}>Deals reaching each pipeline stage</CardDescription>
       </CardHeader>
-      <CardContent className="pb-4">
-        <div className="space-y-2">
+      <CardContent className={analyticsPanelContentClass}>
+        <div className="space-y-3">
           {funnelData.map((item, i) => {
             const maxVal = funnelData[0]?.value || 1;
             const pct = maxVal > 0 ? Math.round((item.value / maxVal) * 100) : 0;
             return (
-              <div key={item.name} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-20 shrink-0 text-right">{item.name}</span>
+              <div key={item.name} className="group flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-muted/35">
+                <span className="w-24 shrink-0 text-right text-xs font-semibold text-muted-foreground">{item.name}</span>
                 <div className="flex-1 relative">
                   <div
-                    className="h-7 rounded-md flex items-center px-2 transition-all duration-500"
+                    className="flex h-9 items-center justify-between rounded-xl px-3 shadow-md shadow-black/10 ring-1 ring-white/25 transition-all duration-500 group-hover:brightness-110"
                     style={{
                       width: `${Math.max(pct, 8)}%`,
                       backgroundColor: item.fill,
-                      opacity: 0.85,
+                      opacity: 0.92,
                     }}
                   >
-                    <span className="text-[10px] font-bold text-white drop-shadow-sm">{item.value}</span>
+                    <span className="text-[11px] font-black text-white drop-shadow-sm">{item.value}</span>
                   </div>
                 </div>
-                <span className="text-[10px] text-muted-foreground w-10 shrink-0">{pct}%</span>
+                <span className="w-11 shrink-0 rounded-full bg-muted/60 px-2 py-1 text-center text-[10px] font-bold text-muted-foreground">{pct}%</span>
               </div>
             );
           })}
@@ -238,18 +262,18 @@ function RevenueForecast({ deals }: { deals: DealWithClient[] }) {
   }, [deals]);
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+    <Card className={analyticsPanelClass}>
+      <CardHeader className={analyticsPanelHeaderClass}>
+        <CardTitle className={analyticsTitleClass}>
           <TrendingUp className="h-4 w-4 text-success" />
           Revenue Forecast
         </CardTitle>
-        <CardDescription className="text-xs">Settlement values & projected commission by month</CardDescription>
+        <CardDescription className={analyticsDescriptionClass}>Settlement values & projected commission by month</CardDescription>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className={analyticsPanelContentClass}>
         <div className="h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 8 }}>
               <defs>
                 <linearGradient id="settledGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
@@ -260,21 +284,22 @@ function RevenueForecast({ deals }: { deals: DealWithClient[] }) {
                   <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCurrencyShort} className="text-muted-foreground" width={50} />
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 6" vertical={false} />
+              <XAxis dataKey="month" tick={chartAxisTick} tickLine={false} axisLine={{ stroke: chartGridStroke }} minTickGap={10} />
+              <YAxis tick={chartAxisTick} tickLine={false} axisLine={false} tickFormatter={formatCurrencyShort} width={56} domain={[0, 'auto']} allowDataOverflow={false} />
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
+                cursor={{ stroke: 'hsl(var(--primary) / 0.28)', strokeWidth: 1 }}
                 formatter={(value: number, name: string) => [formatCurrency(value), name === 'settled' ? 'Settled' : name === 'projected' ? 'Projected' : 'Commission']}
-                labelStyle={{ fontWeight: 600, fontSize: 11 }}
+                labelStyle={chartTooltipLabelStyle}
               />
               <Area type="monotone" dataKey="settled" stroke="hsl(var(--chart-4))" fill="url(#settledGrad)" strokeWidth={2} connectNulls={false} />
               <Area type="monotone" dataKey="projected" stroke="hsl(var(--chart-1))" fill="url(#projectedGrad)" strokeWidth={2} strokeDasharray="5 3" connectNulls={false} />
-              <Line type="monotone" dataKey="commission" stroke="hsl(var(--success))" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="commission" stroke="hsl(var(--success))" strokeWidth={1.5} dot={{ r: 2.5, strokeWidth: 1 }} activeDot={{ r: 5, strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex items-center justify-center gap-4 mt-2">
+        <div className="flex items-center justify-center gap-5 mt-2">
           <div className="flex items-center gap-1.5 text-[10px]">
             <div className="w-3 h-0.5 rounded bg-chart-4" />
             <span className="text-muted-foreground">Settled</span>
@@ -326,15 +351,15 @@ function StageVelocity({ deals }: { deals: DealWithClient[] }) {
 
   if (velocityData.length === 0) {
     return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+      <Card className={analyticsPanelClass}>
+        <CardHeader className={analyticsPanelHeaderClass}>
+          <CardTitle className={analyticsTitleClass}>
             <Clock className="h-4 w-4 text-chart-6" />
             Stage Velocity
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-32 text-xs text-muted-foreground italic">
+        <CardContent className={analyticsPanelContentClass}>
+          <div className={emptyStateClass}>
             No completed stage data available yet
           </div>
         </CardContent>
@@ -343,23 +368,24 @@ function StageVelocity({ deals }: { deals: DealWithClient[] }) {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+    <Card className={analyticsPanelClass}>
+      <CardHeader className={analyticsPanelHeaderClass}>
+        <CardTitle className={analyticsTitleClass}>
           <Clock className="h-4 w-4 text-chart-6" />
           Stage Velocity
         </CardTitle>
-        <CardDescription className="text-xs">Average days to complete each stage</CardDescription>
+        <CardDescription className={analyticsDescriptionClass}>Average days to complete each stage</CardDescription>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className={analyticsPanelContentClass}>
         <div className="h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={velocityData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} className="text-muted-foreground" />
+            <BarChart data={velocityData} layout="vertical" margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 6" horizontal={false} />
+              <XAxis type="number" tick={chartAxisTick} tickLine={false} axisLine={{ stroke: chartGridStroke }} allowDecimals={false} />
+              <YAxis dataKey="name" type="category" tick={chartAxisTick} tickLine={false} axisLine={false} width={118} interval={0} />
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
+                cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
                 formatter={(value: number) => [`${value} days avg`, 'Duration']}
               />
               <Bar dataKey="avgDays" fill="hsl(var(--chart-6))" radius={[0, 4, 4, 0]} />
@@ -390,32 +416,33 @@ function DealTypeBreakdown({ deals }: { deals: DealWithClient[] }) {
   }, [deals]);
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+    <Card className={analyticsPanelClass}>
+      <CardHeader className={analyticsPanelHeaderClass}>
+        <CardTitle className={analyticsTitleClass}>
           <BarChart3 className="h-4 w-4 text-chart-2" />
           Deal Type Breakdown
         </CardTitle>
       </CardHeader>
-      <CardContent className="pb-4">
-        <div className="h-[180px]">
+      <CardContent className={analyticsPanelContentClass}>
+        <div className="h-[205px]">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
                 innerRadius={45}
-                outerRadius={70}
-                paddingAngle={3}
+                outerRadius={78}
+                paddingAngle={4}
+                cornerRadius={6}
                 dataKey="count"
               >
                 {data.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
+                  <Cell key={i} fill={entry.fill} stroke="hsl(var(--background))" strokeWidth={2} />
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
                 formatter={(value: number, name: string, props: any) => [
                   `${value} deals · ${formatCurrency(props.payload.value)}`,
                   props.payload.name,
@@ -454,16 +481,16 @@ function RiskDistribution({ deals }: { deals: DealWithClient[] }) {
   const total = deals.length || 1;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+    <Card className={analyticsPanelClass}>
+      <CardHeader className={analyticsPanelHeaderClass}>
+        <CardTitle className={analyticsTitleClass}>
           <AlertTriangle className="h-4 w-4 text-warning" />
           Risk Distribution
         </CardTitle>
       </CardHeader>
-      <CardContent className="pb-4 space-y-3">
+      <CardContent className={cn(analyticsPanelContentClass, 'space-y-3')}>
         {data.map(item => (
-          <div key={item.name} className="space-y-1">
+          <div key={item.name} className="rounded-xl border border-border/55 bg-muted/20 p-3 shadow-sm">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5">
                 <span>{item.emoji}</span>
@@ -471,7 +498,7 @@ function RiskDistribution({ deals }: { deals: DealWithClient[] }) {
               </span>
               <span className="font-semibold">{item.value} <span className="text-muted-foreground font-normal">({Math.round((item.value / total) * 100)}%)</span></span>
             </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className="mt-2 h-3 overflow-hidden rounded-full bg-muted/70 shadow-inner">
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${(item.value / total) * 100}%`, backgroundColor: item.fill }}
@@ -512,30 +539,33 @@ function MonthlyDealFlow({ deals }: { deals: DealWithClient[] }) {
   }, [deals]);
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+    <Card className={analyticsPanelClass}>
+      <CardHeader className={analyticsPanelHeaderClass}>
+        <CardTitle className={analyticsTitleClass}>
           <Activity className="h-4 w-4 text-chart-3" />
           Monthly Deal Flow
         </CardTitle>
-        <CardDescription className="text-xs">Deals created vs settled per month</CardDescription>
+        <CardDescription className={analyticsDescriptionClass}>Deals created vs settled per month</CardDescription>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className={analyticsPanelContentClass}>
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 10 }} className="text-muted-foreground" allowDecimals={false} width={30} />
+            <BarChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 8 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 6" vertical={false} />
+              <XAxis dataKey="month" tick={chartAxisTick} tickLine={false} axisLine={{ stroke: chartGridStroke }} minTickGap={8} />
+              <YAxis tick={chartAxisTick} tickLine={false} axisLine={false} allowDecimals={false} width={36} />
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
+                cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
+                labelStyle={chartTooltipLabelStyle}
               />
-              <Bar dataKey="created" name="Created" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="settled" name="Settled" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 700, paddingBottom: 8 }} />
+              <Bar dataKey="created" name="Created" fill="hsl(var(--chart-1))" radius={[6, 6, 0, 0]} maxBarSize={32} />
+              <Bar dataKey="settled" name="Settled" fill="hsl(var(--chart-4))" radius={[6, 6, 0, 0]} maxBarSize={32} />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex items-center justify-center gap-4 mt-2">
+        <div className="flex items-center justify-center gap-5 mt-2">
           <div className="flex items-center gap-1.5 text-[10px]">
             <div className="w-2.5 h-2.5 rounded bg-chart-1" />
             <span className="text-muted-foreground">Created</span>
@@ -570,20 +600,20 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
   const maxValue = leaders[0]?.value || 1;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+    <Card className={analyticsPanelClass}>
+      <CardHeader className={analyticsPanelHeaderClass}>
+        <CardTitle className={analyticsTitleClass}>
           <Target className="h-4 w-4 text-primary" />
           By Responsible Person
         </CardTitle>
       </CardHeader>
-      <CardContent className="pb-4 space-y-2">
+      <CardContent className={cn(analyticsPanelContentClass, 'space-y-3')}>
         {leaders.map((person, i) => (
-          <div key={person.name} className="flex items-center gap-2">
+          <div key={person.name} className="flex items-start gap-2 rounded-xl border border-border/50 bg-muted/15 p-2.5">
             <span className="text-[10px] font-bold text-muted-foreground w-4 text-right">{i + 1}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
-                <span className="text-xs font-medium truncate">{person.name}</span>
+                <span className="min-w-0 break-all pr-2 text-xs font-semibold leading-snug" title={person.name}>{person.name}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-[10px] text-muted-foreground">{person.count} deals</span>
                   {person.urgent > 0 && (
@@ -593,9 +623,9 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
                   )}
                 </div>
               </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-2.5 overflow-hidden rounded-full bg-muted/70 shadow-inner">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-primary transition-all duration-500"
                   style={{ width: `${(person.value / maxValue) * 100}%` }}
                 />
               </div>
@@ -616,7 +646,7 @@ export function PipelineAnalytics({ deals, isLoading }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-64 rounded-lg" />)}
         </div>
       </div>
@@ -625,8 +655,8 @@ export function PipelineAnalytics({ deals, isLoading }: Props) {
 
   if (deals.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center">
+      <Card className={analyticsPanelClass}>
+        <CardContent className="px-6 py-16 text-center">
           <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-sm font-medium">No deals to analyse</p>
           <p className="text-xs text-muted-foreground mt-1">Create some deals to see pipeline analytics</p>
@@ -636,24 +666,33 @@ export function PipelineAnalytics({ deals, isLoading }: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-muted/20 to-background p-4 shadow-sm">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-500">Executive analytics</p>
+            <h3 className="text-xl font-black tracking-tight text-foreground">Pipeline performance command centre</h3>
+          </div>
+          <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">Live deal intelligence across revenue, conversion, velocity, risk, and team ownership.</p>
+        </div>
       {/* KPI Strip */}
       <AnalyticsKPIs deals={deals} />
+      </div>
 
       {/* Row 1: Forecast + Funnel */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <RevenueForecast deals={deals} />
         <ConversionFunnel deals={deals} />
       </div>
 
       {/* Row 2: Velocity + Deal Flow */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <StageVelocity deals={deals} />
         <MonthlyDealFlow deals={deals} />
       </div>
 
       {/* Row 3: Type Breakdown + Risk + Leaderboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         <DealTypeBreakdown deals={deals} />
         <RiskDistribution deals={deals} />
         <ResponsibleLeaderboard deals={deals} />
