@@ -73,22 +73,27 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Bell className="h-4 w-4" />
-          Create New Reminder
+    <Card className="relative overflow-hidden rounded-2xl border border-amber-300/18 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.96)_34%,rgba(0,0,0,0.88))] text-slate-100 shadow-[0_24px_70px_rgba(0,0,0,0.38)] backdrop-blur">
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+      <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
+      <CardHeader className="relative border-b border-amber-300/10 pb-3">
+        <CardTitle className="flex items-center gap-3 text-sm font-semibold text-white">
+          <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/12 text-amber-100 shadow-[0_0_24px_rgba(245,158,11,0.16)]">
+            <Bell className="h-4 w-4" />
+          </span>
+          <span>Create New Reminder</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="relative space-y-3 p-4">
         <Input
           placeholder="Reminder title..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          className="border-amber-300/15 bg-black/35 text-slate-100 placeholder:text-slate-500 hover:border-amber-300/30 focus-visible:ring-amber-300"
         />
 
         <div className="flex items-center justify-between mb-1">
-          <label className="text-xs text-muted-foreground font-medium">Description</label>
+          <label className="text-xs font-medium text-slate-400">Description</label>
           <VoiceToTextButton
             size="sm"
             onTranscript={(text) => setDescription(prev => prev ? `${prev} ${text}` : text)}
@@ -99,11 +104,12 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
+          className="border-amber-300/15 bg-black/35 text-slate-100 placeholder:text-slate-500 hover:border-amber-300/30 focus-visible:ring-amber-300"
         />
 
         {/* Client link */}
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground font-medium">Link to Client</label>
+          <label className="text-xs font-medium text-slate-400">Link to Client</label>
           <ClientSearchSelect
             value={clientId}
             onValueChange={(id, name) => { setClientId(id); setClientName(name || ''); }}
@@ -114,17 +120,18 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Due Date</label>
+            <label className="text-xs text-slate-400">Due Date</label>
             <Input
               type="datetime-local"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
+              className="border-amber-300/15 bg-black/35 text-slate-100 hover:border-amber-300/30 focus-visible:ring-amber-300"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Type</label>
+            <label className="text-xs text-slate-400">Type</label>
             <Select value={reminderType} onValueChange={setReminderType}>
-              <SelectTrigger>
+              <SelectTrigger className="border-amber-300/15 bg-black/35 text-slate-100 hover:border-amber-300/30 focus:ring-amber-300">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -137,9 +144,9 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Priority</label>
+          <label className="text-xs text-slate-400">Priority</label>
           <Select value={priority} onValueChange={setPriority}>
-            <SelectTrigger>
+            <SelectTrigger className="border-amber-300/15 bg-black/35 text-slate-100 hover:border-amber-300/30 focus:ring-amber-300">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -152,7 +159,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Assign To</label>
+          <label className="text-xs text-slate-400">Assign To</label>
           <MultiTeamUserSelect
             value={assignedTo}
             onValueChange={setAssignedTo}
@@ -164,7 +171,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
           <Button
             onClick={handleCreate}
             disabled={!title.trim() || !dueDate || createMutation.isPending}
-            className="flex-1"
+            className="flex-1 border border-amber-200/30 bg-[linear-gradient(135deg,#fbbf24,#d97706)] font-semibold text-black shadow-[0_0_28px_rgba(245,158,11,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_36px_rgba(245,158,11,0.32)] focus-visible:ring-amber-300 disabled:translate-y-0 disabled:opacity-60"
           >
             {createMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -175,7 +182,13 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
               </>
             )}
           </Button>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="border-slate-600/70 bg-black/25 text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-amber-300"
+          >
+            Cancel
+          </Button>
         </div>
       </CardContent>
     </Card>
