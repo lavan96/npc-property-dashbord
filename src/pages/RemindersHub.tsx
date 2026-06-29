@@ -238,27 +238,47 @@ export default function RemindersHub() {
         </div>
 
         {/* Morning Briefing Banner */}
-      <Card className={cn(
-        premiumPanel,
-        stats.overdue > 0
-          ? 'border-red-400/30 bg-red-950/20'
-          : stats.today > 0
-            ? 'border-amber-300/30 bg-amber-950/20'
-            : 'border-emerald-300/25 bg-emerald-950/15'
-      )}>
-        <CardContent className="flex items-start gap-3 p-4 sm:p-5">
-          <Sparkles className={cn(
-            'h-4 w-4 sm:h-5 sm:w-5 mt-0.5 shrink-0',
-            stats.overdue > 0 ? 'text-destructive' : stats.today > 0 ? 'text-amber-500' : 'text-primary'
-          )} />
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1 text-slate-400">
-              {format(now, 'EEEE, dd MMMM yyyy')}
-            </p>
-            <p className="text-sm font-medium text-slate-100 sm:text-base">{briefing}</p>
-          </div>
-        </CardContent>
-      </Card>
+        <Card
+          className={cn(
+            premiumPanel,
+            'relative overflow-hidden rounded-[1.5rem]',
+            stats.overdue > 0
+              ? 'border-red-400/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.32),rgba(5,5,5,0.92)_48%,rgba(69,10,10,0.20))]'
+              : stats.today > 0
+                ? 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(5,5,5,0.92)_48%,rgba(120,53,15,0.18))]'
+                : 'border-emerald-300/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(5,5,5,0.92)_46%,rgba(245,158,11,0.08))]'
+          )}
+        >
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+          <div
+            className={cn(
+              'pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full blur-3xl',
+              stats.overdue > 0 ? 'bg-red-500/10' : stats.today > 0 ? 'bg-amber-400/12' : 'bg-emerald-400/12'
+            )}
+          />
+          <CardContent className="relative flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5">
+            <div
+              className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border shadow-inner',
+                stats.overdue > 0
+                  ? 'border-red-300/30 bg-red-500/15 text-red-200'
+                  : stats.today > 0
+                    ? 'border-amber-300/30 bg-amber-400/15 text-amber-200'
+                    : 'border-emerald-300/25 bg-emerald-400/12 text-emerald-200'
+              )}
+            >
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {format(now, 'EEEE, dd MMMM yyyy')}
+              </p>
+              <p className="max-w-5xl whitespace-normal break-words text-sm font-medium leading-6 text-slate-100 sm:text-base sm:leading-7">
+                {briefing}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
       {/* KPI Summary Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
