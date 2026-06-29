@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -270,79 +269,114 @@ export default function GammaTemplateManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto rounded-2xl border-border/70 bg-card text-card-foreground shadow-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingTemplate ? 'Edit Template' : 'Add Gamma Template'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Template Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Buyer's Agent Agreement v2" />
+        <DialogContent className="max-h-[min(92vh,880px)] max-w-3xl overflow-hidden rounded-[1.75rem] border border-amber-200/40 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.16),transparent_34%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--card)/0.96))] p-0 text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.26)] ring-1 ring-white/65 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:ring-white/10">
+          <div className="flex max-h-[min(92vh,880px)] flex-col">
+            <DialogHeader className="border-b border-border/60 bg-background/45 px-6 py-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
+              <div className="flex items-start gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.24),hsl(38_92%_50%/0.12))] text-amber-600 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.68),0_16px_34px_hsl(43_84%_52%/0.18)] dark:border-amber-200/20 dark:text-amber-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_18px_42px_rgba(0,0,0,0.34)]">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-amber-600/90 dark:text-amber-200/80">Template workflow</p>
+                  <DialogTitle className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{editingTemplate ? 'Edit Gamma Template' : 'Add Gamma Template'}</DialogTitle>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    Configure the Gamma source, merge fields, and fallback values used when agreement documents are created.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Gamma Template ID</Label>
-                <Input value={gammaId} onChange={(e) => setGammaId(e.target.value)} placeholder="e.g. g_abc123xyz" className="font-mono text-sm" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Description (optional)</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of this template..." rows={2} />
-            </div>
+            </DialogHeader>
 
-            <Separator />
+            <div className="flex-1 overflow-y-auto px-6 py-5 sm:px-7">
+              <div className="space-y-5">
+                <section className="rounded-2xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground">Template details</h3>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">Name the workflow and paste the exact Gamma template identifier.</p>
+                    </div>
+                    <Badge variant="outline" className="rounded-full border-amber-300/45 bg-amber-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-amber-700 dark:border-amber-200/20 dark:text-amber-200">Required</Badge>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Template Name</Label>
+                      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Buyer's Agent Agreement v2" className="h-11 rounded-xl border-border/70 bg-background/85 shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
+                      {!name && <p className="text-xs font-medium text-muted-foreground">Enter a recognizable name for admins and agreement senders.</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Gamma Template ID</Label>
+                      <Input value={gammaId} onChange={(e) => setGammaId(e.target.value)} placeholder="e.g. g_abc123xyz" className="h-11 rounded-xl border-border/70 bg-background/85 font-mono text-sm shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
+                      {!gammaId && <p className="text-xs font-medium text-muted-foreground">Use the Gamma ID already connected to the agreement automation.</p>}
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Description (optional)</Label>
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of this template..." rows={2} className="rounded-xl border-border/70 bg-background/85 shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
+                  </div>
+                </section>
 
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <Label className="text-sm font-semibold">Placeholder Mappings</Label>
-                <Button variant="outline" size="sm" onClick={addMapping}>
-                  <Plus className="h-3 w-3 mr-1" /> Add
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Map placeholders in your Gamma template (e.g. [Buyer's Name]) to agreement data fields.
-              </p>
-              <div className="space-y-2">
-                {mappings.map((m, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <Input
-                      value={m.placeholder}
-                      onChange={(e) => updateMapping(idx, 'placeholder', e.target.value)}
-                      placeholder="[Placeholder]"
-                      className="flex-1 text-sm"
-                    />
-                    <span className="text-muted-foreground text-xs">→</span>
-                    <select
-                      value={m.field}
-                      onChange={(e) => updateMapping(idx, 'field', e.target.value)}
-                      className="flex-1 h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                      <option value="">Select field...</option>
-                      {AVAILABLE_FIELDS.map((f) => (
-                        <option key={f.value} value={f.value}>{f.label}</option>
-                      ))}
-                    </select>
-                    <Input
-                      value={m.defaultValue || ''}
-                      onChange={(e) => updateMapping(idx, 'defaultValue', e.target.value)}
-                      placeholder="Default"
-                      className="w-32 text-sm"
-                    />
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeMapping(idx)}>
-                      <X className="h-3.5 w-3.5" />
+                <section className="rounded-2xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground">Placeholder Mappings</h3>
+                      <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">Map placeholders in your Gamma template (e.g. [Buyer's Name]) to agreement data fields. Optional defaults are used only when a mapped value is unavailable.</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={addMapping} className="shrink-0 rounded-xl border-amber-300/45 bg-amber-500/10 font-semibold text-amber-700 transition-all hover:-translate-y-0.5 hover:bg-amber-500/15 hover:text-amber-800 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-amber-200/20 dark:text-amber-200 dark:hover:bg-amber-200/10 dark:hover:text-amber-100">
+                      <Plus className="mr-1 h-3 w-3" /> Add Mapping
                     </Button>
                   </div>
-                ))}
+                  <div className="space-y-3">
+                    {mappings.map((m, idx) => (
+                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/60 bg-muted/25 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44)] dark:border-white/10 dark:bg-slate-950/35 sm:grid-cols-[1fr_auto_1fr_9rem_auto] sm:items-end">
+                        <div className="space-y-1.5">
+                          <Label className="text-[0.66rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">Gamma placeholder</Label>
+                          <Input
+                            value={m.placeholder}
+                            onChange={(e) => updateMapping(idx, 'placeholder', e.target.value)}
+                            placeholder="[Placeholder]"
+                            className="h-10 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
+                          />
+                        </div>
+                        <span className="hidden pb-3 text-lg font-semibold text-amber-500 sm:block">→</span>
+                        <div className="space-y-1.5">
+                          <Label className="text-[0.66rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">Agreement field</Label>
+                          <select
+                            value={m.field}
+                            onChange={(e) => updateMapping(idx, 'field', e.target.value)}
+                            className="h-10 w-full rounded-xl border border-input bg-background/90 px-3 text-sm shadow-sm transition-all focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
+                          >
+                            <option value="">Select field...</option>
+                            {AVAILABLE_FIELDS.map((f) => (
+                              <option key={f.value} value={f.value}>{f.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[0.66rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">Default</Label>
+                          <Input
+                            value={m.defaultValue || ''}
+                            onChange={(e) => updateMapping(idx, 'defaultValue', e.target.value)}
+                            placeholder="Default"
+                            className="h-10 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
+                          />
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground transition-all hover:border hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               </div>
             </div>
+
+            <DialogFooter className="border-t border-border/60 bg-background/55 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
+              <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }} className="rounded-xl border-border/75 bg-background/70 font-semibold text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/45">Cancel</Button>
+              <Button onClick={() => saveMutation.mutate()} disabled={!name || !gammaId || saveMutation.isPending} className="rounded-xl bg-[linear-gradient(135deg,hsl(43_84%_52%),hsl(38_92%_50%))] px-5 font-bold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.34)] focus-visible:ring-2 focus-visible:ring-amber-300/60 disabled:translate-y-0 disabled:opacity-55 dark:text-slate-950">
+                {saveMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                {editingTemplate ? 'Update Template' : 'Create Template'}
+              </Button>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={!name || !gammaId || saveMutation.isPending}>
-              {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              {editingTemplate ? 'Update' : 'Create'}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardThemeFrame>
