@@ -201,7 +201,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
               <Star className={`h-4 w-4 ${showActiveOnly ? 'fill-current' : ''}`} />
               Active Clients
               {activeClientCount > 0 && (
-                <Badge variant={showActiveOnly ? 'secondary' : 'outline'} className={`h-5 rounded-full px-2 text-[10px] font-bold ${showActiveOnly ? 'border-black/10 bg-black/10 text-black' : 'border-amber-300/25 bg-amber-300/10 text-amber-700 dark:text-amber-100'}`}>
+                <Badge variant={showActiveOnly ? 'secondary' : 'outline'} className={`h-5 rounded-full px-2 text-[10px] font-bold ${showActiveOnly ? 'border-black/10 bg-background/10 dark:bg-black/10 text-black' : 'border-amber-300/25 bg-amber-300/10 text-amber-700 dark:text-amber-100'}`}>
                   {activeClientCount}
                 </Badge>
               )}

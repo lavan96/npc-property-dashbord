@@ -122,7 +122,7 @@ function InlineEditField({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="min-h-[84px] resize-none rounded-xl border-amber-200/15 bg-zinc-950/55 text-xs leading-5 text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
+        className="min-h-[84px] resize-none rounded-xl border-amber-200/15 bg-background/55 dark:bg-zinc-950/55 text-xs leading-5 text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
       />
     );
   }
@@ -134,7 +134,7 @@ function InlineEditField({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
-      className="h-9 rounded-xl border-amber-200/15 bg-zinc-950/55 text-xs text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
+      className="h-9 rounded-xl border-amber-200/15 bg-background/55 dark:bg-zinc-950/55 text-xs text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
     />
   );
 }
@@ -176,7 +176,7 @@ function StageActions({
               <Button
                 variant={a.variant}
                 size="sm"
-                className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
+                className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-background/30 dark:bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
                 onClick={() => {
                   const data: any = { status: a.status };
                   if (a.status === 'complete') data.completed_at = new Date().toISOString();
@@ -219,7 +219,7 @@ function DealExpandedRow({
       <TableCell colSpan={8} className="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.82))] p-0">
         <div className="space-y-5 p-4 sm:p-5">
           {/* Stage timeline */}
-          <section className="rounded-2xl border border-amber-200/15 bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <section className="rounded-2xl border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
               <div>
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
@@ -263,7 +263,7 @@ function DealExpandedRow({
 
           {/* Inline notes editor */}
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-amber-200/15 bg-black/25 p-4">
+            <div className="rounded-2xl border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4">
               <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
                 <MessageSquare className="h-3 w-3" /> Deal Notes
               </p>
@@ -276,7 +276,7 @@ function DealExpandedRow({
                 type="textarea"
               />
             </div>
-            <div className="space-y-4 rounded-2xl border border-amber-200/15 bg-black/25 p-4">
+            <div className="space-y-4 rounded-2xl border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4">
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
                   <User className="h-3 w-3" /> Responsible Person
@@ -379,10 +379,10 @@ function DealManageRow({
             defaultValue={deal.responsible_person || UNASSIGNED_SENTINEL}
             onValueChange={(v) => handleUpdateField('responsible_person', v === UNASSIGNED_SENTINEL ? null : v)}
           >
-            <SelectTrigger className="h-8 w-full rounded-xl border-amber-200/15 bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40">
+            <SelectTrigger className="h-8 w-full rounded-xl border-amber-200/15 bg-background/60 dark:bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40">
               <SelectValue placeholder="Assign..." />
             </SelectTrigger>
-            <SelectContent className="border-amber-200/15 bg-zinc-950">
+            <SelectContent className="border-amber-200/15 bg-background dark:bg-zinc-950">
               <SelectItem value={UNASSIGNED_SENTINEL} className="text-xs italic">Unassigned</SelectItem>
               {responsiblePersons.map(p => (
                 <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
@@ -398,10 +398,10 @@ function DealManageRow({
             defaultValue={deal.risk_status}
             onValueChange={(v) => handleUpdateField('risk_status', v)}
           >
-            <SelectTrigger className={cn('h-8 w-full rounded-xl border bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40', riskCfg?.color)}>
+            <SelectTrigger className={cn('h-8 w-full rounded-xl border bg-background/60 dark:bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40', riskCfg?.color)}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-amber-200/15 bg-zinc-950">
+            <SelectContent className="border-amber-200/15 bg-background dark:bg-zinc-950">
               {Object.entries(RISK_STATUS_CONFIG).map(([key, cfg]) => (
                 <SelectItem key={key} value={key} className="text-xs">
                   {cfg.emoji} {cfg.label}
@@ -435,7 +435,7 @@ function DealManageRow({
                     <Button
                       variant="default"
                       size="sm"
-                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
+                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-background/30 dark:bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
                       onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'complete', completed_at: new Date().toISOString() }, deal.id, stages)}
                     >
                       <CheckCircle2 className="h-2.5 w-2.5" />
@@ -453,7 +453,7 @@ function DealManageRow({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
+                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-background/30 dark:bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
                       onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress' }, deal.id, stages)}
                     >
                       <Play className="h-2.5 w-2.5" />
@@ -507,15 +507,15 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   if (isLoading) {
     return (
-      <div className="space-y-4 rounded-[1.5rem] border border-amber-200/15 bg-black/25 p-4">
+      <div className="space-y-4 rounded-[1.5rem] border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4">
         <div className="flex items-center gap-3">
           <Skeleton className="h-11 w-11 rounded-2xl bg-amber-200/10" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-48 bg-amber-200/10" />
-            <Skeleton className="h-3 w-72 max-w-full bg-white/10" />
+            <Skeleton className="h-3 w-72 max-w-full bg-card/10 dark:bg-white/10" />
           </div>
         </div>
-        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 rounded-2xl bg-white/10" />)}
+        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 rounded-2xl bg-card/10 dark:bg-white/10" />)}
       </div>
     );
   }
@@ -568,13 +568,13 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
         </CardHeader>
       </Card>
 
-      <div className="flex items-center gap-2 rounded-2xl border border-amber-200/10 bg-black/25 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-2xl border border-amber-200/10 bg-background/25 dark:bg-black/25 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
         <ShieldCheck className="h-4 w-4 shrink-0 text-amber-200" />
         <span className="break-words">Click a row to expand stage management · Edits save on blur · Destructive deal actions remain governed in the existing client deal workflow.</span>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-zinc-950/60 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-background/60 dark:bg-zinc-950/60 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
         <CardContent className="p-0">
           <div className="max-w-full overflow-auto">
             <Table>
