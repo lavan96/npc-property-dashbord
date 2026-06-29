@@ -216,23 +216,28 @@ export default function RemindersHub() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 text-slate-100 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
-      {/* Page Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-amber-400/15 bg-black/35 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.36)] sm:p-6">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
-        <div className="flex items-center gap-3 sm:gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 shadow-[0_0_30px_rgba(245,158,11,0.18)]">
-          <Bell className="h-5 w-5 text-amber-200 sm:h-6 sm:w-6" />
+        {/* Page Header */}
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(0,0,0,0.62)_34%,rgba(15,23,42,0.50))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.40)] backdrop-blur sm:p-6">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent" />
+          <div className="pointer-events-none absolute -right-16 -top-24 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-amber-500/10 to-black/20 shadow-[0_0_34px_rgba(245,158,11,0.22)] sm:h-14 sm:w-14">
+              <div className="absolute inset-1 rounded-[1rem] border border-white/5" />
+              <Bell className="relative h-5 w-5 text-amber-100 drop-shadow-[0_0_12px_rgba(245,158,11,0.45)] sm:h-6 sm:w-6" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-100/90">
+                Daily command hub
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-4xl">Reminders Hub</h1>
+              <p className="truncate text-sm leading-6 text-slate-300 sm:text-base">
+                All reminders, follow-ups, and deal milestones in one place.
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-white sm:text-3xl">Reminders Hub</h1>
-          <p className="truncate text-xs text-slate-400 sm:text-sm">
-            All reminders, follow-ups, and deal milestones in one place.
-          </p>
-        </div>
-        </div>
-      </div>
 
-      {/* Morning Briefing Banner */}
+        {/* Morning Briefing Banner */}
       <Card className={cn(
         premiumPanel,
         stats.overdue > 0
