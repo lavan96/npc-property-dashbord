@@ -70,7 +70,7 @@ const SOURCE_COLORS = {
 };
 
 const premiumPanel = 'border border-amber-400/10 bg-slate-950/80 shadow-[0_18px_55px_rgba(0,0,0,0.35)] backdrop-blur';
-const interactivePanel = 'transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-[0_18px_45px_rgba(245,158,11,0.10)]';
+const interactivePanel = 'motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-[0_18px_45px_rgba(245,158,11,0.10)] focus-within:border-amber-300/35 focus-within:shadow-[0_18px_45px_rgba(245,158,11,0.10)]';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   settlement: <Building2 className="h-3.5 w-3.5" />,
@@ -269,7 +269,7 @@ export default function RemindersHub() {
         <Card
           className={cn(
             premiumPanel,
-            'relative overflow-hidden rounded-[1.5rem]',
+            'relative overflow-hidden rounded-[1.5rem] transition-all duration-200 hover:border-amber-300/25 hover:shadow-[0_20px_60px_rgba(245,158,11,0.08)]',
             stats.overdue > 0
               ? 'border-red-400/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.32),rgba(5,5,5,0.92)_48%,rgba(69,10,10,0.20))]'
               : stats.today > 0
@@ -378,7 +378,7 @@ export default function RemindersHub() {
           <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
           <TabsTrigger
             value="client"
-            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
+            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
           >
             <span className="flex min-w-0 items-center justify-center gap-2">
               <Bell className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-105" />
@@ -387,7 +387,7 @@ export default function RemindersHub() {
           </TabsTrigger>
           <TabsTrigger
             value="team"
-            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
+            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
           >
             <span className="flex min-w-0 items-center justify-center gap-2">
               <Users className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-105" />
@@ -423,14 +423,14 @@ export default function RemindersHub() {
             <Tabs value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)} className="flex-1">
               <TabsList className="relative inline-flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-2xl border border-amber-300/10 bg-[linear-gradient(135deg,rgba(0,0,0,0.58),rgba(15,23,42,0.58))] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30">
                 <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
-                <TabsTrigger value="all" className="h-9 min-w-16 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-20 sm:text-sm">All</TabsTrigger>
-                <TabsTrigger value="overdue" className="h-9 min-w-24 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-red-300/20 hover:bg-red-400/10 hover:text-red-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-28 sm:text-sm">
+                <TabsTrigger value="all" className="h-9 min-w-16 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-20 sm:text-sm">All</TabsTrigger>
+                <TabsTrigger value="overdue" className="h-9 min-w-24 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-red-300/20 hover:bg-red-400/10 hover:text-red-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-28 sm:text-sm">
                   Overdue {stats.overdue > 0 && <Badge variant="destructive" className="ml-1 h-4 px-1 text-[9px] shadow-[0_0_12px_rgba(248,113,113,0.28)]">{stats.overdue}</Badge>}
                 </TabsTrigger>
-                <TabsTrigger value="today" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Today</TabsTrigger>
-                <TabsTrigger value="week" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Week</TabsTrigger>
-                <TabsTrigger value="month" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Month</TabsTrigger>
-                <TabsTrigger value="later" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Later</TabsTrigger>
+                <TabsTrigger value="today" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Today</TabsTrigger>
+                <TabsTrigger value="week" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Week</TabsTrigger>
+                <TabsTrigger value="month" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Month</TabsTrigger>
+                <TabsTrigger value="later" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Later</TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -438,7 +438,7 @@ export default function RemindersHub() {
               <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
                 <SelectTrigger
                   className={cn(
-                    'h-10 min-w-[145px] flex-1 rounded-xl border bg-black/45 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black sm:h-11 sm:w-[170px] sm:flex-none',
+                    'h-10 min-w-[145px] flex-1 rounded-xl border bg-black/45 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black sm:h-11 sm:w-[170px] sm:flex-none',
                     sourceFilter !== 'all'
                       ? 'border-amber-300/45 bg-amber-400/12 text-amber-100 shadow-[0_0_22px_rgba(245,158,11,0.14)]'
                       : 'border-amber-400/15'
@@ -458,7 +458,7 @@ export default function RemindersHub() {
               <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as PriorityFilter)}>
                 <SelectTrigger
                   className={cn(
-                    'h-10 min-w-[130px] flex-1 rounded-xl border bg-black/45 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black sm:h-11 sm:w-[150px] sm:flex-none',
+                    'h-10 min-w-[130px] flex-1 rounded-xl border bg-black/45 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 motion-safe:hover:-translate-y-px focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black sm:h-11 sm:w-[150px] sm:flex-none',
                     priorityFilter !== 'all'
                       ? 'border-amber-300/45 bg-amber-400/12 text-amber-100 shadow-[0_0_22px_rgba(245,158,11,0.14)]'
                       : 'border-amber-400/15'
@@ -586,7 +586,7 @@ export default function RemindersHub() {
                             className={cn(
                               premiumPanel,
                               interactivePanel,
-                              'group relative cursor-pointer overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] hover:bg-amber-400/[0.035] focus-within:border-amber-300/40 focus-within:shadow-[0_0_34px_rgba(245,158,11,0.14)]',
+                              'group relative cursor-pointer overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] hover:bg-amber-400/[0.035] hover:ring-1 hover:ring-amber-300/15 focus-within:border-amber-300/40 focus-within:ring-2 focus-within:ring-amber-300/25 focus-within:shadow-[0_0_34px_rgba(245,158,11,0.14)]',
                               isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))] hover:bg-red-500/[0.055]',
                               isDueToday && !isOverdue && 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(2,6,23,0.88))] hover:bg-amber-400/[0.075]',
                               isWeekPlanningReminder && 'border-sky-300/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.10),rgba(2,6,23,0.88))] hover:bg-sky-400/[0.055]',
@@ -626,7 +626,7 @@ export default function RemindersHub() {
                                     )}>
                                       {reminder.title}
                                     </span>
-                                    <Badge className={cn('h-6 shrink-0 rounded-full border px-2.5 py-0 text-[10px] font-semibold uppercase tracking-[0.12em]', priorityCfg.color)}>
+                                    <Badge className={cn('h-6 shrink-0 rounded-full border px-2.5 py-0 text-[10px] font-semibold uppercase tracking-[0.12em] transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.16)]', priorityCfg.color)}>
                                       {priorityCfg.label}
                                     </Badge>
                                   </div>
