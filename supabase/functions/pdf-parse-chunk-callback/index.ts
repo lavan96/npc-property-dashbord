@@ -861,6 +861,10 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     table_cell_count: totalTableCells,
     picture_count: totalPictures,
     text_block_count: totalTexts,
+    // Phase 5: mirror the monolithic summary so chunked imports also report these
+    // (observability parity; the merged arrays are already populated above).
+    vector_count: mergedDoc.vectors.length,
+    font_count: mergedDoc.fonts.length,
     chunked: true,
     chunk_count: chunkRows.length,
   };

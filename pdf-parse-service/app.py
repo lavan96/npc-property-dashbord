@@ -2318,7 +2318,10 @@ async def _run_chunk_job(req: ChunkRequest) -> None:
             # Raster the chunk when the mode or lane policy demands page images.
             mode = _resolve_effective_mode(req.mode, lane_policy)
             if mode in {"hybrid", "pixel_perfect", "pixel-perfect"}:
-                dpi = req.raster_dpi or int(lane_policy.get("raster_dpi") or (200 if "pixel" in mode else 144))
+                # Phase 5: honor the configured RASTER_DPI (DOCLING_RASTER_DPI, default
+                # 300) like the monolithic path — chunked PDFs on lanes without an
+                # explicit raster_dpi previously fell back to 144 and ignored the env.
+                dpi = req.raster_dpi or int(lane_policy.get("raster_dpi") or RASTER_DPI or (200 if "pixel" in mode else 144))
                 try:
                     raster_fmt = (req.raster_format or RASTER_FORMAT or "png").lower()
                     raster_result = _do_raster(chunk_pdf, dpi=dpi, fmt=raster_fmt)
