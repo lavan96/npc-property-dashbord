@@ -73,6 +73,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const [persistedRepairAudit, setPersistedRepairAudit] = useState<PersistedVisualRepairAudit | null>(null);
   const [applyRepairBusy, setApplyRepairBusy] = useState(false);
   const [repairApplied, setRepairApplied] = useState(false);
+  const [repairDraftReady, setRepairDraftReady] = useState(false);
 
   const reset = () => {
     setFile(null);
@@ -89,6 +90,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setPersistedRepairAudit(null);
     setApplyRepairBusy(false);
     setRepairApplied(false);
+    setRepairDraftReady(false);
     setPersistedReview(null);
     setVisualQaBusy(false);
     setVisualQaSummary(null);
@@ -98,6 +100,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setPersistedRepairAudit(null);
     setApplyRepairBusy(false);
     setRepairApplied(false);
+    setRepairDraftReady(false);
   };
 
   const handleClose = (v: boolean) => {
@@ -144,6 +147,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setPersistedRepairAudit(null);
     setApplyRepairBusy(false);
     setRepairApplied(false);
+    setRepairDraftReady(false);
       toast.success(`Imported ${outcome.result.pageCount} page${outcome.result.pageCount === 1 ? '' : 's'} via Docling.`);
     } catch (err) {
       toast.error(describeAuthError((err as Error).message) ?? `Import failed: ${(err as Error).message}`);
@@ -166,6 +170,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setPersistedRepairAudit(null);
     setApplyRepairBusy(false);
     setRepairApplied(false);
+    setRepairDraftReady(false);
       return null;
     }
     console.warn('[visualQuality] load failed', loadedVisual.message);
@@ -177,6 +182,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     if (loadedRepair.kind === 'ok') {
       setPersistedRepairAudit(loadedRepair.payload);
       setRepairSummary(loadedRepair.payload.payload.summary);
+      setRepairDraftReady(false);
       return loadedRepair.payload;
     }
 
@@ -184,6 +190,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
       setPersistedRepairAudit(null);
     setApplyRepairBusy(false);
     setRepairApplied(false);
+    setRepairDraftReady(false);
       setRepairSummary(null);
       return null;
     }
@@ -226,6 +233,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         ...persistedReview,
         draft: qa.draft,
       });
+      setRepairDraftReady(false);
 
       if (qa.visualQa.persistResult.kind === 'ok') {
         const persisted = await hydratePersistedVisualQuality(persistedReview.record.id);
@@ -268,6 +276,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
       });
       setRepairSummary(repair.summary);
       setRepairApplied(false);
+      setRepairDraftReady(Boolean(repair.draft?.template));
       setVisualQaSummary(repair.visualQa.visualQa.summary);
 
       if (saved.kind === 'ok') {
@@ -314,6 +323,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
       });
 
       setRepairApplied(true);
+      setRepairDraftReady(false);
       toast.success(`Repair applied to template v${applied.nextVersion}.`);
       onOpenChange(false);
       navigate(`/admin/template-builder/${templateId}`);
@@ -354,7 +364,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const displayedReviewDraft = persistedReview?.draft ?? reviewDraft;
   const visualQaAvailable = Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount);
   const repairAvailable = Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount);
-  const applyRepairAvailable = Boolean(repairSummary && persistedReview?.draft?.template && !repairApplied);
+  const applyRepairAvailable = Boolean(repairDraftReady && repairSummary && persistedReview?.draft?.template && !repairApplied);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
