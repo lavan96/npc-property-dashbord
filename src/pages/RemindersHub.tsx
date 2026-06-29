@@ -406,13 +406,20 @@ export default function RemindersHub() {
               </TabsList>
             </Tabs>
 
-            <div className="flex gap-2 shrink-0">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:shrink-0">
               <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
-                <SelectTrigger className="h-9 w-[140px] border-amber-400/15 bg-black/40 text-xs text-slate-200 hover:border-amber-300/35 focus:ring-amber-300 sm:w-[160px]">
-                  <Filter className="h-3 w-3 mr-1" />
+                <SelectTrigger
+                  className={cn(
+                    'h-10 min-w-[145px] flex-1 rounded-xl border bg-black/45 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black sm:h-11 sm:w-[170px] sm:flex-none',
+                    sourceFilter !== 'all'
+                      ? 'border-amber-300/45 bg-amber-400/12 text-amber-100 shadow-[0_0_22px_rgba(245,158,11,0.14)]'
+                      : 'border-amber-400/15'
+                  )}
+                >
+                  <Filter className="mr-2 h-3.5 w-3.5 shrink-0 text-amber-200/80" />
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl border-amber-300/20 bg-slate-950/95 p-1 text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
                   <SelectItem value="all">All Sources</SelectItem>
                   <SelectItem value="client_reminder">Client Reminders</SelectItem>
                   <SelectItem value="follow_up">Follow-Ups</SelectItem>
@@ -421,10 +428,18 @@ export default function RemindersHub() {
               </Select>
 
               <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as PriorityFilter)}>
-                <SelectTrigger className="h-9 w-[110px] border-amber-400/15 bg-black/40 text-xs text-slate-200 hover:border-amber-300/35 focus:ring-amber-300 sm:w-[130px]">
+                <SelectTrigger
+                  className={cn(
+                    'h-10 min-w-[130px] flex-1 rounded-xl border bg-black/45 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black sm:h-11 sm:w-[150px] sm:flex-none',
+                    priorityFilter !== 'all'
+                      ? 'border-amber-300/45 bg-amber-400/12 text-amber-100 shadow-[0_0_22px_rgba(245,158,11,0.14)]'
+                      : 'border-amber-400/15'
+                  )}
+                >
+                  <Sparkles className="mr-2 h-3.5 w-3.5 shrink-0 text-amber-200/80" />
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl border-amber-300/20 bg-slate-950/95 p-1 text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
                   <SelectItem value="all">All Priorities</SelectItem>
                   <SelectItem value="high">High</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
