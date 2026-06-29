@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DealWithClient } from '@/hooks/useAllDeals';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 
 interface Props {
   deals: DealWithClient[];
@@ -456,7 +457,7 @@ function DealTypeBreakdown({ deals }: { deals: DealWithClient[] }) {
             <div key={d.name} className="flex items-center gap-1.5 text-[10px]">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.fill }} />
               <span className="text-muted-foreground">{d.name}</span>
-              <Badge variant="secondary" className="text-[9px] h-4 px-1">{d.count}</Badge>
+              <Badge variant="outline" className={pipelineBadgeClass('neutral', true, 'h-4 px-1 text-[9px]')}>{d.count}</Badge>
             </div>
           ))}
         </div>
@@ -617,7 +618,7 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-[10px] text-muted-foreground">{person.count} deals</span>
                   {person.urgent > 0 && (
-                    <Badge variant="destructive" className="text-[8px] h-3.5 px-1">
+                    <Badge variant="outline" className={pipelineBadgeClass('danger', true, 'h-4 px-1 text-[8px]')}>
                       {person.urgent} 🔴
                     </Badge>
                   )}

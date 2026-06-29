@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import type { DealWithClient } from '@/hooks/useAllDeals';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 
 
 const kpiCardBase = 'relative overflow-hidden rounded-2xl border shadow-xl shadow-black/5 before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent';
@@ -242,11 +243,11 @@ export function CommissionDashboard({ deals, isLoading, onUpdatePayment }: Props
                           title="Mark commission as received"
                         >
                           {row.fundsReleased ? (
-                            <Badge className="border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-700 shadow-sm shadow-amber-500/10 transition-colors hover:bg-amber-500/20 whitespace-nowrap"><Banknote className="mr-1 h-3 w-3" />Awaiting</Badge>
+                            <Badge className={pipelineBadgeClass('warning', false, 'whitespace-nowrap transition-colors hover:bg-amber-500/20')}><Banknote className="mr-1 h-3 w-3" />Awaiting</Badge>
                           ) : row.submittedToLender ? (
-                            <Badge variant="outline" className="border-sky-300/60 bg-sky-500/10 px-2.5 py-1 text-[10px] font-bold text-sky-700 whitespace-nowrap"><Send className="mr-1 h-3 w-3" />Submitted</Badge>
+                            <Badge variant="outline" className={pipelineBadgeClass('warning', false, 'whitespace-nowrap')}><Send className="mr-1 h-3 w-3" />Submitted</Badge>
                           ) : row.builderInvoiceReceived ? (
-                            <Badge variant="outline" className="border-amber-300/70 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-700 whitespace-nowrap"><ReceiptText className="mr-1 h-3 w-3" />Invoice</Badge>
+                            <Badge variant="outline" className={pipelineBadgeClass('warning', false, 'whitespace-nowrap')}><ReceiptText className="mr-1 h-3 w-3" />Invoice</Badge>
                           ) : (
                             <span className={emptyDashClass}>—</span>
                           )}
