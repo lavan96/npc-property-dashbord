@@ -136,7 +136,34 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          console.log(`[agent-task-runner] Generating checklist from template: ${tmpl.name} (${tmpl.id})`);
+          const occurrenceDate = now.slice(0, 10);
+          const recurrenceKey = `${tmpl.id}:${occurrenceDate}`;
+
+          // Recurrence audit note: Daily Operations and other cron templates must generate instances, not templates.
+          // Idempotency is enforced per template/date so completed or archived occurrences are not regenerated
+          // for the same day and only future valid occurrences can appear in Active.
+          const { data: existingInstance, error: existingErr } = await sb
+            .from('checklist_instances')
+            .select('id,status')
+            .eq('recurrence_key', recurrenceKey)
+            .maybeSingle();
+
+          if (existingErr) {
+            console.error(`[agent-task-runner] Failed to check existing checklist occurrence for "${tmpl.name}":`, existingErr.message);
+            failed++;
+            continue;
+          }
+
+          if (existingInstance) {
+            await sb.from('checklist_templates').update({
+              last_generated_at: now,
+              updated_at: now,
+            }).eq('id', tmpl.id);
+            console.log(`[agent-task-runner] Checklist occurrence already exists for ${tmpl.name} on ${occurrenceDate} (${existingInstance.status}), skipping`);
+            continue;
+          }
+
+          console.log(`[agent-task-runner] Generating checklist from template: ${tmpl.name} (${tmpl.id}) for ${occurrenceDate}`);
 
           // Fetch template sections and items
           const { data: sections } = await sb
@@ -154,6 +181,8 @@ Deno.serve(async (req) => {
             generated_by: 'cron',
             status: 'in_progress',
             progress_percent: 0,
+            due_date: occurrenceDate,
+            recurrence_key: recurrenceKey,
           }).select().single();
 
           if (instErr || !instance) {

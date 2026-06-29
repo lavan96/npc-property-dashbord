@@ -2375,11 +2375,13 @@ export type Database = {
           completed_at: string | null
           created_at: string
           description: string | null
+          due_date: string | null
           generated_by: string | null
           icon: string | null
           id: string
           name: string
           progress_percent: number | null
+          recurrence_key: string | null
           status: string
           template_id: string | null
           updated_at: string
@@ -2388,11 +2390,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           generated_by?: string | null
           icon?: string | null
           id?: string
           name: string
           progress_percent?: number | null
+          recurrence_key?: string | null
           status?: string
           template_id?: string | null
           updated_at?: string
@@ -2401,11 +2405,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           generated_by?: string | null
           icon?: string | null
           id?: string
           name?: string
           progress_percent?: number | null
+          recurrence_key?: string | null
           status?: string
           template_id?: string | null
           updated_at?: string
