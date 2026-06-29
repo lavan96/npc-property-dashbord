@@ -71,7 +71,7 @@ const SOURCE_COLORS = {
 };
 
 const premiumPanel = 'border border-amber-400/12 bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] shadow-[0_18px_55px_rgba(0,0,0,0.36)] backdrop-blur';
-const interactivePanel = 'motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-amber-300/30 hover:shadow-[0_18px_45px_rgba(245,158,11,0.09)] focus-within:border-amber-300/35 focus-within:shadow-[0_18px_45px_rgba(245,158,11,0.10)]';
+const interactivePanel = 'motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-amber-300/30 hover:shadow-[0_20px_50px_rgba(245,158,11,0.11),0_14px_34px_rgba(0,0,0,0.28)] focus-within:border-amber-300/35 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.14),0_18px_45px_rgba(245,158,11,0.10)]';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   settlement: <Building2 className="h-3.5 w-3.5" />,
@@ -258,7 +258,7 @@ export default function RemindersHub() {
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-100/90">
                 Daily command hub
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-white sm:text-4xl">Reminders Hub</h1>
+              <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent drop-shadow-[0_0_22px_rgba(245,158,11,0.16)] sm:text-4xl">Reminders Hub</h1>
               <p className="max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
                 All reminders, follow-ups, and deal milestones in one place.
               </p>
@@ -270,7 +270,7 @@ export default function RemindersHub() {
         <Card
           className={cn(
             premiumPanel,
-            'relative overflow-hidden rounded-[1.5rem] transition-all duration-200 hover:border-amber-300/25 hover:shadow-[0_20px_60px_rgba(245,158,11,0.08)]',
+            'relative overflow-hidden rounded-[1.5rem] ring-1 ring-white/[0.03] transition-all duration-200 hover:border-amber-300/25 hover:shadow-[0_20px_60px_rgba(245,158,11,0.10),0_18px_45px_rgba(0,0,0,0.30)]',
             stats.overdue > 0
               ? 'border-red-400/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.32),rgba(5,5,5,0.92)_48%,rgba(69,10,10,0.20))]'
               : stats.today > 0
@@ -278,7 +278,7 @@ export default function RemindersHub() {
                 : 'border-emerald-300/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(5,5,5,0.92)_46%,rgba(245,158,11,0.08))]'
           )}
         >
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/80 to-transparent" />
           <div
             className={cn(
               'pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full blur-3xl',
@@ -311,7 +311,7 @@ export default function RemindersHub() {
 
       {/* KPI Summary Strip */}
       <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 sm:gap-3">
-        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl', stats.overdue > 0 ? 'border-red-400/35 bg-red-950/15' : 'hover:border-amber-300/30')}>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl ring-1 ring-white/[0.025]', stats.overdue > 0 ? 'border-red-400/35 bg-red-950/15' : 'hover:border-amber-300/30')}>
           <CardContent className="relative p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Overdue</p>
@@ -323,7 +323,7 @@ export default function RemindersHub() {
             <div className={cn('mt-3 h-0.5 rounded-full transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]', stats.overdue > 0 ? 'bg-red-400/60' : 'bg-amber-300/25')} />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl', stats.today > 0 ? 'border-amber-300/35 bg-amber-950/15' : 'hover:border-amber-300/30')}>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl ring-1 ring-white/[0.025]', stats.today > 0 ? 'border-amber-300/35 bg-amber-950/15' : 'hover:border-amber-300/30')}>
           <CardContent className="relative p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Today</p>
@@ -335,7 +335,7 @@ export default function RemindersHub() {
             <div className="mt-3 h-0.5 rounded-full bg-amber-300/35 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl hover:border-amber-300/30')}>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl ring-1 ring-white/[0.025] hover:border-amber-300/30')}>
           <CardContent className="relative p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">This Week</p>
@@ -347,7 +347,7 @@ export default function RemindersHub() {
             <div className="mt-3 h-0.5 rounded-full bg-amber-300/30 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl', stats.highPriority > 0 ? 'border-red-400/35 bg-red-950/15' : 'hover:border-amber-300/30')}>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl ring-1 ring-white/[0.025]', stats.highPriority > 0 ? 'border-red-400/35 bg-red-950/15' : 'hover:border-amber-300/30')}>
           <CardContent className="relative p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">High Priority</p>
@@ -359,7 +359,7 @@ export default function RemindersHub() {
             <div className={cn('mt-3 h-0.5 rounded-full transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]', stats.highPriority > 0 ? 'bg-red-400/60' : 'bg-amber-300/25')} />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl hover:border-amber-300/30 min-[420px]:col-span-2 md:col-span-1')}>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl ring-1 ring-white/[0.025] hover:border-amber-300/30 min-[420px]:col-span-2 md:col-span-1')}>
           <CardContent className="relative p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Total Upcoming</p>
@@ -409,11 +409,11 @@ export default function RemindersHub() {
                 aria-label="Create a new reminder"
                 onClick={() => setShowCreateForm(true)}
                 variant="outline"
-                className="group relative mb-1 h-12 w-full overflow-hidden rounded-2xl border-amber-300/35 bg-[linear-gradient(135deg,rgba(251,191,36,0.22),rgba(245,158,11,0.10),rgba(0,0,0,0.40))] text-sm font-semibold text-amber-50 shadow-[0_14px_36px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-200/70 hover:bg-amber-400/20 hover:text-white hover:shadow-[0_0_38px_rgba(245,158,11,0.22),0_18px_42px_rgba(0,0,0,0.32)] focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-60 sm:h-14"
+                className="group relative mb-1 h-12 w-full overflow-hidden rounded-2xl border-amber-200/45 bg-[linear-gradient(135deg,#fde68a,#f59e0b_52%,#b45309)] text-sm font-bold text-black shadow-[0_18px_48px_rgba(245,158,11,0.22),0_14px_34px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-100/80 hover:text-black hover:shadow-[0_0_44px_rgba(245,158,11,0.34),0_20px_46px_rgba(0,0,0,0.36)] focus-visible:ring-2 focus-visible:ring-amber-200/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-60 sm:h-14"
               >
                 <span className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent opacity-80" />
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-amber-100/30 bg-amber-300/20 shadow-inner transition-all duration-200 group-hover:scale-105 group-hover:bg-amber-300/30">
-                  <Plus className="h-4 w-4 text-amber-50" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-black/10 bg-black/10 shadow-inner transition-all duration-200 group-hover:scale-105 group-hover:bg-white/20">
+                  <Plus className="h-4 w-4 text-black" />
                 </span>
                 <span>Create Reminder</span>
               </Button>
@@ -486,7 +486,7 @@ export default function RemindersHub() {
             <Card
               className={cn(
                 premiumPanel,
-                "relative overflow-hidden rounded-[1.5rem] border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.34)]",
+                "relative overflow-hidden rounded-[1.5rem] border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.88)_46%,rgba(0,0,0,0.70))] shadow-[0_24px_76px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.04)]",
                 timeFilter === 'overdue' || timeFilter === 'today' || timeFilter === 'week' || timeFilter === 'month' ? 'border-emerald-300/25' : 'border-amber-300/25'
               )}
             >
@@ -590,7 +590,7 @@ export default function RemindersHub() {
                             className={cn(
                               premiumPanel,
                               interactivePanel,
-                              'group relative cursor-pointer overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] hover:bg-amber-400/[0.035] hover:ring-1 hover:ring-amber-300/15 focus-within:border-amber-300/40 focus-within:ring-2 focus-within:ring-amber-300/25 focus-within:shadow-[0_0_34px_rgba(245,158,11,0.14)]',
+                              'group relative cursor-pointer overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(15,23,42,0.88),rgba(2,6,23,0.96))] ring-1 ring-white/[0.025] hover:bg-amber-400/[0.04] hover:ring-1 hover:ring-amber-300/20 focus-within:border-amber-300/40 focus-within:ring-2 focus-within:ring-amber-300/25 focus-within:shadow-[0_0_34px_rgba(245,158,11,0.16)]',
                               isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))] hover:bg-red-500/[0.055]',
                               isDueToday && !isOverdue && 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(2,6,23,0.88))] hover:bg-amber-400/[0.075]',
                               isWeekPlanningReminder && 'border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.90))] hover:bg-amber-400/[0.055]',
@@ -662,7 +662,7 @@ export default function RemindersHub() {
 
                                 {/* Date */}
                                 <div className={cn(
-                                  'flex w-full min-w-0 shrink-0 items-center justify-between gap-3 rounded-2xl border bg-black/25 px-3 py-2 text-left shadow-inner sm:ml-auto sm:block sm:w-auto sm:min-w-[96px] sm:text-right',
+                                  'flex w-full min-w-0 shrink-0 items-center justify-between gap-3 rounded-2xl border bg-black/35 px-3 py-2 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_26px_rgba(0,0,0,0.18)] sm:ml-auto sm:block sm:w-auto sm:min-w-[96px] sm:text-right',
                                   isOverdue
                                     ? 'border-red-300/20 bg-red-500/10'
                                     : isDueToday
