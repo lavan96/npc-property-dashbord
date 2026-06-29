@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { useGamePlans, useGamePlanMutations, type GamePlan as GamePlanType } from '@/hooks/useGamePlans';
+import { useGamePlans, useGamePlanMutations } from '@/hooks/useGamePlans';
 import { useAssignedTasks } from '@/hooks/useAssignedTasks';
 import { GamePlanList } from '@/components/gameplan/GamePlanList';
 import { GamePlanDetail } from '@/components/gameplan/GamePlanDetail';
 import { CreatePlanDialog } from '@/components/gameplan/CreatePlanDialog';
 import { AssignedTasksTab } from '@/components/gameplan/AssignedTasksTab';
 import { Button } from '@/components/ui/button';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Map, ListChecks } from 'lucide-react';
+import { Plus, Map, ListChecks, Sparkles } from 'lucide-react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 
 export default function GamePlan() {
@@ -30,24 +31,38 @@ export default function GamePlan() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="relative space-y-6 rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.18)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-            <Map className="h-5 w-5 text-primary-foreground" />
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex flex-col gap-5 border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.13))] p-4 shadow-xl shadow-black/10 dark:shadow-black/30 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6"
+      >
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--primary)/0.64))] shadow-lg shadow-primary/20 ring-1 ring-white/35 dark:ring-white/10 sm:h-14 sm:w-14">
+            <Map className="h-6 w-6 text-primary-foreground" />
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-background bg-card text-primary shadow-sm">
+              <Sparkles className="h-3 w-3" />
+            </span>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Game Plans</h1>
-            <p className="text-sm text-muted-foreground">Strategic playbooks for your team</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Game Plans</h1>
+            <p className="mt-1 text-sm text-muted-foreground sm:text-base">Strategic playbooks for your team</p>
           </div>
         </div>
         {canEdit && activeTab === 'plans' && (
-          <Button onClick={() => setShowCreate(true)} className="gap-2">
+          <Button
+            onClick={() => setShowCreate(true)}
+            className="h-11 w-full gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/40 sm:w-auto"
+          >
             <Plus className="h-4 w-4" /> New Game Plan
           </Button>
         )}
-      </div>
+      </DashboardThemeFrame>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -94,6 +109,6 @@ export default function GamePlan() {
           }}
         />
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }
