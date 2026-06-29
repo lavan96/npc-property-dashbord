@@ -111,52 +111,60 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
   return (
     <Card
       className={cn(
-        'group relative cursor-pointer overflow-hidden border-l-2 bg-[linear-gradient(145deg,rgba(255,255,255,0.075),rgba(24,24,27,0.92)_48%,rgba(0,0,0,0.72))] shadow-[0_12px_34px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/50 hover:shadow-[0_22px_48px_rgba(0,0,0,0.34),0_0_0_1px_rgba(251,191,36,0.22),0_0_28px_rgba(245,158,11,0.18)]',
+        'group relative cursor-pointer overflow-hidden rounded-[1.1rem] border border-white/10 border-l-[5px] bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.16),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.09),rgba(24,24,27,0.94)_50%,rgba(0,0,0,0.76))] shadow-[0_14px_36px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.08)] outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:shadow-[0_24px_52px_rgba(0,0,0,0.38),0_0_0_1px_rgba(251,191,36,0.24),0_0_32px_rgba(245,158,11,0.18)] focus-visible:-translate-y-1 focus-visible:border-amber-200/70 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         deal.risk_status === 'urgent' && 'border-l-destructive',
         deal.risk_status === 'needs_follow_up' && 'border-l-warning',
         deal.risk_status === 'on_track' && 'border-l-success',
       )}
       onClick={onClick}
+      tabIndex={0}
+      role="button"
     >
       <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-      <CardContent className="space-y-3 p-3.5">
+      <CardContent className="space-y-3.5 p-3.5">
         {/* Header: Client name + type */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-tight text-zinc-50">{deal.client_name}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-muted-foreground">{getDealTypeIcon(deal.deal_type)}</span>
-              <span className="text-[10px] text-muted-foreground font-medium">{getDealTypeLabel(deal.deal_type)}</span>
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="line-clamp-2 break-words text-[15px] font-bold leading-snug tracking-[-0.01em] text-zinc-50 drop-shadow-sm">{deal.client_name}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <Badge variant="outline" className="h-5 min-w-0 max-w-full gap-1 rounded-full border-white/15 bg-white/[0.055] px-2 py-0 text-[10px] font-semibold text-zinc-200 shadow-inner">
+                <span className="shrink-0 text-amber-200">{getDealTypeIcon(deal.deal_type)}</span>
+                <span className="truncate">{getDealTypeLabel(deal.deal_type)}</span>
+              </Badge>
             </div>
           </div>
-          <Badge className={cn('h-5 shrink-0 border px-1.5 py-0 text-[9px] shadow-sm', riskCfg.color)}>
-            {riskCfg.emoji}
+          <Badge className={cn('h-6 shrink-0 gap-1 rounded-full border px-2 py-0 text-[10px] font-bold shadow-[0_0_18px_rgba(255,255,255,0.08)]', riskCfg.color)}>
+            <span className="text-xs leading-none">{riskCfg.emoji}</span>
+            <span className="sr-only">{riskCfg.label}</span>
           </Badge>
         </div>
 
         {/* Current stage */}
-        <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className="h-5 shrink-0 border-amber-200/25 bg-amber-300/10 px-1.5 text-[9px] text-amber-100">
+        <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-amber-200/15 bg-amber-300/[0.055] px-2 py-1.5">
+          <Badge variant="outline" className="h-5 shrink-0 rounded-md border-amber-200/35 bg-amber-300/15 px-1.5 text-[9px] font-black text-amber-100">
             S{deal.current_stage_number}
           </Badge>
-          <span className="text-[11px] text-muted-foreground truncate">{deal.current_stage}</span>
+          <span className="min-w-0 truncate text-[11px] font-semibold text-zinc-200">{deal.current_stage}</span>
         </div>
 
         {/* Progress bar */}
-        <div className="space-y-1">
-          <Progress value={progressPct} className="h-2 overflow-hidden rounded-full bg-zinc-800/90 [&>div]:bg-gradient-to-r [&>div]:from-teal-400 [&>div]:via-emerald-400 [&>div]:to-amber-300" />
-          <div className="flex items-center justify-between">
-            <span className="text-[9px] text-muted-foreground">{completedStages}/{totalStages} stages</span>
-            <span className="text-[9px] font-medium">{progressPct}%</span>
+        <div className="space-y-1.5 rounded-lg border border-white/10 bg-black/20 p-2 shadow-inner">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Progress</span>
+            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 font-mono text-[11px] font-black text-emerald-100">{progressPct}%</span>
           </div>
+          <Progress value={progressPct} className="h-2.5 overflow-hidden rounded-full bg-zinc-900/95 shadow-[inset_0_1px_3px_rgba(0,0,0,0.55)] [&>div]:bg-gradient-to-r [&>div]:from-teal-400 [&>div]:via-emerald-400 [&>div]:to-amber-300 [&>div]:shadow-[0_0_14px_rgba(52,211,153,0.45)]" />
+          <span className="block text-[9px] text-muted-foreground">{completedStages}/{totalStages} stages</span>
         </div>
 
         {/* Key metrics row */}
         <div className="flex items-center gap-2 flex-wrap">
           {deal.total_contract_price && (
-            <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-              <DollarSign className="h-2.5 w-2.5" />
-              <span className="font-mono">{formatCurrency(deal.total_contract_price)}</span>
+            <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.045] px-2 py-1.5 text-[10px] text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-1">
+                <DollarSign className="h-3 w-3 shrink-0 text-amber-200" />
+                <span className="truncate font-mono text-[12px] font-black text-zinc-50">{formatCurrency(deal.total_contract_price)}</span>
+              </div>
             </div>
           )}
           {settlementDays !== null && (
@@ -186,25 +194,25 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
             </span>
           </div>
           {nextAction && (
-            <p className="text-[10px] text-muted-foreground truncate">
-              <span className="font-medium">Next:</span> {nextAction}
+            <p className="line-clamp-2 break-words rounded-lg border border-white/10 bg-black/15 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
+              <span className="font-bold text-zinc-200">Next:</span> {nextAction}
             </p>
           )}
         </div>
 
         {/* Footer: responsible + age */}
-        <div className="flex items-center justify-between text-[9px] text-muted-foreground pt-0.5">
-          <div className="flex items-center gap-1 truncate">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-[9px] text-muted-foreground pt-0.5">
+          <div className="flex min-w-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] px-2 py-1">
             {deal.responsible_person ? (
               <>
                 <User className="h-2.5 w-2.5 shrink-0" />
-                <span className="truncate">{deal.responsible_person}</span>
+                <span className="truncate break-all">{deal.responsible_person}</span>
               </>
             ) : (
               <span className="italic">Unassigned</span>
             )}
           </div>
-          <span className="shrink-0">{ageInDays}d old</span>
+          <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-semibold">{ageInDays}d old</span>
         </div>
 
         {/* Hover reveal */}
