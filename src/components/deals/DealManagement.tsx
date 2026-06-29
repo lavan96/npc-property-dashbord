@@ -14,9 +14,9 @@ import {
   SkipForward,
   Play,
   Eye,
-  Save,
   AlertTriangle,
-  Clock,
+  Sparkles,
+  ShieldCheck,
   Edit3,
   ArrowRight,
   Settings2,
@@ -122,7 +122,7 @@ function InlineEditField({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="text-xs min-h-[60px] resize-none"
+        className="min-h-[84px] resize-none rounded-xl border-amber-200/15 bg-zinc-950/55 text-xs leading-5 text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
       />
     );
   }
@@ -134,7 +134,7 @@ function InlineEditField({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
-      className="h-7 text-xs"
+      className="h-9 rounded-xl border-amber-200/15 bg-zinc-950/55 text-xs text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
     />
   );
 }
@@ -168,7 +168,7 @@ function StageActions({
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1.5">
       {actions.map(a => (
         <TooltipProvider key={a.status}>
           <Tooltip>
@@ -176,7 +176,7 @@ function StageActions({
               <Button
                 variant={a.variant}
                 size="sm"
-                className="h-5 px-1.5 text-[9px] gap-0.5"
+                className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
                 onClick={() => {
                   const data: any = { status: a.status };
                   if (a.status === 'complete') data.completed_at = new Date().toISOString();
@@ -215,20 +215,25 @@ function DealExpandedRow({
   }, [deal.id, deal.client_id, onUpdateDeal]);
 
   return (
-    <TableRow>
-      <TableCell colSpan={8} className="bg-muted/20 p-0">
-        <div className="p-4 space-y-4">
+    <TableRow className="border-amber-200/10">
+      <TableCell colSpan={8} className="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.82))] p-0">
+        <div className="space-y-5 p-4 sm:p-5">
           {/* Stage timeline */}
-          <div>
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
-              <Settings2 className="h-3 w-3" /> Stage Management
-            </p>
-            <div className="grid gap-1.5">
+          <section className="rounded-2xl border border-amber-200/15 bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
+                  <Settings2 className="h-3 w-3" /> Stage Management
+                </p>
+                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">Advance, skip or reopen milestones without leaving the management console.</p>
+              </div>
+            </div>
+            <div className="grid gap-2">
               {stages.map((stage, i) => (
                 <div
                   key={stage.id || i}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-1.5 rounded-md border transition-colors',
+                    'flex flex-col gap-2 rounded-xl border px-3 py-2.5 transition-colors sm:flex-row sm:items-center sm:gap-3',
                     stage.status === 'complete' && 'bg-success/5 border-success/20',
                     stage.status === 'in_progress' && 'bg-primary/5 border-primary/20',
                     stage.status === 'skipped' && 'bg-muted/50 border-border/30 opacity-60',
@@ -239,13 +244,13 @@ function DealExpandedRow({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-[8px] px-1 h-3.5 shrink-0">S{stage.stage_number}</Badge>
-                      <span className={cn('text-xs font-medium truncate', stage.status === 'skipped' && 'line-through')}>{stage.stage_name}</span>
+                      <span className={cn('break-words text-xs font-semibold leading-5', stage.status === 'skipped' && 'line-through')}>{stage.stage_name}</span>
                     </div>
                     {stage.internal_action && (
-                      <p className="text-[9px] text-muted-foreground mt-0.5 truncate">{stage.internal_action}</p>
+                      <p className="mt-1 break-words text-[10px] leading-4 text-muted-foreground">{stage.internal_action}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {stage.completed_at && (
                       <span className="text-[9px] text-muted-foreground">{format(new Date(stage.completed_at), 'dd MMM')}</span>
                     )}
@@ -254,14 +259,15 @@ function DealExpandedRow({
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Inline notes editor */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-amber-200/15 bg-black/25 p-4">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
                 <MessageSquare className="h-3 w-3" /> Deal Notes
               </p>
+              <p className="mb-3 text-[11px] leading-4 text-muted-foreground">Internal comments save on blur and wrap for long handover notes.</p>
               <InlineEditField
                 key={`${deal.id}-notes`}
                 defaultValue={deal.notes || ''}
@@ -270,11 +276,12 @@ function DealExpandedRow({
                 type="textarea"
               />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4 rounded-2xl border border-amber-200/15 bg-black/25 p-4">
               <div>
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
                   <User className="h-3 w-3" /> Responsible Person
                 </p>
+                <p className="mb-3 text-[11px] leading-4 text-muted-foreground">Assign ownership for follow-up and operational accountability.</p>
                 <InlineEditField
                   key={`${deal.id}-responsible-input`}
                   defaultValue={deal.responsible_person || ''}
@@ -282,18 +289,18 @@ function DealExpandedRow({
                   placeholder="Enter name..."
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Deal Value</p>
-                  <p className="text-xs font-medium">{deal.total_contract_price ? formatCurrency(deal.total_contract_price) : '—'}</p>
+                  <p className="break-words text-sm font-semibold text-foreground">{deal.total_contract_price ? formatCurrency(deal.total_contract_price) : '—'}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Settlement</p>
-                  <p className="text-xs font-medium">{deal.settlement_date ? format(new Date(deal.settlement_date), 'dd MMM yyyy') : '—'}</p>
+                  <p className="break-words text-sm font-semibold text-foreground">{deal.settlement_date ? format(new Date(deal.settlement_date), 'dd MMM yyyy') : '—'}</p>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
         </div>
       </TableCell>
     </TableRow>
@@ -332,28 +339,28 @@ function DealManageRow({
 
   return (
     <>
-      <TableRow className="group hover:bg-muted/30 transition-colors">
+      <TableRow className="group border-amber-100/10 transition-colors hover:bg-amber-400/[0.045]">
         {/* Expand */}
         <TableCell className="w-8 px-2">
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setExpanded(!expanded)}>
+          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 text-muted-foreground hover:border-amber-200/30 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-amber-300/50" onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </Button>
         </TableCell>
 
         {/* Client */}
-        <TableCell className="cursor-pointer" onClick={onDealClick}>
-          <div className="flex items-center gap-1.5 min-w-0">
+        <TableCell className="min-w-[180px] cursor-pointer align-middle" onClick={onDealClick}>
+          <div className="flex min-w-0 items-center gap-1.5">
             <span className="text-muted-foreground">{getDealTypeIcon(deal.deal_type)}</span>
-            <span className="text-xs font-semibold truncate">{displayName}</span>
+            <span className="break-words text-xs font-semibold leading-5 text-foreground">{displayName}</span>
           </div>
-          <span className="text-[9px] text-muted-foreground">{getDealTypeLabel(deal.deal_type)} · {ageInDays}d old</span>
+          <span className="mt-0.5 block break-all text-[9px] text-muted-foreground">{getDealTypeLabel(deal.deal_type)} · {ageInDays}d old</span>
         </TableCell>
 
         {/* Current Stage */}
         <TableCell>
-          <div className="flex items-center gap-1">
-            <Badge variant="outline" className="text-[9px] px-1 h-4">S{deal.current_stage_number}</Badge>
-            <span className="text-[10px] truncate max-w-[120px]">{deal.current_stage}</span>
+          <div className="flex max-w-[190px] items-start gap-1.5">
+            <Badge variant="outline" className="h-5 shrink-0 border-amber-200/25 bg-amber-400/10 px-1.5 text-[9px] text-amber-100">S{deal.current_stage_number}</Badge>
+            <span className="break-words text-[10px] leading-4 text-muted-foreground">{deal.current_stage}</span>
           </div>
         </TableCell>
 
@@ -372,10 +379,10 @@ function DealManageRow({
             defaultValue={deal.responsible_person || UNASSIGNED_SENTINEL}
             onValueChange={(v) => handleUpdateField('responsible_person', v === UNASSIGNED_SENTINEL ? null : v)}
           >
-            <SelectTrigger className="h-7 text-[10px] w-full">
+            <SelectTrigger className="h-8 w-full rounded-xl border-amber-200/15 bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40">
               <SelectValue placeholder="Assign..." />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-amber-200/15 bg-zinc-950">
               <SelectItem value={UNASSIGNED_SENTINEL} className="text-xs italic">Unassigned</SelectItem>
               {responsiblePersons.map(p => (
                 <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
@@ -391,10 +398,10 @@ function DealManageRow({
             defaultValue={deal.risk_status}
             onValueChange={(v) => handleUpdateField('risk_status', v)}
           >
-            <SelectTrigger className={cn('h-7 text-[10px] w-full border', riskCfg?.color)}>
+            <SelectTrigger className={cn('h-8 w-full rounded-xl border bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40', riskCfg?.color)}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="border-amber-200/15 bg-zinc-950">
               {Object.entries(RISK_STATUS_CONFIG).map(([key, cfg]) => (
                 <SelectItem key={key} value={key} className="text-xs">
                   {cfg.emoji} {cfg.label}
@@ -407,9 +414,9 @@ function DealManageRow({
         {/* Next Action */}
         <TableCell className="hidden xl:table-cell">
           {nextStage ? (
-            <div className="flex items-center gap-1.5">
-              <ArrowRight className="h-3 w-3 text-primary shrink-0" />
-              <span className="text-[10px] text-muted-foreground truncate max-w-[160px]">
+            <div className="flex max-w-[220px] items-start gap-1.5">
+              <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-amber-300" />
+              <span className="break-words text-[10px] leading-4 text-muted-foreground">
                 {nextStage.internal_action || nextStage.stage_name}
               </span>
             </div>
@@ -420,7 +427,7 @@ function DealManageRow({
 
         {/* Quick actions */}
         <TableCell className="w-20">
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1.5">
             {nextStage && nextStage.status === 'in_progress' && (
               <TooltipProvider>
                 <Tooltip>
@@ -428,7 +435,7 @@ function DealManageRow({
                     <Button
                       variant="default"
                       size="sm"
-                      className="h-5 px-1.5 text-[9px] gap-0.5"
+                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
                       onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'complete', completed_at: new Date().toISOString() }, deal.id, stages)}
                     >
                       <CheckCircle2 className="h-2.5 w-2.5" />
@@ -446,7 +453,7 @@ function DealManageRow({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-5 px-1.5 text-[9px] gap-0.5"
+                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
                       onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress' }, deal.id, stages)}
                     >
                       <Play className="h-2.5 w-2.5" />
@@ -457,7 +464,7 @@ function DealManageRow({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <Button variant="ghost" size="sm" className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100" onClick={onDealClick}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 opacity-100 hover:border-amber-200/30 hover:bg-amber-400/10 md:opacity-0 md:group-hover:opacity-100" onClick={onDealClick}>
               <Eye className="h-3 w-3 text-primary" />
             </Button>
           </div>
@@ -500,28 +507,46 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-14 rounded-lg" />)}
+      <div className="space-y-4 rounded-[1.5rem] border border-amber-200/15 bg-black/25 p-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-2xl bg-amber-200/10" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-48 bg-amber-200/10" />
+            <Skeleton className="h-3 w-72 max-w-full bg-white/10" />
+          </div>
+        </div>
+        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 rounded-2xl bg-white/10" />)}
       </div>
     );
   }
 
   if (deals.length === 0) {
     return (
-      <Card>
+      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_42%),rgba(9,9,11,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
         <CardContent className="py-16 text-center">
-          <Edit3 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm font-medium">No deals to manage</p>
-          <p className="text-xs text-muted-foreground mt-1">Create deals to start managing them</p>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-200/25 bg-amber-400/10">
+            <Edit3 className="h-7 w-7 text-amber-200" />
+          </div>
+          <p className="text-sm font-semibold text-foreground">No deals to manage</p>
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Create or filter in deals to start managing ownership, stage movement, notes and risk controls.</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Quick stats */}
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="space-y-4">
+      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(24,24,27,0.76)_44%,rgba(0,0,0,0.72))] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
+        <CardHeader className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-200/85">
+                <Sparkles className="h-3.5 w-3.5" /> Transaction control room
+              </p>
+              <CardTitle className="mt-2 break-words text-xl font-semibold tracking-[-0.02em] text-foreground">Manage deal execution</CardTitle>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">Review active stages, assign responsibility, update risk posture and capture internal notes. Inline edits retain the existing save-on-blur workflow.</p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
         <Badge variant="outline" className="text-[10px] gap-1">
           <Play className="h-3 w-3 text-primary" />
           {stats.actionable} in progress
@@ -538,26 +563,31 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
             {stats.urgent} urgent
           </Badge>
         )}
-        <span className="text-[10px] text-muted-foreground ml-auto">
-          Click a row to expand stage management · Edits save on blur
-        </span>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <div className="flex items-center gap-2 rounded-2xl border border-amber-200/10 bg-black/25 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+        <ShieldCheck className="h-4 w-4 shrink-0 text-amber-200" />
+        <span className="break-words">Click a row to expand stage management · Edits save on blur · Destructive deal actions remain governed in the existing client deal workflow.</span>
       </div>
 
       {/* Table */}
-      <Card>
+      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-zinc-950/60 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
         <CardContent className="p-0">
-          <div className="overflow-auto max-w-full">
+          <div className="max-w-full overflow-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="border-amber-200/10 bg-white/[0.035] hover:bg-white/[0.035]">
                   <TableHead className="w-8 px-2" />
-                  <TableHead className="whitespace-nowrap text-xs">Client</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs">Stage</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs hidden sm:table-cell">Progress</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs hidden md:table-cell">Responsible</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs hidden lg:table-cell">Risk</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs hidden xl:table-cell">Next Action</TableHead>
-                  <TableHead className="whitespace-nowrap text-xs w-20">Actions</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Client</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden sm:table-cell">Progress</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden md:table-cell">Responsible</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden lg:table-cell">Risk</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground hidden xl:table-cell">Next Action</TableHead>
+                  <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
