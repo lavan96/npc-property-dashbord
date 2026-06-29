@@ -243,9 +243,9 @@ function KanbanColumn({
   const urgentCount = deals.filter(d => d.risk_status === 'urgent').length;
 
   return (
-    <div className="flex min-h-0 min-w-[300px] max-w-[300px] shrink-0 flex-col xl:min-w-[320px] xl:max-w-[320px]">
+    <div className="group/column flex min-h-0 min-w-[300px] max-w-[300px] shrink-0 flex-col transition-all duration-300 hover:-translate-y-0.5 xl:min-w-[320px] xl:max-w-[320px]">
       {/* Column header */}
-      <div className={cn('relative overflow-hidden rounded-t-[1.2rem] border border-b-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.095),rgba(39,39,42,0.88)_44%,rgba(0,0,0,0.72))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] border-t-4', column.color)}>
+      <div className={cn('relative overflow-hidden rounded-t-[1.2rem] border border-b-0 transition-all duration-300 group-hover/column:border-amber-300/45 group-hover/column:shadow-[0_0_28px_rgba(245,158,11,0.13)] bg-[linear-gradient(145deg,rgba(255,255,255,0.095),rgba(39,39,42,0.88)_44%,rgba(0,0,0,0.72))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] border-t-4', column.color)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="text-sm">{column.icon}</span>
@@ -280,7 +280,7 @@ function KanbanColumn({
       </div>
 
       {/* Cards container */}
-      <div className="min-h-0 flex-1 rounded-b-[1.2rem] border border-t-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] shadow-[inset_0_18px_34px_rgba(0,0,0,0.18)]">
+      <div className="min-h-0 flex-1 rounded-b-[1.2rem] border border-t-0 transition-all duration-300 group-hover/column:border-amber-300/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] shadow-[inset_0_18px_34px_rgba(0,0,0,0.18)]">
         <div className="max-h-[min(58dvh,calc(100dvh-22rem))] min-h-[260px] overflow-y-auto overscroll-contain p-2.5 pr-2 [scrollbar-color:rgba(245,158,11,0.45)_rgba(24,24,27,0.75)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
           <div className="space-y-2.5">
             {deals.length === 0 ? (
