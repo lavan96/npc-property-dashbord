@@ -209,6 +209,8 @@ function pagePlanForPage(
       color: '#FFFFFF',
       imageUrl: opts.mode === 'semantic' ? '' : (raster?.dataUrl ?? page.image_uri ?? ''),
       opacity: opts.mode === 'pixel-perfect' ? 1 : opts.mode === 'hybrid' ? 0.85 : 0,
+      // Full-page source raster must fill the exact page box, never crop/stretch.
+      ...(opts.mode === 'semantic' ? {} : { imageFit: 'fill' as const }),
     },
     overlays,
     sourcePageId: pageId(page.page_no),

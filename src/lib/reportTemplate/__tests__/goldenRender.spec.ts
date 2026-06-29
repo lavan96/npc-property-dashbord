@@ -73,6 +73,35 @@ describe('golden render — editor→renderer contract (renderers must stay byte
     expect(html).toContain('Jane Investor');
   });
 
+  it('source-raster background (imageFit:fill) renders background-size:100% 100% (no crop)', () => {
+    const rasterPage = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/page-001.png', imageFit: 'fill' },
+        blocks: [],
+      }],
+    });
+    const { html } = renderTemplateToHtml(rasterPage, { data: {}, editorMode: false });
+    expect(html).toContain('background-size:100% 100%');
+    expect(html).not.toContain('background-size:cover');
+  });
+
+  it('decorative background image keeps the cover default', () => {
+    const coverPage = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/photo.jpg' },
+        blocks: [],
+      }],
+    });
+    const { html } = renderTemplateToHtml(coverPage, { data: {}, editorMode: false });
+    expect(html).toContain('background-size:cover');
+  });
+
   it('blank single-page template still produces a valid document shell', () => {
     const blank = parseTemplate({
       version: 1,

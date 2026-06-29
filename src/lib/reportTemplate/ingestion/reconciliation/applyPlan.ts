@@ -34,6 +34,7 @@ function planPageToTemplatePage(page: TemplateImportPlan['pages'][number], plan:
     background: {
       ...(page.background.color ? { color: page.background.color } : {}),
       imageUrl: page.background.imageUrl,
+      ...(page.background.imageFit ? { imageFit: page.background.imageFit } : {}),
       ...(page.background.opacity !== undefined ? { opacity: page.background.opacity } : {}),
     },
     blocks: [{
