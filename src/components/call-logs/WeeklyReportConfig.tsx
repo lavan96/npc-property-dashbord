@@ -12,6 +12,12 @@ import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { cn } from '@/lib/utils';
 
+const reportDialogShell = cn(
+  'max-h-[90vh] overflow-hidden rounded-3xl border-white/10 bg-zinc-950/95 p-0 text-zinc-100 shadow-2xl shadow-black/50 backdrop-blur-xl sm:max-w-2xl',
+);
+const reportSectionCard = 'overflow-hidden rounded-2xl border-white/10 bg-black/35 shadow-inner shadow-black/20';
+const reportControl = 'rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/20 focus-visible:ring-amber-300';
+
 export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ triggerClassName }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
