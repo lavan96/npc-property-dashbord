@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { differenceInDays, isPast, format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Clock, FileWarning, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Clock, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import type { DealWithClient } from '@/hooks/useAllDeals';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 
 interface Props {
   deals: DealWithClient[];
@@ -82,7 +83,7 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
 
   if (riskItems.length === 0) {
     return (
-      <Card className="border-green-500/20 bg-green-500/5">
+      <Card className="border-green-500/20 bg-green-500/5 shadow-sm">
         <CardContent className="p-4 text-center">
           <p className="text-sm text-green-600 font-medium">✅ All deals on track — no immediate risks detected</p>
         </CardContent>
@@ -93,49 +94,96 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
   const critical = riskItems.filter(r => r.severity === 'critical').length;
 
   return (
-    <Card className={cn(critical > 0 ? 'border-destructive/30' : 'border-amber-500/30')}>
-      <CardHeader className="pb-2 pt-3 px-3 sm:px-4">
-        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-          <ShieldAlert className={cn('h-4 w-4', critical > 0 ? 'text-destructive' : 'text-amber-500')} />
-          At-Risk Deals
-          <Badge variant={critical > 0 ? 'destructive' : 'outline'} className="text-[10px] ml-auto">
+    <Card
+      className={cn(
+        'overflow-hidden border shadow-sm ring-1 ring-black/5',
+        critical > 0
+          ? 'border-destructive/25 bg-gradient-to-b from-destructive/[0.035] via-card to-card'
+          : 'border-amber-500/25 bg-gradient-to-b from-amber-500/[0.05] via-card to-card'
+      )}
+    >
+      <CardHeader className="border-b border-border/60 px-3 pb-3 pt-3 sm:px-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <div
+              className={cn(
+                'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border shadow-sm',
+                critical > 0
+                  ? 'border-destructive/20 bg-destructive/10 text-destructive'
+                  : 'border-amber-500/25 bg-amber-500/10 text-amber-600'
+              )}
+            >
+              <ShieldAlert className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <CardTitle className="text-sm font-semibold tracking-tight">Risk Control</CardTitle>
+              <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                At-risk deals requiring operational attention
+              </p>
+            </div>
+          </div>
+          <Badge
+            variant="outline"
+            className={pipelineBadgeClass(critical > 0 ? 'danger' : 'warning', false, 'shrink-0 uppercase tracking-wide')}
+          >
             {critical > 0 ? `${critical} critical` : `${riskItems.length} warnings`}
           </Badge>
-        </CardTitle>
+        </div>
       </CardHeader>
-      <CardContent className="px-3 sm:px-4 pb-3">
-        <div className="space-y-1.5 max-h-64 overflow-y-auto">
+      <CardContent className="px-3 py-3 sm:px-4">
+        <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
           {riskItems.map(({ deal, reasons, severity }) => {
             const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
+            const isCritical = severity === 'critical';
+
             return (
               <div
                 key={deal.id}
                 className={cn(
-                  'flex items-start gap-2 p-2 rounded-md cursor-pointer transition-colors',
-                  severity === 'critical'
-                    ? 'bg-destructive/5 hover:bg-destructive/10'
-                    : 'bg-amber-500/5 hover:bg-amber-500/10'
+                  'group cursor-pointer rounded-xl border bg-card/85 p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
+                  'focus-within:ring-2 focus-within:ring-ring/30',
+                  isCritical
+                    ? 'border-destructive/20 hover:border-destructive/35 hover:bg-destructive/[0.045]'
+                    : 'border-amber-500/20 hover:border-amber-500/35 hover:bg-amber-500/[0.055]'
                 )}
                 onClick={() => onDealClick?.(deal)}
               >
-                {severity === 'critical' ? (
-                  <AlertTriangle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
-                ) : (
-                  <Clock className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold truncate">{deal.client_name}</span>
-                    <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', riskCfg.color)}>
-                      {riskCfg.emoji}
-                    </Badge>
+                <div className="flex items-start gap-3">
+                  <div
+                    className={cn(
+                      'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
+                      isCritical
+                        ? 'border-destructive/20 bg-destructive/10 text-destructive'
+                        : 'border-amber-500/25 bg-amber-500/10 text-amber-600'
+                    )}
+                  >
+                    {isCritical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-0.5">
-                    {reasons.map((r, i) => (
-                      <span key={i} className="text-[10px] text-muted-foreground">
-                        {i > 0 && '·'} {r}
-                      </span>
-                    ))}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-semibold leading-5 text-foreground">{deal.client_name}</p>
+                      </div>
+                      <Badge className={cn(pipelineBadgeClass(deal.risk_status === 'on_track' ? 'success' : deal.risk_status === 'needs_follow_up' ? 'warning' : 'danger', true, 'h-5 shrink-0 px-1.5'), riskCfg.color)}>
+                        {riskCfg.emoji}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5">
+                      {reasons.map((reason, index) => (
+                        <span
+                          key={index}
+                          className={cn(
+                            'max-w-full break-words rounded-md border px-2 py-1 text-[11px] font-medium leading-4',
+                            isCritical
+                              ? 'border-destructive/15 bg-destructive/[0.055] text-destructive'
+                              : 'border-amber-500/20 bg-amber-500/[0.065] text-amber-700'
+                          )}
+                        >
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
