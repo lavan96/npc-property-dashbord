@@ -229,28 +229,80 @@ export default function Agreements() {
         </div>
       </DashboardThemeFrame>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Agreement KPI summary">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Agreement KPI summary">
         {[
-          { label: 'Total Agreements', value: agreements.length, tone: 'primary' },
-          { label: 'Sent', value: totalSent, tone: 'foreground' },
-          { label: 'Awaiting Signature', value: pending, tone: 'warning' },
-          { label: 'Signed', value: totalSigned, tone: 'success' },
-        ].map((stat) => (
-          <DashboardThemeFrame key={stat.label} variant="premiumCard" className="relative p-4 after:absolute after:inset-x-4 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-primary/30 after:to-transparent sm:p-5">
-            <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
-            <p
+          {
+            label: 'Total Agreements',
+            value: agreements.length,
+            Icon: FileText,
+            className: 'border-primary/25 bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.18),transparent_38%),linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--background)/0.82))] dark:border-primary/30 dark:bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.20),transparent_40%),linear-gradient(145deg,hsl(var(--card)/0.82),hsl(var(--background)/0.56))]',
+            iconClassName: 'border-primary/30 bg-primary/12 text-primary shadow-primary/20',
+            valueClassName: 'text-primary',
+            railClassName: 'from-primary/75 via-amber-300/70 to-primary/15',
+          },
+          {
+            label: 'Sent',
+            value: totalSent,
+            Icon: Send,
+            className: 'border-amber-400/25 bg-[radial-gradient(circle_at_18%_0%,hsl(38_92%_52%/0.16),transparent_38%),linear-gradient(145deg,hsl(var(--card)/0.97),hsl(var(--background)/0.80))] dark:border-amber-300/25 dark:bg-[radial-gradient(circle_at_18%_0%,hsl(38_92%_52%/0.18),transparent_40%),linear-gradient(145deg,hsl(var(--card)/0.80),hsl(var(--background)/0.54))]',
+            iconClassName: 'border-amber-400/35 bg-amber-500/12 text-amber-700 shadow-amber-500/20 dark:text-amber-200',
+            valueClassName: 'text-amber-700 dark:text-amber-200',
+            railClassName: 'from-amber-500/80 via-yellow-300/70 to-amber-500/10',
+          },
+          {
+            label: 'Awaiting Signature',
+            value: pending,
+            Icon: Clock,
+            className: 'border-orange-400/25 bg-[radial-gradient(circle_at_18%_0%,hsl(var(--warning)/0.16),transparent_38%),linear-gradient(145deg,hsl(var(--card)/0.97),hsl(var(--background)/0.80))] dark:border-orange-300/25 dark:bg-[radial-gradient(circle_at_18%_0%,hsl(var(--warning)/0.18),transparent_40%),linear-gradient(145deg,hsl(var(--card)/0.80),hsl(var(--background)/0.54))]',
+            iconClassName: 'border-orange-400/35 bg-orange-500/12 text-[hsl(var(--warning))] shadow-orange-500/20',
+            valueClassName: 'text-[hsl(var(--warning))]',
+            railClassName: 'from-orange-500/80 via-amber-300/70 to-orange-500/10',
+          },
+          {
+            label: 'Signed',
+            value: totalSigned,
+            Icon: CheckCircle2,
+            className: 'border-emerald-400/25 bg-[radial-gradient(circle_at_18%_0%,hsl(158_70%_42%/0.15),transparent_38%),linear-gradient(145deg,hsl(var(--card)/0.97),hsl(var(--background)/0.80))] dark:border-emerald-300/25 dark:bg-[radial-gradient(circle_at_18%_0%,hsl(158_70%_42%/0.17),transparent_40%),linear-gradient(145deg,hsl(var(--card)/0.80),hsl(var(--background)/0.54))]',
+            iconClassName: 'border-emerald-400/35 bg-emerald-500/12 text-emerald-700 shadow-emerald-500/20 dark:text-emerald-200',
+            valueClassName: 'text-emerald-700 dark:text-emerald-200',
+            railClassName: 'from-emerald-500/80 via-teal-300/70 to-emerald-500/10',
+          },
+        ].map((stat) => {
+          const Icon = stat.Icon;
+
+          return (
+            <DashboardThemeFrame
+              key={stat.label}
+              variant="premiumCard"
               className={cn(
-                'mt-2 text-2xl font-bold tracking-tight',
-                stat.tone === 'primary' && 'text-primary',
-                stat.tone === 'warning' && 'text-[hsl(var(--warning))]',
-                stat.tone === 'success' && 'text-[hsl(var(--success))]',
-                stat.tone === 'foreground' && 'text-foreground'
+                'group relative min-h-[9.5rem] overflow-hidden p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-white/50 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/60 hover:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.20),0_0_34px_hsl(43_84%_52%/0.18)] dark:ring-white/10 dark:hover:border-amber-200/35 dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.16),0_0_38px_hsl(43_84%_52%/0.14)] sm:p-6',
+                stat.className
               )}
             >
-              {stat.value}
-            </p>
-          </DashboardThemeFrame>
-        ))}
+              <span className={cn('absolute inset-x-6 top-0 h-px bg-gradient-to-r', stat.railClassName)} />
+              <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-amber-300/0 blur-2xl transition-colors duration-300 group-hover:bg-amber-300/18 dark:group-hover:bg-amber-200/10" />
+              <div className="relative flex h-full flex-col justify-between gap-5">
+                <div className="flex items-start justify-between gap-4">
+                  <p className="max-w-[11rem] text-[0.72rem] font-semibold uppercase leading-5 tracking-[0.18em] text-muted-foreground/90">
+                    {stat.label}
+                  </p>
+                  <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-lg transition-transform duration-300 group-hover:scale-105', stat.iconClassName)}>
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                </div>
+                <p
+                  className={cn(
+                    'text-4xl font-black leading-none tracking-[-0.06em] tabular-nums sm:text-5xl',
+                    stat.value === 0 && 'opacity-90',
+                    stat.valueClassName
+                  )}
+                >
+                  {stat.value}
+                </p>
+              </div>
+            </DashboardThemeFrame>
+          );
+        })}
       </section>
 
       <DashboardThemeFrame
