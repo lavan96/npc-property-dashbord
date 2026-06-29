@@ -12,14 +12,6 @@ import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { cn } from '@/lib/utils';
 
-
-const reportDialogShell =
-  'overflow-hidden border border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-900/95 to-black/95 p-0 text-zinc-50 shadow-2xl shadow-black/50 sm:max-w-lg';
-const reportControl =
-  'rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all placeholder:text-zinc-600 hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
-const reportSectionCard =
-  'relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-xl shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent';
-
 export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ triggerClassName }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -73,15 +65,8 @@ export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ tr
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            'group gap-2 border-amber-300/25 bg-gradient-to-r from-amber-300/10 via-zinc-950/70 to-black/70 text-amber-100 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-300/15 hover:text-amber-50 hover:shadow-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black',
-            triggerClassName
-          )}
-        >
-          <FileText className="h-4 w-4 shrink-0 transition-transform group-hover:-rotate-3" />
+        <Button variant="outline" size="sm" className={`gap-2 ${triggerClassName || ''}`}>
+          <FileText className="h-4 w-4 shrink-0" />
           Weekly Report
         </Button>
       </DialogTrigger>

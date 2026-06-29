@@ -496,11 +496,11 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
       <div className="flex items-center gap-2">
         <Dialog open={showManager} onOpenChange={setShowManager}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className={cn('group relative gap-2 border-amber-300/25 bg-amber-500/10 text-amber-100 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/15 hover:text-amber-50 hover:shadow-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black', triggerClassName)}>
+            <Button variant="outline" size="sm" className={`gap-2 relative ${triggerClassName || ''}`}>
               {unreadCount > 0 ? (
                 <BellRing className="h-4 w-4 text-amber-300" />
               ) : (
-                <Bell className="h-4 w-4 shrink-0" />
+                <Bell className="w-4 h-4 shrink-0" />
               )}
               Alerts
               {unreadCount > 0 && (

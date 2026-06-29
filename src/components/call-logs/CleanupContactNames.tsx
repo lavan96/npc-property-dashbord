@@ -160,8 +160,8 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className={cn(cleanupTriggerBase, triggerClassName)}>
-          <UserCheck className="h-4 w-4 shrink-0 transition-transform group-hover:scale-110" />
+        <Button variant="outline" size="sm" className={`gap-2 ${triggerClassName || ''}`}>
+          <UserCheck className="h-4 w-4 shrink-0" />
           Cleanup Names
         </Button>
       </DialogTrigger>

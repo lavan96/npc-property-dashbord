@@ -127,8 +127,8 @@ export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flush
       {/* Manage Numbers Popover */}
       <Popover open={isManageOpen} onOpenChange={setIsManageOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className={cn('group gap-2 border-blue-300/20 bg-blue-500/10 text-blue-100 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-blue-300/40 hover:bg-blue-500/15 hover:text-blue-50 hover:shadow-blue-500/10 focus-visible:ring-2 focus-visible:ring-blue-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black', testNumbersButtonClassName)}>
-            <Settings2 className="h-4 w-4 shrink-0 transition-transform group-hover:rotate-45" />
+          <Button variant="outline" size="sm" className={`gap-2 ${testNumbersButtonClassName || ''}`}>
+            <Settings2 className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Test Numbers ({testNumbers.length})</span>
           </Button>
         </PopoverTrigger>
@@ -203,10 +203,10 @@ export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flush
           <Button 
             variant="outline" 
             size="sm" 
-            className={cn('group gap-2 border-red-400/25 bg-red-500/10 text-red-200 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-red-300/45 hover:bg-red-500/15 hover:text-red-100 hover:shadow-red-500/10 focus-visible:ring-2 focus-visible:ring-red-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black', flushButtonClassName)}
+            className={`gap-2 text-destructive hover:text-destructive ${flushButtonClassName || ''}`}
             disabled={testNumbers.length === 0}
           >
-            <Trash2 className="h-4 w-4 shrink-0" />
+            <Trash2 className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Flush Test Calls</span>
           </Button>
         </AlertDialogTrigger>
