@@ -259,6 +259,8 @@ gcloud run services update-traffic "$SERVICE" \
 | `DOCLING_RASTER_DPI` | `300` | Phase 2: reference-raster DPI (was 200). Lower to 200/240 if cold-starts or memory regress. |
 | `DOCLING_MAX_VECTORS_PER_PAGE` | `400` | Phase 2: cap on extracted vector items per page (prevents overlay explosion). |
 | `DOCLING_MIN_VECTOR_SIZE_PT` | `1.0` | Phase 2: drop vector drawings smaller than this (pt) in both width and height. |
+| `DOCLING_MAX_FONTS` | `48` | Phase 3: cap on distinct fonts surfaced in `doc.fonts`. |
+| `DOCLING_MAX_FONT_BYTES` | `524288` | Phase 3: only embed (base64) font programs at or under this size. |
 
 Override per deploy with `--update-env-vars KEY=VALUE` on `gcloud run deploy`.
 
@@ -379,3 +381,38 @@ Expect `engine` to end with `+phase2-fitz-vectors-typography`, `fitz: true`,
   simply receives no `vectors` and unchanged typography (graceful).
 - **Full:** roll Cloud Run traffic back to the previous revision (section 8) and
   redeploy the prior `pdf-parse-chunk-callback`.
+
+---
+
+## 12. Phase 3 deploy delta — faithful fonts
+
+Phase 3 surfaces document fonts (`doc.fonts`) and makes imported text render in
+its real typeface (web-font matching, with opportunistic byte-embedding for the
+rare fully-embedded font). It ships in the **same sidecar image + chunk-callback**
+as Phase 2, so the deploy is identical to §11.1–11.2 — no extra services.
+
+- **Sidecar:** the Phase 2 rebuild already includes Phase 3 (`_extract_fitz_fonts`).
+  Optional caps: `DOCLING_MAX_FONTS`, `DOCLING_MAX_FONT_BYTES` (see §9). The
+  `DOCLING_ENABLE_FITZ_LAYERS=false` kill-switch disables fonts too.
+- **Chunk-callback:** the same redeploy carries `doc.fonts` through the merge.
+- **Frontend / WeasyPrint:** no change beyond the standard app deploy — fonts load
+  via the existing `ensureCatalogFontFaces` → `@font-face` path, which WeasyPrint
+  embeds natively.
+
+Smoke-test additions:
+
+```bash
+curl -s -X POST "$PDF_PARSE_SERVICE_URL/parse" \
+  -H "Authorization: Bearer $PDF_PARSE_SERVICE_TOKEN" -H "Content-Type: application/json" \
+  -d '{"url":"https://arxiv.org/pdf/2206.01062.pdf"}' \
+  | jq '{engine: .engine_version, font_count: .summary.font_count, fonts: [.docling_document.fonts[]? | {basename, subset, hasUnicodeCmap, embeddable: (has("base64"))}]}'
+```
+
+Expect `engine` to end with `+phase3-fonts` and `fonts` to list the source font
+names (most `subset: true`, `embeddable: false` → matched to web fonts by name).
+In the builder, imported headings/body should render in their real families
+(e.g. Unbounded / Open Sans / Playfair Display); fonts with no web match surface
+a `font_substituted` import warning.
+
+**Rollback:** same as §11.6 — `DOCLING_ENABLE_FITZ_LAYERS=false` (instant, no
+rebuild) or revert the Cloud Run revision + prior chunk-callback.
