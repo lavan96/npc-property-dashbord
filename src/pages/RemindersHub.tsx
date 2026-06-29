@@ -281,35 +281,65 @@ export default function RemindersHub() {
         </Card>
 
       {/* KPI Summary Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-        <Card className={cn(premiumPanel, interactivePanel, stats.overdue > 0 && 'border-red-400/35 bg-red-950/15')}>
-          <CardContent className="p-2.5 sm:p-3 text-center">
-            <p className={cn('text-lg sm:text-2xl font-bold', stats.overdue > 0 ? 'text-destructive' : '')}>{stats.overdue}</p>
-            <p className="text-[9px] sm:text-[10px] text-slate-400">Overdue</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl', stats.overdue > 0 ? 'border-red-400/35 bg-red-950/15' : 'hover:border-amber-300/30')}>
+          <CardContent className="relative p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Overdue</p>
+              <div className={cn('flex h-8 w-8 items-center justify-center rounded-xl border', stats.overdue > 0 ? 'border-red-300/30 bg-red-500/15 text-red-200' : 'border-white/10 bg-white/5 text-slate-400')}>
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+            </div>
+            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.overdue > 0 ? 'text-red-300' : 'text-slate-100')}>{stats.overdue}</p>
+            <div className={cn('mt-3 h-0.5 rounded-full transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]', stats.overdue > 0 ? 'bg-red-400/60' : 'bg-amber-300/25')} />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel, stats.today > 0 && 'border-amber-300/35 bg-amber-950/15')}>
-          <CardContent className="p-2.5 sm:p-3 text-center">
-            <p className={cn('text-lg sm:text-2xl font-bold', stats.today > 0 ? 'text-amber-300' : '')}>{stats.today}</p>
-            <p className="text-[9px] sm:text-[10px] text-slate-400">Today</p>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl', stats.today > 0 ? 'border-amber-300/35 bg-amber-950/15' : 'hover:border-amber-300/30')}>
+          <CardContent className="relative p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Today</p>
+              <div className={cn('flex h-8 w-8 items-center justify-center rounded-xl border', stats.today > 0 ? 'border-amber-300/30 bg-amber-400/15 text-amber-200' : 'border-white/10 bg-white/5 text-slate-400')}>
+                <Clock className="h-4 w-4" />
+              </div>
+            </div>
+            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.today > 0 ? 'text-amber-300' : 'text-slate-100')}>{stats.today}</p>
+            <div className="mt-3 h-0.5 rounded-full bg-amber-300/35 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel)}>
-          <CardContent className="p-2.5 sm:p-3 text-center">
-            <p className="text-lg sm:text-2xl font-bold">{stats.thisWeek}</p>
-            <p className="text-[9px] sm:text-[10px] text-slate-400">This Week</p>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl hover:border-amber-300/30')}>
+          <CardContent className="relative p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">This Week</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-200">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">{stats.thisWeek}</p>
+            <div className="mt-3 h-0.5 rounded-full bg-sky-300/30 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel)}>
-          <CardContent className="p-2.5 sm:p-3 text-center">
-            <p className="text-lg sm:text-2xl font-bold text-destructive">{stats.highPriority}</p>
-            <p className="text-[9px] sm:text-[10px] text-slate-400">High Priority</p>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl', stats.highPriority > 0 ? 'border-red-400/35 bg-red-950/15' : 'hover:border-amber-300/30')}>
+          <CardContent className="relative p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">High Priority</p>
+              <div className={cn('flex h-8 w-8 items-center justify-center rounded-xl border', stats.highPriority > 0 ? 'border-red-300/30 bg-red-500/15 text-red-200' : 'border-white/10 bg-white/5 text-slate-400')}>
+                <Sparkles className="h-4 w-4" />
+              </div>
+            </div>
+            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.highPriority > 0 ? 'text-red-300' : 'text-slate-100')}>{stats.highPriority}</p>
+            <div className={cn('mt-3 h-0.5 rounded-full transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]', stats.highPriority > 0 ? 'bg-red-400/60' : 'bg-amber-300/25')} />
           </CardContent>
         </Card>
-        <Card className={cn(premiumPanel, interactivePanel, "col-span-2 sm:col-span-1")}>
-          <CardContent className="p-2.5 sm:p-3 text-center">
-            <p className="text-lg sm:text-2xl font-bold">{stats.total}</p>
-            <p className="text-[9px] sm:text-[10px] text-slate-400">Total Upcoming</p>
+        <Card className={cn(premiumPanel, interactivePanel, 'group relative col-span-2 overflow-hidden rounded-2xl hover:border-amber-300/30 sm:col-span-1')}>
+          <CardContent className="relative p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Total Upcoming</p>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-emerald-300/20 bg-emerald-400/10 text-emerald-200">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+            </div>
+            <p className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">{stats.total}</p>
+            <div className="mt-3 h-0.5 rounded-full bg-emerald-300/30 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
       </div>
