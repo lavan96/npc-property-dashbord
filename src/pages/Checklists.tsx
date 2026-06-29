@@ -145,16 +145,36 @@ export default function Checklists() {
     const progressClass = instance.status === 'completed'
       ? '[&>div]:from-emerald-500 [&>div]:via-teal-300 [&>div]:to-emerald-200'
       : '[&>div]:from-amber-500 [&>div]:via-yellow-300 [&>div]:to-amber-200';
+    const progressGlowClass = instance.status === 'completed'
+      ? '[&>div]:shadow-[0_0_18px_rgba(16,185,129,0.18)]'
+      : instance.status === 'archived'
+        ? '[&>div]:shadow-[0_0_18px_rgba(180,83,9,0.16)]'
+        : '[&>div]:shadow-[0_0_18px_rgba(245,158,11,0.18)]';
     const progressPercentClass = instance.status === 'completed'
       ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200'
       : instance.status === 'archived'
         ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
         : 'border-amber-300/20 bg-amber-300/10 text-amber-200';
+    const cardInteractionClass = instance.status === 'completed'
+      ? 'border-emerald-400/15 hover:border-emerald-300/60 hover:shadow-[0_24px_58px_rgba(16,185,129,0.13)] focus-visible:border-emerald-300/70 focus-visible:ring-emerald-300/45'
+      : instance.status === 'archived'
+        ? 'border-amber-700/20 hover:border-amber-600/65 hover:shadow-[0_24px_58px_rgba(120,53,15,0.16)] focus-visible:border-amber-600/70 focus-visible:ring-amber-500/45'
+        : 'border-amber-500/15 hover:border-amber-300/70 hover:shadow-[0_24px_58px_rgba(245,158,11,0.16)] focus-visible:border-amber-300/75 focus-visible:ring-amber-300/45';
+    const cardAccentClass = instance.status === 'completed'
+      ? 'via-emerald-300/60'
+      : instance.status === 'archived'
+        ? 'via-amber-700/65'
+        : 'via-amber-300/60';
+    const cardGlowClass = instance.status === 'completed'
+      ? 'bg-emerald-400/10'
+      : instance.status === 'archived'
+        ? 'bg-amber-700/10'
+        : 'bg-amber-400/10';
 
     return (
       <Card
         key={instance.id}
-        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-amber-500/15 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98)_46%,rgba(0,0,0,0.98))] shadow-lg shadow-black/30 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_24px_58px_rgba(245,158,11,0.16)] focus-visible:-translate-y-1 focus-visible:border-amber-300/75 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none"
+        className={`group relative cursor-pointer overflow-hidden rounded-2xl border bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98)_46%,rgba(0,0,0,0.98))] shadow-lg shadow-black/30 outline-none transition-all duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none ${cardInteractionClass}`}
         onClick={() => setSelectedInstance(instance)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -166,8 +186,8 @@ export default function Checklists() {
         tabIndex={0}
         aria-label={`Open checklist ${instance.name}`}
       >
-        <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" />
+        <div className={`pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 ${cardAccentClass}`} />
+        <div className={`pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 ${cardGlowClass}`} />
         <CardContent className="relative p-5">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-3.5">
@@ -190,7 +210,7 @@ export default function Checklists() {
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Progress</span>
               <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums ${progressPercentClass}`}>{instance.progress_percent}%</span>
             </div>
-            <Progress value={instance.progress_percent} className={`h-2.5 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r [&>div]:transition-all [&>div]:duration-500 [&>div]:shadow-[0_0_18px_rgba(245,158,11,0.18)] ${progressClass}`} />
+            <Progress value={instance.progress_percent} className={`h-2.5 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r [&>div]:transition-all [&>div]:duration-500 ${progressClass} ${progressGlowClass}`} />
             {instance.progress_percent === 0 && (
               <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">Ready to start</p>
             )}
@@ -247,7 +267,7 @@ export default function Checklists() {
           {instancesLoading ? (
             <ChecklistLoadingState message="Loading..." />
           ) : activeInstances.length === 0 ? (
-            <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+            <Card className="overflow-hidden rounded-2xl border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
               <CardContent className="relative py-14 text-center">
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.16)]">
                   <ClipboardList className="h-8 w-8" />
@@ -269,7 +289,7 @@ export default function Checklists() {
         {/* Completed */}
         <TabsContent value="completed" className="space-y-4 rounded-2xl border border-emerald-400/10 bg-[linear-gradient(180deg,rgba(6,78,59,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
           {completedInstances.length === 0 ? (
-            <Card className="overflow-hidden border-dashed border-emerald-400/25 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,7,18,0.96))] shadow-inner shadow-emerald-950/20">
+            <Card className="overflow-hidden rounded-2xl border-dashed border-emerald-400/25 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,7,18,0.96))] shadow-inner shadow-emerald-950/20">
               <CardContent className="relative py-14 text-center">
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-400/10 text-emerald-200 shadow-[0_18px_45px_rgba(16,185,129,0.16)]">
                   <CheckCircle2 className="h-8 w-8" />
@@ -288,7 +308,7 @@ export default function Checklists() {
         {/* Archived */}
         <TabsContent value="archived" className="space-y-4 rounded-2xl border border-amber-700/15 bg-[linear-gradient(180deg,rgba(120,53,15,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
           {archivedInstances.length === 0 ? (
-            <Card className="overflow-hidden border-dashed border-amber-700/30 bg-[radial-gradient(circle_at_top,rgba(180,83,9,0.13),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(12,10,9,0.96))] shadow-inner shadow-amber-950/20">
+            <Card className="overflow-hidden rounded-2xl border-dashed border-amber-700/30 bg-[radial-gradient(circle_at_top,rgba(180,83,9,0.13),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(12,10,9,0.96))] shadow-inner shadow-amber-950/20">
               <CardContent className="relative py-14 text-center">
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-600/25 bg-amber-900/20 text-4xl shadow-[0_18px_45px_rgba(120,53,15,0.18)]">
                   <span aria-hidden="true">📦</span>
@@ -366,7 +386,7 @@ export default function Checklists() {
           {templatesLoading ? (
             <ChecklistLoadingState message="Loading templates..." />
           ) : templates.length === 0 ? (
-            <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+            <Card className="overflow-hidden rounded-2xl border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
               <CardContent className="relative py-14 text-center">
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
                   <LayoutTemplate className="h-8 w-8" />
@@ -392,7 +412,7 @@ export default function Checklists() {
                   tabIndex={0}
                   aria-label={`Open template ${template.name}`}
                 >
-                  <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" />
                   <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   <CardContent className="relative p-5">
                     <div className="mb-4 flex items-start justify-between gap-3">
