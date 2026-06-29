@@ -13,7 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles, Layers3, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles, Layers3, AlertCircle, ArrowRight, ShieldCheck, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
@@ -62,7 +62,7 @@ function useGammaTemplates() {
 
 export default function GammaTemplateManager() {
   const queryClient = useQueryClient();
-  const { data: templates = [], isLoading } = useGammaTemplates();
+  const { data: templates = [], isLoading, isError, error, refetch } = useGammaTemplates();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<GammaTemplate | null>(null);
 
@@ -196,12 +196,45 @@ export default function GammaTemplateManager() {
       </CardHeader>
       <CardContent className="p-3 sm:p-5">
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <div className="overflow-hidden rounded-2xl border border-border/70 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.12),transparent_36%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.84))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.60),0_16px_42px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/35 bg-amber-500/10 text-amber-700 dark:text-amber-100">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-foreground">Loading Gamma templates</p>
+                <p className="text-xs leading-5 text-muted-foreground">Checking saved template blueprints and placeholder mappings.</p>
+              </div>
+            </div>
+            <div className="space-y-3" aria-hidden="true">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="grid gap-3 rounded-2xl border border-border/55 bg-card/70 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:grid-cols-[1.4fr_1fr_0.8fr_0.8fr]">
+                  <div className="space-y-2"><div className="h-4 w-3/4 animate-pulse rounded-full bg-muted" /><div className="h-3 w-1/2 animate-pulse rounded-full bg-muted/70" /></div>
+                  <div className="h-8 animate-pulse rounded-xl bg-muted/80" />
+                  <div className="h-8 animate-pulse rounded-xl bg-muted/80" />
+                  <div className="h-8 animate-pulse rounded-xl bg-muted/80" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : isError ? (
+          <div className="mx-4 my-5 rounded-2xl border border-red-300/35 bg-[radial-gradient(circle_at_top,hsl(var(--destructive)/0.08),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] px-5 py-10 text-center shadow-sm dark:border-red-300/25 dark:bg-[radial-gradient(circle_at_top,rgba(248,113,113,0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-red-300/40 bg-red-500/10 text-red-700 dark:border-red-300/25 dark:text-red-100">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <p className="text-base font-semibold text-foreground">Unable to load Gamma templates.</p>
+            <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{error instanceof Error ? error.message : 'Please try again. Template data and save logic are unchanged.'}</p>
+            <Button variant="outline" className="mt-5 rounded-xl border-red-300/35 bg-background/80 text-foreground hover:bg-red-500/10" onClick={() => refetch()}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Retry loading templates
+            </Button>
           </div>
         ) : templates.length === 0 ? (
-          <div className="mx-4 my-5 rounded-2xl border border-dashed border-amber-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.12),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.28))] px-4 py-10 text-center text-sm text-muted-foreground">
-            No templates configured. Add a Gamma template to get started.
+          <div className="mx-4 my-5 overflow-hidden rounded-2xl border border-dashed border-amber-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.12),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.28))] px-5 py-10 text-center text-sm text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.36),0_16px_42px_rgba(15,23,42,0.08)] dark:border-amber-200/25 dark:bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.48))]">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-400/12 text-amber-700 shadow-[0_14px_34px_hsl(43_84%_32%/0.14)] dark:border-amber-200/25 dark:bg-amber-200/10 dark:text-amber-100">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <p className="text-base font-semibold text-foreground">No templates configured.</p>
+            <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted-foreground">Add a Gamma template to get started with reusable agreement blueprints.</p>
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.58),0_18px_46px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_52px_rgba(0,0,0,0.28)]">
@@ -399,9 +432,9 @@ export default function GammaTemplateManager() {
               </div>
               <div className="flex w-full justify-end gap-2 sm:w-auto">
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }} className="h-11 rounded-xl border-border/75 bg-background/75 px-5 font-semibold text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/45 dark:hover:border-white/20">Cancel</Button>
-              <Button onClick={() => saveMutation.mutate()} disabled={!name || !gammaId || saveMutation.isPending} className="h-11 rounded-xl bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_42%,hsl(38_92%_50%))] px-6 font-black text-slate-950 shadow-[0_16px_38px_hsl(43_84%_52%/0.34),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_hsl(43_84%_52%/0.42),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 disabled:translate-y-0 disabled:opacity-55 dark:text-slate-950">
+              <Button onClick={() => saveMutation.mutate()} disabled={!name || !gammaId || saveMutation.isPending} aria-busy={saveMutation.isPending} className="h-11 rounded-xl bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_42%,hsl(38_92%_50%))] px-6 font-black text-slate-950 shadow-[0_16px_38px_hsl(43_84%_52%/0.34),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_hsl(43_84%_52%/0.42),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 disabled:translate-y-0 disabled:opacity-55 dark:text-slate-950">
                 {saveMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                {editingTemplate ? 'Save Changes' : 'Create Template'}
+                {saveMutation.isPending ? (editingTemplate ? 'Saving changes...' : 'Creating template...') : (editingTemplate ? 'Save Changes' : 'Create Template')}
               </Button>
               </div>
             </DialogFooter>
