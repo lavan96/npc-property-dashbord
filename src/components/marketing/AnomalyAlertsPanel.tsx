@@ -1,8 +1,8 @@
 import { AlertTriangle, AlertCircle, Info, TrendingDown, Zap, DollarSign, Eye, Users } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface Anomaly {
   id: string;
@@ -55,17 +55,19 @@ interface AnomalyAlertsPanelProps {
 export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelProps) {
   if (loading) {
     return (
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </span>
             Anomaly Detection
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="h-16 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
         </CardContent>
@@ -78,26 +80,28 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
   const info = anomalies.filter(a => a.type === 'info');
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            Anomaly Detection
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </span>
+            <span className="truncate">Anomaly Detection</span>
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             {critical.length > 0 && (
-              <Badge variant="destructive" className="text-[10px]">
+              <Badge variant="destructive" className="rounded-full text-[10px]">
                 {critical.length} Critical
               </Badge>
             )}
             {warnings.length > 0 && (
-              <Badge className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+              <Badge className="rounded-full border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400">
                 {warnings.length} Warning{warnings.length > 1 ? 's' : ''}
               </Badge>
             )}
             {anomalies.length === 0 && (
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary" className="rounded-full border-emerald-500/20 bg-emerald-500/10 text-[10px] text-emerald-600 dark:text-emerald-400">
                 All Clear
               </Badge>
             )}
@@ -106,11 +110,11 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
       </CardHeader>
       <CardContent>
         {anomalies.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 mb-2">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 py-7 text-center text-muted-foreground">
+            <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
               <span className="text-lg">✓</span>
             </div>
-            <p className="text-sm font-medium">No anomalies detected</p>
+            <p className="text-sm font-semibold text-foreground">No anomalies detected</p>
             <p className="text-xs mt-1">All campaigns are operating within normal parameters</p>
           </div>
         ) : (
@@ -121,20 +125,20 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
                 return (
                   <div
                     key={anomaly.id}
-                    className={`rounded-lg border p-3 ${style.bg} ${style.border}`}
+                    className={cn('rounded-2xl border p-3 shadow-sm transition-colors hover:bg-background/45', style.bg, style.border)}
                   >
                     <div className="flex items-start gap-2.5">
                       <div className="mt-0.5 shrink-0">
                         {style.icon}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-sm font-semibold text-foreground">{anomaly.title}</span>
+                        <div className="mb-0.5 flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-foreground" title={anomaly.title}>{anomaly.title}</span>
                           <span className="shrink-0">
                             {categoryIcons[anomaly.category]}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{anomaly.description}</p>
+                        <p className="break-words text-xs leading-relaxed text-muted-foreground">{anomaly.description}</p>
                       </div>
                     </div>
                   </div>
