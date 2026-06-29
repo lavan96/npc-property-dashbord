@@ -123,11 +123,16 @@ export default function Checklists() {
     const statusClass = instance.status === 'completed'
       ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-200'
       : instance.status === 'archived'
-        ? 'border-zinc-500/35 bg-zinc-500/10 text-zinc-300'
+        ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
         : 'border-amber-300/40 bg-amber-400/10 text-amber-200';
     const progressClass = instance.status === 'completed'
       ? '[&>div]:from-emerald-500 [&>div]:via-teal-300 [&>div]:to-emerald-200'
       : '[&>div]:from-amber-500 [&>div]:via-yellow-300 [&>div]:to-amber-200';
+    const progressPercentClass = instance.status === 'completed'
+      ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200'
+      : instance.status === 'archived'
+        ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
+        : 'border-amber-300/20 bg-amber-300/10 text-amber-200';
 
     return (
       <Card
@@ -165,7 +170,7 @@ export default function Checklists() {
           <div className="rounded-xl border border-white/5 bg-black/35 p-3.5 shadow-inner shadow-black/35">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Progress</span>
-              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-amber-200">{instance.progress_percent}%</span>
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums ${progressPercentClass}`}>{instance.progress_percent}%</span>
             </div>
             <Progress value={instance.progress_percent} className={`h-2.5 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r ${progressClass}`} />
             {instance.progress_percent === 0 && (

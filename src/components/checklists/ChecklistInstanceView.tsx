@@ -45,7 +45,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   const statusClass = instance.status === 'completed'
     ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-200'
     : instance.status === 'archived'
-      ? 'border-zinc-500/35 bg-zinc-500/10 text-zinc-300'
+      ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
       : 'border-amber-300/40 bg-amber-400/10 text-amber-200';
   const progressFillClass = instance.status === 'completed'
     ? '[&>div]:from-emerald-500 [&>div]:via-teal-300 [&>div]:to-emerald-200'
