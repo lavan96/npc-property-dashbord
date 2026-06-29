@@ -179,7 +179,7 @@ const STATUS_CONFIG: Record<
 };
 
 export default function Agreements() {
-  const { data: agreements = [], isLoading } = useAgencyAgreements();
+  const { data: agreements = [], isLoading, isError, error, refetch } = useAgencyAgreements();
   const { checkStatus, voidAgreement, sendViaDocuSign, retryPdf } =
     useAgreementMutations();
   const [searchTerm, setSearchTerm] = useState("");
@@ -484,6 +484,46 @@ export default function Agreements() {
     </span>
   );
 
+  const renderAgreementsLoading = () => (
+    <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.12),transparent_36%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_18px_44px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-300/35 bg-amber-500/10 text-amber-700 shadow-sm dark:border-amber-200/25 dark:text-amber-100">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </span>
+          <div>
+            <p className="text-sm font-bold text-foreground">Loading agreements</p>
+            <p className="text-xs text-muted-foreground">Preparing the DocuSign ledger and latest agreement statuses.</p>
+          </div>
+        </div>
+        <span className="hidden rounded-full border border-amber-300/35 bg-amber-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-100 sm:inline-flex">Syncing</span>
+      </div>
+      <div className="space-y-3" aria-hidden="true">
+        {[0, 1, 2, 3].map((row) => (
+          <div key={row} className="grid gap-3 rounded-2xl border border-border/55 bg-card/70 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:grid-cols-[1.4fr_1fr_1.2fr_0.8fr]">
+            <div className="space-y-2"><div className="h-4 w-3/4 animate-pulse rounded-full bg-muted" /><div className="h-3 w-1/2 animate-pulse rounded-full bg-muted/70" /></div>
+            <div className="h-8 animate-pulse rounded-xl bg-muted/80" />
+            <div className="h-8 animate-pulse rounded-xl bg-muted/80" />
+            <div className="h-8 animate-pulse rounded-xl bg-muted/80" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderAgreementsError = () => (
+    <div className="mx-4 my-5 overflow-hidden rounded-[1.35rem] border border-red-300/35 bg-[radial-gradient(circle_at_top,hsl(var(--destructive)/0.08),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] px-5 py-10 text-center shadow-sm dark:border-red-300/25 dark:bg-[radial-gradient(circle_at_top,rgba(248,113,113,0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-red-300/40 bg-red-500/10 text-red-700 dark:border-red-300/25 dark:text-red-100">
+        <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+      </div>
+      <p className="mx-auto max-w-md text-base font-semibold text-foreground">Unable to load agreements.</p>
+      <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">{error instanceof Error ? error.message : "Please try again. The agreement workflow has not been changed."}</p>
+      <Button variant="outline" className="mt-5 rounded-xl border-red-300/35 bg-background/80 text-foreground hover:bg-red-500/10" onClick={() => refetch()}>
+        <RefreshCw className="mr-2 h-4 w-4" /> Retry loading agreements
+      </Button>
+    </div>
+  );
+
   return (
     <DashboardThemeFrame
       as="main"
@@ -649,11 +689,11 @@ export default function Agreements() {
         </div>
         <div className="bg-muted/18 p-3 sm:p-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
+            renderAgreementsLoading()
+          ) : isError ? (
+            renderAgreementsError()
           ) : filteredAgreements.length === 0 ? (
-            <div className="mx-4 my-5 overflow-hidden rounded-[1.35rem] border border-dashed border-amber-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.14),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.24))] px-5 py-12 text-center text-sm text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35)] dark:border-amber-200/25 dark:bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.48))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <div className="mx-4 my-5 overflow-hidden rounded-[1.35rem] border border-dashed border-amber-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.14),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.24))] px-5 py-12 text-center text-sm text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35),0_18px_48px_rgba(15,23,42,0.08)] dark:border-amber-200/25 dark:bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.48))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-400/12 text-amber-700 shadow-[0_14px_34px_hsl(43_84%_32%/0.14)] dark:border-amber-200/25 dark:bg-amber-200/10 dark:text-amber-100">
                 {searchTerm ? (
                   <Search className="h-5 w-5" aria-hidden="true" />
@@ -836,10 +876,17 @@ export default function Agreements() {
                                       onClick={() =>
                                         handleSendViaDocuSign(agreement)
                                       }
-                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary"
+                                      disabled={sendViaDocuSign.isPending}
+                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary disabled:opacity-60"
                                     >
-                                      <Send className="h-4 w-4 text-primary" />
-                                      Send via DocuSign (legacy anchors)
+                                      {sendViaDocuSign.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                      ) : (
+                                        <Send className="h-4 w-4 text-primary" />
+                                      )}
+                                      {sendViaDocuSign.isPending
+                                        ? "Sending via DocuSign..."
+                                        : "Send via DocuSign (legacy anchors)"}
                                     </DropdownMenuItem>
                                   </>
                                 )}
@@ -911,8 +958,12 @@ export default function Agreements() {
             <DialogTitle>{previewTitle}</DialogTitle>
           </DialogHeader>
           {isPreviewLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/70 bg-muted/30 py-20 text-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/35 bg-amber-500/10 text-amber-700 dark:text-amber-100">
+                <Loader2 className="h-7 w-7 animate-spin" />
+              </span>
+              <p className="text-sm font-semibold text-foreground">Loading agreement preview</p>
+              <p className="max-w-sm text-xs leading-5 text-muted-foreground">Fetching the latest PDF or HTML preview without changing the saved agreement.</p>
             </div>
           ) : previewHtml ? (
             <div className="flex-1 overflow-auto rounded-xl border border-border/70 bg-background">

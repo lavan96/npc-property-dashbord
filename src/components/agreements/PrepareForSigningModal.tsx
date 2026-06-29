@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Plus, Send, Save, Trash2, X, Users, MousePointer2, Undo2, Redo2 } from 'lucide-react';
+import { Loader2, Plus, Send, Save, Trash2, X, Users, MousePointer2, Undo2, Redo2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 
@@ -131,6 +131,8 @@ export function PrepareForSigningModal({
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   const [pages, setPages] = useState<PageDim[]>([]);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState<'save' | 'send' | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +177,8 @@ export function PrepareForSigningModal({
   useEffect(() => {
     if (open) {
       setRecipients(initialRecipients);
+      setPdfError(null);
+      setActionError(null);
       setTabs(initialLayout);
       setActiveRecipientId(initialRecipients[0]?.id || '');
       setActiveFieldType(null);
@@ -210,6 +214,7 @@ export function PrepareForSigningModal({
     if (!open || !pdfUrl) return;
     let cancelled = false;
     setLoadingPdf(true);
+    setPdfError(null);
     (async () => {
       try {
         const pdfjs = await getPdfJs();
@@ -255,6 +260,7 @@ export function PrepareForSigningModal({
           }, 0);
         }
       } catch (e: any) {
+        setPdfError(e.message || 'Failed to load PDF');
         toast.error(`Failed to load PDF: ${e.message}`);
       } finally {
         if (!cancelled) setLoadingPdf(false);
@@ -423,6 +429,7 @@ export function PrepareForSigningModal({
 
   const callFn = async (action: 'save_signing_layout' | 'send_freeform') => {
     setBusy(action === 'save_signing_layout' ? 'save' : 'send');
+    setActionError(null);
     try {
       const fn = scope === 'agreement' ? 'manage-agency-agreements' : 'manage-generated-documents';
       const payload: any = scope === 'agreement'
@@ -439,6 +446,7 @@ export function PrepareForSigningModal({
         toast.success('Signing layout saved');
       }
     } catch (e: any) {
+      setActionError(e.message || 'Failed');
       toast.error(e.message || 'Failed');
     } finally {
       setBusy(null);
@@ -457,6 +465,15 @@ export function PrepareForSigningModal({
             Prepare for Signing — {title}
           </DialogTitle>
         </DialogHeader>
+
+        {(loadingPdf || pdfError || actionError) && (
+          <div className={`border-b px-4 py-3 text-sm ${pdfError || actionError ? 'border-red-300/25 bg-red-500/8 text-red-800 dark:text-red-100' : 'border-amber-300/25 bg-amber-500/10 text-amber-800 dark:text-amber-100'}`}>
+            <div className="flex items-center gap-2">
+              {pdfError || actionError ? <AlertTriangle className="h-4 w-4 shrink-0" /> : <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
+              <span className="font-medium">{pdfError ? `PDF loading error: ${pdfError}` : actionError ? `DocuSign action error: ${actionError}` : 'Loading PDF workspace...'}</span>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 grid grid-cols-[280px_1fr_320px] min-h-0">
           {/* LEFT: Recipients + Field palette */}
