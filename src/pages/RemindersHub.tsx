@@ -451,25 +451,57 @@ export default function RemindersHub() {
 
           {/* Timeline Groups */}
           {filtered.length === 0 ? (
-            <Card className={cn(premiumPanel, "relative overflow-hidden rounded-2xl border-dashed border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(0,0,0,0.45))]")}>
+            <Card
+              className={cn(
+                premiumPanel,
+                "relative overflow-hidden rounded-2xl border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(0,0,0,0.45))]",
+                timeFilter === 'overdue' ? 'border-emerald-300/25' : 'border-amber-300/25'
+              )}
+            >
               <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-400/10 text-emerald-200 shadow-[0_0_28px_rgba(16,185,129,0.12)]">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <p className="text-sm font-medium text-slate-300">No reminders match your filters</p>
+                {timeFilter === 'overdue' && (
+                  <p className="mt-1 text-xs text-emerald-200/75">No overdue items are waiting for action.</p>
+                )}
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-5">
-              {groupOrder.filter(g => grouped[g]).map(groupLabel => (
+              {groupOrder.filter(g => grouped[g]).map(groupLabel => {
+                const isOverdueGroup = groupLabel.includes('Overdue');
+
+                return (
                 <div key={groupLabel}>
-                  <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-400/12 bg-[linear-gradient(135deg,rgba(0,0,0,0.42),rgba(15,23,42,0.42))] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <div className={cn(
+                    'mb-3 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+                    isOverdueGroup
+                      ? 'border-red-300/25 bg-[linear-gradient(135deg,rgba(127,29,29,0.22),rgba(15,23,42,0.42))]'
+                      : 'border-amber-400/12 bg-[linear-gradient(135deg,rgba(0,0,0,0.42),rgba(15,23,42,0.42))]'
+                  )}>
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.55)]" />
+                      <span className={cn(
+                        'h-2 w-2 rounded-full',
+                        isOverdueGroup
+                          ? 'bg-red-300 shadow-[0_0_12px_rgba(248,113,113,0.45)]'
+                          : 'bg-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.55)]'
+                      )} />
                       <h3 className="truncate text-sm font-semibold text-slate-100">{groupLabel}</h3>
                     </div>
-                    <Badge variant="outline" className="shrink-0 border-amber-300/30 bg-amber-400/10 text-[10px] font-semibold text-amber-100 shadow-[0_0_16px_rgba(245,158,11,0.10)]">{grouped[groupLabel].length}</Badge>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'shrink-0 text-[10px] font-semibold shadow-[0_0_16px_rgba(245,158,11,0.10)]',
+                        isOverdueGroup
+                          ? 'border-red-300/30 bg-red-400/10 text-red-100'
+                          : 'border-amber-300/30 bg-amber-400/10 text-amber-100'
+                      )}
+                    >
+                      {grouped[groupLabel].length}
+                    </Badge>
                   </div>
 
                   <div className="space-y-2">
@@ -483,12 +515,17 @@ export default function RemindersHub() {
                             key={reminder.id}
                             className={cn(
                               premiumPanel, interactivePanel, 'group relative cursor-pointer overflow-hidden rounded-2xl hover:bg-amber-400/[0.035]',
-                              isOverdue && 'border-red-400/35 bg-red-950/15',
+                              isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))] hover:bg-red-500/[0.055]',
                               isToday(new Date(reminder.due_date)) && !isOverdue && 'border-amber-300/30 bg-amber-950/15',
                             )}
                             onClick={() => handleReminderClick(reminder)}
                           >
-                            <div className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-amber-300/0 transition-all duration-200 group-hover:bg-amber-300/80 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.45)]" />
+                            <div className={cn(
+                              'pointer-events-none absolute inset-y-0 left-0 w-1 transition-all duration-200',
+                              isOverdue
+                                ? 'bg-red-300/45 group-hover:bg-red-300/90 group-hover:shadow-[0_0_18px_rgba(248,113,113,0.45)]'
+                                : 'bg-amber-300/0 group-hover:bg-amber-300/80 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.45)]'
+                            )} />
                             <CardContent className="p-3 sm:p-4">
                               <div className="flex items-start gap-3">
                                 {/* Source Icon */}
@@ -522,7 +559,10 @@ export default function RemindersHub() {
                                 </div>
 
                                 {/* Date */}
-                                <div className="ml-auto min-w-[72px] shrink-0 rounded-xl border border-white/10 bg-black/25 px-2.5 py-2 text-right shadow-inner sm:min-w-[88px]">
+                                <div className={cn(
+                                  'ml-auto min-w-[72px] shrink-0 rounded-xl border bg-black/25 px-2.5 py-2 text-right shadow-inner sm:min-w-[88px]',
+                                  isOverdue ? 'border-red-300/20 bg-red-500/10' : 'border-white/10'
+                                )}>
                                   <p className={cn(
                                     'text-[11px] font-semibold sm:text-xs',
                                     isOverdue ? 'text-destructive' : isToday(new Date(reminder.due_date)) ? 'text-amber-300' : 'text-slate-400'
@@ -560,7 +600,8 @@ export default function RemindersHub() {
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
