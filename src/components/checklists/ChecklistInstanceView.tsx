@@ -226,15 +226,24 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                 {section.items.map(item => (
                   <div
                     key={item.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-all hover:border-amber-300/15 hover:bg-amber-500/10 ${item.is_checked ? 'bg-emerald-400/5 opacity-70' : 'bg-black/20'}`}
+                    className={`group/task flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all hover:border-amber-300/25 hover:bg-amber-500/10 focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
                     onClick={() => handleToggleItem(item.id, item.is_checked)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleToggleItem(item.id, item.is_checked);
+                      }
+                    }}
+                    role="checkbox"
+                    aria-checked={item.is_checked}
+                    tabIndex={0}
                   >
                     <Checkbox
                       checked={item.is_checked}
                       onCheckedChange={() => handleToggleItem(item.id, item.is_checked)}
-                      className="pointer-events-none"
+                      className="pointer-events-none mt-0.5 h-5 w-5 rounded-full border-amber-300/55 bg-black/40 shadow-inner shadow-black/30 transition-colors data-[state=checked]:border-emerald-300 data-[state=checked]:bg-emerald-400 data-[state=checked]:text-black group-hover/task:border-amber-200"
                     />
-                    <span className={`flex-1 text-sm ${item.is_checked ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}>
+                    <span className={`min-w-0 flex-1 whitespace-normal break-words text-sm leading-6 ${item.is_checked ? 'text-zinc-300 line-through decoration-emerald-300/70 decoration-2 underline-offset-4' : 'text-zinc-100'}`}>
                       {item.label}
                     </span>
                     {item.checked_at && (
