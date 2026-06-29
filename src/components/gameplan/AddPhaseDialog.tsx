@@ -51,7 +51,7 @@ export function AddPhaseDialog({ open, onOpenChange, planId, nextOrder, onCreate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-black/20 sm:max-w-md dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
+      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-sm dark:shadow-black/20 sm:max-w-md dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
         <DialogHeader className="border-b border-border/60 px-5 py-4 dark:border-white/10">
           <DialogTitle className="text-xl font-bold tracking-tight text-foreground">Add Phase</DialogTitle>
           <p className="text-sm text-muted-foreground">Create the next step in this strategic playbook.</p>
@@ -86,7 +86,7 @@ export function AddPhaseDialog({ open, onOpenChange, planId, nextOrder, onCreate
                 <button key={c} onClick={() => setColor(c)}
                   type="button"
                   aria-label={`Use phase accent colour ${c}`}
-                  className={cn('h-8 w-8 rounded-full border border-white/40 shadow-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:scale-100',
+                  className={cn('h-8 w-8 rounded-full border border-border dark:border-white/40 shadow-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:scale-100',
                     color === c ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105')}
                   style={{ backgroundColor: c }} />
               ))}

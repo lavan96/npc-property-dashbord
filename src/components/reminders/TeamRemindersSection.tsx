@@ -55,7 +55,7 @@ const priorityColors: Record<string, string> = {
 
 
 const premiumTeamPanel = 'relative overflow-hidden rounded-[1.5rem] border border-amber-300/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.84),rgba(2,6,23,0.94))] shadow-[0_22px_70px_rgba(0,0,0,0.32)] backdrop-blur';
-const premiumTeamInput = 'rounded-xl border-amber-300/15 bg-black/40 text-slate-100 placeholder:text-slate-500 shadow-inner transition-all duration-200 hover:border-amber-300/35 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+const premiumTeamInput = 'rounded-xl border-amber-300/15 bg-background dark:bg-black/40 text-foreground dark:text-slate-100 placeholder:text-slate-500 shadow-inner transition-all duration-200 hover:border-amber-300/35 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 
 const reminderTypes = [
   { value: 'task', label: 'Task' },
@@ -166,7 +166,7 @@ export function TeamRemindersSection() {
     const d = new Date(date);
     if (isPast(d) && !isToday(d)) return { label: 'Overdue', className: 'text-red-300' };
     if (isToday(d)) return { label: 'Today', className: 'text-amber-200' };
-    return { label: formatDistanceToNow(d, { addSuffix: true }), className: 'text-slate-400' };
+    return { label: formatDistanceToNow(d, { addSuffix: true }), className: 'text-muted-foreground dark:text-slate-400' };
   };
 
   const getAssigneeNames = (ids: string[] | null) => {
@@ -177,14 +177,14 @@ export function TeamRemindersSection() {
   };
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden text-slate-100">
+    <div className="min-w-0 space-y-4 overflow-x-hidden text-foreground dark:text-slate-100">
       {/* Add Button / Form */}
       {showAdd ? (
         <Card className={cn(premiumTeamPanel, 'border-amber-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.92)_42%,rgba(0,0,0,0.72))]')}>
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent" />
           <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
           <CardHeader className="relative pb-3">
-            <CardTitle className="flex items-center gap-3 text-sm font-semibold text-slate-100">
+            <CardTitle className="flex items-center gap-3 text-sm font-semibold text-foreground dark:text-slate-100">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-100 shadow-[0_0_26px_rgba(245,158,11,0.14)]">
                 <Users className="h-4 w-4" />
               </span>
@@ -199,7 +199,7 @@ export function TeamRemindersSection() {
               className={cn("h-11", premiumTeamInput)}
             />
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs text-slate-400 font-medium">Description</label>
+              <label className="text-xs text-muted-foreground dark:text-slate-400 font-medium">Description</label>
               <VoiceToTextButton
                 size="sm"
                 onTranscript={(text) => setDescription(prev => prev ? `${prev} ${text}` : text)}
@@ -215,7 +215,7 @@ export function TeamRemindersSection() {
 
             {/* Optional client link */}
             <div className="space-y-1">
-              <label className="text-xs text-slate-400 font-medium">Link to Client (optional)</label>
+              <label className="text-xs text-muted-foreground dark:text-slate-400 font-medium">Link to Client (optional)</label>
               <ClientSearchSelect
                 value={clientId}
                 onValueChange={(id) => setClientId(id)}
@@ -226,7 +226,7 @@ export function TeamRemindersSection() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">Due Date</label>
+                <label className="text-xs text-muted-foreground dark:text-slate-400">Due Date</label>
                 <Input
                   type="datetime-local"
                   value={dueDate}
@@ -235,7 +235,7 @@ export function TeamRemindersSection() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-slate-400">Type</label>
+                <label className="text-xs text-muted-foreground dark:text-slate-400">Type</label>
                 <Select value={reminderType} onValueChange={setReminderType}>
                   <SelectTrigger className={cn("h-11", premiumTeamInput)}>
                     <SelectValue />
@@ -249,7 +249,7 @@ export function TeamRemindersSection() {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-slate-400">Priority</label>
+              <label className="text-xs text-muted-foreground dark:text-slate-400">Priority</label>
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger className={cn("h-11", premiumTeamInput)}>
                   <SelectValue />
@@ -263,7 +263,7 @@ export function TeamRemindersSection() {
               </Select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-slate-400">Assign To</label>
+              <label className="text-xs text-muted-foreground dark:text-slate-400">Assign To</label>
               <MultiTeamUserSelect
                 value={assignedTo}
                 onValueChange={setAssignedTo}
@@ -285,7 +285,7 @@ export function TeamRemindersSection() {
                   </>
                 )}
               </Button>
-              <Button variant="outline" onClick={resetForm} className="h-11 rounded-xl border-slate-600/70 bg-black/25 px-5 font-semibold text-slate-200 transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 sm:w-auto">Cancel</Button>
+              <Button variant="outline" onClick={resetForm} className="h-11 rounded-xl border-slate-600/70 bg-background dark:bg-black/25 px-5 font-semibold text-foreground dark:text-slate-200 transition-all duration-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 sm:w-auto">Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -305,7 +305,7 @@ export function TeamRemindersSection() {
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-slate-100">Loading team reminders</p>
+              <p className="text-sm font-semibold text-foreground dark:text-slate-100">Loading team reminders</p>
               <p className="text-xs text-slate-500">Checking internal tasks and team coordination items.</p>
             </div>
           </CardContent>
@@ -316,13 +316,13 @@ export function TeamRemindersSection() {
           <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-amber-300/8 blur-3xl" />
           <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-300/6 blur-3xl" />
           <CardContent className="relative flex flex-col items-center justify-center px-5 py-12 text-center sm:px-8 sm:py-14">
-            <div className="mb-4 rounded-[1.4rem] border border-white/10 bg-black/20 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <div className="mb-4 rounded-[1.4rem] border border-border dark:border-white/10 bg-background dark:bg-black/20 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(16,185,129,0.08))] text-amber-100 shadow-[0_0_32px_rgba(245,158,11,0.14)]">
                 <Users className="h-7 w-7" />
               </div>
             </div>
             <div className="max-w-md space-y-2">
-              <p className="text-base font-semibold tracking-tight text-slate-100 sm:text-lg">No team reminders yet</p>
+              <p className="text-base font-semibold tracking-tight text-foreground dark:text-slate-100 sm:text-lg">No team reminders yet</p>
               <p className="text-xs leading-5 text-slate-500 sm:text-sm">Create reminders for internal tasks and team coordination</p>
             </div>
           </CardContent>
@@ -340,7 +340,7 @@ export function TeamRemindersSection() {
                 key={reminder.id}
                 className={cn(
                   premiumTeamPanel,
-                  'group ring-1 ring-white/[0.025] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-400/[0.04] hover:shadow-[0_20px_50px_rgba(245,158,11,0.11),0_14px_34px_rgba(0,0,0,0.28)] focus-within:border-amber-300/40',
+                  'group ring-1 ring-border dark:ring-white/[0.025] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-400/[0.04] hover:shadow-[0_20px_50px_rgba(245,158,11,0.11),0_14px_34px_rgba(0,0,0,0.28)] focus-within:border-amber-300/40',
                   isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))]',
                   isToday(new Date(reminder.due_date)) && !isOverdue && 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(2,6,23,0.88))]',
                 )}
@@ -349,8 +349,8 @@ export function TeamRemindersSection() {
                 <CardContent className="relative p-3.5 sm:p-4">
                   <div className="flex items-start gap-2.5">
                     <div className={cn(
-                      'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 shadow-inner ring-1 ring-white/5 transition-all duration-200 group-hover:scale-105 group-hover:border-amber-300/35 group-hover:bg-amber-400/10 group-hover:shadow-[0_0_22px_rgba(245,158,11,0.16)]',
-                      isOverdue ? 'bg-red-500/15 text-red-200' : isToday(new Date(reminder.due_date)) ? 'bg-amber-400/15 text-amber-200' : 'bg-white/5 text-amber-100'
+                      'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border dark:border-white/10 shadow-inner ring-1 ring-border dark:ring-white/5 transition-all duration-200 group-hover:scale-105 group-hover:border-amber-300/35 group-hover:bg-amber-400/10 group-hover:shadow-[0_0_22px_rgba(245,158,11,0.16)]',
+                      isOverdue ? 'bg-red-500/15 text-red-200' : isToday(new Date(reminder.due_date)) ? 'bg-amber-400/15 text-amber-200' : 'bg-card/5 dark:bg-white/5 text-amber-100'
                     )}>
                       <Users className="h-3.5 w-3.5" />
                     </div>
@@ -363,18 +363,18 @@ export function TeamRemindersSection() {
                         </Badge>
                       </div>
                       {reminder.description && (
-                        <p className="text-[10px] text-slate-400 mt-0.5 truncate">{reminder.description}</p>
+                        <p className="text-[10px] text-muted-foreground dark:text-slate-400 mt-0.5 truncate">{reminder.description}</p>
                       )}
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <div className="flex items-center gap-1">
-                          <CalendarIcon className="h-3 w-3 text-slate-400" />
+                          <CalendarIcon className="h-3 w-3 text-muted-foreground dark:text-slate-400" />
                           <span className={cn('text-[10px]', dueStatus.className)}>
                             {format(new Date(reminder.due_date), 'MMM d, yyyy h:mm a')} · {dueStatus.label}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <UserCircle className="h-3 w-3 text-slate-400" />
-                          <span className="text-[10px] text-slate-400">
+                          <UserCircle className="h-3 w-3 text-muted-foreground dark:text-slate-400" />
+                          <span className="text-[10px] text-muted-foreground dark:text-slate-400">
                             {getAssigneeNames(reminder.assigned_to)}
                           </span>
                         </div>
@@ -390,7 +390,7 @@ export function TeamRemindersSection() {
                         title="Snooze"
                         onClick={() => setSnoozeId(isSnoozing ? null : reminder.id)}
                       >
-                        <AlarmClock className="h-3.5 w-3.5 text-slate-400" />
+                        <AlarmClock className="h-3.5 w-3.5 text-muted-foreground dark:text-slate-400" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -399,7 +399,7 @@ export function TeamRemindersSection() {
                         title="Edit"
                         onClick={() => isEditing ? setEditingId(null) : startEdit(reminder)}
                       >
-                        <Pencil className="h-3.5 w-3.5 text-slate-400" />
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground dark:text-slate-400" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -436,7 +436,7 @@ export function TeamRemindersSection() {
 
                   {/* Inline Edit Panel */}
                   {isEditing && (
-                    <div className="mt-3 space-y-2 rounded-2xl border border-amber-300/15 bg-black/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <div className="mt-3 space-y-2 rounded-2xl border border-amber-300/15 bg-background dark:bg-black/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                       <Input
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
@@ -465,15 +465,15 @@ export function TeamRemindersSection() {
                         <Button size="sm" className="h-8 flex-1 rounded-lg bg-amber-400 text-xs font-semibold text-black hover:bg-amber-300" onClick={handleSaveEdit} disabled={!editTitle.trim() || updateMutation.isPending}>
                           {updateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8 rounded-lg border-slate-600/70 bg-black/25 text-xs text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100" onClick={() => setEditingId(null)}>Cancel</Button>
+                        <Button size="sm" variant="outline" className="h-8 rounded-lg border-slate-600/70 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100" onClick={() => setEditingId(null)}>Cancel</Button>
                       </div>
                     </div>
                   )}
 
                   {/* Inline Snooze Panel */}
                   {isSnoozing && (
-                    <div className="mt-3 space-y-2 rounded-2xl border border-amber-300/15 bg-black/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                      <p className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                    <div className="mt-3 space-y-2 rounded-2xl border border-amber-300/15 bg-background dark:bg-black/35 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                      <p className="text-xs font-medium text-muted-foreground dark:text-slate-400 flex items-center gap-1.5">
                         <AlarmClock className="h-3.5 w-3.5" />
                         Snooze until...
                       </p>
@@ -488,7 +488,7 @@ export function TeamRemindersSection() {
                             key={d}
                             variant="outline"
                             size="sm"
-                            className="h-8 rounded-lg border-amber-300/15 bg-black/25 text-xs text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100"
+                            className="h-8 rounded-lg border-amber-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100"
                             disabled={snoozeMutation.isPending}
                             onClick={() => handleSnooze(reminder.id, d)}
                           >
@@ -499,12 +499,12 @@ export function TeamRemindersSection() {
                       <div className="flex items-center gap-1.5">
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 flex-1 justify-start gap-1.5 rounded-lg border-amber-300/15 bg-black/25 text-xs text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100">
+                            <Button variant="outline" size="sm" className="h-8 flex-1 justify-start gap-1.5 rounded-lg border-amber-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100">
                               <CalendarIcon className="h-3 w-3" />
                               {customSnoozeDate ? format(customSnoozeDate, 'MMM d, yyyy') : 'Custom date...'}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto rounded-xl border-amber-300/20 bg-slate-950/95 p-0 text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)]" align="start">
+                          <PopoverContent className="w-auto rounded-xl border-amber-300/20 bg-background dark:bg-slate-950/95 p-0 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)]" align="start">
                             <Calendar
                               mode="single"
                               selected={customSnoozeDate}
@@ -518,7 +518,7 @@ export function TeamRemindersSection() {
                         {customSnoozeDate && (
                           <Button
                             size="sm"
-                            className="h-8 rounded-lg border-amber-300/15 bg-black/25 text-xs text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100"
+                            className="h-8 rounded-lg border-amber-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100"
                             disabled={snoozeMutation.isPending}
                             onClick={() => handleSnooze(reminder.id, 'custom', customSnoozeDate)}
                           >
@@ -529,7 +529,7 @@ export function TeamRemindersSection() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-full rounded-lg text-[10px] text-slate-400 hover:bg-amber-400/10 hover:text-amber-100"
+                        className="h-7 w-full rounded-lg text-[10px] text-muted-foreground dark:text-slate-400 hover:bg-amber-400/10 hover:text-amber-100"
                         onClick={() => { setSnoozeId(null); setCustomSnoozeDate(undefined); }}
                       >
                         Cancel

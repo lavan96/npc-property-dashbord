@@ -52,7 +52,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-black/20 sm:max-w-xl dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
+      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-sm dark:shadow-black/20 sm:max-w-xl dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
         <DialogHeader className="border-b border-border/60 px-5 py-4 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-2xl shadow-inner shadow-primary/10">
@@ -137,7 +137,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
             <div className="mt-2 flex flex-wrap gap-2">
               {COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
-                  className={cn('h-8 w-8 rounded-full border border-white/40 shadow-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:scale-100',
+                  className={cn('h-8 w-8 rounded-full border border-border dark:border-white/40 shadow-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:scale-100',
                     color === c ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background' : '')}
                   style={{ backgroundColor: c }}
                   type="button"

@@ -169,7 +169,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
         : 'border-slate-500/15 bg-slate-500/5 hover:border-slate-400/25 hover:bg-slate-500/10',
       iconClass: analytics.errorCount > 0
         ? 'border-red-300/25 bg-red-500/15 text-red-700 dark:text-red-200 shadow-red-950/20'
-        : 'border-slate-500/20 bg-slate-500/10 text-muted-foreground dark:text-slate-400 shadow-black/10',
+        : 'border-slate-500/20 bg-slate-500/10 text-muted-foreground dark:text-slate-400 shadow-sm dark:shadow-black/10',
       labelClass: analytics.errorCount > 0 ? 'text-red-700 dark:text-red-100' : 'text-muted-foreground dark:text-slate-300',
       valueClass: analytics.errorCount > 0 ? 'text-red-700 dark:text-red-100' : 'text-muted-foreground dark:text-slate-300',
       progressClass: analytics.errorCount > 0

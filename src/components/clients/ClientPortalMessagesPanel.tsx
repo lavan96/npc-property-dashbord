@@ -211,7 +211,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
 
 
   return (
-    <div className={cn('flex min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-zinc-950/90 shadow-xl shadow-black/25', fillContainer ? 'h-full' : 'h-[600px]', className)}>
+    <div className={cn('flex min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-background dark:bg-zinc-950/90 shadow-xl shadow-sm dark:shadow-black/25', fillContainer ? 'h-full' : 'h-[600px]', className)}>
       <div className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-emerald-300/[0.04] to-transparent px-4 py-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -233,7 +233,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
               </div>
             </div>
           </div>
-          <Badge variant="outline" className="rounded-full border-white/10 bg-black/25 px-2.5 text-[10px] text-muted-foreground">
+          <Badge variant="outline" className="rounded-full border-border dark:border-white/10 bg-background dark:bg-black/25 px-2.5 text-[10px] text-muted-foreground">
             Command Centre visible
           </Badge>
         </div>
@@ -241,13 +241,13 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
 
       <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.05),transparent_34%)] p-4 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
         {loading ? (
-          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-background dark:bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-sm dark:shadow-black/20">
             <Loader2 className="mx-auto h-5 w-5 animate-spin text-amber-200/80" />
             <p className="mt-3 font-medium text-foreground">Loading client messages…</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">Preparing the latest client portal conversation.</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-black/20">
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-background dark:bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-sm dark:shadow-black/20">
             <MessageCircle className="mx-auto mb-3 h-9 w-9 text-amber-200/65" />
             <p className="font-medium text-foreground">No messages yet. Send a message to start the conversation.</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">This thread is ready when the client conversation begins.</p>
@@ -268,12 +268,12 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
                   </Avatar>
                   <div className={cn('flex max-w-[92%] flex-col sm:max-w-[82%]', mine ? 'items-end' : 'items-start')}>
                     <div className={cn(
-                      'rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
+                      'rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-sm dark:shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
                       m.is_internal
                         ? 'border-dashed border-amber-300/45 bg-amber-300/10 text-foreground rounded-br-md'
                         : mine
                           ? 'border-amber-300/30 bg-gradient-to-br from-amber-300 to-yellow-600 text-black rounded-br-md'
-                          : 'border-emerald-300/20 bg-zinc-900/95 text-foreground rounded-bl-md',
+                          : 'border-emerald-300/20 bg-card dark:bg-zinc-900/95 text-foreground rounded-bl-md',
                     )}>
                       {!mine && (
                         <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
@@ -323,7 +323,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
                 type="button"
                 size="sm"
                 variant={active ? 'default' : 'outline'}
-                className={cn('h-auto min-h-7 rounded-full px-3 py-1 text-xs transition-all duration-200 focus-visible:ring-amber-300', active ? 'bg-amber-300 text-black shadow-sm shadow-amber-950/20 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_10px_26px_rgba(245,158,11,0.18)]' : 'border-white/10 bg-black/20 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)]')}
+                className={cn('h-auto min-h-7 rounded-full px-3 py-1 text-xs transition-all duration-200 focus-visible:ring-amber-300', active ? 'bg-amber-300 text-black shadow-sm shadow-amber-950/20 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_10px_26px_rgba(245,158,11,0.18)]' : 'border-border dark:border-white/10 bg-background dark:bg-black/20 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)]')}
                 onClick={() => setRoute(preset.value)}
                 title={preset.description}
               >
@@ -332,7 +332,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
             );
           })}
         </div>
-        <div className="mb-2 flex items-start gap-2 rounded-2xl border border-white/10 bg-black/25 p-2.5 text-[11px] leading-5 text-muted-foreground">
+        <div className="mb-2 flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/25 p-2.5 text-[11px] leading-5 text-muted-foreground">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/80" />
           <span>{selectedPreset.description}</span>
         </div>
@@ -341,7 +341,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
           <div className="mb-2 rounded-2xl border border-amber-300/15 bg-amber-300/5 p-2.5">
             <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Finance action allocation</label>
             <Select value={financeAllocationStatus} onValueChange={(value) => setFinanceAllocationStatus(value as FinanceAllocationStatus)}>
-              <SelectTrigger className="h-9 rounded-xl border-white/10 bg-black/30 text-xs transition-all hover:border-amber-300/30 focus:ring-amber-300/40">
+              <SelectTrigger className="h-9 rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/30 text-xs transition-all hover:border-amber-300/30 focus:ring-amber-300/40">
                 <SelectValue placeholder="Choose finance action" />
               </SelectTrigger>
               <SelectContent>
@@ -353,7 +353,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
             <p className="mt-1 text-[10px] text-muted-foreground">Finance receives access only to this allocated client-facing thread.</p>
           </div>
         )}
-        <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/20">
+        <div className="flex items-end gap-2 rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/30 p-2 shadow-inner shadow-sm dark:shadow-black/20">
           <Textarea
             ref={textareaRef}
             aria-label="Compose Client Portal message"
