@@ -71,12 +71,12 @@ interface AgentAssignment {
 }
 
 const PROVIDER_BRAND: Record<string, { name: string; color: string; docs: string }> = {
-  openai:     { name: 'OpenAI',          color: 'text-emerald-400', docs: 'https://platform.openai.com/docs/models' },
-  anthropic:  { name: 'Anthropic Claude', color: 'text-orange-400', docs: 'https://docs.anthropic.com/en/docs/about-claude/models' },
-  gemini:     { name: 'Google Gemini',   color: 'text-sky-400',     docs: 'https://ai.google.dev/gemini-api/docs/models' },
-  perplexity: { name: 'Perplexity',      color: 'text-violet-400',  docs: 'https://docs.perplexity.ai/guides/model-cards' },
+  openai:     { name: 'OpenAI',          color: 'text-emerald-700 dark:text-emerald-300', docs: 'https://platform.openai.com/docs/models' },
+  anthropic:  { name: 'Anthropic Claude', color: 'text-orange-700 dark:text-orange-300', docs: 'https://docs.anthropic.com/en/docs/about-claude/models' },
+  gemini:     { name: 'Google Gemini',   color: 'text-sky-700 dark:text-sky-300',     docs: 'https://ai.google.dev/gemini-api/docs/models' },
+  perplexity: { name: 'Perplexity',      color: 'text-violet-700 dark:text-violet-300',  docs: 'https://docs.perplexity.ai/guides/model-cards' },
   gateway:    { name: 'Lovable Gateway', color: 'text-primary',     docs: 'https://docs.lovable.dev' },
-  openrouter: { name: 'OpenRouter',      color: 'text-pink-400',    docs: 'https://openrouter.ai/docs' },
+  openrouter: { name: 'OpenRouter',      color: 'text-pink-700 dark:text-pink-300',    docs: 'https://openrouter.ai/docs' },
 };
 
 const capabilityIcon: Record<string, React.ReactNode> = {
@@ -383,7 +383,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
-                              {!currentExists && <SelectItem value={a.model_id} className="text-amber-400">{a.model_id} (not in catalog)</SelectItem>}
+                              {!currentExists && <SelectItem value={a.model_id} className="text-warning dark:text-amber-300">{a.model_id} (not in catalog)</SelectItem>}
                               {modelsForRoute.map((m) => (
                                 <SelectItem key={m.model_id} value={m.model_id}>
                                   <span className="font-mono text-xs">{m.model_id}</span>
@@ -416,7 +416,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                             </TooltipProvider>
                           )}
                           {isOnRecommended && (
-                            <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-400/80">
+                            <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-success dark:text-emerald-300">
                               <CheckCircle2 className="h-2.5 w-2.5" /> on recommended model
                             </p>
                           )}
@@ -492,7 +492,7 @@ function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
   return (
     <div className="space-y-5">
       <Alert className="border-pink-500/25 bg-pink-500/10 p-5 shadow-lg shadow-pink-500/5">
-        <Network className="h-5 w-5 text-pink-400" />
+        <Network className="h-5 w-5 text-pink-700 dark:text-pink-300" />
         <AlertTitle className="text-base font-semibold text-foreground">OpenRouter unified gateway active</AlertTitle>
         <AlertDescription className="mt-1 text-sm leading-6 text-muted-foreground">
           {orModels.length} models available. Per-model pricing shown where published. Any agent in the <strong>Agent Bindings</strong> tab can be pointed at any model here.
@@ -625,7 +625,7 @@ export default function ModelHub() {
               <TabsTrigger value="bindings" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
               <TabsTrigger value="gateway" className="min-w-[125px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
               <TabsTrigger value="native" className="min-w-[115px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
-              <TabsTrigger value="openrouter" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] border-pink-500/30 text-pink-300">on</Badge>}</TabsTrigger>
+              <TabsTrigger value="openrouter" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 border-pink-500/30 px-1 text-[9px] text-pink-700 dark:text-pink-300">on</Badge>}</TabsTrigger>
             </TabsList>
           </DashboardThemeFrame>
 
