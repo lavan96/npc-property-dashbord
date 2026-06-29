@@ -36,13 +36,13 @@ interface Props {
 }
 
 const STATUS_TONE: Record<string, { tone: string; icon: any; label: string }> = {
-  sent: { tone: 'border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100', icon: Mail, label: 'Sent' },
-  delivered: { tone: 'border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100', icon: Eye, label: 'Delivered' },
-  completed: { tone: 'border-teal-300/55 bg-teal-500/12 text-teal-800 dark:border-teal-200/35 dark:bg-teal-300/12 dark:text-teal-100', icon: CheckCircle2, label: 'Completed' },
-  signed: { tone: 'border-emerald-300/55 bg-emerald-500/12 text-emerald-800 dark:border-emerald-200/35 dark:bg-emerald-300/12 dark:text-emerald-100', icon: CheckCircle2, label: 'Signed' },
-  declined: { tone: 'border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100', icon: XCircle, label: 'Declined' },
-  voided: { tone: 'border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100', icon: AlertTriangle, label: 'Voided' },
-  expired: { tone: 'border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100', icon: Clock, label: 'Expired' },
+  sent: { tone: 'border-sky-300/70 bg-sky-500/12 text-sky-900 ring-1 ring-sky-300/20 dark:border-sky-200/35 dark:bg-sky-300/12 dark:text-sky-100 dark:ring-sky-200/10', icon: Mail, label: 'Sent' },
+  delivered: { tone: 'border-amber-300/70 bg-amber-500/14 text-amber-950 ring-1 ring-amber-300/25 dark:border-amber-200/40 dark:bg-amber-300/14 dark:text-amber-100 dark:ring-amber-200/10', icon: Eye, label: 'Delivered' },
+  completed: { tone: 'border-emerald-300/70 bg-emerald-500/14 text-emerald-900 ring-1 ring-emerald-300/25 dark:border-emerald-200/40 dark:bg-emerald-300/14 dark:text-emerald-100 dark:ring-emerald-200/10', icon: CheckCircle2, label: 'Completed' },
+  signed: { tone: 'border-emerald-300/70 bg-emerald-500/14 text-emerald-900 ring-1 ring-emerald-300/25 dark:border-emerald-200/40 dark:bg-emerald-300/14 dark:text-emerald-100 dark:ring-emerald-200/10', icon: CheckCircle2, label: 'Signed' },
+  declined: { tone: 'border-red-300/55 bg-red-500/10 text-red-800 dark:border-red-300/30 dark:bg-red-400/10 dark:text-red-100', icon: XCircle, label: 'Declined' },
+  voided: { tone: 'border-red-300/55 bg-red-500/10 text-red-800 dark:border-red-300/30 dark:bg-red-400/10 dark:text-red-100', icon: AlertTriangle, label: 'Voided' },
+  expired: { tone: 'border-red-300/55 bg-red-500/10 text-red-800 dark:border-red-300/30 dark:bg-red-400/10 dark:text-red-100', icon: Clock, label: 'Expired' },
   created: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: Clock, label: 'Created' },
   generated: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: FileText, label: 'Generated' },
   draft: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: FileText, label: 'Draft' },
@@ -60,7 +60,7 @@ export function DocuSignStatusBadge({ status }: { status?: string | null }) {
   const Icon = cfg.icon;
   return (
     <Badge
-      className={`max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm ${cfg.tone}`}
+      className={`max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm backdrop-blur ${cfg.tone}`}
     >
       <Icon className="h-3 w-3 shrink-0" />
       <span className="min-w-0 truncate">{cfg.label}</span>

@@ -48,6 +48,9 @@ import {
   AlertTriangle,
   Ban,
   FileText,
+  Mail,
+  CalendarDays,
+  FileCheck2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -393,23 +396,93 @@ export default function Agreements() {
     );
   };
 
+
+  const renderDocuSignTimelineDate = (
+    label: string,
+    date: string | null | undefined,
+    emptyLabel: string,
+    Icon: React.ComponentType<any>,
+  ) => (
+    <div className="flex min-w-[8.75rem] items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-2.5 py-2 shadow-sm dark:bg-slate-950/35">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[0.62rem] font-bold uppercase leading-3 tracking-[0.14em] text-muted-foreground">
+          {label}
+        </span>
+        <span
+          className={cn(
+            "block whitespace-nowrap text-sm font-semibold leading-5",
+            date ? "text-foreground" : "text-muted-foreground/70",
+          )}
+        >
+          {date ? format(new Date(date), "dd MMM yyyy") : emptyLabel}
+        </span>
+      </span>
+    </div>
+  );
+
+  const getDocuSignTrackingTone = (status?: string | null) => {
+    const key = status?.toLowerCase();
+    if (["completed", "signed"].includes(key || "")) {
+      return "border-emerald-300/60 bg-emerald-500/[0.08] shadow-emerald-900/5 dark:border-emerald-300/30 dark:bg-emerald-400/[0.10]";
+    }
+    if (["sent", "delivered", "viewed"].includes(key || "")) {
+      return "border-amber-300/70 bg-amber-500/[0.10] shadow-amber-900/5 ring-1 ring-amber-300/20 dark:border-amber-200/35 dark:bg-amber-300/[0.10] dark:ring-amber-200/10";
+    }
+    if (["declined", "voided", "expired", "failed"].includes(key || "")) {
+      return "border-red-300/55 bg-red-500/[0.07] shadow-red-900/5 dark:border-red-300/30 dark:bg-red-400/[0.08]";
+    }
+    return "border-border/60 bg-background/60 dark:bg-slate-950/30";
+  };
+
+  const renderDocuSignTracking = (agreement: AgencyAgreement) => {
+    const hasEnvelope = Boolean(agreement.docusign_envelope_id);
+
+    if (!hasEnvelope || !agreement.docusign_status) {
+      return (
+        <div className="flex max-w-[18rem] flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {renderStatusBadge(agreement.status)}
+          </div>
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-dashed border-border/70 bg-muted/35 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.075em] text-muted-foreground/75 dark:bg-slate-900/35">
+            <Mail className="h-3 w-3" />
+            Not sent
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={cn(
+          "max-w-[20rem] rounded-2xl border p-2.5 shadow-sm transition-all group-hover:-translate-y-0.5 group-hover:shadow-md",
+          getDocuSignTrackingTone(agreement.docusign_status),
+        )}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {renderStatusBadge(agreement.status)}
+            <DocuSignStatusBadge status={agreement.docusign_status} />
+          </div>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background/80 text-primary ring-1 ring-border/60 dark:bg-slate-950/55">
+            <FileSignature className="h-4 w-4" />
+          </span>
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:hidden xl:grid">
+          {renderDocuSignTimelineDate("Sent", agreement.docusign_sent_at, "Not sent", CalendarDays)}
+          {renderDocuSignTimelineDate("Signed", agreement.docusign_signed_at, "Pending", FileCheck2)}
+        </div>
+      </div>
+    );
+  };
+
   const renderAgreementDate = (date: string) => (
     <span className="inline-flex min-w-[7.25rem] items-center justify-center rounded-xl border border-border/55 bg-background/65 px-2.5 py-1.5 text-sm font-semibold text-foreground shadow-sm dark:bg-slate-950/35">
       {format(new Date(date), "dd MMM yyyy")}
     </span>
   );
-
-  const renderOptionalDate = (
-    date: string | null | undefined,
-    emptyLabel: string,
-  ) =>
-    date ? (
-      renderAgreementDate(date)
-    ) : (
-      <span className="inline-flex min-w-[7.25rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/35 px-2.5 py-1.5 text-sm font-semibold text-muted-foreground/70 dark:bg-slate-900/35">
-        {emptyLabel}
-      </span>
-    );
 
   return (
     <DashboardThemeFrame
@@ -666,29 +739,25 @@ export default function Agreements() {
                           )}
                         </TableCell>
                         <TableCell className="py-4 pr-5 align-middle">
-                          <div className="flex max-w-[13rem] flex-wrap items-center gap-1.5">
-                            {renderStatusBadge(agreement.status)}
-                            {agreement.docusign_envelope_id &&
-                              agreement.docusign_status && (
-                                <DocuSignStatusBadge
-                                  status={agreement.docusign_status}
-                                />
-                              )}
-                          </div>
+                          {renderDocuSignTracking(agreement)}
                         </TableCell>
                         <TableCell className="hidden py-4 pr-5 text-sm font-medium text-muted-foreground sm:table-cell">
                           {renderAgreementDate(agreement.agreement_date)}
                         </TableCell>
-                        <TableCell className="hidden py-4 pr-5 text-sm font-medium text-muted-foreground lg:table-cell">
-                          {renderOptionalDate(
+                        <TableCell className="hidden py-4 pr-5 align-middle lg:table-cell">
+                          {renderDocuSignTimelineDate(
+                            "Sent",
                             agreement.docusign_sent_at,
                             "Not sent",
+                            CalendarDays,
                           )}
                         </TableCell>
-                        <TableCell className="hidden py-4 pr-5 text-sm font-medium text-muted-foreground lg:table-cell">
-                          {renderOptionalDate(
+                        <TableCell className="hidden py-4 pr-5 align-middle lg:table-cell">
+                          {renderDocuSignTimelineDate(
+                            "Signed",
                             agreement.docusign_signed_at,
                             "Not signed",
+                            FileCheck2,
                           )}
                         </TableCell>
                         <TableCell className="py-4 pl-2 pr-4 text-right align-middle">
