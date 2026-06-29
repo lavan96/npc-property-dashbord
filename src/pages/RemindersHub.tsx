@@ -346,14 +346,25 @@ export default function RemindersHub() {
 
       {/* Main Tabs: Client vs Team */}
       <Tabs value={reminderTab} onValueChange={(v) => setReminderTab(v as ReminderTab)} className="space-y-4">
-        <TabsList className="border border-amber-400/10 bg-black/45 p-1 shadow-inner">
-          <TabsTrigger value="client" className="gap-1.5 text-xs text-slate-300 data-[state=active]:bg-amber-400 data-[state=active]:text-black data-[state=active]:shadow-[0_0_24px_rgba(245,158,11,0.22)] sm:text-sm">
-            <Bell className="h-3.5 w-3.5" />
-            Client Reminders
+        <TabsList className="relative grid h-auto w-full grid-cols-2 gap-1.5 overflow-hidden rounded-2xl border border-amber-300/15 bg-[linear-gradient(135deg,rgba(0,0,0,0.72),rgba(15,23,42,0.78))] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_45px_rgba(0,0,0,0.32)] backdrop-blur sm:inline-grid sm:w-auto sm:min-w-[430px]">
+          <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
+          <TabsTrigger
+            value="client"
+            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
+          >
+            <span className="flex min-w-0 items-center justify-center gap-2">
+              <Bell className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-105" />
+              <span className="truncate">Client Reminders</span>
+            </span>
           </TabsTrigger>
-          <TabsTrigger value="team" className="gap-1.5 text-xs text-slate-300 data-[state=active]:bg-amber-400 data-[state=active]:text-black data-[state=active]:shadow-[0_0_24px_rgba(245,158,11,0.22)] sm:text-sm">
-            <Users className="h-3.5 w-3.5" />
-            Team Reminders
+          <TabsTrigger
+            value="team"
+            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-amber-300/20 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
+          >
+            <span className="flex min-w-0 items-center justify-center gap-2">
+              <Users className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-105" />
+              <span className="truncate">Team Reminders</span>
+            </span>
           </TabsTrigger>
         </TabsList>
 
