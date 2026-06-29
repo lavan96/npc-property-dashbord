@@ -48,7 +48,12 @@ import {
   ShieldCheck,
   Clock3,
   UserRound,
+  AlertTriangle,
+  Inbox,
+  FilterX,
+  Sparkles,
 } from 'lucide-react';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
