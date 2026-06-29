@@ -64,6 +64,34 @@ import {
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+
+
+const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen max-w-none overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),radial-gradient(circle_at_80%_8%,hsl(var(--accent)/0.10),transparent_28%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--card))_46%,hsl(var(--background)))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
+const premiumPanel = "border-white/10 bg-gradient-to-br from-zinc-950/80 via-black/60 to-zinc-950/85 shadow-2xl shadow-black/30 backdrop-blur-xl";
+const premiumCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
+const premiumModalCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25";
+const premiumMutedSurface = "rounded-2xl border border-white/10 bg-black/35 shadow-inner shadow-black/20";
+const premiumSelectContent = "border-white/10 bg-zinc-950/95 text-zinc-100 shadow-2xl shadow-black/40 backdrop-blur-xl";
+const premiumScrollbar = "[scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)]";
+const premiumMetricCard = "group relative overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10";
+const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105";
+const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400";
+const premiumMetricValue = "text-2xl font-bold leading-none tracking-tight md:text-[1.65rem]";
+const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner shadow-black/20 transition-colors hover:border-amber-400/40 hover:bg-amber-400/5 focus-visible:ring-2 focus-visible:ring-amber-400/70";
+const premiumFilterControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-amber-300/70";
+const premiumFilterControlActive = "border-amber-300/45 bg-amber-300/12 text-amber-50 shadow-amber-500/10";
+const premiumSearchInput = "h-11 rounded-2xl border-white/10 bg-black/55 pl-11 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-amber-300/30 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
+const premiumActiveFilterBadge = "rounded-full border border-amber-300/35 bg-amber-300/10 px-2.5 py-1 text-xs font-medium text-amber-100 shadow-sm shadow-amber-500/10";
+const premiumActionBase = "min-h-10 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
+const premiumUtilityAction = `${premiumActionBase} border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-300/45 hover:bg-sky-400/15 hover:text-sky-50 focus-visible:ring-sky-300`;
+const premiumQualityAction = `${premiumActionBase} border-emerald-300/25 bg-emerald-400/10 text-emerald-100 hover:border-emerald-300/45 hover:bg-emerald-400/15 hover:text-emerald-50 focus-visible:ring-emerald-300`;
+const premiumAlertAction = `${premiumActionBase} border-amber-300/30 bg-amber-400/10 text-amber-100 hover:border-amber-300/55 hover:bg-amber-400/15 hover:text-amber-50 focus-visible:ring-amber-300`;
+const premiumDangerAction = `${premiumActionBase} border-red-400/35 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/15 hover:text-red-100 focus-visible:ring-red-300`;
+const premiumSecondaryAction = `${premiumActionBase} border-white/10 bg-white/5 text-zinc-100 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-amber-300`;
+const premiumTabList = "inline-flex h-auto min-w-max items-center gap-1.5 rounded-[1.35rem] border border-white/10 bg-black/45 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl";
+const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-zinc-400 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-400/25 data-[state=active]:via-yellow-300/15 data-[state=active]:to-amber-500/10 data-[state=active]:text-amber-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] md:text-sm";
 
 
 const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_34%),radial-gradient(circle_at_80%_8%,rgba(124,58,237,0.10),transparent_28%),linear-gradient(135deg,hsl(222_47%_5%),hsl(220_34%_8%)_46%,hsl(0_0%_4%))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
@@ -514,11 +542,11 @@ const CallLogs = () => {
   };
 
   return (
-    <div className={premiumPageShell}>
+    <DashboardThemeFrame as="main" variant="page" className={premiumPageShell}>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent" />
       <div className="mx-auto max-w-[1800px] space-y-5 md:space-y-7 pb-20 md:pb-0">
       {/* Header */}
-      <div className={cn("flex flex-col gap-4 rounded-3xl border p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6", premiumPanel)}>
+      <DashboardThemeFrame as="header" variant="hero" className="flex flex-col gap-4 border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.84)_52%,hsl(var(--primary)/0.12))] p-4 shadow-2xl shadow-black/20 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
         <div className="min-w-0">
           <div className="mb-2 inline-flex items-center rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-100 shadow-sm shadow-amber-500/10">Voice Intelligence</div>
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-amber-100 via-foreground to-amber-300 bg-clip-text text-transparent md:text-5xl">
@@ -526,7 +554,7 @@ const CallLogs = () => {
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300/85">Track and analyze voice agent call outcomes</p>
         </div>
-        <div className="flex w-full items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner shadow-black/20 lg:w-auto lg:justify-end">
+        <DashboardThemeFrame variant="toolbar" className="w-full border-primary/10 bg-background/45 shadow-inner shadow-black/10 lg:w-auto lg:justify-end">
           <div className="flex flex-1 flex-wrap items-center gap-2 lg:flex-none lg:justify-end">
           {!isMobile && <WeeklyReportConfig triggerClassName={premiumReportAction} />}
           {!isMobile && <CleanupTestCalls onComplete={fetchCalls} testNumbersButtonClassName={premiumUtilityAction} flushButtonClassName={premiumDangerAction} />}
@@ -538,8 +566,8 @@ const CallLogs = () => {
             <span className="hidden sm:inline">Refresh</span>
           </Button>
           </div>
-        </div>
-      </div>
+        </DashboardThemeFrame>
+      </DashboardThemeFrame>
 
       {/* Main Tabs */}
       <Tabs defaultValue="logs" className="w-full">
@@ -572,24 +600,34 @@ const CallLogs = () => {
           </TabsList>
         </div>
 
-        <TabsContent value="issues" className={cn("mt-4 min-w-0 overflow-x-auto md:mt-6", premiumWorkspaceFrame, premiumScrollbar)} aria-label="Call issues analysis">
-          <NegativeCallAnalysis calls={filteredCalls as any} onRefresh={fetchCalls} />
+        <TabsContent value="issues" className="mt-4 min-w-0 md:mt-6" aria-label="Call issues analysis">
+          <DashboardThemeFrame variant="section" className={cn("overflow-x-auto border-primary/15 bg-card/70 p-3 shadow-2xl shadow-black/20 md:p-4", premiumScrollbar)}>
+            <NegativeCallAnalysis calls={filteredCalls as any} onRefresh={fetchCalls} />
+          </DashboardThemeFrame>
         </TabsContent>
 
-        <TabsContent value="live" className={cn("mt-4 min-w-0 overflow-x-auto md:mt-6", premiumWorkspaceFrame, premiumScrollbar)} aria-label="Live calls monitor">
-          <LiveCallsMonitor />
+        <TabsContent value="live" className="mt-4 min-w-0 md:mt-6" aria-label="Live calls monitor">
+          <DashboardThemeFrame variant="section" className={cn("overflow-x-auto border-primary/15 bg-card/70 p-3 shadow-2xl shadow-black/20 md:p-4", premiumScrollbar)}>
+            <LiveCallsMonitor />
+          </DashboardThemeFrame>
         </TabsContent>
 
-        <TabsContent value="trends" className={cn("mt-4 min-w-0 overflow-x-auto md:mt-6", premiumWorkspaceFrame, premiumScrollbar)} aria-label="Call trends charts">
-          <CallAnalyticsTrends calls={filteredCalls} />
+        <TabsContent value="trends" className="mt-4 min-w-0 md:mt-6" aria-label="Call trends charts">
+          <DashboardThemeFrame variant="section" className={cn("overflow-x-auto border-primary/15 bg-card/70 p-3 shadow-2xl shadow-black/20 md:p-4", premiumScrollbar)}>
+            <CallAnalyticsTrends calls={filteredCalls} />
+          </DashboardThemeFrame>
         </TabsContent>
 
-        <TabsContent value="analytics" className={cn("mt-4 min-w-0 overflow-x-auto md:mt-6", premiumWorkspaceFrame, premiumScrollbar)} aria-label="Call analytics charts">
-          <CallAnalyticsDashboard calls={filteredCalls} />
+        <TabsContent value="analytics" className="mt-4 min-w-0 md:mt-6" aria-label="Call analytics charts">
+          <DashboardThemeFrame variant="section" className={cn("overflow-x-auto border-primary/15 bg-card/70 p-3 shadow-2xl shadow-black/20 md:p-4", premiumScrollbar)}>
+            <CallAnalyticsDashboard calls={filteredCalls} />
+          </DashboardThemeFrame>
         </TabsContent>
 
-        <TabsContent value="squad-analytics" className={cn("mt-4 min-w-0 overflow-x-auto md:mt-6", premiumWorkspaceFrame, premiumScrollbar)} aria-label="Squad analytics charts">
-          <SquadAnalyticsDashboard calls={filteredCalls} />
+        <TabsContent value="squad-analytics" className="mt-4 min-w-0 md:mt-6" aria-label="Squad analytics charts">
+          <DashboardThemeFrame variant="section" className={cn("overflow-x-auto border-primary/15 bg-card/70 p-3 shadow-2xl shadow-black/20 md:p-4", premiumScrollbar)}>
+            <SquadAnalyticsDashboard calls={filteredCalls} />
+          </DashboardThemeFrame>
         </TabsContent>
 
         <TabsContent value="logs" className="mt-4 min-h-0 space-y-0 overflow-hidden md:mt-6">
@@ -1716,7 +1754,7 @@ const CallLogs = () => {
         </DialogContent>
       </Dialog>
       </div>
-    </div>
+    </DashboardThemeFrame>
   );
 };
 
