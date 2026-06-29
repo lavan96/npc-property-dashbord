@@ -78,6 +78,11 @@ const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner
 const premiumFilterControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-amber-300/70";
 const premiumFilterControlActive = "border-amber-300/45 bg-amber-300/12 text-amber-50 shadow-amber-500/10";
 const premiumSearchInput = "h-11 rounded-2xl border-white/10 bg-black/55 pl-11 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-amber-300/30 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
+const detailDialogShell = "overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-950/95 to-black/98 text-zinc-50 shadow-2xl shadow-amber-950/30 backdrop-blur-xl";
+const detailCard = "overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/90 via-zinc-900/75 to-black/85 shadow-lg shadow-black/25";
+const detailMetaCard = "rounded-2xl border border-white/10 bg-white/[0.035] p-3 shadow-inner shadow-black/20";
+const detailLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500";
+const detailValue = "mt-1 text-sm font-semibold text-zinc-100";
 const premiumActiveFilterBadge = callLogBadgeTone('tag');
 const premiumActionBase = "min-h-9 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
@@ -1286,37 +1291,57 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "flex flex-col border-white/10 bg-zinc-950/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl",
+          "flex flex-col p-0",
+          detailDialogShell,
           isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Phone className="w-5 h-5" />
-              Call Details
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <div className="pointer-events-none absolute -right-20 -top-24 h-60 w-60 rounded-full bg-amber-500/10 blur-3xl" />
+          <DialogHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_36%),linear-gradient(90deg,rgba(24,24,27,0.96),rgba(0,0,0,0.82),rgba(120,53,15,0.16))] px-5 py-4 sm:px-6 sm:py-5">
+            <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+              <FileText className="h-3 w-3" />
+              Voice Intelligence Case File
+            </div>
+            <DialogTitle className="flex min-w-0 items-center gap-3 text-xl text-zinc-50 sm:text-2xl">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-500/10 text-amber-200 shadow-inner shadow-amber-950/40">
+                <Phone className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 truncate">
+                {selectedCall?.customer_name || selectedCall?.phone_number || 'Call Details'}
+              </span>
             </DialogTitle>
+            {selectedCall && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {selectedCall.phone_number && (
+                  <Badge className={callLogBadgeTone('neutral')}>{selectedCall.phone_number}</Badge>
+                )}
+                {getOutcomeBadge(selectedCall.call_outcome)}
+                {getSentimentBadge(selectedCall.sentiment)}
+              </div>
+            )}
           </DialogHeader>
           {selectedCall && (
-            <Tabs defaultValue="overview" className="w-full flex flex-col flex-1 min-h-0 overflow-hidden max-w-full">
-              <div className={isMobile ? "overflow-x-auto -mx-1 px-1 scrollbar-hide" : ""}>
+            <Tabs defaultValue="overview" className="relative flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden px-4 py-4 sm:px-6">
+              <div className={isMobile ? "overflow-x-auto -mx-1 px-1 pb-1 scrollbar-hide" : ""}>
                 <TabsList className={isMobile 
-                  ? "inline-flex w-auto min-w-max h-auto gap-0.5 p-0.5"
-                  : `grid w-full ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`
+                  ? "inline-flex h-auto w-auto min-w-max gap-1 rounded-2xl border border-white/10 bg-black/35 p-1"
+                  : `grid w-full rounded-2xl border border-white/10 bg-black/35 p-1 ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`
                 }>
-                  <TabsTrigger value="overview" className={isMobile ? "text-xs" : ""}>Overview</TabsTrigger>
+                  <TabsTrigger value="overview" className={cn("rounded-xl data-[state=active]:bg-amber-300/15 data-[state=active]:text-amber-100", isMobile ? "text-xs" : "")}>Overview</TabsTrigger>
                   {selectedCall.is_squad_call && (
-                    <TabsTrigger value="squad" className={cn("flex items-center gap-1", isMobile && "text-xs")}>
+                    <TabsTrigger value="squad" className={cn("flex items-center gap-1 rounded-xl data-[state=active]:bg-purple-400/15 data-[state=active]:text-purple-100", isMobile && "text-xs")}>
                       <Users className="w-3 h-3" />
                       Squad
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="transcript" className={isMobile ? "text-xs" : ""}>Transcript</TabsTrigger>
-                  <TabsTrigger value="tool-calls" className={isMobile ? "text-xs" : ""}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
-                  <TabsTrigger value="analysis" className={isMobile ? "text-xs" : ""}>Analysis</TabsTrigger>
-                  <TabsTrigger value="metadata" className={isMobile ? "text-xs" : ""}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
+                  <TabsTrigger value="transcript" className={cn("rounded-xl data-[state=active]:bg-amber-300/15 data-[state=active]:text-amber-100", isMobile ? "text-xs" : "")}>Transcript</TabsTrigger>
+                  <TabsTrigger value="tool-calls" className={cn("rounded-xl data-[state=active]:bg-blue-400/15 data-[state=active]:text-blue-100", isMobile ? "text-xs" : "")}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
+                  <TabsTrigger value="analysis" className={cn("rounded-xl data-[state=active]:bg-emerald-400/15 data-[state=active]:text-emerald-100", isMobile ? "text-xs" : "")}>Analysis</TabsTrigger>
+                  <TabsTrigger value="metadata" className={cn("rounded-xl data-[state=active]:bg-zinc-700/70 data-[state=active]:text-zinc-100", isMobile ? "text-xs" : "")}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
                 </TabsList>
               </div>
               
-              <ScrollArea className={cn("mt-2 max-w-full", isMobile ? "h-[60vh]" : "flex-1")}>
+              <ScrollArea className={cn("mt-4 max-w-full rounded-3xl border border-white/10 bg-black/20 p-3", isMobile ? "h-[60vh]" : "flex-1")}>
                 <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 min-w-0", isMobile ? "px-1 max-w-[calc(100vw-56px)] overflow-hidden" : "pr-4")}>
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
@@ -1340,17 +1365,17 @@ const CallLogs = () => {
                   {isMobile ? (
                     /* Mobile: single-column stack */
                     <div className="space-y-2 max-w-full overflow-hidden">
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">Customer</p>
                         <p className="font-medium text-sm break-words overflow-hidden">{selectedCall.customer_name || 'Unknown'}</p>
                         <p className="text-xs text-muted-foreground break-all overflow-hidden">{selectedCall.phone_number || '-'}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">{selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}</p>
                         <p className="font-medium text-sm break-words overflow-hidden">{selectedCall.agent_name || 'Unknown'}</p>
                         <p className="text-xs text-muted-foreground break-all overflow-hidden">{selectedCall.agent_id || '-'}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">Direction</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {selectedCall.call_direction === 'inbound' ? (
@@ -1366,25 +1391,25 @@ const CallLogs = () => {
                           )}
                         </div>
                       </div>
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">Outcome</p>
                         <div className="mt-0.5">{getOutcomeBadge(selectedCall.call_outcome)}</div>
                       </div>
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">Duration</p>
                         <p className="font-medium text-sm">{formatDuration(selectedCall.duration_seconds)}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">Cost</p>
                         <p className="font-medium text-sm">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">Started</p>
                         <p className="font-medium text-sm break-words">
                           {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'PPpp') : '-'}
                         </p>
                       </div>
-                      <div className="rounded-lg border bg-card p-3 max-w-full overflow-hidden">
+                      <div className={cn(detailMetaCard, "max-w-full overflow-hidden")}>
                         <p className="text-xs text-muted-foreground">Ended</p>
                         <p className="font-medium text-sm break-words">
                           {selectedCall.ended_at ? format(new Date(selectedCall.ended_at), 'PPpp') : '-'}
@@ -1394,14 +1419,14 @@ const CallLogs = () => {
                   ) : (
                     /* Desktop: original 3-column grid */
                     <div className="grid grid-cols-3 gap-4">
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
-                          <p className="text-sm text-muted-foreground">Customer</p>
-                          <p className="font-medium">{selectedCall.customer_name || 'Unknown'}</p>
+                          <p className={detailLabel}>Customer</p>
+                          <p className={detailValue}>{selectedCall.customer_name || 'Unknown'}</p>
                           <p className="text-sm text-muted-foreground">{selectedCall.phone_number || '-'}</p>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">
                             {selectedCall.is_squad_call ? 'Primary Agent' : 'Agent'}
@@ -1410,7 +1435,7 @@ const CallLogs = () => {
                           <p className="text-sm text-muted-foreground">{selectedCall.agent_id || '-'}</p>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Direction</p>
                           <div className="flex items-center gap-1.5 mt-1">
@@ -1428,25 +1453,25 @@ const CallLogs = () => {
                           </div>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Outcome</p>
                           <div className="mt-1">{getOutcomeBadge(selectedCall.call_outcome)}</div>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Duration</p>
                           <p className="font-medium">{formatDuration(selectedCall.duration_seconds)}</p>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Cost</p>
                           <p className="font-medium">${selectedCall.cost?.toFixed(4) || '0.00'}</p>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Started</p>
                           <p className="font-medium">
@@ -1454,7 +1479,7 @@ const CallLogs = () => {
                           </p>
                         </CardContent>
                       </Card>
-                      <Card>
+                      <Card className={detailCard}>
                         <CardContent className="p-4">
                           <p className="text-sm text-muted-foreground">Ended</p>
                           <p className="font-medium">
@@ -1466,7 +1491,7 @@ const CallLogs = () => {
                   )}
 
                   {selectedCall.summary && (
-                    <Card className="max-w-full overflow-hidden">
+                    <Card className={cn(detailCard, "max-w-full")}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                           <FileText className="w-4 h-4 flex-shrink-0" />
@@ -1494,8 +1519,8 @@ const CallLogs = () => {
                   <TabsContent value="squad" className="space-y-4 p-1 sm:p-2 overflow-hidden">
                     {/* Call Intent */}
                     {selectedCall.call_intent && (
-                      <Card>
-                        <CardHeader className="pb-2">
+                      <Card className={detailCard}>
+                        <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                           <CardTitle className="text-base flex items-center gap-2">
                             <Target className="w-4 h-4" />
                             Call Intent
@@ -1510,8 +1535,8 @@ const CallLogs = () => {
                     )}
 
                     {/* Assistants Involved */}
-                    <Card>
-                      <CardHeader className="pb-2">
+                    <Card className={detailCard}>
+                      <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                           <Users className="w-4 h-4" />
                           Assistants Involved ({selectedCall.assistants_involved?.length || 0})
@@ -1546,8 +1571,8 @@ const CallLogs = () => {
                     </Card>
 
                     {/* Handoff Sequence */}
-                    <Card>
-                      <CardHeader className="pb-2">
+                    <Card className={detailCard}>
+                      <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                         <CardTitle className="text-base flex items-center gap-2">
                           <GitBranch className="w-4 h-4" />
                           Handoff Sequence
@@ -1583,8 +1608,8 @@ const CallLogs = () => {
 
                     {/* Structured Data from Each Assistant */}
                     {selectedCall.structured_data_multi && selectedCall.structured_data_multi.length > 0 && (
-                      <Card>
-                        <CardHeader className="pb-2">
+                      <Card className={detailCard}>
+                        <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                           <CardTitle className="text-base flex items-center gap-2">
                             <Zap className="w-4 h-4" />
                             Collected Data
@@ -1601,7 +1626,7 @@ const CallLogs = () => {
                                       {assistant?.name || item.assistant.slice(0, 8)}
                                     </Badge>
                                   </div>
-                                  <pre className="whitespace-pre-wrap text-xs font-mono bg-muted p-3 rounded-lg overflow-auto">
+                                  <pre className="max-h-64 overflow-auto rounded-2xl border border-white/10 bg-black/40 p-3 font-mono text-xs text-zinc-300 whitespace-pre-wrap">
                                     {JSON.stringify(item.data, null, 2)}
                                   </pre>
                                 </div>
@@ -1628,8 +1653,8 @@ const CallLogs = () => {
                 <TabsContent value="analysis" className="p-1 sm:p-2 overflow-hidden">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Call Quality Score */}
-                  <Card>
-                    <CardHeader className="pb-2">
+                  <Card className={detailCard}>
+                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                       <CardTitle className="text-base">Call Quality Score</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1643,8 +1668,8 @@ const CallLogs = () => {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader className="pb-2">
+                  <Card className={detailCard}>
+                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                       <CardTitle className="text-base">Sentiment</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1652,8 +1677,8 @@ const CallLogs = () => {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader className="pb-2">
+                  <Card className={detailCard}>
+                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                       <CardTitle className="text-base flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Key Topics
@@ -1672,8 +1697,8 @@ const CallLogs = () => {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader className="pb-2">
+                  <Card className={detailCard}>
+                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                       <CardTitle className="text-base flex items-center gap-2">
                         <CheckCircle className="w-4 h-4" />
                         Action Items
@@ -1695,12 +1720,12 @@ const CallLogs = () => {
                 </TabsContent>
 
                 <TabsContent value="metadata" className="p-1 sm:p-2 overflow-hidden">
-                  <Card>
-                    <CardHeader className="pb-2">
+                  <Card className={detailCard}>
+                    <CardHeader className="border-b border-white/10 bg-white/[0.03] pb-2">
                       <CardTitle className="text-base">Raw Metadata</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <pre className="whitespace-pre-wrap text-xs font-mono bg-muted p-4 rounded-lg overflow-auto">
+                      <pre className="max-h-[45vh] overflow-auto rounded-2xl border border-white/10 bg-black/45 p-4 font-mono text-xs text-zinc-300 whitespace-pre-wrap">
                         {JSON.stringify(selectedCall.metadata, null, 2)}
                       </pre>
                     </CardContent>
