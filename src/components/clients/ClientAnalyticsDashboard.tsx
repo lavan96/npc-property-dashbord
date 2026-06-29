@@ -120,16 +120,16 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
   const chartTooltipStyle = {
     border: '1px solid rgba(245, 158, 11, 0.22)',
     borderRadius: '14px',
-    background: 'rgba(9, 9, 11, 0.96)',
+    background: 'hsl(var(--card) / 0.98)',
     boxShadow: '0 18px 44px rgba(0, 0, 0, 0.42)',
-    color: 'rgb(248, 250, 252)',
+    color: 'hsl(var(--foreground))',
   };
   const chartLabelStyle = {
-    color: 'rgb(251, 191, 36)',
+    color: 'hsl(var(--primary))',
     fontWeight: 700,
   };
   const chartItemStyle = {
-    color: 'rgb(226, 232, 240)',
+    color: 'hsl(var(--foreground))',
     fontWeight: 600,
   };
 
@@ -141,10 +141,10 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
       accent: 'emerald',
       description: 'Clients successfully synced to GoHighLevel.',
       containerClass: 'border-emerald-300/20 bg-emerald-400/10 hover:border-emerald-300/45 hover:bg-emerald-400/15',
-      iconClass: 'border-emerald-300/25 bg-emerald-300/15 text-emerald-200 shadow-emerald-950/20',
-      labelClass: 'text-emerald-100',
-      valueClass: 'text-emerald-100',
-      progressClass: 'bg-emerald-950/70 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-teal-300 [&>div]:via-emerald-300 [&>div]:to-emerald-500 [&>div]:shadow-[0_0_18px_rgba(45,212,191,0.42)]',
+      iconClass: 'border-emerald-300/25 bg-emerald-300/15 text-emerald-700 dark:text-emerald-200 shadow-emerald-950/20',
+      labelClass: 'text-emerald-700 dark:text-emerald-100',
+      valueClass: 'text-emerald-700 dark:text-emerald-100',
+      progressClass: 'bg-emerald-950/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-teal-300 [&>div]:via-emerald-300 [&>div]:to-emerald-500 [&>div]:shadow-[0_0_18px_rgba(45,212,191,0.42)]',
     },
     {
       label: 'Pending',
@@ -153,10 +153,10 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
       accent: 'amber',
       description: 'Clients waiting for the next GoHighLevel sync action.',
       containerClass: 'border-amber-300/20 bg-amber-400/10 hover:border-amber-300/45 hover:bg-amber-400/15',
-      iconClass: 'border-amber-300/25 bg-amber-300/15 text-amber-200 shadow-amber-950/20',
-      labelClass: 'text-amber-100',
-      valueClass: 'text-amber-100',
-      progressClass: 'bg-amber-950/70 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]',
+      iconClass: 'border-amber-300/25 bg-amber-300/15 text-amber-700 dark:text-amber-200 shadow-amber-950/20',
+      labelClass: 'text-amber-700 dark:text-amber-100',
+      valueClass: 'text-amber-700 dark:text-amber-100',
+      progressClass: 'bg-amber-950/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]',
     },
     {
       label: 'Errors',
@@ -168,30 +168,30 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
         ? 'border-red-300/25 bg-red-500/10 hover:border-red-300/50 hover:bg-red-500/15'
         : 'border-slate-500/15 bg-slate-500/5 hover:border-slate-400/25 hover:bg-slate-500/10',
       iconClass: analytics.errorCount > 0
-        ? 'border-red-300/25 bg-red-500/15 text-red-200 shadow-red-950/20'
-        : 'border-slate-500/20 bg-slate-500/10 text-slate-400 shadow-black/10',
-      labelClass: analytics.errorCount > 0 ? 'text-red-100' : 'text-slate-300',
-      valueClass: analytics.errorCount > 0 ? 'text-red-100' : 'text-slate-300',
+        ? 'border-red-300/25 bg-red-500/15 text-red-700 dark:text-red-200 shadow-red-950/20'
+        : 'border-slate-500/20 bg-slate-500/10 text-muted-foreground dark:text-slate-400 shadow-black/10',
+      labelClass: analytics.errorCount > 0 ? 'text-red-700 dark:text-red-100' : 'text-muted-foreground dark:text-slate-300',
+      valueClass: analytics.errorCount > 0 ? 'text-red-700 dark:text-red-100' : 'text-muted-foreground dark:text-slate-300',
       progressClass: analytics.errorCount > 0
-        ? 'bg-red-950/70 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-red-300 [&>div]:via-red-500 [&>div]:to-rose-600 [&>div]:shadow-[0_0_18px_rgba(248,113,113,0.36)]'
-        : 'bg-slate-800/70 shadow-inner shadow-black/30 [&>div]:bg-slate-500/50',
+        ? 'bg-red-950/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-red-300 [&>div]:via-red-500 [&>div]:to-rose-600 [&>div]:shadow-[0_0_18px_rgba(248,113,113,0.36)]'
+        : 'bg-slate-800/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-slate-500/50',
     },
   ];
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="group relative overflow-hidden rounded-3xl border-amber-400/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.95),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/45 hover:shadow-2xl hover:shadow-amber-950/25">
+        <Card className="group relative overflow-hidden rounded-3xl border-amber-400/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.95),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/45 hover:shadow-2xl hover:shadow-amber-950/25">
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
                 <div className="flex items-center gap-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100/75">Total Assets Under Management</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-100/75">Total Assets Under Management</p>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 shrink-0 cursor-help text-amber-100/50 transition-colors hover:text-amber-100" />
+                        <Info className="h-3 w-3 shrink-0 cursor-help text-amber-700 dark:text-amber-100/50 transition-colors hover:text-amber-800 dark:hover:text-amber-100" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
                         Combined estimated value of all client properties across your portfolio.
@@ -199,7 +199,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <p className="break-words text-3xl font-bold tracking-[-0.04em] text-amber-50 sm:text-4xl xl:text-3xl 2xl:text-4xl">{formatCurrency(analytics.totalPortfolioValue)}</p>
+                <p className="break-words text-3xl font-bold tracking-[-0.04em] text-amber-950 dark:text-amber-50 sm:text-4xl xl:text-3xl 2xl:text-4xl">{formatCurrency(analytics.totalPortfolioValue)}</p>
               </div>
               <div className={`rounded-2xl border border-amber-300/25 p-3 shadow-lg shadow-amber-950/20 transition-colors group-hover:border-amber-200/45 group-hover:bg-amber-300/15 ${summaryIconClass.info}`}>
                 <DollarSign className="h-5 w-5" />
@@ -209,13 +209,13 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Total Properties</p>
-                <p className="text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl">{analytics.totalProperties}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">Total Properties</p>
+                <p className="text-3xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-4xl">{analytics.totalProperties}</p>
               </div>
               <div className={`rounded-2xl border border-emerald-300/20 p-3 shadow-lg shadow-emerald-950/15 transition-colors group-hover:border-emerald-200/35 group-hover:bg-emerald-300/12 ${summaryIconClass.success}`}>
                 <Building2 className="h-5 w-5" />
@@ -225,17 +225,17 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
           </CardContent>
         </Card>
 
-        <Card className={`group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl ${analytics.totalCashFlow >= 0 ? 'hover:shadow-emerald-950/20' : 'hover:shadow-red-950/20'}`}>
+        <Card className={`group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl ${analytics.totalCashFlow >= 0 ? 'hover:shadow-emerald-950/20' : 'hover:shadow-red-950/20'}`}>
           <div className={`pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent ${analytics.totalCashFlow >= 0 ? 'via-emerald-200/55' : 'via-red-200/55'} to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100`} />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Total Monthly Cash Flow</p>
-                <p className={`break-words text-3xl font-bold tracking-[-0.04em] sm:text-4xl xl:text-3xl 2xl:text-4xl ${analytics.totalCashFlow >= 0 ? 'text-emerald-200' : 'text-red-300'}`}>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">Total Monthly Cash Flow</p>
+                <p className={`break-words text-3xl font-bold tracking-[-0.04em] sm:text-4xl xl:text-3xl 2xl:text-4xl ${analytics.totalCashFlow >= 0 ? 'text-emerald-700 dark:text-emerald-200' : 'text-red-700 dark:text-red-300'}`}>
                   {formatCurrency(analytics.totalCashFlow)}
                 </p>
               </div>
-              <div className={`rounded-2xl border p-3 shadow-lg transition-colors ${analytics.totalCashFlow >= 0 ? 'border-emerald-300/25 bg-emerald-400/12 text-emerald-200 shadow-emerald-950/20 group-hover:border-emerald-200/45 group-hover:bg-emerald-300/15' : 'border-red-300/25 bg-red-500/12 text-red-200 shadow-red-950/20 group-hover:border-red-200/45 group-hover:bg-red-500/15'}`}>
+              <div className={`rounded-2xl border p-3 shadow-lg transition-colors ${analytics.totalCashFlow >= 0 ? 'border-emerald-300/25 bg-emerald-400/12 text-emerald-700 dark:text-emerald-200 shadow-emerald-950/20 group-hover:border-emerald-200/45 group-hover:bg-emerald-300/15' : 'border-red-300/25 bg-red-500/12 text-red-700 dark:text-red-200 shadow-red-950/20 group-hover:border-red-200/45 group-hover:bg-red-500/15'}`}>
                 {analytics.totalCashFlow >= 0 ? (
                   <TrendingUp className="h-5 w-5" />
                 ) : (
@@ -247,15 +247,15 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Average LTV</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">Average LTV</p>
                 <div className="flex items-end gap-1.5">
-                  <p className="text-3xl font-bold tracking-[-0.04em] text-white sm:text-4xl">{analytics.avgLTV.toFixed(1)}</p>
-                  <span className="pb-1 text-lg font-semibold text-slate-400">%</span>
+                  <p className="text-3xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-4xl">{analytics.avgLTV.toFixed(1)}</p>
+                  <span className="pb-1 text-lg font-semibold text-muted-foreground dark:text-slate-400">%</span>
                 </div>
               </div>
               <div className={`rounded-2xl border border-amber-300/20 p-3 shadow-lg shadow-amber-950/15 transition-colors group-hover:border-amber-200/35 group-hover:bg-amber-300/12 ${summaryIconClass.accent}`}>
@@ -268,13 +268,13 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
       </div>
 
       <div className="grid gap-5 xl:grid-cols-3">
-        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          <CardHeader className="border-b border-white/10 pb-3">
-            <CardTitle className="text-base font-semibold tracking-tight text-white">Cash Flow Status</CardTitle>
+          <CardHeader className="border-b border-border/60 dark:border-white/10 pb-3">
+            <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">Cash Flow Status</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Cash flow status chart showing positive and negative client counts">
+            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-slate-950/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Cash flow status chart showing positive and negative client counts">
               {clients.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -287,7 +287,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                       dataKey="value"
                       paddingAngle={4}
                       labelLine={false}
-                      stroke="rgba(2,6,23,0.92)"
+                      stroke="hsl(var(--background))"
                       strokeWidth={3}
                     >
                       {analytics.cashFlowData.map((entry, index) => (
@@ -299,38 +299,38 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
-                  <Info className="mb-3 h-8 w-8 text-amber-100/70" />
-                  <p className="text-sm font-semibold text-slate-200">No cash flow data yet</p>
-                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Import or add clients to populate this chart.</p>
+                  <Info className="mb-3 h-8 w-8 text-amber-700 dark:text-amber-100/70" />
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No cash flow data yet</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-slate-500">Import or add clients to populate this chart.</p>
                 </div>
               )}
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <div className="flex items-center justify-between rounded-2xl border border-emerald-300/15 bg-emerald-400/10 px-3 py-2">
-                <span className="flex items-center gap-2 text-sm font-medium text-emerald-100">
+                <span className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-100">
                 <CheckCircle className="h-4 w-4 text-success" />
                   Positive
                 </span>
-                <span className="text-sm font-bold text-emerald-200">{analytics.positiveCashFlowClients}</span>
+                <span className="text-sm font-bold text-emerald-700 dark:text-emerald-200">{analytics.positiveCashFlowClients}</span>
               </div>
               <div className="flex items-center justify-between rounded-2xl border border-red-300/15 bg-red-500/10 px-3 py-2">
-                <span className="flex items-center gap-2 text-sm font-medium text-red-100">
+                <span className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-100">
                 <AlertCircle className="h-4 w-4 text-destructive" />
                   Negative
                 </span>
-                <span className="text-sm font-bold text-red-200">{analytics.negativeCashFlowClients}</span>
+                <span className="text-sm font-bold text-red-700 dark:text-red-200">{analytics.negativeCashFlowClients}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          <CardHeader className="border-b border-white/10 pb-3">
-            <CardTitle className="text-base font-semibold tracking-tight text-white">Portfolio Size Distribution</CardTitle>
+          <CardHeader className="border-b border-border/60 dark:border-white/10 pb-3">
+            <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">Portfolio Size Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Portfolio size distribution chart">
+            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-slate-950/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Portfolio size distribution chart">
               {analytics.portfolioDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analytics.portfolioDistribution} margin={{ top: 12, right: 8, left: -16, bottom: 8 }} barCategoryGap="22%">
@@ -343,22 +343,22 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
-                  <Info className="mb-3 h-8 w-8 text-amber-100/70" />
-                  <p className="text-sm font-semibold text-slate-200">No portfolio size data</p>
-                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Portfolio values will appear here once client records include property data.</p>
+                  <Info className="mb-3 h-8 w-8 text-amber-700 dark:text-amber-100/70" />
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No portfolio size data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-slate-500">Portfolio values will appear here once client records include property data.</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          <CardHeader className="border-b border-white/10 pb-3">
-            <CardTitle className="text-base font-semibold tracking-tight text-white">Property Count Distribution</CardTitle>
+          <CardHeader className="border-b border-border/60 dark:border-white/10 pb-3">
+            <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">Property Count Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner shadow-black/25" role="img" aria-label="Property count distribution chart">
+            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-slate-950/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Property count distribution chart">
               {analytics.propertyDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -371,7 +371,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                       dataKey="value"
                       paddingAngle={3}
                       labelLine={false}
-                      stroke="rgba(2,6,23,0.92)"
+                      stroke="hsl(var(--background))"
                       strokeWidth={3}
                     >
                       {analytics.propertyDistribution.map((entry, index) => (
@@ -383,16 +383,16 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
-                  <Building2 className="mb-3 h-8 w-8 text-amber-100/70" />
-                  <p className="text-sm font-semibold text-slate-200">No property count data</p>
-                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500">Property distribution will populate as client portfolios are added.</p>
+                  <Building2 className="mb-3 h-8 w-8 text-amber-700 dark:text-amber-100/70" />
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No property count data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-slate-500">Property distribution will populate as client portfolios are added.</p>
                 </div>
               )}
             </div>
             {analytics.propertyDistribution.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {analytics.propertyDistribution.map((entry, index) => (
-                  <span key={entry.name} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-xs font-semibold text-slate-300">
+                  <span key={entry.name} className="inline-flex items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-slate-300">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length] }} />
                     {entry.name}: {entry.value}
                   </span>
@@ -403,15 +403,15 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
         </Card>
       </div>
 
-      <Card className="group relative overflow-hidden rounded-3xl border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(3,7,18,0.92))] shadow-xl shadow-black/25 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
+      <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(3,7,18,0.92))] shadow-xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-teal-200/45 to-amber-200/45 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        <CardHeader className="border-b border-white/10 pb-4">
+        <CardHeader className="border-b border-border/60 dark:border-white/10 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-base font-semibold tracking-tight text-white">GoHighLevel Sync Status</CardTitle>
-              <p className="mt-1 text-xs font-medium text-slate-400">Operational health across {clients.length} client records</p>
+              <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">GoHighLevel Sync Status</CardTitle>
+              <p className="mt-1 text-xs font-medium text-muted-foreground dark:text-slate-400">Operational health across {clients.length} client records</p>
             </div>
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-slate-300">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/70 dark:bg-white/[0.04] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-slate-300">
               <span className={`h-2 w-2 rounded-full ${analytics.errorCount > 0 ? 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.7)]' : analytics.pendingCount > 0 ? 'bg-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.65)]' : 'bg-teal-300 shadow-[0_0_12px_rgba(45,212,191,0.65)]'}`} />
               {analytics.errorCount > 0 ? 'Attention needed' : analytics.pendingCount > 0 ? 'Sync in progress' : 'Healthy'}
             </div>
@@ -434,12 +434,12 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                             </span>
                             <div className="min-w-0">
                               <p className={`text-sm font-semibold ${labelClass}`}>{label}</p>
-                              <p className="text-xs text-slate-400">{Number.isFinite(percentage) ? percentage.toFixed(1) : '0.0'}% of clients</p>
+                              <p className="text-xs text-muted-foreground dark:text-slate-400">{Number.isFinite(percentage) ? percentage.toFixed(1) : '0.0'}% of clients</p>
                             </div>
                           </div>
-                          <span className={`rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-bold tabular-nums ${valueClass}`}>{value}</span>
+                          <span className={`rounded-full border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 px-3 py-1 text-sm font-bold tabular-nums ${valueClass}`}>{value}</span>
                         </div>
-                        <Progress value={Number.isFinite(percentage) ? percentage : 0} className={`h-3 border border-white/10 ${progressClass}`} />
+                        <Progress value={Number.isFinite(percentage) ? percentage : 0} className={`h-3 border border-border/60 dark:border-white/10 ${progressClass}`} />
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[240px] text-xs">
