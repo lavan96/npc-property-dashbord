@@ -114,7 +114,7 @@ export default function DealPipeline() {
 
   if (error) {
     return (
-      <DashboardThemeFrame as="main" variant="page" className="max-w-[1800px] space-y-4 p-3 sm:p-6">
+      <DashboardThemeFrame variant="page" className="space-y-4 p-3 sm:p-6">
         <div className="flex items-center gap-2 sm:gap-3">
           <TrendingUp className="h-5 w-5 shrink-0 text-amber-300 sm:h-6 sm:w-6" />
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
