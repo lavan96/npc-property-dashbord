@@ -37,6 +37,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
+import { DealLoadingState, DealStatePanel } from '@/components/deals/DealStatePresentation';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -150,10 +152,10 @@ function getDealMilestones(deal: DealWithClient): MilestoneMarker[] {
 
 // ─── Stage segment colors ───
 const STAGE_STATUS_COLORS: Record<string, string> = {
-  complete: 'bg-success',
-  in_progress: 'bg-primary',
-  pending: 'bg-muted-foreground/20',
-  skipped: 'bg-muted-foreground/10',
+  complete: 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]',
+  in_progress: 'bg-gradient-to-r from-amber-400 to-yellow-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]',
+  pending: 'bg-slate-200/80 dark:bg-slate-700/70',
+  skipped: 'bg-slate-100/70 dark:bg-slate-800/70',
 };
 
 // ─── Deal Row Component ───
@@ -177,6 +179,7 @@ function DealTimelineRow({
   const completedStages = stages.filter(s => s.status === 'complete').length;
   const totalStages = stages.length;
   const progressPct = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
+  const isOverdue = Boolean(deal.settlement_date && new Date(deal.settlement_date) < new Date() && progressPct < 100);
 
   // Position calculations
   const startOffset = Math.max(0, differenceInCalendarDays(dealRange.start, globalStart));
@@ -191,17 +194,21 @@ function DealTimelineRow({
   const isTodayInRange = todayPctInDeal >= 0 && todayPctInDeal <= 100;
 
   return (
-    <div className="flex items-stretch border-b border-border/50 hover:bg-muted/30 transition-colors group min-h-[52px]">
+    <div className={cn(
+      'flex items-stretch border-b border-border/50 transition-all group min-h-[64px] relative',
+      'bg-gradient-to-r from-card via-card to-muted/20 hover:from-muted/40 hover:to-muted/20',
+      isOverdue && 'bg-gradient-to-r from-destructive/10 via-card to-card'
+    )}>
       {/* Left panel: Deal info */}
       <div
-        className={cn('w-[220px] sm:w-[260px] shrink-0 flex items-center gap-2 px-3 py-2 cursor-pointer border-r border-border/50')}
+        className={cn('w-[240px] sm:w-[280px] shrink-0 flex items-center gap-3 px-3 py-3 cursor-pointer border-r border-border/60 bg-background/45 backdrop-blur-sm')}
         onClick={onClick}
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">{getDealTypeIcon(deal.deal_type)}</span>
-            <p className="text-xs font-semibold truncate leading-tight">{deal.client_name}</p>
-            <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', riskCfg.color)}>
+            <p className="text-xs font-semibold truncate leading-tight text-foreground">{deal.client_name}</p>
+            <Badge className={cn(pipelineBadgeClass(deal.risk_status === 'on_track' ? 'success' : deal.risk_status === 'needs_follow_up' ? 'warning' : 'danger', true, 'h-4 shrink-0 px-1'), riskCfg.color)}>
               {riskCfg.emoji}
             </Badge>
           </div>
@@ -210,22 +217,30 @@ function DealTimelineRow({
             <span className="text-[9px] text-muted-foreground">·</span>
             <span className="text-[9px] text-muted-foreground">S{deal.current_stage_number}</span>
             <span className="text-[9px] text-muted-foreground">·</span>
-            <span className="text-[9px] font-medium">{progressPct}%</span>
+            <span className="text-[9px] font-semibold text-foreground">{progressPct}%</span>
+            {isOverdue && (
+              <>
+                <span className="text-[9px] text-muted-foreground">·</span>
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[9px] font-bold text-destructive ring-1 ring-destructive/20">
+                  <AlertTriangle className="h-2.5 w-2.5" /> Overdue
+                </span>
+              </>
+            )}
           </div>
         </div>
         <Eye className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
 
       {/* Right panel: Gantt bar */}
-      <div className="flex-1 relative py-2 px-1 min-w-0">
+      <div className="flex-1 relative min-w-0 px-2 py-3 bg-[linear-gradient(90deg,hsl(var(--border)/0.24)_1px,transparent_1px)] bg-[length:96px_100%]">
         {/* Deal bar container */}
         <div
-          className="absolute top-2 bottom-2 rounded-md overflow-hidden"
+          className="absolute top-3 bottom-3 rounded-xl overflow-visible"
           style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 2)}%` }}
         >
           {/* Stage segments */}
           <TooltipProvider>
-            <div className="h-full flex rounded-md overflow-hidden border border-border/30 shadow-sm">
+            <div className={cn('h-full flex rounded-xl overflow-hidden border shadow-lg shadow-black/5 ring-1 ring-background/70', isOverdue ? 'border-destructive/35' : 'border-border/60') }>
               {stages.length > 0 ? (
                 stages.map((stage, i) => {
                   const segWidth = 100 / stages.length;
@@ -234,14 +249,14 @@ function DealTimelineRow({
                       <TooltipTrigger asChild>
                         <div
                           className={cn(
-                            'h-full transition-all relative',
+                            'h-full transition-all relative hover:brightness-105',
                             STAGE_STATUS_COLORS[stage.status] || 'bg-muted',
                             i > 0 && 'border-l border-background/30',
                           )}
                           style={{ width: `${segWidth}%` }}
                         >
                           {stage.status === 'in_progress' && (
-                            <div className="absolute inset-0 bg-primary/20 animate-pulse" />
+                            <div className="absolute inset-0 bg-white/25 animate-pulse" />
                           )}
                         </div>
                       </TooltipTrigger>
@@ -258,7 +273,7 @@ function DealTimelineRow({
                   );
                 })
               ) : (
-                <div className="h-full w-full bg-muted-foreground/15 rounded-md" />
+                <div className="h-full w-full rounded-xl bg-slate-200/70 dark:bg-slate-800/70" />
               )}
             </div>
           </TooltipProvider>
@@ -266,10 +281,10 @@ function DealTimelineRow({
           {/* Today indicator within bar */}
           {isTodayInRange && (
             <div
-              className="absolute top-0 bottom-0 w-0.5 bg-destructive z-10"
+              className="absolute -top-1 -bottom-1 w-0.5 bg-destructive z-10 shadow-[0_0_0_1px_hsl(var(--background)),0_0_12px_hsl(var(--destructive)/0.55)]"
               style={{ left: `${todayPctInDeal}%` }}
             >
-              <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-destructive" />
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 h-2 w-2 rounded-full bg-destructive ring-2 ring-background" />
             </div>
           )}
 
@@ -283,10 +298,10 @@ function DealTimelineRow({
                 <Tooltip key={i}>
                   <TooltipTrigger asChild>
                     <div
-                      className={cn('absolute top-0 bottom-0 flex items-end justify-center z-20')}
-                      style={{ left: `${mPct}%` }}
+                      className={cn('absolute z-20 -translate-x-1/2')}
+                      style={{ left: `${mPct}%`, bottom: `${i % 2 === 0 ? 6 : -6}px` }}
                     >
-                      <div className={cn('w-3 h-3 rounded-full border-2 border-background flex items-center justify-center text-white', m.color)}>
+                      <div className={cn('h-5 w-5 rounded-full border-2 border-background flex items-center justify-center text-white shadow-md ring-1 ring-black/10', m.color)}>
                         {m.icon}
                       </div>
                     </div>
@@ -319,14 +334,14 @@ function TimelineHeader({
   const todayPct = (differenceInCalendarDays(today, globalStart) / totalDays) * 100;
 
   return (
-    <div className="flex items-stretch border-b border-border sticky top-0 z-20 bg-card">
+    <div className="flex items-stretch border-b border-border sticky top-0 z-20 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 shadow-sm">
       {/* Label column */}
-      <div className="w-[220px] sm:w-[260px] shrink-0 flex items-center px-3 py-1.5 border-r border-border/50">
+      <div className="w-[240px] sm:w-[280px] shrink-0 flex items-center px-3 py-1.5 border-r border-border/50">
         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Deal</span>
       </div>
 
       {/* Month columns */}
-      <div className="flex-1 relative min-w-0">
+      <div className="flex-1 relative min-w-0 bg-[linear-gradient(90deg,hsl(var(--border)/0.35)_1px,transparent_1px)] bg-[length:96px_100%]">
         <div className="flex h-full">
           {months.map((month, i) => {
             const monthStart = i === 0 ? globalStart : startOfMonth(month);
@@ -338,7 +353,7 @@ function TimelineHeader({
               <div
                 key={month.toISOString()}
                 className={cn(
-                  'flex items-center justify-center py-1.5 text-[10px] font-medium text-muted-foreground border-r border-border/30',
+                  'flex items-center justify-center py-2.5 text-[10px] font-semibold text-muted-foreground border-r border-border/40',
                   isSameMonth(today, month) && 'bg-primary/5 text-foreground font-semibold',
                 )}
                 style={{ width: `${widthPct}%` }}
@@ -352,10 +367,10 @@ function TimelineHeader({
         {/* Today line */}
         {todayPct >= 0 && todayPct <= 100 && (
           <div
-            className="absolute top-0 bottom-0 w-px bg-destructive/60 z-30"
+            className="absolute top-0 bottom-0 w-0.5 bg-destructive z-30 shadow-[0_0_0_1px_hsl(var(--background)),0_0_14px_hsl(var(--destructive)/0.5)]"
             style={{ left: `${todayPct}%` }}
           >
-            <div className="absolute -top-0 left-1/2 -translate-x-1/2 px-1 py-0 rounded-b bg-destructive text-[8px] text-destructive-foreground font-bold whitespace-nowrap">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-md bg-destructive px-1.5 py-0.5 text-[8px] font-bold text-destructive-foreground shadow-sm whitespace-nowrap">
               Today
             </div>
           </div>
@@ -367,43 +382,42 @@ function TimelineHeader({
 
 // ─── Legend ───
 function TimelineLegend() {
+  const items = [
+    { label: 'Complete', swatch: 'h-2.5 w-5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500' },
+    { label: 'In progress', swatch: 'h-2.5 w-5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500' },
+    { label: 'Pending', swatch: 'h-2.5 w-5 rounded-full bg-slate-200 ring-1 ring-slate-300 dark:bg-slate-700 dark:ring-slate-600' },
+    { label: 'Skipped', swatch: 'h-2.5 w-5 rounded-full bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700' },
+  ];
+
+  const markers = [
+    { label: 'Settlement', className: 'bg-success', icon: <CheckCircle2 className="h-2.5 w-2.5" /> },
+    { label: 'Finance expiry', className: 'bg-warning', icon: <AlertTriangle className="h-2.5 w-2.5" /> },
+    { label: 'Land settlement', className: 'bg-chart-1', icon: <Milestone className="h-2.5 w-2.5" /> },
+    { label: 'Build start', className: 'bg-chart-6', icon: <ArrowRight className="h-2.5 w-2.5" /> },
+  ];
+
   return (
-    <div className="flex items-center gap-4 flex-wrap text-[10px] text-muted-foreground">
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-2 rounded-sm bg-success" />
-        <span>Complete</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-2 rounded-sm bg-primary" />
-        <span>In Progress</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-2 rounded-sm bg-muted-foreground/20" />
-        <span>Pending</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-3 h-2 rounded-sm bg-muted-foreground/10" />
-        <span>Skipped</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-px h-3 bg-destructive" />
-        <span>Today</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-2.5 h-2.5 rounded-full bg-success border border-background" />
-        <span>Settlement</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-2.5 h-2.5 rounded-full bg-warning border border-background" />
-        <span>Finance Expiry</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-2.5 h-2.5 rounded-full bg-chart-1 border border-background" />
-        <span>Land Settlement</span>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <div className="w-2.5 h-2.5 rounded-full bg-chart-6 border border-background" />
-        <span>Build Start</span>
+    <div className="rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-[10px] text-muted-foreground">
+        <span className="font-semibold uppercase tracking-[0.18em] text-foreground/80">Legend</span>
+        {items.map((item) => (
+          <div key={item.label} className="flex items-center gap-1.5">
+            <div className={item.swatch} />
+            <span>{item.label}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5">
+          <div className="h-4 w-0.5 rounded-full bg-destructive shadow-[0_0_10px_hsl(var(--destructive)/0.55)]" />
+          <span>Today</span>
+        </div>
+        {markers.map((marker) => (
+          <div key={marker.label} className="flex items-center gap-1.5">
+            <div className={cn('flex h-4 w-4 items-center justify-center rounded-full border-2 border-background text-white shadow-sm ring-1 ring-black/10', marker.className)}>
+              {marker.icon}
+            </div>
+            <span>{marker.label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -490,46 +504,36 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-10 rounded-lg" />
-        <Skeleton className="h-8 rounded-lg" />
-        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 rounded-lg" />)}
-      </div>
+      <DealLoadingState title="Loading deal timeline" description="Sequencing milestones, settlement dates and stage activity." />
     );
   }
 
   if (deals.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center">
-          <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm font-medium">No deals to display on timeline</p>
-          <p className="text-xs text-muted-foreground mt-1">Create deals to visualise their lifecycle</p>
-        </CardContent>
-      </Card>
+      <DealStatePanel icon={<CalendarDays className="h-7 w-7 text-sky-200" />} eyebrow="Timeline clear" title="No timeline activity yet" description="Deal lifecycle events will appear here when real pipeline records include dates or stage movement." />
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-h-0 min-w-0 space-y-3 overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 flex-wrap rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="flex items-center gap-2 flex-wrap">
           {/* Alert badges */}
           {stats.upcoming > 0 && (
-            <Badge variant="outline" className="text-[10px] gap-1 border-success/40 text-success">
+            <Badge variant="outline" className={pipelineBadgeClass('success')}>
               <CheckCircle2 className="h-3 w-3" />
               {stats.upcoming} settling in 30d
             </Badge>
           )}
           {stats.overdue > 0 && (
-            <Badge variant="destructive" className="text-[10px] gap-1">
+            <Badge variant="outline" className={pipelineBadgeClass('danger')}>
               <AlertTriangle className="h-3 w-3" />
               {stats.overdue} overdue
             </Badge>
           )}
           {stats.financeExpiring > 0 && (
-            <Badge variant="outline" className="text-[10px] gap-1 border-warning/40 text-warning">
+            <Badge variant="outline" className={pipelineBadgeClass('warning')}>
               <Clock className="h-3 w-3" />
               {stats.financeExpiring} finance expiring
             </Badge>
@@ -537,12 +541,12 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">Sort:</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Sort</span>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-            <SelectTrigger className="h-7 w-[130px] text-[10px]">
+            <SelectTrigger className="h-8 w-[160px] rounded-xl border-border/70 bg-background/80 text-[10px] font-semibold shadow-sm">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl">
               <SelectItem value="created" className="text-xs">Date Created</SelectItem>
               <SelectItem value="settlement" className="text-xs">Settlement Date</SelectItem>
               <SelectItem value="client" className="text-xs">Client Name</SelectItem>
@@ -557,9 +561,9 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
       <TimelineLegend />
 
       {/* Timeline chart */}
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto scrollbar-thin" ref={scrollRef}>
-          <div style={{ minWidth: `${Math.max(800, totalDays * 4)}px` }}>
+      <Card className="overflow-hidden border-border/70 bg-card/80 shadow-xl shadow-black/5">
+        <div className="min-w-0 overflow-x-auto scroll-smooth overscroll-x-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70" ref={scrollRef}>
+          <div style={{ minWidth: `${Math.max(920, totalDays * 4)}px` }}>
             {/* Header with month markers */}
             <TimelineHeader globalStart={globalStart} globalEnd={globalEnd} totalDays={totalDays} />
 

@@ -168,39 +168,46 @@ export function ReminderActions({
 
   const editDialog = isEditable && canEdit ? (
     <Dialog open={showEdit} onOpenChange={(o) => { if (!o) requestCloseEdit(); else setShowEdit(true); }}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <DialogContent
+        className="max-h-[90vh] max-w-md overflow-y-auto overflow-x-hidden rounded-2xl border-amber-300/20 bg-slate-950/95 text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30"
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
-          <DialogTitle>Edit reminder</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-white">
+            <Pencil className="h-4 w-4 text-amber-200" />
+            Edit reminder
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Title</label>
+            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Title</label>
             <Input
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="Reminder title"
+              className="rounded-xl border-amber-300/15 bg-black/40 text-slate-100 placeholder:text-slate-500 shadow-inner hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Description</label>
             <Textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
-              className="min-h-[90px]"
+              className="min-h-[90px] rounded-xl border-amber-300/15 bg-black/40 text-slate-100 placeholder:text-slate-500 shadow-inner hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               placeholder="Add notes..."
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Due date & time</label>
+            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Due date & time</label>
             <div className="flex gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 justify-start gap-2">
+                  <Button variant="outline" className="flex-1 justify-start gap-2 rounded-xl border-amber-300/15 bg-black/35 text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                     <CalendarIcon className="h-4 w-4" />
                     {editDueDate ? format(editDueDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto rounded-xl border-amber-300/20 bg-slate-950/95 p-0 text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur" align="start" sideOffset={8}>
                   <Calendar
                     mode="single"
                     selected={editDueDate}
@@ -214,27 +221,27 @@ export function ReminderActions({
                 type="time"
                 value={editDueTime}
                 onChange={(e) => setEditDueTime(e.target.value)}
-                className="w-28"
+                className="w-28 rounded-xl border-amber-300/15 bg-black/40 text-slate-100 shadow-inner hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Priority</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Priority</label>
               <Select value={editPriority} onValueChange={setEditPriority}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-xl border-amber-300/15 bg-black/40 text-slate-100 shadow-inner hover:border-amber-300/35 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectContent className="rounded-xl border-amber-300/20 bg-slate-950/95 p-1 text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+                  <SelectItem value="low" className="rounded-lg focus:bg-emerald-400/15 focus:text-emerald-100">Low</SelectItem>
+                  <SelectItem value="medium" className="rounded-lg focus:bg-amber-400/15 focus:text-amber-100">Medium</SelectItem>
+                  <SelectItem value="high" className="rounded-lg focus:bg-red-400/15 focus:text-red-100">High</SelectItem>
+                  <SelectItem value="urgent" className="rounded-lg focus:bg-red-400/15 focus:text-red-100">Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Assigned to</label>
+              <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Assigned to</label>
               <MultiTeamUserSelect
                 value={editAssigned}
                 onValueChange={setEditAssigned}
@@ -244,10 +251,11 @@ export function ReminderActions({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={requestCloseEdit}>Cancel</Button>
+          <Button variant="outline" onClick={requestCloseEdit} className="rounded-xl border-slate-600/70 bg-black/25 text-slate-200 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">Cancel</Button>
           <Button
             onClick={handleSaveEdit}
             disabled={!editTitle.trim() || updateMutation.isPending}
+            className="rounded-xl border border-amber-200/35 bg-[linear-gradient(135deg,#fbbf24,#d97706)] font-semibold text-black shadow-[0_0_26px_rgba(245,158,11,0.24)] hover:shadow-[0_0_36px_rgba(245,158,11,0.34)] focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-60"
           >
             {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
           </Button>
@@ -259,14 +267,14 @@ export function ReminderActions({
   if (showSnooze && isEditable && canEdit) {
     return (
       <div
-        className="mt-2 p-2.5 rounded-md border bg-muted/50 space-y-2"
+        className="mt-2 w-full space-y-2 rounded-2xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(2,6,23,0.94))] p-3 shadow-[0_18px_42px_rgba(0,0,0,0.34),0_0_24px_rgba(245,158,11,0.10)] sm:min-w-[260px]"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-          <AlarmClock className="h-3.5 w-3.5" />
+        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">
+          <AlarmClock className="h-3.5 w-3.5 text-amber-200" />
           Snooze until...
         </p>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5 pt-2">
           {([
             { d: '1h' as SnoozeDuration, label: '+1 Hour' },
             { d: '1d' as SnoozeDuration, label: 'Tomorrow' },
@@ -277,7 +285,7 @@ export function ReminderActions({
               key={d}
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-8 rounded-xl border-amber-300/20 bg-black/30 text-xs font-semibold text-slate-200 hover:border-amber-300/45 hover:bg-amber-400/12 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               disabled={snoozeMutation.isPending}
               onClick={() => handleSnooze(d)}
             >
@@ -288,12 +296,12 @@ export function ReminderActions({
         <div className="flex items-center gap-1.5">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs flex-1 justify-start gap-1.5">
+              <Button variant="outline" size="sm" className="h-8 flex-1 justify-start gap-1.5 rounded-xl border-amber-300/20 bg-black/30 text-xs font-semibold text-slate-200 hover:border-amber-300/45 hover:bg-amber-400/12 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                 <CalendarIcon className="h-3 w-3" />
                 {customSnoozeDate ? format(customSnoozeDate, 'MMM d, yyyy') : 'Custom date...'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto rounded-xl border-amber-300/20 bg-slate-950/95 p-0 text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur" align="start" sideOffset={8}>
               <Calendar
                 mode="single"
                 selected={customSnoozeDate}
@@ -307,7 +315,7 @@ export function ReminderActions({
           {customSnoozeDate && (
             <Button
               size="sm"
-              className="h-7 text-xs"
+              className="h-8 rounded-xl border border-amber-200/35 bg-[linear-gradient(135deg,#fbbf24,#d97706)] text-xs font-semibold text-black shadow-[0_0_20px_rgba(245,158,11,0.20)] hover:shadow-[0_0_28px_rgba(245,158,11,0.30)] focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               disabled={snoozeMutation.isPending}
               onClick={() => handleSnooze('custom', customSnoozeDate)}
             >
@@ -318,7 +326,7 @@ export function ReminderActions({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 text-[10px] w-full"
+          className="h-7 w-full rounded-xl text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 hover:bg-white/5 hover:text-slate-200 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           onClick={() => { setShowSnooze(false); setCustomSnoozeDate(undefined); }}
         >
           Cancel
@@ -330,26 +338,26 @@ export function ReminderActions({
   return (
     <>
     {editDialog}
-    <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
+    <div className="flex shrink-0 gap-1 rounded-full border border-white/10 bg-black/30 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100" onClick={(e) => e.stopPropagation()}>
       {isEditable && canEdit && (
         <>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-8 w-8 rounded-full text-amber-200 hover:bg-amber-400/15 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             title="Snooze"
             onClick={() => setShowSnooze(true)}
           >
-            <AlarmClock className="h-3.5 w-3.5 text-muted-foreground" />
+            <AlarmClock className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-8 w-8 rounded-full text-slate-300 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             title="Edit"
             onClick={() => setShowEdit(true)}
           >
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
         </>
       )}
@@ -357,14 +365,14 @@ export function ReminderActions({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-8 w-8 rounded-full text-emerald-300 hover:bg-emerald-400/15 hover:text-emerald-100 focus-visible:ring-2 focus-visible:ring-emerald-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-60"
           title="Complete"
           disabled={completeMutation.isPending}
           onClick={handleComplete}
         >
           {completeMutation.isPending
             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            : <Check className="h-3.5 w-3.5 text-green-600" />
+            : <Check className="h-3.5 w-3.5" />
           }
         </Button>
       )}
@@ -372,14 +380,14 @@ export function ReminderActions({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-8 w-8 rounded-full text-red-300 hover:bg-red-400/15 hover:text-red-100 focus-visible:ring-2 focus-visible:ring-red-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-60"
           title="Delete"
           disabled={deleteMutation.isPending}
           onClick={handleDelete}
         >
           {deleteMutation.isPending
             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            : <X className="h-3.5 w-3.5 text-destructive" />
+            : <X className="h-3.5 w-3.5" />
           }
         </Button>
       )}
