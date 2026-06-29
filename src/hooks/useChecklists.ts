@@ -46,7 +46,10 @@ export interface ChecklistInstance {
   generated_by: string | null;
   status: 'in_progress' | 'completed' | 'archived';
   completed_at: string | null;
+  archived_at: string | null;
   progress_percent: number;
+  due_date: string | null;
+  recurrence_key: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +68,17 @@ export interface ChecklistInstanceItem {
 }
 
 // ─── Helpers ───
+// Recurrence audit note: checklist_templates are blueprints, while checklist_instances are generated occurrences.
+// The previous Daily Operations flow inserted a fresh in_progress instance on every cron/manual generation
+// without an occurrence date or idempotency key, so the same template/date could clutter Active repeatedly.
+function getChecklistOccurrenceDate(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildChecklistRecurrenceKey(templateId: string, dueDate = getChecklistOccurrenceDate()) {
+  return `${templateId}:${dueDate}`;
+}
+
 async function invoke(body: Record<string, any>) {
   const { data, error } = await invokeSecureFunction('manage-templates', body);
   if (error) throw new Error(error.message);
@@ -228,6 +242,17 @@ export function useChecklistMutations() {
 
   const generateFromTemplate = useMutation({
     mutationFn: async (template: ChecklistTemplate) => {
+      const dueDate = getChecklistOccurrenceDate();
+      const recurrenceKey = buildChecklistRecurrenceKey(template.id, dueDate);
+
+      const existingResult = await invoke({
+        operation: 'list',
+        table: 'checklist_instances',
+        listOptions: { filters: { recurrence_key: recurrenceKey }, limit: 1 },
+      });
+      const existing = existingResult?.records?.[0];
+      if (existing) return existing;
+
       // 1. Create instance
       const instanceResult = await invoke({
         operation: 'insert',
@@ -240,6 +265,8 @@ export function useChecklistMutations() {
           generated_by: 'manual',
           status: 'in_progress',
           progress_percent: 0,
+          due_date: dueDate,
+          recurrence_key: recurrenceKey,
         },
       });
       const instance = instanceResult?.record;

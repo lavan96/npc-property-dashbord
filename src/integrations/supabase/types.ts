@@ -2372,40 +2372,49 @@ export type Database = {
       }
       checklist_instances: {
         Row: {
+          archived_at: string | null
           completed_at: string | null
           created_at: string
           description: string | null
+          due_date: string | null
           generated_by: string | null
           icon: string | null
           id: string
           name: string
           progress_percent: number | null
+          recurrence_key: string | null
           status: string
           template_id: string | null
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           generated_by?: string | null
           icon?: string | null
           id?: string
           name: string
           progress_percent?: number | null
+          recurrence_key?: string | null
           status?: string
           template_id?: string | null
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          due_date?: string | null
           generated_by?: string | null
           icon?: string | null
           id?: string
           name?: string
           progress_percent?: number | null
+          recurrence_key?: string | null
           status?: string
           template_id?: string | null
           updated_at?: string
