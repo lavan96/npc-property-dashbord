@@ -811,6 +811,14 @@ request_timeout = 1500
 verify_jwt = false
 request_timeout = 1500
 
+[functions.pdf-parse-chunk-callback]
+# Called by the Docling sidecar with a service token (validated in-function via
+# _shared/auth.ts), not a user JWT — must keep verify_jwt=false or the gateway
+# 401s the chunk-completion callbacks. Was missing from config; a CLI deploy
+# without this block would default to verify_jwt=true and break chunked imports.
+verify_jwt = false
+request_timeout = 1500
+
 
 
 [functions.estimate-commercial-noi]
