@@ -36,9 +36,9 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
   if (!artifactMessages || artifactMessages.length === 0) {
     if (plainTranscript) {
       return (
-        <Card className="overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25">
+        <Card className="overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-lg shadow-sm dark:shadow-black/25">
           <CardContent className="p-4">
-            <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/45 p-4 font-mono text-sm text-zinc-300 [overflow-wrap:anywhere]">
+            <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/45 p-4 font-mono text-sm text-muted-foreground dark:text-zinc-300 [overflow-wrap:anywhere]">
               {plainTranscript}
             </pre>
           </CardContent>
@@ -46,9 +46,9 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
       );
     }
     return (
-      <Card className="overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25">
+      <Card className="overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-lg shadow-sm dark:shadow-black/25">
         <CardContent className="p-8 text-center">
-          <p className="text-zinc-500">No transcript available</p>
+          <p className="text-muted-foreground dark:text-zinc-500">No transcript available</p>
         </CardContent>
       </Card>
     );
@@ -75,7 +75,7 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
   let toolCallCounter = 0;
 
   return (
-    <div className="space-y-3 rounded-3xl border border-white/10 bg-black/20 p-3">
+    <div className="space-y-3 rounded-3xl border border-border dark:border-white/10 bg-background dark:bg-black/20 p-3">
       {visibleMessages.map((msg, idx) => {
         const isBot = msg.role === 'bot' || msg.role === 'assistant';
         const isUser = msg.role === 'user';
@@ -99,17 +99,17 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
                   className={`max-w-[75%] rounded-2xl border px-4 py-2.5 text-sm shadow-sm ${
                     isUser
                       ? 'rounded-br-md border-blue-300/20 bg-blue-500/15 text-blue-50'
-                      : 'rounded-bl-md border-white/10 bg-white/[0.05] text-zinc-200'
+                      : 'rounded-bl-md border-border dark:border-white/10 bg-white/[0.05] text-foreground dark:text-zinc-200'
                   }`}
                 >
                   <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{content}</p>
                   {msg.time && (
-                    <p className={`mt-1 text-[10px] ${isUser ? 'text-blue-100/60' : 'text-zinc-500'}`}>
+                    <p className={`mt-1 text-[10px] ${isUser ? 'text-blue-100/60' : 'text-muted-foreground dark:text-zinc-500'}`}>
                       {formatTime(msg.time)}
                     </p>
                   )}
                   {isBot && msg.assistantName && (
-                    <p className="mt-0.5 text-[10px] text-zinc-500">
+                    <p className="mt-0.5 text-[10px] text-muted-foreground dark:text-zinc-500">
                       {msg.assistantName}
                     </p>
                   )}
@@ -152,25 +152,25 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
                         <AccordionTrigger className="py-2 text-xs hover:no-underline">
                           <div className="flex items-center gap-2 text-left">
                             <Wrench className="h-3 w-3 text-amber-300" />
-                            <span className="font-mono text-zinc-400">{tc.function?.name || 'tool_call'}</span>
+                            <span className="font-mono text-muted-foreground dark:text-zinc-400">{tc.function?.name || 'tool_call'}</span>
                             <div className={`w-1.5 h-1.5 rounded-full ${success ? 'bg-emerald-500' : 'bg-red-500'}`} />
                           </div>
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="space-y-2 text-xs pb-1 overflow-hidden">
                             <div>
-                              <p className="mb-1 flex items-center gap-1 font-medium text-zinc-500">
+                              <p className="mb-1 flex items-center gap-1 font-medium text-muted-foreground dark:text-zinc-500">
                                 <ChevronRight className="w-3 h-3" /> Request
                               </p>
-                              <pre className="max-h-40 w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded-xl border border-white/10 bg-black/45 p-2 font-mono text-[11px] text-zinc-300">
+                              <pre className="max-h-40 w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border dark:border-white/10 bg-background dark:bg-black/45 p-2 font-mono text-[11px] text-muted-foreground dark:text-zinc-300">
                                 {typeof args === 'string' ? args : JSON.stringify(args, null, 2)}
                               </pre>
                             </div>
                             <div>
-                              <p className="mb-1 flex items-center gap-1 font-medium text-zinc-500">
+                              <p className="mb-1 flex items-center gap-1 font-medium text-muted-foreground dark:text-zinc-500">
                                 <ChevronRight className="w-3 h-3" /> Response
                               </p>
-                              <pre className="max-h-40 w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded-xl border border-white/10 bg-black/45 p-2 font-mono text-[11px] text-zinc-300">
+                              <pre className="max-h-40 w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded-xl border border-border dark:border-white/10 bg-background dark:bg-black/45 p-2 font-mono text-[11px] text-muted-foreground dark:text-zinc-300">
                                 {result ? (typeof result === 'string' ? result : JSON.stringify(result, null, 2)) : 'No response'}
                               </pre>
                             </div>
