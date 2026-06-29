@@ -457,13 +457,15 @@ export default function Agreements() {
               status, signature milestones, and actions.
             </p>
           </div>
-          <div className="relative w-full sm:w-80 lg:w-96">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="group/search relative w-full sm:w-80 lg:w-96">
+            <div className="pointer-events-none absolute inset-y-1.5 left-1.5 z-10 flex w-10 items-center justify-center rounded-xl border border-transparent bg-primary/8 text-primary shadow-[inset_0_1px_0_hsl(0_0%_100%/0.32)] transition-all duration-300 group-hover/search:border-amber-300/35 group-hover/search:bg-amber-400/12 group-focus-within/search:border-amber-300/55 group-focus-within/search:bg-amber-400/18 group-focus-within/search:text-amber-700 dark:bg-amber-300/10 dark:text-amber-200 dark:group-hover/search:bg-amber-200/12 dark:group-focus-within/search:bg-amber-200/16 dark:group-focus-within/search:text-amber-100">
+              <Search className="h-4 w-4" aria-hidden="true" />
+            </div>
             <Input
               placeholder="Search by name, email, status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-11 rounded-2xl border-border/70 bg-background/90 pl-11 pr-4 text-sm shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-all placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/25 dark:bg-slate-950/65 dark:shadow-black/20"
+              className="h-[3.25rem] rounded-[1.15rem] border-border/70 bg-background/95 py-3 pl-14 pr-4 text-[0.95rem] font-medium text-foreground shadow-[0_16px_42px_rgba(15,23,42,0.10),inset_0_1px_0_hsl(0_0%_100%/0.45)] outline-none transition-all duration-300 placeholder:text-muted-foreground/80 hover:border-amber-300/50 hover:bg-background hover:shadow-[0_18px_48px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.12),inset_0_1px_0_hsl(0_0%_100%/0.55)] focus-visible:border-amber-400/70 focus-visible:ring-2 focus-visible:ring-amber-400/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-white/10 dark:bg-slate-950/75 dark:shadow-[0_16px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] dark:placeholder:text-slate-300/70 dark:hover:border-amber-200/35 dark:hover:bg-slate-950/90 dark:hover:shadow-[0_18px_48px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.12),inset_0_1px_0_rgba(255,255,255,0.10)] dark:focus-visible:border-amber-200/60 dark:focus-visible:ring-amber-300/25"
             />
           </div>
         </div>
@@ -473,10 +475,24 @@ export default function Agreements() {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : filteredAgreements.length === 0 ? (
-            <div className="mx-4 my-5 rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-12 text-center text-sm text-muted-foreground">
-              {searchTerm
-                ? "No agreements match your search."
-                : 'No agreements sent yet. Open a client and click "Send Agreement" to get started.'}
+            <div className="mx-4 my-5 overflow-hidden rounded-[1.35rem] border border-dashed border-amber-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.14),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.24))] px-5 py-12 text-center text-sm text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35)] dark:border-amber-200/25 dark:bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.48))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-400/12 text-amber-700 shadow-[0_14px_34px_hsl(43_84%_32%/0.14)] dark:border-amber-200/25 dark:bg-amber-200/10 dark:text-amber-100">
+                {searchTerm ? (
+                  <Search className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <FileSignature className="h-5 w-5" aria-hidden="true" />
+                )}
+              </div>
+              <p className="mx-auto max-w-md text-base font-semibold text-foreground">
+                {searchTerm
+                  ? "No agreements match your search."
+                  : 'No agreements sent yet. Open a client and click "Send Agreement" to get started.'}
+              </p>
+              {searchTerm && (
+                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-muted-foreground">
+                  Check the buyer name, email, or status and try again.
+                </p>
+              )}
             </div>
           ) : (
             <ScrollArea className="max-h-[600px] rounded-2xl border border-border/70 bg-card/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_18px_44px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
