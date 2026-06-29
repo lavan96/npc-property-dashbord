@@ -43,9 +43,10 @@ interface CallStats {
 interface CallLogsExportProps {
   calls: CallLog[];
   stats: CallStats;
+  triggerClassName?: string;
 }
 
-export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
+export const CallLogsExport = ({ calls, stats, triggerClassName }: CallLogsExportProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
@@ -248,8 +249,8 @@ export const CallLogsExport = ({ calls, stats }: CallLogsExportProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Download className="w-4 h-4" />
+        <Button variant="outline" size="sm" className={`gap-2 ${triggerClassName || ''}`}>
+          <Download className="w-4 h-4 shrink-0" />
           Export
         </Button>
       </DialogTrigger>
