@@ -4230,18 +4230,32 @@ html {
     --deal-gold-soft: 43 92% 58% / 0.18;
   }
 
-  .deal-pipeline-polish :is(button, [role="button"], a, input, textarea, [data-radix-select-trigger]) {
+  .deal-pipeline-polish :is(button, [role="button"], a, input, textarea, [data-radix-select-trigger], [tabindex="0"]) {
     transition-property: transform, border-color, background-color, box-shadow, color, opacity, filter;
     transition-duration: 180ms;
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .deal-pipeline-polish :is(button, [role="button"], a, input, textarea, [data-radix-select-trigger]):focus-visible {
+  .deal-pipeline-polish :is(button, [role="button"], a, input, textarea, [data-radix-select-trigger], [tabindex="0"]):focus-visible {
     outline: 2px solid hsl(var(--deal-gold) / 0.72);
     outline-offset: 3px;
     box-shadow:
       0 0 0 4px hsl(var(--deal-gold) / 0.15),
       0 0 24px hsl(var(--deal-gold) / 0.16) !important;
+  }
+
+  .deal-pipeline-polish :is(button, [role="button"], a, input, textarea, [data-radix-select-trigger]) {
+    min-height: 2.75rem;
+  }
+
+  .deal-pipeline-polish :is([role="region"][tabindex="0"]) {
+    border-radius: 1rem;
+    scroll-padding: 1rem;
+  }
+
+  .deal-pipeline-polish :is(table) {
+    border-collapse: separate;
+    border-spacing: 0;
   }
 
   .deal-pipeline-polish :is(input, textarea):focus-visible {
@@ -4295,6 +4309,22 @@ html {
 
   .deal-pipeline-polish .group:hover :is(svg, [class*="lucide"]) {
     filter: drop-shadow(0 0 8px hsl(var(--deal-gold) / 0.24));
+  }
+
+  @media (max-width: 640px) {
+    .deal-pipeline-polish {
+      border-radius: 1.25rem;
+      max-height: none;
+    }
+
+    .deal-pipeline-polish :is(.recharts-responsive-container, .recharts-wrapper) {
+      min-width: 20rem;
+    }
+
+    .deal-pipeline-polish :is(th, td) {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

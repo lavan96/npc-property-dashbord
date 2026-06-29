@@ -121,6 +121,13 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
       onClick={onClick}
       tabIndex={0}
       role="button"
+      aria-label={`Open deal card for ${deal.client_name}, ${deal.current_stage}, ${riskCfg.label}`}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick?.();
+        }
+      }}
     >
       <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <CardContent className="space-y-3.5 p-3.5">
@@ -243,7 +250,7 @@ function KanbanColumn({
   const urgentCount = deals.filter(d => d.risk_status === 'urgent').length;
 
   return (
-    <div className="group/column flex min-h-0 min-w-[300px] max-w-[300px] shrink-0 flex-col transition-all duration-300 hover:-translate-y-0.5 xl:min-w-[320px] xl:max-w-[320px]">
+    <div className="group/column flex min-h-0 min-w-[280px] max-w-[280px] shrink-0 snap-start flex-col transition-all duration-300 hover:-translate-y-0.5 xl:min-w-[320px] xl:max-w-[320px]">
       {/* Column header */}
       <div className={cn('relative overflow-hidden rounded-t-[1.2rem] border border-b-0 transition-all duration-300 group-hover/column:border-amber-300/45 group-hover/column:shadow-[0_0_28px_rgba(245,158,11,0.13)] bg-[linear-gradient(145deg,rgba(255,255,255,0.095),rgba(39,39,42,0.88)_44%,rgba(0,0,0,0.72))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] border-t-4', column.color)}>
         <div className="flex items-center justify-between">
@@ -370,8 +377,8 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
       </div>
 
       {/* Kanban board - horizontal scroll */}
-      <div className="-mx-3 min-w-0 overflow-x-auto overscroll-x-contain px-3 pb-5 [scrollbar-color:rgba(245,158,11,0.50)_rgba(24,24,27,0.85)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950 [&::-webkit-scrollbar-thumb]:bg-gradient-to-r [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-amber-200/55 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/90 sm:-mx-6 sm:px-6">
-        <div className="flex min-w-max items-start gap-5 pr-6">
+      <div role="region" aria-label="Pipeline board, horizontally scrollable" tabIndex={0} className="-mx-3 min-w-0 overflow-x-auto overscroll-x-contain px-3 pb-5 [scrollbar-color:rgba(245,158,11,0.50)_rgba(24,24,27,0.85)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950 [&::-webkit-scrollbar-thumb]:bg-gradient-to-r [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-amber-200/55 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/90 sm:-mx-6 sm:px-6">
+        <div className="flex min-w-max snap-x snap-mandatory items-start gap-5 pr-6">
           {activeColumns.map(col => (
             <KanbanColumn
               key={col.id}

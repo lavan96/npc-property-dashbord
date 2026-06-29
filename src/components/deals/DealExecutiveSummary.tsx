@@ -150,8 +150,8 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
       {/* Deal Table — filters now handled by parent toolbar */}
       <Card className="overflow-hidden rounded-[1.25rem] border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(9,9,11,0.92))] shadow-[0_20px_60px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)]">
         <CardContent className="p-0">
-          <div className="max-w-full overflow-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
-            <Table className="min-w-[880px]">
+          <div role="region" aria-label="Executive Summary deals table, horizontally scrollable" tabIndex={0} className="max-w-full overflow-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
+            <Table className="min-w-[880px]" aria-label="Executive Summary deals">
               <TableHeader className="bg-black/30">
                 <TableRow className="border-amber-100/10 hover:bg-transparent">
                   <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Client</TableHead>
@@ -177,7 +177,7 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
                     const dateUrgency = getDateUrgency(deal.settlement_date);
 
                     return (
-                      <TableRow key={deal.id} className={cn('border-white/10 transition-colors hover:bg-amber-300/10', onDealClick && 'cursor-pointer')} onClick={() => onDealClick?.(deal)}>
+                      <TableRow key={deal.id} tabIndex={onDealClick ? 0 : undefined} role={onDealClick ? 'button' : undefined} aria-label={`Open deal for ${deal.client_name}`} className={cn('border-white/10 transition-colors hover:bg-amber-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60', onDealClick && 'cursor-pointer')} onClick={() => onDealClick?.(deal)} onKeyDown={(event) => { if (onDealClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onDealClick(deal); } }}>
                         <TableCell className="whitespace-nowrap py-4 text-xs font-semibold text-white sm:text-sm">{deal.client_name}</TableCell>
                         <TableCell className="py-4">
                           <Badge variant="outline" className="gap-1.5 border-amber-200/20 bg-amber-100/10 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
