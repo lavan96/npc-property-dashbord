@@ -386,7 +386,7 @@ export default function Agreements() {
       <Badge
         variant={config.variant}
         className={cn(
-          "max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm backdrop-blur transition-colors",
+          "max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm backdrop-blur ring-1 ring-white/45 transition-all duration-200 group-hover:shadow-[0_8px_20px_hsl(43_84%_52%/0.12)] group-hover:ring-amber-300/25 dark:ring-white/10 dark:group-hover:ring-amber-200/15",
           config.toneClassName,
         )}
       >
@@ -616,8 +616,9 @@ export default function Agreements() {
             <DashboardThemeFrame
               key={stat.label}
               variant="premiumCard"
+              tabIndex={0}
               className={cn(
-                "group relative min-h-[9.5rem] overflow-hidden p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-white/50 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/60 hover:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.20),0_0_34px_hsl(43_84%_52%/0.18)] dark:ring-white/10 dark:hover:border-amber-200/35 dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.16),0_0_38px_hsl(43_84%_52%/0.14)] sm:p-6",
+                "group relative min-h-[9.5rem] overflow-hidden p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-white/50 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/60 hover:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.20),0_0_34px_hsl(43_84%_52%/0.18)] focus-visible:-translate-y-1 focus-visible:border-amber-400/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.24),0_0_34px_hsl(43_84%_52%/0.20)] dark:ring-white/10 dark:hover:border-amber-200/35 dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.16),0_0_38px_hsl(43_84%_52%/0.14)] dark:focus-visible:border-amber-200/50 dark:focus-visible:ring-amber-300/30 dark:focus-visible:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.18),0_0_38px_hsl(43_84%_52%/0.16)] sm:p-6",
                 stat.className,
               )}
             >
@@ -747,7 +748,7 @@ export default function Agreements() {
                       >
                         <TableCell className="max-w-[18rem] py-4 pr-5 font-medium">
                           <button
-                            className="block max-w-full truncate text-left text-base font-bold leading-6 text-foreground transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[1.02rem]"
+                            className="block max-w-full rounded-lg truncate text-left text-base font-bold leading-6 text-foreground transition-all hover:text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[1.02rem] dark:hover:text-amber-100"
                             title={agreement.buyer_names}
                             onClick={() =>
                               handleViewClient(agreement.client_id)
@@ -807,7 +808,7 @@ export default function Agreements() {
                                 variant="outline"
                                 size="icon"
                                 aria-label={`Open actions for agreement with ${agreement.buyer_names}`}
-                                className="ml-auto h-10 w-10 rounded-2xl border-border/80 bg-card/95 text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 data-[state=open]:border-primary/50 data-[state=open]:bg-primary/12 data-[state=open]:text-primary dark:bg-slate-950/55 dark:hover:bg-primary/15"
+                                className="ml-auto h-10 w-10 rounded-2xl border-border/80 bg-card/95 text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/12 hover:text-amber-700 hover:shadow-[0_10px_24px_hsl(43_84%_52%/0.18)] focus-visible:border-amber-400/70 focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 data-[state=open]:border-amber-400/60 data-[state=open]:bg-amber-500/14 data-[state=open]:text-amber-700 dark:bg-slate-950/55 dark:hover:border-amber-200/35 dark:hover:bg-amber-200/12 dark:hover:text-amber-100 dark:data-[state=open]:text-amber-100"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
@@ -823,7 +824,7 @@ export default function Agreements() {
                               </DropdownMenuLabel>
                               <DropdownMenuItem
                                 onClick={() => handleViewAgreement(agreement)}
-                                className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary"
+                                className="gap-3 rounded-xl px-3 py-2.5 font-medium transition-colors hover:bg-amber-500/10 hover:text-amber-700 focus:bg-amber-500/12 focus:text-amber-700 dark:hover:text-amber-100 dark:focus:text-amber-100"
                               >
                                 <FileText className="h-4 w-4 text-primary" />
                                 View Agreement
@@ -832,7 +833,7 @@ export default function Agreements() {
                                 onClick={() =>
                                   handleDownloadAgreement(agreement)
                                 }
-                                className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
+                                className="gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-amber-500/10 hover:text-amber-700 focus:bg-amber-500/12 focus:text-amber-700 dark:hover:text-amber-100 dark:focus:text-amber-100"
                               >
                                 <Download className="h-4 w-4 text-muted-foreground" />
                                 Download Agreement
@@ -854,7 +855,7 @@ export default function Agreements() {
                                 onClick={() =>
                                   handleViewClient(agreement.client_id)
                                 }
-                                className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
+                                className="gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-amber-500/10 hover:text-amber-700 focus:bg-amber-500/12 focus:text-amber-700 dark:hover:text-amber-100 dark:focus:text-amber-100"
                               >
                                 <Eye className="h-4 w-4 text-muted-foreground" />
                                 View Client
@@ -867,7 +868,7 @@ export default function Agreements() {
                                       onClick={() =>
                                         openPrepareForSigning(agreement)
                                       }
-                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary"
+                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium transition-colors hover:bg-amber-500/10 hover:text-amber-700 focus:bg-amber-500/12 focus:text-amber-700 dark:hover:text-amber-100 dark:focus:text-amber-100"
                                     >
                                       <FileSignature className="h-4 w-4 text-primary" />
                                       Prepare for Signing
@@ -877,7 +878,7 @@ export default function Agreements() {
                                         handleSendViaDocuSign(agreement)
                                       }
                                       disabled={sendViaDocuSign.isPending}
-                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary disabled:opacity-60"
+                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium transition-colors hover:bg-amber-500/10 hover:text-amber-700 focus:bg-amber-500/12 focus:text-amber-700 disabled:opacity-60 dark:hover:text-amber-100 dark:focus:text-amber-100"
                                     >
                                       {sendViaDocuSign.isPending ? (
                                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -897,7 +898,7 @@ export default function Agreements() {
                                     onClick={() =>
                                       setStatusAgreement(agreement)
                                     }
-                                    className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
+                                    className="gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-amber-500/10 hover:text-amber-700 focus:bg-amber-500/12 focus:text-amber-700 dark:hover:text-amber-100 dark:focus:text-amber-100"
                                   >
                                     <Eye className="h-4 w-4 text-muted-foreground" />
                                     Envelope Status &amp; Audit
@@ -906,7 +907,7 @@ export default function Agreements() {
                                     onClick={() =>
                                       handleRefreshStatus(agreement.id)
                                     }
-                                    className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
+                                    className="gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-amber-500/10 hover:text-amber-700 focus:bg-amber-500/12 focus:text-amber-700 dark:hover:text-amber-100 dark:focus:text-amber-100"
                                   >
                                     <RefreshCw className="h-4 w-4 text-muted-foreground" />
                                     Refresh Status
@@ -920,7 +921,7 @@ export default function Agreements() {
                                   <>
                                     <DropdownMenuSeparator className="mx-1 my-2 bg-border/70" />
                                     <DropdownMenuItem
-                                      className="gap-3 rounded-xl px-3 py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                      className="gap-3 rounded-xl px-3 py-2.5 text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
                                       onClick={() => handleVoid(agreement.id)}
                                     >
                                       <XCircle className="h-4 w-4" />

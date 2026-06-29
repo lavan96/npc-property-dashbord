@@ -189,7 +189,7 @@ export default function GammaTemplateManager() {
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Manage reusable Gamma agreement templates, safe placeholder mapping, and the default agreement blueprint used for client sends.</p>
           </div>
-          <Button size="sm" onClick={openCreate} className="h-10 rounded-xl bg-[linear-gradient(135deg,hsl(43_84%_52%),hsl(38_92%_50%))] px-4 font-semibold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28)] transition-all hover:translate-y-[-1px] hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.34)] dark:text-slate-950">
+          <Button size="sm" onClick={openCreate} className="h-10 rounded-xl bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_48%,hsl(38_92%_50%))] px-4 font-semibold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:translate-y-[-1px] hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.38),0_0_0_1px_hsl(43_84%_52%/0.22),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-slate-950">
             <Plus className="h-4 w-4 mr-1" /> Add Template
           </Button>
         </div>
@@ -279,13 +279,13 @@ export default function GammaTemplateManager() {
                   </TableCell>
                   <TableCell className="py-4">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_18px_hsl(43_84%_52%/0.16)] dark:hover:border-amber-200/25 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_18px_hsl(43_84%_52%/0.16)] focus-visible:border-amber-400/60 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:hover:border-amber-200/25 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
                         {t.is_default ? <Star className="h-4 w-4 fill-amber-400 text-amber-500 drop-shadow-[0_0_7px_rgba(245,158,11,0.45)]" /> : <StarOff className="h-4 w-4" />}
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-sky-300/45 hover:bg-sky-500/10 hover:text-sky-700 hover:shadow-[0_8px_18px_rgba(14,165,233,0.14)] dark:hover:border-sky-200/25 dark:hover:text-sky-200" onClick={() => openEdit(t)} title="Edit template">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-sky-300/45 hover:bg-sky-500/10 hover:text-sky-700 hover:shadow-[0_8px_18px_rgba(14,165,233,0.14)] focus-visible:border-sky-400/60 focus-visible:ring-2 focus-visible:ring-sky-300/40 dark:hover:border-sky-200/25 dark:hover:text-sky-200" onClick={() => openEdit(t)} title="Edit template">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-destructive/80 transition-all hover:-translate-y-0.5 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_8px_18px_hsl(var(--destructive)/0.12)]" title="Delete template" onClick={() => {
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-destructive/80 transition-all hover:-translate-y-0.5 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_8px_18px_hsl(var(--destructive)/0.12)] focus-visible:border-destructive/40 focus-visible:ring-2 focus-visible:ring-destructive/25" title="Delete template" onClick={() => {
                         if (confirm('Delete this template?')) deleteMutation.mutate(t.id);
                       }}>
                         <Trash2 className="h-4 w-4" />
@@ -391,7 +391,7 @@ export default function GammaTemplateManager() {
                           <select
                             value={m.field}
                             onChange={(e) => updateMapping(idx, 'field', e.target.value)}
-                            className="h-10 w-full rounded-xl border border-input bg-background/90 px-3 text-sm shadow-sm transition-all focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
+                            className="h-10 w-full rounded-xl border border-input bg-background/90 px-3 text-sm shadow-sm transition-all hover:border-amber-300/45 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65 dark:hover:border-amber-200/25"
                           >
                             <option value="">Select field...</option>
                             {AVAILABLE_FIELDS.map((f) => (
@@ -408,7 +408,7 @@ export default function GammaTemplateManager() {
                             className="h-10 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
                           />
                         </div>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground transition-all hover:border hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl border border-transparent text-muted-foreground transition-all hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/35 focus-visible:ring-2 focus-visible:ring-destructive/25" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
                           <X className="h-4 w-4" />
                         </Button>
                         <div className="min-w-0 rounded-xl border border-border/65 bg-background/85 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] sm:col-span-5">
