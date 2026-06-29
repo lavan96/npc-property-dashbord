@@ -73,8 +73,14 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   };
 
   const handleArchive = () => {
-    mutations.updateInstance.mutate({ id: instance.id, status: 'archived', archived_at: new Date().toISOString() });
-    onBack();
+    mutations.updateInstance.mutate(
+      { id: instance.id, status: 'archived', archived_at: new Date().toISOString() },
+      { onSuccess: onBack },
+    );
+  };
+
+  const handleDelete = () => {
+    mutations.deleteInstance.mutate(instance.id, { onSuccess: onBack });
   };
 
   return (
@@ -101,7 +107,13 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleArchive} className="gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleArchive}
+            className="gap-1"
+            disabled={mutations.updateInstance.isPending}
+          >
             <Archive className="h-3 w-3" /> Archive
           </Button>
           <AlertDialog>
@@ -112,12 +124,14 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Checklist</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently delete this checklist and all its items.</AlertDialogDescription>
+                <AlertDialogTitle>Delete Checklist Instance</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this generated checklist instance and all its items. The parent template remains available in Templates.
+                </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { mutations.deleteInstance.mutate(instance.id); onBack(); }}>Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleDelete} disabled={mutations.deleteInstance.isPending}>Delete Instance</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
