@@ -35,6 +35,7 @@ import type {
   DoclingTableItem,
   DoclingTextItem,
   DoclingTextLabel,
+  DoclingVectorItem,
 } from './doclingTypes';
 
 /** Resolve a Docling ref ($ref / cref / string) to the string self_ref form. */
@@ -188,7 +189,10 @@ function textItemToBlock(
       fontWeight,
       fontStyle,
       color: item.font?.color ?? '#111111',
-      textAlign: 'left',
+      // Phase 2: prefer real alignment/leading/tracking from the PyMuPDF pass.
+      textAlign: item.text_align ?? 'left',
+      ...(typeof item.font?.line_height === 'number' ? { lineHeight: item.font.line_height } : {}),
+      ...(typeof item.font?.letter_spacing === 'number' ? { letterSpacing: item.font.letter_spacing } : {}),
     },
     confidence: typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.85,
     source: opts.source ?? 'pdf-text',
@@ -358,6 +362,37 @@ function pictureItemToBlock(
   };
 }
 
+function vectorItemToBlock(
+  item: DoclingVectorItem,
+  pageInfo: DoclingPageInfo,
+  index: number,
+  readingOrder: number,
+  opts: MapOptions,
+): RawImportBlock | null {
+  const prov = pickProv(item.prov, pageInfo.page_no);
+  if (!prov) return null;
+  const bbox = bboxToTopLeft(prov.bbox, pageInfo.size.height);
+  if (bbox.width <= 0 || bbox.height <= 0) return null;
+  const paths = (item.paths ?? []).filter((p) => typeof p?.d === 'string' && p.d.trim().length > 0);
+  if (!paths.length) return null;
+  // viewBox defaults to the item bbox so the SVG paths (page-point coords) align
+  // with the overlay box; the sidecar normally supplies an explicit page viewBox.
+  const viewBox = item.viewBox ?? `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`;
+  return {
+    id: blockId('vector', pageInfo.page_no, index),
+    type: 'vector',
+    bbox,
+    // Geometry is exact, so vectors are high-confidence (stay editable in hybrid).
+    confidence: typeof item.confidence === 'number' ? item.confidence : opts.defaultConfidence ?? 0.9,
+    source: opts.source ?? 'detected',
+    meta: {
+      label: 'vector',
+      readingOrder,
+      vector: { viewBox, paths },
+    },
+  };
+}
+
 export interface MappedDoclingBlocks {
   byPage: Record<number, RawImportBlock[]>;
   all: RawImportBlock[];
@@ -499,6 +534,19 @@ export function mapDoclingToRawBlocks(
     const block = pictureItemToBlock(picture, page, pictureIdx, order, captionGid, opts);
     if (block) byPage[page.page_no]?.push(block);
     pictureIdx += 1;
+  }
+
+  // --- Vectors (Phase 2): geometry primitives from the PyMuPDF pass.
+  let vectorIdx = 0;
+  for (const vector of doc.vectors ?? []) {
+    const prov = pickProv(vector.prov, vector.prov?.[0]?.page_no ?? 0);
+    if (!prov) { vectorIdx += 1; continue; }
+    const page = pages.find((p) => p.page_no === prov.page_no);
+    if (!page) { vectorIdx += 1; continue; }
+    const order = nextOrder(page.page_no);
+    const block = vectorItemToBlock(vector, page, vectorIdx, order, opts);
+    if (block) byPage[page.page_no]?.push(block);
+    vectorIdx += 1;
   }
 
   // Final sort: reading order first (Docling document order), then y/x as a

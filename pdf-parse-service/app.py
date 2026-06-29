@@ -51,6 +51,14 @@ from typing import Any, Optional
 
 import httpx
 import pypdfium2 as pdfium
+
+try:
+    import fitz  # PyMuPDF (AGPL-3.0) — see NOTICE.md. Phase 2 vector + typography pass.
+    _FITZ_AVAILABLE = True
+except Exception:  # pragma: no cover - extraction degrades gracefully without fitz
+    fitz = None  # type: ignore
+    _FITZ_AVAILABLE = False
+
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -88,14 +96,21 @@ LOG = logging.getLogger("pdf-parse-service")
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
 SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
 SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest+phase4j-capability-activation"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest+phase4j-capability-activation+phase2-fitz-vectors-typography"
 DOCLING_CAPABILITY_ACTIVATION_VERSION = "docling-capability-activation-v1"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 # Phase 3 raster artifact config.
 RASTER_ARTIFACT_MODE = os.environ.get("DOCLING_RASTER_ARTIFACT_MODE", "manifest").lower()
 WRITE_LEGACY_RASTERS_JSON = os.environ.get("DOCLING_WRITE_LEGACY_RASTERS_JSON", "false").lower() == "true"
 RASTER_FORMAT = os.environ.get("DOCLING_RASTER_FORMAT", "png").lower()
-RASTER_DPI = int(os.environ.get("DOCLING_RASTER_DPI", "200"))
+# Phase 2: raise the default reference-raster DPI for a crisper builder underlay.
+# (Cloud Run memory/time scales with DPI^2 — override down if cold-starts regress.)
+RASTER_DPI = int(os.environ.get("DOCLING_RASTER_DPI", "300"))
+# Phase 2: PyMuPDF vector/typography extraction toggles. (_env_bool is defined
+# below; keep this check self-contained so module import order doesn't matter.)
+ENABLE_FITZ_LAYERS = os.environ.get("DOCLING_ENABLE_FITZ_LAYERS", "true").strip().lower() not in {"", "0", "false", "no"}
+MAX_VECTORS_PER_PAGE = int(os.environ.get("DOCLING_MAX_VECTORS_PER_PAGE", "400"))
+MIN_VECTOR_SIZE_PT = float(os.environ.get("DOCLING_MIN_VECTOR_SIZE_PT", "1.0"))
 
 # Wave F-Option-3 storage upload config.
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -593,6 +608,285 @@ def _summarise_doc(doc_dict: dict) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Phase 2 — PyMuPDF (fitz) vector + typography extraction
+# ---------------------------------------------------------------------------
+def _fmt(n: float) -> str:
+    return f"{float(n):.2f}".rstrip("0").rstrip(".")
+
+
+def _fitz_fill_color_to_hex(color: Any) -> Optional[str]:
+    """fitz drawing fill/stroke colors are (r,g,b) floats in 0..1, or None."""
+    if not color:
+        return None
+    try:
+        r, g, b = float(color[0]), float(color[1]), float(color[2])
+    except Exception:
+        return None
+    clamp = lambda v: max(0, min(255, round(v * 255)))
+    return "#%02x%02x%02x" % (clamp(r), clamp(g), clamp(b))
+
+
+def _fitz_span_color_to_hex(color: Any) -> Optional[str]:
+    """get_text('dict') span colors are packed sRGB integers."""
+    try:
+        c = int(color)
+    except Exception:
+        return None
+    if c < 0:
+        return None
+    return "#%02x%02x%02x" % ((c >> 16) & 255, (c >> 8) & 255, c & 255)
+
+
+def _drawing_to_svg_path(drawing: dict) -> str:
+    parts: list[str] = []
+    for it in drawing.get("items", []) or []:
+        try:
+            op = it[0]
+            if op == "l":
+                p1, p2 = it[1], it[2]
+                parts.append(f"M{_fmt(p1.x)},{_fmt(p1.y)} L{_fmt(p2.x)},{_fmt(p2.y)}")
+            elif op == "c":
+                p1, p2, p3, p4 = it[1], it[2], it[3], it[4]
+                parts.append(
+                    f"M{_fmt(p1.x)},{_fmt(p1.y)} C{_fmt(p2.x)},{_fmt(p2.y)} "
+                    f"{_fmt(p3.x)},{_fmt(p3.y)} {_fmt(p4.x)},{_fmt(p4.y)}"
+                )
+            elif op == "re":
+                r = it[1]
+                parts.append(f"M{_fmt(r.x0)},{_fmt(r.y0)} H{_fmt(r.x1)} V{_fmt(r.y1)} H{_fmt(r.x0)} Z")
+            elif op == "qu":
+                q = it[1]
+                parts.append(
+                    f"M{_fmt(q.ul.x)},{_fmt(q.ul.y)} L{_fmt(q.ur.x)},{_fmt(q.ur.y)} "
+                    f"L{_fmt(q.lr.x)},{_fmt(q.lr.y)} L{_fmt(q.ll.x)},{_fmt(q.ll.y)} Z"
+                )
+        except Exception:
+            continue
+    return " ".join(parts)
+
+
+def _page_vectors(page) -> list[dict]:
+    """Extract vector drawings for one fitz page → DoclingVectorItem-shaped dicts."""
+    out: list[dict] = []
+    try:
+        drawings = page.get_drawings()
+    except Exception as exc:  # pragma: no cover
+        LOG.warning("fitz get_drawings failed: %s", exc)
+        return out
+    for d in drawings:
+        rect = d.get("rect")
+        if rect is None:
+            continue
+        w = float(rect.x1 - rect.x0)
+        h = float(rect.y1 - rect.y0)
+        if w < MIN_VECTOR_SIZE_PT and h < MIN_VECTOR_SIZE_PT:
+            continue
+        path_d = _drawing_to_svg_path(d)
+        if not path_d:
+            continue
+        dtype = d.get("type") or ""
+        fill = _fitz_fill_color_to_hex(d.get("fill")) if "f" in dtype else None
+        stroke = _fitz_fill_color_to_hex(d.get("color")) if "s" in dtype else None
+        if not fill and not stroke:
+            stroke = _fitz_fill_color_to_hex(d.get("color")) or "#000000"
+        path: dict[str, Any] = {"d": path_d}
+        if fill:
+            path["fill"] = fill
+        if stroke:
+            path["stroke"] = stroke
+            path["strokeWidth"] = float(d.get("width") or 1.0)
+        if d.get("even_odd"):
+            path["fillRule"] = "evenodd"
+        opacity = d.get("fill_opacity")
+        if opacity is None:
+            opacity = d.get("stroke_opacity")
+        if isinstance(opacity, (int, float)) and 0 <= opacity < 1:
+            path["opacity"] = float(opacity)
+        out.append({
+            "viewBox": f"{_fmt(float(rect.x0))} {_fmt(float(rect.y0))} {_fmt(w)} {_fmt(h)}",
+            "paths": [path],
+            "bbox": {"l": float(rect.x0), "t": float(rect.y0), "r": float(rect.x1), "b": float(rect.y1)},
+            "confidence": 0.9,
+        })
+        if len(out) >= MAX_VECTORS_PER_PAGE:
+            break
+    return out
+
+
+def _page_text_lines(page) -> list[dict]:
+    """Flatten get_text('dict') into per-line records for typography reconciliation."""
+    lines: list[dict] = []
+    try:
+        data = page.get_text("dict")
+    except Exception as exc:  # pragma: no cover
+        LOG.warning("fitz get_text(dict) failed: %s", exc)
+        return lines
+    for block in data.get("blocks", []) or []:
+        if block.get("type", 0) != 0:
+            continue  # 0 = text block
+        for line in block.get("lines", []) or []:
+            spans = line.get("spans", []) or []
+            if not spans:
+                continue
+            dom = max(spans, key=lambda s: (s.get("bbox", [0, 0, 0, 0])[2] - s.get("bbox", [0, 0, 0, 0])[0]))
+            lbbox = line.get("bbox") or dom.get("bbox") or [0, 0, 0, 0]
+            origin = dom.get("origin") or [lbbox[0], lbbox[3]]
+            flags = int(dom.get("flags") or 0)
+            lines.append({
+                "bbox": [float(lbbox[0]), float(lbbox[1]), float(lbbox[2]), float(lbbox[3])],
+                "origin_y": float(origin[1]),
+                "size": float(dom.get("size") or 0.0),
+                "font": str(dom.get("font") or ""),
+                "bold": bool(flags & 16),
+                "italic": bool(flags & 2),
+                "color": _fitz_span_color_to_hex(dom.get("color")),
+            })
+    return lines
+
+
+def _extract_fitz_layers(pdf_bytes: bytes) -> dict[int, dict]:
+    """Per-(1-based)-page {vectors, text_lines} extracted via PyMuPDF."""
+    result: dict[int, dict] = {}
+    if not (_FITZ_AVAILABLE and ENABLE_FITZ_LAYERS):
+        return result
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except Exception as exc:  # pragma: no cover
+        LOG.warning("fitz open failed; skipping vector/typography pass: %s", exc)
+        return result
+    try:
+        for idx in range(doc.page_count):
+            try:
+                page = doc.load_page(idx)
+                result[idx + 1] = {"vectors": _page_vectors(page), "text_lines": _page_text_lines(page)}
+            except Exception as exc:  # pragma: no cover
+                LOG.warning("fitz page %d extraction failed: %s", idx + 1, exc)
+    finally:
+        doc.close()
+    return result
+
+
+def _bbox_to_tl(bbox: Any, page_height: float) -> Optional[tuple[float, float, float, float]]:
+    """Normalise a Docling bbox (dict or [l,t,r,b]) to top-left (x0,y0,x1,y1)."""
+    if isinstance(bbox, dict):
+        l, t, r, b = bbox.get("l"), bbox.get("t"), bbox.get("r"), bbox.get("b")
+        origin = str(bbox.get("coord_origin") or "TOPLEFT").upper()
+    elif isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+        l, t, r, b = bbox[0], bbox[1], bbox[2], bbox[3]
+        origin = "TOPLEFT"
+    else:
+        return None
+    try:
+        l, t, r, b = float(l), float(t), float(r), float(b)
+    except Exception:
+        return None
+    if origin == "BOTTOMLEFT" and page_height:
+        y0, y1 = page_height - max(t, b), page_height - min(t, b)
+    else:
+        y0, y1 = min(t, b), max(t, b)
+    return (min(l, r), y0, max(l, r), y1)
+
+
+def _infer_alignment(lines: list[dict], ix0: float, ix1: float) -> str:
+    width = max(1.0, ix1 - ix0)
+    n = len(lines)
+    if not n:
+        return "left"
+    left_gaps = [ln["bbox"][0] - ix0 for ln in lines]
+    right_gaps = [ix1 - ln["bbox"][2] for ln in lines]
+    fills = [(ln["bbox"][2] - ln["bbox"][0]) / width for ln in lines]
+    avg_left = sum(left_gaps) / n
+    avg_right = sum(right_gaps) / n
+    tol = max(2.0, width * 0.02)
+    if n >= 2 and sum(1 for f in fills if f >= 0.95) >= n - 1:
+        return "justify"
+    if avg_left <= tol and avg_right > tol:
+        return "left"
+    if avg_right <= tol and avg_left > tol:
+        return "right"
+    if abs(avg_left - avg_right) <= tol and avg_left > tol:
+        return "center"
+    return "left"
+
+
+def _enrich_text_typography(doc_dict: dict, fitz_by_page: dict[int, dict]) -> None:
+    """Reconcile fitz line geometry into Docling text items (line-height, align, font)."""
+    pages = doc_dict.get("pages") or {}
+
+    def page_height(pn: Any) -> float:
+        p = pages.get(pn) or pages.get(str(pn)) or {}
+        size = p.get("size") or {}
+        try:
+            return float(size.get("height") or 0.0)
+        except Exception:
+            return 0.0
+
+    for item in doc_dict.get("texts") or []:
+        prov = item.get("prov") or []
+        if not prov:
+            continue
+        pn = prov[0].get("page_no")
+        if pn is None:
+            continue
+        layer = fitz_by_page.get(int(pn))
+        if not layer:
+            continue
+        ibox = _bbox_to_tl(prov[0].get("bbox"), page_height(pn))
+        if not ibox:
+            continue
+        ix0, iy0, ix1, iy1 = ibox
+        matched = []
+        for ln in layer.get("text_lines", []):
+            lx0, ly0, lx1, ly1 = ln["bbox"]
+            cy, cx = (ly0 + ly1) / 2, (lx0 + lx1) / 2
+            if iy0 - 1 <= cy <= iy1 + 1 and ix0 - 2 <= cx <= ix1 + 2:
+                matched.append(ln)
+        if not matched:
+            continue
+        matched.sort(key=lambda l: l["origin_y"])
+        font = item.setdefault("font", {})
+        sizes = [m["size"] for m in matched if m["size"] > 0]
+        if len(matched) >= 2 and sizes:
+            deltas = [matched[i + 1]["origin_y"] - matched[i]["origin_y"] for i in range(len(matched) - 1)]
+            deltas = [d for d in deltas if d > 0]
+            if deltas:
+                med = sorted(deltas)[len(deltas) // 2]
+                size = sorted(sizes)[len(sizes) // 2]
+                if size > 0:
+                    lh = med / size
+                    if 0.8 <= lh <= 3.0:
+                        font.setdefault("line_height", round(lh, 3))
+        dom = max(matched, key=lambda l: (l["bbox"][2] - l["bbox"][0]))
+        if not font.get("family") and dom["font"]:
+            font["family"] = dom["font"]
+        if not font.get("size") and dom["size"]:
+            font["size"] = round(dom["size"], 2)
+        if not font.get("color") and dom["color"]:
+            font["color"] = dom["color"]
+        if "weight" not in font and dom["bold"]:
+            font["weight"] = 700
+        if "italic" not in font and dom["italic"]:
+            font["italic"] = True
+        if "text_align" not in item:
+            item["text_align"] = _infer_alignment(matched, ix0, ix1)
+
+
+def _collect_vectors(fitz_by_page: dict[int, dict]) -> list[dict]:
+    vectors: list[dict] = []
+    for pn, layer in sorted(fitz_by_page.items()):
+        for v in layer.get("vectors", []):
+            bbox = dict(v.get("bbox") or {})
+            bbox["coord_origin"] = "TOPLEFT"
+            vectors.append({
+                "prov": [{"page_no": int(pn), "bbox": bbox}],
+                "viewBox": v.get("viewBox"),
+                "paths": v.get("paths", []),
+                "confidence": v.get("confidence", 0.9),
+            })
+    return vectors
+
+
 def _do_parse(
     pdf_bytes: bytes,
     *,
@@ -628,6 +922,20 @@ def _do_parse(
     doc_dict = doc.export_to_dict()
     pii_redactions = _redact_docling_pii(doc_dict) if redact_pii else 0
 
+    # Phase 2: augment with PyMuPDF vector graphics + reconciled span typography.
+    # Non-fatal — any failure leaves the Docling-only document intact.
+    fitz_vectors = 0
+    if _FITZ_AVAILABLE and ENABLE_FITZ_LAYERS:
+        try:
+            fitz_layers = _extract_fitz_layers(pdf_bytes)
+            if fitz_layers:
+                _enrich_text_typography(doc_dict, fitz_layers)
+                vectors = _collect_vectors(fitz_layers)
+                doc_dict["vectors"] = vectors
+                fitz_vectors = len(vectors)
+        except Exception as exc:  # pragma: no cover
+            LOG.warning("fitz layer enrichment failed (non-fatal): %s", exc)
+
     extras: dict[str, Any] = {}
     if include_doctags:
         try:
@@ -648,14 +956,15 @@ def _do_parse(
             pm["language"] = lang
 
     summary = _summarise_doc(doc_dict)
+    summary["vector_count"] = fitz_vectors
     if redact_pii:
         summary["pii_redaction"] = {"enabled": True, "redaction_count": pii_redactions}
     parsed_ms = int((time.monotonic() - t0) * 1000)
     LOG.info(
-        "Parsed %d-page PDF (%d bytes) in %d ms — %d texts / %d tables / %d pictures / %d OCR pages",
+        "Parsed %d-page PDF (%d bytes) in %d ms — %d texts / %d tables / %d pictures / %d vectors / %d OCR pages",
         len(pages_meta), len(pdf_bytes), parsed_ms,
         summary["text_block_count"], summary["table_count"],
-        summary["picture_count"], len(summary["ocr_pages"]),
+        summary["picture_count"], fitz_vectors, len(summary["ocr_pages"]),
     )
 
     return {
@@ -674,6 +983,8 @@ def _do_parse(
             "ocr_langs": OCR_LANGS,
             "bitmap_area_threshold": BITMAP_AREA_THRESHOLD,
             "images_scale": IMAGES_SCALE,
+            "fitz_layers": bool(_FITZ_AVAILABLE and ENABLE_FITZ_LAYERS),
+            "vector_count": fitz_vectors,
         },
         "docling_document": doc_dict,
         **extras,
@@ -724,7 +1035,7 @@ def _normalize_bbox(item: dict) -> Any:
     return None
 
 
-def _page_blocks_for_docling_page(page_no: int, texts: list[dict], tables: list[dict], pictures: list[dict]) -> list[dict]:
+def _page_blocks_for_docling_page(page_no: int, texts: list[dict], tables: list[dict], pictures: list[dict], vectors: Optional[list[dict]] = None) -> list[dict]:
     blocks: list[dict] = []
 
     for idx, item in enumerate(texts, start=1):
@@ -763,10 +1074,22 @@ def _page_blocks_for_docling_page(page_no: int, texts: list[dict], tables: list[
             "page_no": page_no,
         })
 
+    for idx, item in enumerate(vectors or [], start=1):
+        blocks.append({
+            "id": f"p{page_no:03d}-vector-{idx}",
+            "type": "vector",
+            "label": "vector",
+            "text": "",
+            "bbox": _normalize_bbox(item),
+            "confidence": item.get("confidence"),
+            "source": "fitz",
+            "page_no": page_no,
+        })
+
     return blocks
 
 
-def _summarise_page_artifact(page_no: int, texts: list[dict], tables: list[dict], pictures: list[dict], raster_path: Optional[str] = None) -> dict:
+def _summarise_page_artifact(page_no: int, texts: list[dict], tables: list[dict], pictures: list[dict], raster_path: Optional[str] = None, vectors: Optional[list[dict]] = None) -> dict:
     text_chars = sum(len(str(t.get("text") or t.get("orig") or "")) for t in texts)
     ocr_chars = 0
     confidence_values: list[float] = []
@@ -799,12 +1122,14 @@ def _summarise_page_artifact(page_no: int, texts: list[dict], tables: list[dict]
         "table_count": len(tables),
         "table_cell_count": table_cell_count,
         "picture_count": len(pictures),
+        "vector_count": len(vectors or []),
         "text_chars": text_chars,
         "ocr_chars": ocr_chars,
         "avg_text_confidence": avg_conf,
         "has_raster": bool(raster_path),
         "has_tables": len(tables) > 0,
         "has_pictures": len(pictures) > 0,
+        "has_vectors": bool(vectors),
     }
 
 
@@ -833,6 +1158,7 @@ def _build_per_page_docling_artifacts(
     texts_all = docling_doc.get("texts") if isinstance(docling_doc.get("texts"), list) else []
     tables_all = docling_doc.get("tables") if isinstance(docling_doc.get("tables"), list) else []
     pictures_all = docling_doc.get("pictures") if isinstance(docling_doc.get("pictures"), list) else []
+    vectors_all = docling_doc.get("vectors") if isinstance(docling_doc.get("vectors"), list) else []
 
     raster_by_global_page: dict[int, str] = {}
     if isinstance(raster_manifest, dict):
@@ -870,6 +1196,7 @@ def _build_per_page_docling_artifacts(
         page_texts = [dict(t) for t in texts_all if _item_belongs_to_page(t, local_page_no)]
         page_tables = [dict(t) for t in tables_all if _item_belongs_to_page(t, local_page_no)]
         page_pictures = [dict(pic) for pic in pictures_all if _item_belongs_to_page(pic, local_page_no)]
+        page_vectors = [dict(v) for v in vectors_all if _item_belongs_to_page(v, local_page_no)]
 
         def rebase_item(item: dict) -> dict:
             prov = item.get("prov")
@@ -885,10 +1212,11 @@ def _build_per_page_docling_artifacts(
         page_texts = [rebase_item(t) for t in page_texts]
         page_tables = [rebase_item(t) for t in page_tables]
         page_pictures = [rebase_item(pic) for pic in page_pictures]
+        page_vectors = [rebase_item(v) for v in page_vectors]
 
         raster_path = raster_by_global_page.get(global_page_no)
-        summary = _summarise_page_artifact(global_page_no, page_texts, page_tables, page_pictures, raster_path)
-        blocks = _page_blocks_for_docling_page(global_page_no, page_texts, page_tables, page_pictures)
+        summary = _summarise_page_artifact(global_page_no, page_texts, page_tables, page_pictures, raster_path, page_vectors)
+        blocks = _page_blocks_for_docling_page(global_page_no, page_texts, page_tables, page_pictures, page_vectors)
 
         page_docling = {
             "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
@@ -901,6 +1229,7 @@ def _build_per_page_docling_artifacts(
             "texts": page_texts,
             "tables": page_tables,
             "pictures": page_pictures,
+            "vectors": page_vectors,
             "summary": summary,
         }
 
@@ -920,6 +1249,11 @@ def _build_per_page_docling_artifacts(
                 "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
                 "page_no": global_page_no,
                 "pictures": page_pictures,
+            },
+            "vectors": {
+                "version": PER_PAGE_DOCLING_ARTIFACT_VERSION,
+                "page_no": global_page_no,
+                "vectors": page_vectors,
             },
             "summary": summary,
         }
@@ -1244,12 +1578,14 @@ async def _upload_per_page_docling_artifacts(
             blocks_body = json.dumps(artifacts.get("blocks") or {}).encode("utf-8")
             tables_body = json.dumps(artifacts.get("tables") or {}).encode("utf-8")
             pictures_body = json.dumps(artifacts.get("pictures") or {}).encode("utf-8")
+            vectors_body = json.dumps(artifacts.get("vectors") or {}).encode("utf-8")
             summary_body = json.dumps(artifacts.get("summary") or {}).encode("utf-8")
 
             docling_path = await _storage_upload(client, f"{page_prefix}/docling.json", docling_body, "application/json")
             blocks_path = await _storage_upload(client, f"{page_prefix}/blocks.json", blocks_body, "application/json")
             tables_path = await _storage_upload(client, f"{page_prefix}/tables.json", tables_body, "application/json")
             pictures_path = await _storage_upload(client, f"{page_prefix}/pictures.json", pictures_body, "application/json")
+            vectors_path = await _storage_upload(client, f"{page_prefix}/vectors.json", vectors_body, "application/json")
             summary_path = await _storage_upload(client, f"{page_prefix}/summary.json", summary_body, "application/json")
 
             bytes_out += (
@@ -1257,6 +1593,7 @@ async def _upload_per_page_docling_artifacts(
                 + len(blocks_body)
                 + len(tables_body)
                 + len(pictures_body)
+                + len(vectors_body)
                 + len(summary_body)
             )
 
@@ -1268,6 +1605,7 @@ async def _upload_per_page_docling_artifacts(
                 "blocks_path": blocks_path,
                 "tables_path": tables_path,
                 "pictures_path": pictures_path,
+                "vectors_path": vectors_path,
                 "summary_path": summary_path,
                 "raster_path": page.get("raster_path"),
                 "source_chunk_index": page.get("source_chunk_index"),

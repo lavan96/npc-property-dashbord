@@ -633,6 +633,7 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     texts: [],
     tables: [],
     pictures: [],
+    vectors: [],
     pages: {},
   };
   const mergedOutline: any[] = [];
@@ -693,6 +694,8 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         for (const t of dd.texts ?? []) { rebaseProv(t); mergedDoc.texts.push(t); }
         for (const t of dd.tables ?? []) { rebaseProv(t); mergedDoc.tables.push(t); }
         for (const p of dd.pictures ?? []) { rebaseProv(p); mergedDoc.pictures.push(p); }
+        // Phase 2: carry vector graphics through the chunk merge (rebase page_no).
+        for (const v of dd.vectors ?? []) { rebaseProv(v); mergedDoc.vectors.push(v); }
         const pages = dd.pages ?? {};
         for (const [k, v] of Object.entries(pages)) {
           const localNo = Number(k);

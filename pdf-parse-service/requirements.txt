@@ -10,3 +10,7 @@ docling==2.14.0
 docling-core==2.82.0
 docling-ibm-models==3.13.3
 docling-parse==3.4.0
+# PyMuPDF (AGPL-3.0) — Phase 2 vector-graphics + span-typography extraction.
+# See NOTICE.md for the licensing note. Provides page.get_drawings() and
+# page.get_text("dict") consumed by _extract_fitz_layers in app.py.
+PyMuPDF==1.24.14

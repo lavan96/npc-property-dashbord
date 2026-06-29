@@ -53,7 +53,12 @@ export interface DoclingTextItem {
     weight?: number | string;
     color?: string;
     italic?: boolean;
+    /** Phase 2: real typography metrics reconciled from the PyMuPDF span pass. */
+    line_height?: number;     // multiplier (line advance ÷ font size)
+    letter_spacing?: number;  // pt
   };
+  /** Phase 2: text alignment inferred from span x-extents (PyMuPDF pass). */
+  text_align?: 'left' | 'center' | 'right' | 'justify';
   confidence?: number;
   /** Docling reading-order model index; lower values should be read first. */
   reading_order?: number;
@@ -133,6 +138,30 @@ export interface DoclingPictureItem {
   reading_order?: number;
 }
 
+/**
+ * Phase 2: a vector-graphic primitive extracted by the PyMuPDF (`fitz`) pass.
+ * Page-scoped via `prov[].page_no`; geometry is in PDF points, top-left origin
+ * (matching the overlay convention). One item ≈ one Docling "drawing" and may
+ * contain several sub-paths (lines/curves/rects) sharing fill/stroke.
+ */
+export interface DoclingVectorPath {
+  d: string;                                   // SVG path data
+  fill?: string;                               // hex or 'none'
+  stroke?: string;                             // hex or 'none'
+  strokeWidth?: number;                        // pt
+  fillRule?: 'nonzero' | 'evenodd';
+  opacity?: number;
+}
+
+export interface DoclingVectorItem {
+  self_ref?: string;
+  prov?: DoclingProvenance[];
+  /** SVG viewBox in page points, e.g. "0 0 595 842". */
+  viewBox?: string;
+  paths: DoclingVectorPath[];
+  confidence?: number;
+}
+
 export interface DoclingPageSize {
   width: number;
   height: number;
@@ -164,6 +193,8 @@ export interface DoclingDocument {
   texts?: DoclingTextItem[];
   tables?: DoclingTableItem[];
   pictures?: DoclingPictureItem[];
+  /** Phase 2: vector graphics extracted by the PyMuPDF pass. */
+  vectors?: DoclingVectorItem[];
   /** Wave F4: parser quality summary surfaced to reconciliation + manual review. */
   summary?: DoclingSummary;
   /** Phase D: outline / TOC nodes (optional, surfaced via sidecar). */

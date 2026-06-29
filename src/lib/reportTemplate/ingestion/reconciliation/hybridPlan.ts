@@ -47,8 +47,9 @@ function rawTextBlockToOverlay(block: RawImportBlock, unlockConfidence: number):
     fontStyle: 'normal',
     color: block.style?.color ?? '#111111',
     align: block.style?.textAlign ?? 'left',
-    lineHeight: 1.2,
-    letterSpacing: 0,
+    // Phase 2: prefer real leading/tracking from the extractor when present.
+    lineHeight: block.style?.lineHeight ?? 1.2,
+    letterSpacing: block.style?.letterSpacing ?? 0,
     locked: confidence < unlockConfidence,
     confidence,
     name: `Imported text · ${block.source}`,
