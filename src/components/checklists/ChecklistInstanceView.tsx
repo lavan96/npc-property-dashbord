@@ -109,7 +109,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
       <div className="rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
-            <Button variant="ghost" size="sm" onClick={onBack} className="w-fit gap-1 border border-white/5 bg-black/30 text-zinc-300 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100">
+            <Button variant="ghost" size="sm" onClick={onBack} className="w-fit gap-1 border border-white/5 bg-black/30 text-zinc-300 transition-all duration-200 hover:-translate-x-0.5 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none">
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
             <div className="min-w-0">
@@ -132,14 +132,14 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
               variant="outline"
               size="sm"
               onClick={handleArchive}
-              className="gap-1 border-zinc-600/50 bg-black/30 text-zinc-300 hover:border-amber-300/45 hover:bg-amber-400/10 hover:text-amber-100"
+              className="gap-1 border-zinc-600/50 bg-black/30 text-zinc-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-400/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none"
               disabled={mutations.updateInstance.isPending}
             >
               <Archive className="h-3 w-3" /> Archive
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1 border-destructive/35 bg-destructive/5 text-destructive hover:border-destructive/70 hover:bg-destructive/10 hover:text-destructive">
+                <Button variant="outline" size="sm" className="gap-1 border-destructive/35 bg-destructive/5 text-destructive transition-all duration-200 hover:-translate-y-0.5 hover:border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_10px_24px_rgba(239,68,68,0.12)] focus-visible:ring-2 focus-visible:ring-destructive/45 motion-reduce:transition-none">
                   <Trash2 className="h-3 w-3" /> Delete
                 </Button>
               </AlertDialogTrigger>
@@ -176,7 +176,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
             </div>
           </div>
           <div className="rounded-full border border-white/5 bg-black/35 p-1 shadow-inner shadow-black/50">
-            <Progress value={progress} className={`h-4 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r [&>div]:shadow-[0_0_24px_rgba(245,158,11,0.28)] ${progressFillClass}`} />
+            <Progress value={progress} className={`h-4 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r [&>div]:shadow-[0_0_24px_rgba(245,158,11,0.28)] [&>div]:transition-all [&>div]:duration-500 ${progressFillClass}`} />
           </div>
         </CardContent>
       </Card>
@@ -218,7 +218,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
               : 'border-zinc-600/40 bg-black/30 text-zinc-300';
 
           return (
-            <Card key={idx} className={`group overflow-hidden rounded-2xl border shadow-lg shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(0,0,0,0.36)] ${sectionCardClass}`}>
+            <Card key={idx} className={`group overflow-hidden rounded-2xl border shadow-lg shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(0,0,0,0.36)] motion-reduce:transition-none ${sectionCardClass}`}>
               <CardHeader className="p-5 pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <CardTitle className="flex min-w-0 items-center gap-3 text-base text-zinc-100">
@@ -235,7 +235,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                 {section.items.map(item => (
                   <div
                     key={item.id}
-                    className={`group/task flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all hover:border-amber-300/25 hover:bg-amber-500/10 focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
+                    className={`group/task flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-500/10 hover:shadow-[0_10px_24px_rgba(245,158,11,0.08)] motion-reduce:transition-none focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
                     onClick={() => handleToggleItem(item.id, item.is_checked)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
@@ -250,7 +250,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                     <Checkbox
                       checked={item.is_checked}
                       onCheckedChange={() => handleToggleItem(item.id, item.is_checked)}
-                      className="pointer-events-none mt-0.5 h-5 w-5 rounded-full border-amber-300/55 bg-black/40 shadow-inner shadow-black/30 transition-colors data-[state=checked]:border-emerald-300 data-[state=checked]:bg-emerald-400 data-[state=checked]:text-black group-hover/task:border-amber-200"
+                      className="pointer-events-none mt-0.5 h-5 w-5 rounded-full border-amber-300/55 bg-black/40 shadow-inner shadow-black/30 transition-all duration-200 data-[state=checked]:border-emerald-300 data-[state=checked]:bg-emerald-400 data-[state=checked]:text-black group-hover/task:border-amber-200"
                     />
                     <span className={`min-w-0 flex-1 whitespace-normal break-words text-sm leading-6 ${item.is_checked ? 'text-zinc-300 line-through decoration-emerald-300/70 decoration-2 underline-offset-4' : 'text-zinc-100'}`}>
                       {item.label}
