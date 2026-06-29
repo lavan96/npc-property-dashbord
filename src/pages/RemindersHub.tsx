@@ -70,8 +70,8 @@ const SOURCE_COLORS = {
   deal_milestone: 'text-emerald-200',
 };
 
-const premiumPanel = 'border border-amber-400/10 bg-slate-950/80 shadow-[0_18px_55px_rgba(0,0,0,0.35)] backdrop-blur';
-const interactivePanel = 'motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-[0_18px_45px_rgba(245,158,11,0.10)] focus-within:border-amber-300/35 focus-within:shadow-[0_18px_45px_rgba(245,158,11,0.10)]';
+const premiumPanel = 'border border-amber-400/12 bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] shadow-[0_18px_55px_rgba(0,0,0,0.36)] backdrop-blur';
+const interactivePanel = 'motion-safe:transition-all motion-safe:duration-200 motion-safe:hover:-translate-y-0.5 hover:border-amber-300/30 hover:shadow-[0_18px_45px_rgba(245,158,11,0.09)] focus-within:border-amber-300/35 focus-within:shadow-[0_18px_45px_rgba(245,158,11,0.10)]';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   settlement: <Building2 className="h-3.5 w-3.5" />,
@@ -201,9 +201,9 @@ export default function RemindersHub() {
 
   if (isLoading) {
     return (
-      <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
+      <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.06),transparent_28%),linear-gradient(180deg,#030303_0%,#0f1117_48%,#050507_100%)] p-3 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
         <div className="mx-auto min-w-0 max-w-7xl space-y-5 sm:space-y-6">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(0,0,0,0.62)_34%,rgba(15,23,42,0.50))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.40)] sm:p-6">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(0,0,0,0.72)_34%,rgba(15,23,42,0.58))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.42)] sm:p-6">
             <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
             <div className="pointer-events-none absolute -right-16 -top-24 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
             <div className="flex items-center gap-4">
@@ -216,7 +216,7 @@ export default function RemindersHub() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-amber-300/15 bg-slate-950/80 p-4 shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-amber-300/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.36)]">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-400/10">
                 <Loader2 className="h-5 w-5 animate-spin text-amber-200" />
@@ -243,10 +243,10 @@ export default function RemindersHub() {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 text-slate-100 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
+    <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.06),transparent_28%),linear-gradient(180deg,#030303_0%,#0f1117_48%,#050507_100%)] p-3 text-slate-100 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
       <div className="mx-auto min-w-0 max-w-7xl space-y-5 sm:space-y-6">
         {/* Page Header */}
-        <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(0,0,0,0.62)_34%,rgba(15,23,42,0.50))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.40)] backdrop-blur sm:p-6">
+        <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(0,0,0,0.72)_34%,rgba(15,23,42,0.58))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.42)] backdrop-blur sm:p-6">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent" />
           <div className="pointer-events-none absolute -right-16 -top-24 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
           <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center sm:gap-4">
@@ -339,12 +339,12 @@ export default function RemindersHub() {
           <CardContent className="relative p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">This Week</p>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-sky-300/20 bg-sky-400/10 text-sky-200">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-400/10 text-amber-200">
                 <CalendarDays className="h-4 w-4" />
               </div>
             </div>
             <p className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">{stats.thisWeek}</p>
-            <div className="mt-3 h-0.5 rounded-full bg-sky-300/30 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
+            <div className="mt-3 h-0.5 rounded-full bg-amber-300/30 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
         <Card className={cn(premiumPanel, interactivePanel, 'group relative overflow-hidden rounded-2xl', stats.highPriority > 0 ? 'border-red-400/35 bg-red-950/15' : 'hover:border-amber-300/30')}>
@@ -536,7 +536,7 @@ export default function RemindersHub() {
                       : isTodayGroup
                         ? 'border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(15,23,42,0.42))]'
                         : isWeekPlanningGroup
-                          ? 'border-sky-300/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.42))]'
+                          ? 'border-amber-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(15,23,42,0.42))]'
                           : isMonthPlanningGroup
                             ? 'border-teal-300/20 bg-[linear-gradient(135deg,rgba(20,184,166,0.13),rgba(15,23,42,0.42))]'
                       : 'border-amber-400/12 bg-[linear-gradient(135deg,rgba(0,0,0,0.42),rgba(15,23,42,0.42))]'
@@ -549,7 +549,7 @@ export default function RemindersHub() {
                           : isTodayGroup
                             ? 'bg-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.65)]'
                             : isWeekPlanningGroup
-                              ? 'bg-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.45)]'
+                              ? 'bg-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.45)]'
                               : isMonthPlanningGroup
                                 ? 'bg-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.42)]'
                           : 'bg-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.55)]'
@@ -565,7 +565,7 @@ export default function RemindersHub() {
                           : isTodayGroup
                             ? 'border-amber-200/40 bg-amber-400/15 text-amber-100'
                             : isWeekPlanningGroup
-                              ? 'border-sky-300/30 bg-sky-400/10 text-sky-100'
+                              ? 'border-amber-300/30 bg-amber-400/10 text-amber-100'
                               : isMonthPlanningGroup
                                 ? 'border-teal-300/30 bg-teal-400/10 text-teal-100'
                           : 'border-amber-300/30 bg-amber-400/10 text-amber-100'
@@ -593,7 +593,7 @@ export default function RemindersHub() {
                               'group relative cursor-pointer overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] hover:bg-amber-400/[0.035] hover:ring-1 hover:ring-amber-300/15 focus-within:border-amber-300/40 focus-within:ring-2 focus-within:ring-amber-300/25 focus-within:shadow-[0_0_34px_rgba(245,158,11,0.14)]',
                               isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))] hover:bg-red-500/[0.055]',
                               isDueToday && !isOverdue && 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(2,6,23,0.88))] hover:bg-amber-400/[0.075]',
-                              isWeekPlanningReminder && 'border-sky-300/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.10),rgba(2,6,23,0.88))] hover:bg-sky-400/[0.055]',
+                              isWeekPlanningReminder && 'border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.90))] hover:bg-amber-400/[0.055]',
                               isMonthPlanningReminder && 'border-teal-300/25 bg-[linear-gradient(135deg,rgba(20,184,166,0.11),rgba(2,6,23,0.88))] hover:bg-teal-400/[0.055]',
                             )}
                             onClick={() => handleReminderClick(reminder)}
@@ -615,7 +615,7 @@ export default function RemindersHub() {
                                 : isDueToday
                                   ? 'bg-amber-300/55 group-hover:bg-amber-300 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.55)]'
                                   : isWeekPlanningReminder
-                                    ? 'bg-sky-300/35 group-hover:bg-sky-300/85 group-hover:shadow-[0_0_18px_rgba(56,189,248,0.38)]'
+                                    ? 'bg-amber-300/35 group-hover:bg-amber-300/85 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.38)]'
                                     : isMonthPlanningReminder
                                       ? 'bg-teal-300/35 group-hover:bg-teal-300/85 group-hover:shadow-[0_0_18px_rgba(45,212,191,0.35)]'
                                 : 'bg-amber-300/0 group-hover:bg-amber-300/80 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.45)]'
@@ -668,7 +668,7 @@ export default function RemindersHub() {
                                     : isDueToday
                                       ? 'border-amber-300/25 bg-amber-400/10'
                                       : isWeekPlanningReminder
-                                        ? 'border-sky-300/20 bg-sky-400/10'
+                                        ? 'border-amber-300/20 bg-amber-400/10'
                                         : isMonthPlanningReminder
                                           ? 'border-teal-300/20 bg-teal-400/10'
                                       : 'border-white/10'
