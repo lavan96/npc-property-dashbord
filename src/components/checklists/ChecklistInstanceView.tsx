@@ -143,16 +143,16 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                   <Trash2 className="h-3 w-3" /> Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md">
+              <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-3xl border-destructive/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(3,3,3,0.98))] text-zinc-100 shadow-2xl shadow-black/40">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Checklist Instance</AlertDialogTitle>
-                  <AlertDialogDescription>
+                  <AlertDialogTitle className="text-zinc-50">Delete Checklist Instance</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-400">
                     This will permanently delete this generated checklist instance and all its items. The parent template remains available in Templates.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} disabled={mutations.deleteInstance.isPending}>Delete Instance</AlertDialogAction>
+                  <AlertDialogCancel className="border-white/10 bg-black/40 text-zinc-200 hover:bg-white/5">Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDelete} disabled={mutations.deleteInstance.isPending}>Delete Instance</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

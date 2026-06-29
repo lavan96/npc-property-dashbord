@@ -147,9 +147,9 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[min(85vh,760px)] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40 sm:w-auto">
+      <DialogContent className="max-h-[min(85vh,760px)] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto rounded-3xl overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40 sm:w-auto">
         <DialogHeader className="space-y-2">
-          <DialogTitle className="text-xl font-bold sm:text-2xl tracking-tight text-zinc-50">
+          <DialogTitle className="text-xl font-bold tracking-tight text-zinc-50 sm:text-2xl">
             {step === 'input' && 'Import Checklist Template'}
             {step === 'preview' && 'Preview Template'}
             {step === 'importing' && 'Importing...'}
@@ -272,7 +272,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   <Input
                     value={parsedTemplate.icon}
                     onChange={e => setParsedTemplate({ ...parsedTemplate, icon: e.target.value })}
-                    className="border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100"
+                    className="border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   />
                 </div>
                 <div className="flex-1">
@@ -281,7 +281,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                     value={parsedTemplate.name}
                     onChange={e => setParsedTemplate({ ...parsedTemplate, name: e.target.value })}
                     placeholder="e.g. Daily Operations Checklist"
-                    className="border-amber-500/15 bg-black/35 text-zinc-100"
+                    className="border-amber-500/15 bg-black/35 text-zinc-100 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   />
                 </div>
               </div>
@@ -291,7 +291,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   value={parsedTemplate.description || ''}
                   onChange={e => setParsedTemplate({ ...parsedTemplate, description: e.target.value || undefined })}
                   placeholder="What is this checklist for?"
-                  className="border-amber-500/15 bg-black/35 text-zinc-100"
+                  className="border-amber-500/15 bg-black/35 text-zinc-100 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 />
               </div>
               <div className="flex gap-2">
@@ -355,7 +355,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
               <Button variant="ghost" className="min-h-10 w-full text-zinc-300 transition-all sm:w-auto duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none" onClick={() => { setStep('input'); setParsedTemplate(null); }}>
                 ← Back
               </Button>
-              <Button onClick={handleImport} className="min-h-10 w-full bg-gradient-to-r from-amber-500 sm:w-auto to-yellow-400 font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none">
+              <Button onClick={handleImport} className="min-h-10 w-full bg-gradient-to-r from-amber-500 to-yellow-400 sm:w-auto font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none">
                 Import {totalItems} Items
               </Button>
             </>

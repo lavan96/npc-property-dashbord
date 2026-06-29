@@ -330,7 +330,7 @@ export default function Checklists() {
                       <Plus className="h-3 w-3" /> New Template
                     </Button>
                   </DialogTrigger>
-                <DialogContent className="max-h-[min(85vh,720px)] w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40">
+                <DialogContent className="max-h-[min(85vh,720px)] w-[calc(100vw-2rem)] overflow-y-auto rounded-3xl overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40">
                   <DialogHeader className="rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
                     <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-50">Create New Template</DialogTitle>
                     <DialogDescription className="text-zinc-400">Build a reusable checklist template from scratch</DialogDescription>
@@ -339,17 +339,17 @@ export default function Checklists() {
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <div className="w-20">
                         <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Icon</Label>
-                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} aria-label="Template icon" className="mt-1 border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-amber-300/45" />
+                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} aria-label="Template icon" className="mt-1 border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
                       </div>
                       <div className="flex-1">
                         <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Name</Label>
-                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" aria-label="Template name" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" aria-label="Template name" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
                         <p className="mt-1.5 text-[11px] text-zinc-500">Give this blueprint a clear operational name.</p>
                       </div>
                     </div>
                     <div>
                       <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Description (optional)</Label>
-                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} aria-label="Template description" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} aria-label="Template description" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
                       <p className="mt-1.5 text-[11px] text-zinc-500">Use this to clarify when the template should be generated or followed.</p>
                     </div>
                   </div>
@@ -425,9 +425,9 @@ export default function Checklists() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto rounded-full border border-white/5 bg-black/35 p-1 opacity-80 transition-opacity group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+                      <div className="flex w-full shrink-0 items-center justify-end gap-1 rounded-full border border-amber-500/10 bg-black/40 p-1 opacity-85 shadow-inner shadow-black/30 transition-opacity group-hover:opacity-100 sm:w-auto" onClick={e => e.stopPropagation()}>
                         <Button
-                          size="icon" variant="ghost" className="h-7 w-7 text-amber-100 hover:bg-amber-400/10 hover:text-amber-50"
+                          size="icon" variant="ghost" className="h-9 w-9 rounded-full text-amber-100 transition-all hover:bg-amber-400/10 hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-300/55"
                           onClick={() => mutations.generateFromTemplate.mutate(template)}
                           title="Generate checklist"
                           aria-label={`Generate checklist from ${template.name}`}
@@ -436,18 +436,18 @@ export default function Checklists() {
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" aria-label={`Delete template ${template.name}`} className="h-7 w-7 text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive">
+                            <Button size="icon" variant="ghost" aria-label={`Delete template ${template.name}`} className="h-9 w-9 rounded-full text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/45">
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent>
+                          <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-3xl border-destructive/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(3,3,3,0.98))] text-zinc-100 shadow-2xl shadow-black/40">
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                              <AlertDialogDescription>Delete "{template.name}"? Existing generated checklists won't be affected.</AlertDialogDescription>
+                              <AlertDialogTitle className="text-zinc-50">Delete Template</AlertDialogTitle>
+                              <AlertDialogDescription className="text-zinc-400">Delete "{template.name}"? Existing generated checklists won't be affected.</AlertDialogDescription>
                             </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => mutations.deleteTemplate.mutate(template.id)}>Delete</AlertDialogAction>
+                            <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+                              <AlertDialogCancel className="border-white/10 bg-black/40 text-zinc-200 hover:bg-white/5">Cancel</AlertDialogCancel>
+                              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => mutations.deleteTemplate.mutate(template.id)}>Delete</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
