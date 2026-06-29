@@ -39,10 +39,10 @@ export default function Checklists() {
   // If viewing a template builder
   if (selectedTemplate) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Checklists</h1>
-          <p className="text-muted-foreground">Manage checklist templates and track operational workflows</p>
+      <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
+        <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
+          <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
         </div>
         <TemplateBuilder template={selectedTemplate} onBack={() => setSelectedTemplate(null)} />
       </div>
@@ -52,10 +52,10 @@ export default function Checklists() {
   // If viewing an instance
   if (selectedInstance) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Checklists</h1>
-          <p className="text-muted-foreground">Manage checklist templates and track operational workflows</p>
+      <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
+        <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
+          <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
         </div>
         <ChecklistInstanceView instance={selectedInstance} onBack={() => setSelectedInstance(null)} />
       </div>
@@ -108,7 +108,7 @@ export default function Checklists() {
   const renderInstanceCard = (instance: ChecklistInstance) => (
     <Card
       key={instance.id}
-      className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group"
+      className="group cursor-pointer border-amber-500/15 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black shadow-lg shadow-black/30 transition-all hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-amber-500/10"
       onClick={() => setSelectedInstance(instance)}
     >
       <CardContent className="pt-5 pb-4">
@@ -116,8 +116,8 @@ export default function Checklists() {
           <div className="flex items-center gap-2">
             <span className="text-xl">{instance.icon}</span>
             <div>
-              <h3 className="font-semibold text-sm leading-tight">{instance.name}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
+              <h3 className="text-sm font-semibold leading-tight text-zinc-100">{instance.name}</h3>
+              <p className="mt-0.5 text-[11px] text-zinc-400">
                 {new Date(instance.created_at).toLocaleDateString()}
               </p>
             </div>
@@ -127,36 +127,38 @@ export default function Checklists() {
             {instance.status}
           </Badge>
         </div>
-        <Progress value={instance.progress_percent} className="h-2" />
-        <p className="text-[11px] text-muted-foreground mt-1.5 text-right">{instance.progress_percent}%</p>
+        <Progress value={instance.progress_percent} className="h-2 bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-yellow-300" />
+        <p className="mt-1.5 text-right text-[11px] font-semibold text-amber-300">{instance.progress_percent}%</p>
       </CardContent>
     </Card>
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Checklists</h1>
-          <p className="text-muted-foreground">Manage checklist templates and track operational workflows</p>
+    <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
+      <div className="rounded-2xl border border-white/5 bg-black/35 p-5 shadow-inner shadow-amber-950/10">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
+            <p className="mt-1 text-sm text-zinc-400 md:text-base">Manage checklist templates and track operational workflows</p>
+          </div>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <TabsList className="inline-flex w-auto min-w-full md:grid md:w-full md:grid-cols-4">
-            <TabsTrigger value="active" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+        <div className="overflow-x-auto rounded-2xl border border-amber-500/10 bg-zinc-950/70 p-2 shadow-lg shadow-black/20">
+          <TabsList className="inline-flex h-auto w-auto min-w-full border border-amber-500/15 bg-black/60 p-1 md:grid md:w-full md:grid-cols-4">
+            <TabsTrigger value="active" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
               <ClipboardList className="h-3.5 w-3.5 md:h-4 md:w-4" />
               Active ({activeInstances.length})
             </TabsTrigger>
-            <TabsTrigger value="completed" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+            <TabsTrigger value="completed" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
               <CheckCircle2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
               Completed ({completedInstances.length})
             </TabsTrigger>
-            <TabsTrigger value="archived" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+            <TabsTrigger value="archived" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
               📦 Archived ({archivedInstances.length})
             </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-1.5 text-xs md:text-sm whitespace-nowrap">
+            <TabsTrigger value="templates" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
               <LayoutTemplate className="h-3.5 w-3.5 md:h-4 md:w-4" />
               Templates ({templates.length})
             </TabsTrigger>
@@ -164,13 +166,13 @@ export default function Checklists() {
         </div>
 
         {/* Active Checklists */}
-        <TabsContent value="active" className="space-y-4">
+        <TabsContent value="active" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
           {instancesLoading ? (
             <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading...
             </div>
           ) : activeInstances.length === 0 ? (
-            <Card className="border-dashed">
+            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
               <CardContent className="py-12 text-center">
                 <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                 <h3 className="font-semibold mb-1">No active checklists</h3>
@@ -188,9 +190,9 @@ export default function Checklists() {
         </TabsContent>
 
         {/* Completed */}
-        <TabsContent value="completed" className="space-y-4">
+        <TabsContent value="completed" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
           {completedInstances.length === 0 ? (
-            <Card className="border-dashed">
+            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
               <CardContent className="py-12 text-center">
                 <CheckCircle2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                 <h3 className="font-semibold mb-1">No completed checklists yet</h3>
@@ -205,9 +207,9 @@ export default function Checklists() {
         </TabsContent>
 
         {/* Archived */}
-        <TabsContent value="archived" className="space-y-4">
+        <TabsContent value="archived" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
           {archivedInstances.length === 0 ? (
-            <Card className="border-dashed">
+            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
               <CardContent className="py-12 text-center">
                 <span className="text-5xl mb-4 block">📦</span>
                 <h3 className="font-semibold mb-1">No archived checklists</h3>
@@ -222,10 +224,10 @@ export default function Checklists() {
         </TabsContent>
 
         {/* Templates */}
-        <TabsContent value="templates" className="space-y-4">
-          <div className="flex items-center justify-between">
+        <TabsContent value="templates" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-500/10 bg-black/30 p-4">
             <div>
-              <h2 className="text-lg font-semibold">Checklist Templates</h2>
+              <h2 className="text-lg font-semibold text-zinc-100">Checklist Templates</h2>
               <p className="text-sm text-muted-foreground">Reusable blueprints for generating checklists</p>
             </div>
             <div className="flex items-center gap-2">
@@ -283,7 +285,7 @@ export default function Checklists() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading templates...
             </div>
           ) : templates.length === 0 ? (
-            <Card className="border-dashed">
+            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
               <CardContent className="py-12 text-center">
                 <LayoutTemplate className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                 <h3 className="font-semibold mb-1">No templates yet</h3>
@@ -295,7 +297,7 @@ export default function Checklists() {
               {templates.map(template => (
                 <Card
                   key={template.id}
-                  className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group relative"
+                  className="group relative cursor-pointer border-amber-500/15 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black shadow-lg shadow-black/30 transition-all hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-amber-500/10"
                   onClick={() => setSelectedTemplate(template)}
                 >
                   <CardContent className="pt-5 pb-4">
@@ -303,7 +305,7 @@ export default function Checklists() {
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{template.icon}</span>
                         <div>
-                          <h3 className="font-semibold text-sm">{template.name}</h3>
+                          <h3 className="text-sm font-semibold text-zinc-100">{template.name}</h3>
                           {template.description && (
                             <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{template.description}</p>
                           )}
