@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
+import { DealLoadingState, DealStatePanel } from '@/components/deals/DealStatePresentation';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -503,23 +504,13 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-10 rounded-lg" />
-        <Skeleton className="h-8 rounded-lg" />
-        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 rounded-lg" />)}
-      </div>
+      <DealLoadingState title="Loading deal timeline" description="Sequencing milestones, settlement dates and stage activity." />
     );
   }
 
   if (deals.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-16 text-center">
-          <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm font-medium">No deals to display on timeline</p>
-          <p className="text-xs text-muted-foreground mt-1">Create deals to visualise their lifecycle</p>
-        </CardContent>
-      </Card>
+      <DealStatePanel icon={<CalendarDays className="h-7 w-7 text-sky-200" />} eyebrow="Timeline clear" title="No timeline activity yet" description="Deal lifecycle events will appear here when real pipeline records include dates or stage movement." />
     );
   }
 

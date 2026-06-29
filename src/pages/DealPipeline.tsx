@@ -35,6 +35,7 @@ import { AtRiskDealsPanel } from "@/components/deals/AtRiskDealsPanel";
 import { LinkedFinanceFilesPanel } from "@/components/deals/LinkedFinanceFilesPanel";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { DealErrorState } from "@/components/deals/DealStatePresentation";
 import { useModulePermissions } from "@/hooks/useModulePermissions";
 import type { DealWithClient } from "@/hooks/useAllDeals";
 
@@ -110,16 +111,12 @@ export default function DealPipeline() {
             Deal Pipeline
           </h1>
         </div>
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center">
-          <p className="text-sm font-medium text-destructive">
-            Unable to load deals
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {error instanceof Error
-              ? error.message
-              : "Please try refreshing the page or logging in again."}
-          </p>
-        </div>
+        <DealErrorState
+          message={error instanceof Error
+            ? error.message
+            : "Please try refreshing the page or logging in again."}
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }

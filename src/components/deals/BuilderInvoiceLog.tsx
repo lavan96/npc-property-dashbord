@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DealLoadingState, DealStatePanel } from '@/components/deals/DealStatePresentation';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -118,18 +119,12 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
   }
 
   if (isLoading) {
-    return <Skeleton className="h-64 rounded-lg" />;
+    return <DealLoadingState title="Loading builder invoices" description="Checking build payment stages and invoice receipt status." />;
   }
 
   if (invoiceRows.length === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
-          <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">No build progress payments found.</p>
-          <p className="text-xs text-muted-foreground">Builder invoice tracking appears when House & Land deals have build payment stages.</p>
-        </CardContent>
-      </Card>
+      <DealStatePanel icon={<FileText className="h-7 w-7 text-amber-200" />} eyebrow="Builder invoices" title="No build progress payments found" description="Builder invoice tracking will appear when House & Land deals include real build payment stages." />
     );
   }
 
