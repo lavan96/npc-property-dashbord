@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { format, differenceInDays } from 'date-fns';
+import { useMemo } from 'react';
+import { differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Building2,
@@ -8,8 +8,6 @@ import {
   AlertTriangle,
   Clock,
   DollarSign,
-  GripVertical,
-  ChevronRight,
   User,
   Eye,
   Megaphone,
@@ -24,7 +22,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import type { DealWithClient } from '@/hooks/useAllDeals';
@@ -114,31 +111,32 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
   return (
     <Card
       className={cn(
-        'cursor-pointer hover:shadow-md transition-all duration-200 group border-l-2',
+        'group relative cursor-pointer overflow-hidden border-l-2 bg-[linear-gradient(145deg,rgba(255,255,255,0.075),rgba(24,24,27,0.92)_48%,rgba(0,0,0,0.72))] shadow-[0_12px_34px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/50 hover:shadow-[0_22px_48px_rgba(0,0,0,0.34),0_0_0_1px_rgba(251,191,36,0.22),0_0_28px_rgba(245,158,11,0.18)]',
         deal.risk_status === 'urgent' && 'border-l-destructive',
         deal.risk_status === 'needs_follow_up' && 'border-l-warning',
         deal.risk_status === 'on_track' && 'border-l-success',
       )}
       onClick={onClick}
     >
-      <CardContent className="p-3 space-y-2">
+      <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <CardContent className="space-y-3 p-3.5">
         {/* Header: Client name + type */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate leading-tight">{deal.client_name}</p>
+            <p className="truncate text-sm font-semibold leading-tight text-zinc-50">{deal.client_name}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-muted-foreground">{getDealTypeIcon(deal.deal_type)}</span>
               <span className="text-[10px] text-muted-foreground font-medium">{getDealTypeLabel(deal.deal_type)}</span>
             </div>
           </div>
-          <Badge className={cn('text-[9px] px-1.5 py-0 h-4 border shrink-0', riskCfg.color)}>
+          <Badge className={cn('h-5 shrink-0 border px-1.5 py-0 text-[9px] shadow-sm', riskCfg.color)}>
             {riskCfg.emoji}
           </Badge>
         </div>
 
         {/* Current stage */}
         <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className="text-[9px] px-1 h-4 shrink-0">
+          <Badge variant="outline" className="h-5 shrink-0 border-amber-200/25 bg-amber-300/10 px-1.5 text-[9px] text-amber-100">
             S{deal.current_stage_number}
           </Badge>
           <span className="text-[11px] text-muted-foreground truncate">{deal.current_stage}</span>
@@ -146,7 +144,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
 
         {/* Progress bar */}
         <div className="space-y-1">
-          <Progress value={progressPct} className="h-1.5" />
+          <Progress value={progressPct} className="h-2 overflow-hidden rounded-full bg-zinc-800/90 [&>div]:bg-gradient-to-r [&>div]:from-teal-400 [&>div]:via-emerald-400 [&>div]:to-amber-300" />
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-muted-foreground">{completedStages}/{totalStages} stages</span>
             <span className="text-[9px] font-medium">{progressPct}%</span>
@@ -164,10 +162,10 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
           {settlementDays !== null && (
             <div className={cn(
               'flex items-center gap-0.5 text-[10px]',
-              settlementDays < 0 && 'text-destructive font-semibold',
-              settlementDays >= 0 && settlementDays <= 7 && 'text-destructive',
-              settlementDays > 7 && settlementDays <= 14 && 'text-warning',
-              settlementDays > 14 && 'text-muted-foreground',
+              settlementDays < 0 && 'text-red-300 font-semibold',
+              settlementDays >= 0 && settlementDays <= 7 && 'text-amber-300 font-medium',
+              settlementDays > 7 && settlementDays <= 14 && 'text-amber-200',
+              settlementDays > 14 && 'text-teal-300',
             )}>
               <Clock className="h-2.5 w-2.5" />
               <span>
@@ -180,13 +178,13 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
         </div>
 
         {/* Lead source + Next action */}
-        <div className="pt-1.5 border-t border-border/50 space-y-0.5">
-          {deal.leadSource && (
-            <div className="flex items-center gap-1">
-              <Megaphone className="h-2.5 w-2.5 text-primary shrink-0" />
-              <span className="text-[10px] text-primary font-medium truncate">{deal.leadSource}</span>
-            </div>
-          )}
+        <div className="space-y-1.5 border-t border-white/10 pt-2">
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] px-2 py-1">
+            <Megaphone className={cn("h-2.5 w-2.5 shrink-0", deal.leadSource ? "text-amber-200" : "text-zinc-500")} />
+            <span className={cn("truncate text-[10px] font-medium", deal.leadSource ? "text-amber-100" : "text-zinc-500")}>
+              {deal.leadSource || "Source not recorded"}
+            </span>
+          </div>
           {nextAction && (
             <p className="text-[10px] text-muted-foreground truncate">
               <span className="font-medium">Next:</span> {nextAction}
@@ -235,20 +233,20 @@ function KanbanColumn({
   const urgentCount = deals.filter(d => d.risk_status === 'urgent').length;
 
   return (
-    <div className="flex flex-col min-w-[260px] max-w-[300px] w-full shrink-0">
+    <div className="flex min-w-[300px] max-w-[300px] shrink-0 flex-col xl:min-w-[320px] xl:max-w-[320px]">
       {/* Column header */}
-      <div className={cn('rounded-t-lg border border-b-0 bg-card p-2.5 border-t-4', column.color)}>
+      <div className={cn('relative overflow-hidden rounded-t-[1.2rem] border border-b-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.095),rgba(39,39,42,0.88)_44%,rgba(0,0,0,0.72))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] border-t-4', column.color)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="text-sm">{column.icon}</span>
-            <h3 className="text-xs font-semibold">{column.label}</h3>
+            <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-100">{column.label}</h3>
           </div>
           <div className="flex items-center gap-1">
             {urgentCount > 0 && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Badge variant="destructive" className="text-[9px] h-4 px-1">
+                    <Badge variant="destructive" className="h-5 px-1.5 text-[9px] shadow-[0_0_18px_rgba(239,68,68,0.24)]">
                       <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
                       {urgentCount}
                     </Badge>
@@ -259,7 +257,7 @@ function KanbanColumn({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <Badge variant="secondary" className="text-[9px] h-4 px-1.5">
+            <Badge variant="secondary" className="h-6 rounded-full border border-amber-200/20 bg-amber-300/15 px-2 text-[10px] font-bold text-amber-100">
               {deals.length}
             </Badge>
           </div>
@@ -272,12 +270,14 @@ function KanbanColumn({
       </div>
 
       {/* Cards container */}
-      <div className="flex-1 rounded-b-lg border border-t-0 bg-muted/30 min-h-[200px]">
-        <ScrollArea className="h-[calc(100vh-340px)] min-h-[200px]">
-          <div className="p-2 space-y-2">
+      <div className="min-h-[260px] flex-1 rounded-b-[1.2rem] border border-t-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] shadow-[inset_0_18px_34px_rgba(0,0,0,0.18)]">
+        <div className="h-[calc(100vh-360px)] min-h-[260px] overflow-y-auto p-2.5 pr-2 [scrollbar-color:rgba(245,158,11,0.45)_rgba(24,24,27,0.75)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
+          <div className="space-y-2.5">
             {deals.length === 0 ? (
-              <div className="flex items-center justify-center h-24 text-[11px] text-muted-foreground italic">
-                No deals
+              <div className="flex h-32 flex-col items-center justify-center rounded-[1rem] border border-dashed border-amber-200/15 bg-white/[0.025] px-4 text-center text-[11px] text-zinc-500">
+                <span className="text-lg opacity-60">{column.icon}</span>
+                <span className="mt-1 font-medium not-italic">No active deals</span>
+                <span className="mt-0.5 text-[10px]">Stage ready for the next opportunity.</span>
               </div>
             ) : (
               deals.map(deal => (
@@ -289,7 +289,7 @@ function KanbanColumn({
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   );
@@ -325,15 +325,8 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
     return grouped;
   }, [deals]);
 
-  // Filter out empty columns that aren't relevant
-  const activeColumns = useMemo(() => {
-    return KANBAN_COLUMNS.filter(col => {
-      // Always show columns that have deals
-      if (columns[col.id]?.length > 0) return true;
-      // Show core columns even if empty
-      return ['onboarding', 'finance', 'legal', 'finalised'].includes(col.id);
-    });
-  }, [columns]);
+  // Keep every configured stage visible, including empty stages.
+  const activeColumns = KANBAN_COLUMNS;
 
   // Summary stats
   const stats = useMemo(() => {
@@ -361,7 +354,7 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
   return (
     <div className="space-y-3">
       {/* Board summary bar */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 rounded-[1.1rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035)_42%,rgba(0,0,0,0.18))] px-4 py-3 text-xs text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
         <span>{deals.length} deal{deals.length !== 1 ? 's' : ''} across {activeColumns.length} stages</span>
         <span className="text-border">|</span>
         <span className="font-mono">{formatCurrency(stats.totalValue)} pipeline value</span>
@@ -377,8 +370,8 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
       </div>
 
       {/* Kanban board - horizontal scroll */}
-      <div className="overflow-x-auto scrollbar-thin -mx-3 sm:-mx-6 px-3 sm:px-6 pb-4">
-        <div className="flex gap-3 items-start">
+      <div className="-mx-3 overflow-x-auto px-3 pb-5 [scrollbar-color:rgba(245,158,11,0.50)_rgba(24,24,27,0.85)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950 [&::-webkit-scrollbar-thumb]:bg-gradient-to-r [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-amber-200/55 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/90 sm:-mx-6 sm:px-6">
+        <div className="flex items-start gap-5 pr-6">
           {activeColumns.map(col => (
             <KanbanColumn
               key={col.id}
