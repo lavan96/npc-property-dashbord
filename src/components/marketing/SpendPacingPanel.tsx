@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Gauge, AlertTriangle, TrendingUp, Calendar } from 'lucide-react';
+import { Gauge, AlertTriangle, Calendar } from 'lucide-react';
 import { differenceInDays, parseISO, addDays, format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface SpendPacingPanelProps {
   campaigns: any[];
@@ -106,26 +107,28 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
   const underSpending = pacingData.filter(p => p.pacingStatus === 'underspend').length;
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Gauge className="h-5 w-5 text-primary" />
-              Budget Pacing & Spend Rate
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <Gauge className="h-5 w-5 text-primary" />
+              </span>
+              <span className="truncate">Budget Pacing & Spend Rate</span>
             </CardTitle>
             <CardDescription className="mt-1">
               Real-time budget consumption across campaigns · {daysLeft} days left this month
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2">
             {overSpending > 0 && (
-              <Badge variant="destructive" className="text-[10px]">
+              <Badge variant="destructive" className="rounded-full text-[10px]">
                 {overSpending} overspending
               </Badge>
             )}
             {underSpending > 0 && (
-              <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px]">
+              <Badge className="rounded-full border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400">
                 {underSpending} underspending
               </Badge>
             )}
@@ -143,20 +146,20 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
                 : 'bg-emerald-500';
 
             return (
-              <div key={pacing.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{pacing.name}</span>
-                    <Badge variant="outline" className="text-[9px] shrink-0">
+              <div key={pacing.id} className="space-y-3 rounded-2xl border border-border/60 bg-background/40 p-3 shadow-sm transition-colors hover:border-primary/25 hover:bg-background/55">
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="min-w-0 max-w-full truncate text-sm font-semibold text-foreground sm:max-w-[22rem]" title={pacing.name}>{pacing.name}</span>
+                    <Badge variant="outline" className="shrink-0 rounded-full border-primary/20 bg-primary/5 text-[9px]">
                       {pacing.budgetType === 'daily' ? `${formatCurrency(pacing.dailyBudget)}/day` : `${formatCurrency(pacing.budget)} lifetime`}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-mono font-semibold ${
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className={cn('rounded-full border bg-background/60 px-2 py-1 text-sm font-mono font-semibold', 
                       pacing.pacingStatus === 'overspend' ? 'text-red-600 dark:text-red-400' :
                       pacing.pacingStatus === 'underspend' ? 'text-amber-600 dark:text-amber-400' :
                       'text-emerald-600 dark:text-emerald-400'
-                    }`}>
+                    )}>
                       {pacing.pacingPercent.toFixed(0)}%
                     </span>
                     {pacing.pacingStatus === 'overspend' && (
@@ -173,7 +176,7 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
                 </div>
 
                 {/* Progress bar */}
-                <div className="relative h-2.5 bg-muted rounded-full overflow-hidden">
+                <div className="relative h-3 overflow-hidden rounded-full bg-muted">
                   <div
                     className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${barColor}`}
                     style={{ width: `${Math.min(barWidth, 100)}%` }}
@@ -186,9 +189,9 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
                 </div>
 
                 {/* Details */}
-                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
                   <span>Spent: <span className="font-mono text-foreground">{formatCurrency(pacing.spent)}</span></span>
-                  <span>Daily rate: <span className="font-mono text-foreground">{formatCurrency(pacing.dailyRate)}</span>/day</span>
+                  <span className="rounded-full border border-border/60 bg-background/55 px-2 py-0.5">Daily rate: <span className="font-mono text-foreground">{formatCurrency(pacing.dailyRate)}</span>/day</span>
                   {pacing.projectedExhaustDate && (
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
