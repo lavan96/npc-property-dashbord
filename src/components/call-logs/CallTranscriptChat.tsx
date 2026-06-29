@@ -36,9 +36,9 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
   if (!artifactMessages || artifactMessages.length === 0) {
     if (plainTranscript) {
       return (
-        <Card>
+        <Card className="overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25">
           <CardContent className="p-4">
-            <pre className="whitespace-pre-wrap text-sm font-mono bg-muted p-4 rounded-lg">
+            <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/45 p-4 font-mono text-sm text-zinc-300 [overflow-wrap:anywhere]">
               {plainTranscript}
             </pre>
           </CardContent>
@@ -46,9 +46,9 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
       );
     }
     return (
-      <Card>
+      <Card className="overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25">
         <CardContent className="p-8 text-center">
-          <p className="text-muted-foreground">No transcript available</p>
+          <p className="text-zinc-500">No transcript available</p>
         </CardContent>
       </Card>
     );
@@ -75,7 +75,7 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
   let toolCallCounter = 0;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-3xl border border-white/10 bg-black/20 p-3">
       {visibleMessages.map((msg, idx) => {
         const isBot = msg.role === 'bot' || msg.role === 'assistant';
         const isUser = msg.role === 'user';
@@ -91,32 +91,32 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
             {content && (
               <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
                 {!isUser && (
-                  <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="w-4 h-4 text-primary" />
+                  <div className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-amber-300/20 bg-amber-500/10">
+                    <Bot className="h-4 w-4 text-amber-200" />
                   </div>
                 )}
                 <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
+                  className={`max-w-[75%] rounded-2xl border px-4 py-2.5 text-sm shadow-sm ${
                     isUser
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-muted rounded-bl-md'
+                      ? 'rounded-br-md border-blue-300/20 bg-blue-500/15 text-blue-50'
+                      : 'rounded-bl-md border-white/10 bg-white/[0.05] text-zinc-200'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{content}</p>
+                  <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{content}</p>
                   {msg.time && (
-                    <p className={`text-[10px] mt-1 ${isUser ? 'text-primary-foreground/60' : 'text-muted-foreground/60'}`}>
+                    <p className={`mt-1 text-[10px] ${isUser ? 'text-blue-100/60' : 'text-zinc-500'}`}>
                       {formatTime(msg.time)}
                     </p>
                   )}
                   {isBot && msg.assistantName && (
-                    <p className={`text-[10px] mt-0.5 text-muted-foreground/60`}>
+                    <p className="mt-0.5 text-[10px] text-zinc-500">
                       {msg.assistantName}
                     </p>
                   )}
                 </div>
                 {isUser && (
-                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
-                    <User className="w-4 h-4 text-secondary-foreground" />
+                  <div className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-blue-300/20 bg-blue-500/10">
+                    <User className="h-4 w-4 text-blue-200" />
                   </div>
                 )}
               </div>
@@ -124,7 +124,7 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
 
             {/* Inline tool calls */}
             {hasToolCalls && (
-              <div className="my-2 mx-8">
+              <div className="mx-8 my-2">
                 <Accordion type="multiple">
                   {msg.toolCalls!.map((tc, tcIdx) => {
                     toolCallCounter++;
@@ -148,29 +148,29 @@ export const CallTranscriptChat = ({ artifactMessages, plainTranscript }: CallTr
                     }
 
                     return (
-                      <AccordionItem key={tcId} value={tcId} className="border border-dashed border-muted-foreground/30 rounded-lg my-1 px-1 overflow-hidden">
-                        <AccordionTrigger className="hover:no-underline py-2 text-xs">
+                      <AccordionItem key={tcId} value={tcId} className="my-1 overflow-hidden rounded-2xl border border-dashed border-amber-300/20 bg-amber-500/[0.04] px-2">
+                        <AccordionTrigger className="py-2 text-xs hover:no-underline">
                           <div className="flex items-center gap-2 text-left">
-                            <Wrench className="w-3 h-3 text-muted-foreground" />
-                            <span className="font-mono text-muted-foreground">{tc.function?.name || 'tool_call'}</span>
+                            <Wrench className="h-3 w-3 text-amber-300" />
+                            <span className="font-mono text-zinc-400">{tc.function?.name || 'tool_call'}</span>
                             <div className={`w-1.5 h-1.5 rounded-full ${success ? 'bg-emerald-500' : 'bg-red-500'}`} />
                           </div>
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="space-y-2 text-xs pb-1 overflow-hidden">
                             <div>
-                              <p className="font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                              <p className="mb-1 flex items-center gap-1 font-medium text-zinc-500">
                                 <ChevronRight className="w-3 h-3" /> Request
                               </p>
-                              <pre className="whitespace-pre-wrap break-all font-mono bg-background p-2 rounded-md overflow-auto max-h-40 text-[11px] w-full max-w-full">
+                              <pre className="max-h-40 w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded-xl border border-white/10 bg-black/45 p-2 font-mono text-[11px] text-zinc-300">
                                 {typeof args === 'string' ? args : JSON.stringify(args, null, 2)}
                               </pre>
                             </div>
                             <div>
-                              <p className="font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                              <p className="mb-1 flex items-center gap-1 font-medium text-zinc-500">
                                 <ChevronRight className="w-3 h-3" /> Response
                               </p>
-                              <pre className="whitespace-pre-wrap break-all font-mono bg-background p-2 rounded-md overflow-auto max-h-40 text-[11px] w-full max-w-full">
+                              <pre className="max-h-40 w-full max-w-full overflow-auto whitespace-pre-wrap break-all rounded-xl border border-white/10 bg-black/45 p-2 font-mono text-[11px] text-zinc-300">
                                 {result ? (typeof result === 'string' ? result : JSON.stringify(result, null, 2)) : 'No response'}
                               </pre>
                             </div>
