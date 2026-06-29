@@ -1490,7 +1490,9 @@ export default function Conversations() {
                   Your message workspace is ready
                 </div>
               </div>
+            </div>
             ) : selectedConversation ? (
+
               <>
                 {/* Thread header with client context */}
                 <div className="relative shrink-0 overflow-hidden border-b border-amber-100/10 bg-[linear-gradient(135deg,rgba(9,9,11,0.96),rgba(24,24,27,0.90)_58%,rgba(120,53,15,0.12))] px-4 py-4 shadow-[0_14px_38px_rgba(0,0,0,0.24)] md:px-5">
@@ -1560,7 +1562,8 @@ export default function Conversations() {
                     </div>
                   </div>
                 </div>
-              </div>
+
+
 
               {/* Messages */}
               <ScrollArea
