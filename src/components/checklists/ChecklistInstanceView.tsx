@@ -50,6 +50,12 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   const progressFillClass = instance.status === 'completed'
     ? '[&>div]:from-emerald-500 [&>div]:via-teal-300 [&>div]:to-emerald-200'
     : '[&>div]:from-amber-500 [&>div]:via-yellow-300 [&>div]:to-amber-200';
+  const progressStateLabel = progress === 100 ? 'Complete' : progress === 0 ? 'Ready to start' : 'In progress';
+  const progressStateClass = progress === 100
+    ? 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
+    : progress === 0
+      ? 'border-zinc-600/45 bg-zinc-900/70 text-zinc-300'
+      : 'border-amber-300/25 bg-amber-400/10 text-amber-200';
 
   const handleToggleItem = (itemId: string, currentChecked: boolean) => {
     const nextChecked = !currentChecked;
@@ -160,11 +166,18 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Overall progress</p>
-              <span className="mt-1 block text-sm font-medium text-zinc-300">{checkedCount} of {totalCount} completed</span>
+              <span className="mt-1 block text-base font-semibold text-zinc-100">{checkedCount} of {totalCount} completed</span>
             </div>
-            <span className="text-3xl font-bold tabular-nums text-amber-200">{progress}%</span>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${progressStateClass}`}>
+                {progressStateLabel}
+              </Badge>
+              <span className="text-4xl font-bold tabular-nums text-amber-200 drop-shadow-[0_0_18px_rgba(245,158,11,0.24)]">{progress}%</span>
+            </div>
           </div>
-          <Progress value={progress} className={`h-3 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r ${progressFillClass}`} />
+          <div className="rounded-full border border-white/5 bg-black/35 p-1 shadow-inner shadow-black/50">
+            <Progress value={progress} className={`h-4 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r [&>div]:shadow-[0_0_24px_rgba(245,158,11,0.28)] ${progressFillClass}`} />
+          </div>
         </CardContent>
       </Card>
 
@@ -177,6 +190,13 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
         sections.map((section, idx) => {
           const sectionChecked = section.items.filter(i => i.is_checked).length;
           const sectionTotal = section.items.length;
+          const sectionComplete = sectionTotal > 0 && sectionChecked === sectionTotal;
+          const sectionStarted = sectionChecked > 0 && !sectionComplete;
+          const sectionBadgeClass = sectionComplete
+            ? 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200'
+            : sectionStarted
+              ? 'border-amber-300/25 bg-amber-400/10 text-amber-200'
+              : 'border-zinc-600/45 bg-zinc-900/70 text-zinc-300';
 
           return (
             <Card key={idx} className="overflow-hidden rounded-2xl border-amber-500/15 bg-zinc-950/90 shadow-lg shadow-black/30">
@@ -186,7 +206,8 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-300/15 bg-black/30">{section.icon}</span>
                     <span>{section.title}</span>
                   </CardTitle>
-                  <Badge variant="secondary" className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-xs font-semibold text-amber-200">
+                  <Badge variant="secondary" className={`gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${sectionBadgeClass}`}>
+                    {sectionComplete && <CheckCircle2 className="h-3 w-3" />}
                     {sectionChecked}/{sectionTotal}
                   </Badge>
                 </div>
