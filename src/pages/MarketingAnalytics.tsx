@@ -2,12 +2,13 @@ import { useState, useCallback } from 'react';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, DollarSign, Eye, MousePointerClick, Target, RefreshCw, BarChart3, TrendingUp, Users, Megaphone, GitCompareArrows, Bot, Layers, Download, FileDown } from 'lucide-react';
+import { DollarSign, Eye, MousePointerClick, Target, RefreshCw, TrendingUp, Megaphone, GitCompareArrows, Bot, Layers, FileDown, Sparkles } from 'lucide-react';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+import { cn } from '@/lib/utils';
 import { ManyChatPanel } from '@/components/marketing/ManyChatPanel';
 import { LeadMagnetsPanel } from '@/components/marketing/LeadMagnetsPanel';
 import { toast } from 'sonner';
@@ -421,24 +422,54 @@ export default function MarketingAnalytics() {
   });
 
   return (
-    <div className="space-y-6">
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="marketing-analytics-page space-y-5 pb-8 sm:space-y-6"
+    >
       {/* Channel Tabs */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Megaphone className="h-5 w-5 text-primary" />
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="relative isolate border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.84)_52%,hsl(var(--primary)/0.10))] p-4 shadow-2xl shadow-black/10 dark:shadow-black/35 sm:p-5 lg:p-6"
+      >
+        <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative z-10 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-inner shadow-primary/10 sm:h-14 sm:w-14">
+              <Megaphone className="h-6 w-6 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                  <Sparkles className="mr-1 h-3 w-3" />
+                  Marketing Intelligence
+                </Badge>
+                <Badge variant="secondary" className="max-w-full rounded-full bg-background/60 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                  {dateLabel}
+                </Badge>
+              </div>
+              <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Marketing Analytics</h1>
+              <p className="mt-1 text-sm text-muted-foreground">AI-powered marketing performance insights</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Marketing Analytics</h1>
-            <p className="text-muted-foreground text-sm">AI-powered marketing performance insights</p>
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+            <div className="rounded-2xl border border-border/60 bg-background/55 px-3 py-2 text-xs shadow-sm backdrop-blur dark:border-white/10">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Channels</p>
+              <p className="mt-0.5 font-semibold text-foreground">Meta, ManyChat, Lead Magnets</p>
+            </div>
+            <div className="rounded-2xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs shadow-sm backdrop-blur">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-primary">Focus</p>
+              <p className="mt-0.5 font-semibold text-foreground">Spend → Leads → ROI</p>
+            </div>
           </div>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Cross-Channel Summary (visible before selecting a tab) */}
       {!isLoading && insights.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Layers className="h-3.5 w-3.5" />
@@ -448,7 +479,7 @@ export default function MarketingAnalytics() {
               <p className="text-[10px] text-muted-foreground mt-0.5">Meta Ads + ManyChat</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <DollarSign className="h-3.5 w-3.5" />
@@ -458,7 +489,7 @@ export default function MarketingAnalytics() {
               <p className="text-[10px] text-muted-foreground mt-0.5">{dateLabel}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Target className="h-3.5 w-3.5" />
@@ -468,7 +499,7 @@ export default function MarketingAnalytics() {
               <p className="text-[10px] text-muted-foreground mt-0.5">From Meta Ads</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <TrendingUp className="h-3.5 w-3.5" />
@@ -481,66 +512,70 @@ export default function MarketingAnalytics() {
         </div>
       )}
 
-      <Tabs value={activeChannel} onValueChange={setActiveChannel}>
-        <TabsList>
-          <TabsTrigger value="meta" className="gap-1.5">
+      <Tabs value={activeChannel} onValueChange={setActiveChannel} className="min-w-0">
+        <DashboardThemeFrame variant="toolbar" className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-black/5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] dark:shadow-black/25">
+        <TabsList className="h-auto min-w-max flex-1 justify-start gap-1 bg-transparent p-0 sm:min-w-0 sm:flex-wrap">
+          <TabsTrigger value="meta" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
             <Target className="h-4 w-4" />
             Meta Ads
             {!isLoading && insights.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-[9px] px-1.5 py-0 h-4">{insights.length}</Badge>
+              <Badge variant="secondary" className="ml-1 h-4 rounded-full px-1.5 py-0 text-[9px]">{insights.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="manychat" className="gap-1.5">
+          <TabsTrigger value="manychat" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
             <Bot className="h-4 w-4" />
             ManyChat
           </TabsTrigger>
-          <TabsTrigger value="lead-magnets" className="gap-1.5">
+          <TabsTrigger value="lead-magnets" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
             <FileDown className="h-4 w-4" />
             Lead Magnets
           </TabsTrigger>
         </TabsList>
+        </DashboardThemeFrame>
 
         <TabsContent value="meta">
           <div className="space-y-6 mt-4">
       {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="flex items-end justify-end">
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={adsFetching}>
+      <DashboardThemeFrame variant="toolbar" className="items-start justify-between gap-3 rounded-3xl border-primary/15 bg-card/70 p-3 shadow-xl shadow-black/5 dark:shadow-black/20">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Analytics Range</p>
+          <p className="mt-1 text-sm text-muted-foreground">Filter Meta Ads performance without changing metric calculations.</p>
+        </div>
+        <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center lg:justify-end">
+          <DateRangePicker
+            datePreset={datePreset}
+            onDatePresetChange={setDatePreset}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+          />
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={adsFetching} className="min-h-10 gap-2 rounded-2xl border-primary/20 bg-background/60 px-4 font-semibold hover:border-primary/40 hover:bg-primary/10 hover:text-primary">
             <RefreshCw className={`h-4 w-4 mr-1.5 ${adsFetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
-
-        {/* Date Range Picker */}
-        <DateRangePicker
-          datePreset={datePreset}
-          onDatePresetChange={setDatePreset}
-          customRange={customRange}
-          onCustomRangeChange={setCustomRange}
-        />
-      </div>
+      </DashboardThemeFrame>
 
       {/* Summary Badges */}
       {!isLoading && insights.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-xs px-2.5 py-1">
+          <Badge variant="outline" className="rounded-full border-border/70 bg-background/60 px-2.5 py-1 text-xs">
             {insights.length} {level === 'campaign' ? 'Campaign' : level === 'adset' ? 'Ad Set' : 'Ad'}{insights.length !== 1 ? 's' : ''}
           </Badge>
           {summary.criticalAnomalies > 0 && (
-            <Badge variant="destructive" className="text-xs px-2.5 py-1">
+            <Badge variant="destructive" className="rounded-full px-2.5 py-1 text-xs">
               {summary.criticalAnomalies} Critical Alert{summary.criticalAnomalies !== 1 ? 's' : ''}
             </Badge>
           )}
           {summary.warningAnomalies > 0 && (
-            <Badge className="text-xs px-2.5 py-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+            <Badge className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs text-amber-600 dark:text-amber-400">
               {summary.warningAnomalies} Warning{summary.warningAnomalies !== 1 ? 's' : ''}
             </Badge>
           )}
           {summary.avgHealthScore > 0 && (
-            <Badge variant="outline" className={`text-xs px-2.5 py-1 font-mono ${
-              summary.avgHealthScore >= 60 ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400' :
-              summary.avgHealthScore >= 35 ? 'border-amber-500/30 text-amber-600 dark:text-amber-400' :
-              'border-red-500/30 text-red-600 dark:text-red-400'
+            <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-xs font-mono ${
+              summary.avgHealthScore >= 60 ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400' :
+              summary.avgHealthScore >= 35 ? 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400' :
+              'border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400'
             }`}>
               Avg Health: {summary.avgHealthScore}/100
             </Badge>
@@ -549,7 +584,7 @@ export default function MarketingAnalytics() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         <KPICard icon={<DollarSign className="h-4 w-4" />} label="Total Spend" value={formatCurrency(totals.spend)} loading={isLoading} />
         <KPICard icon={<Eye className="h-4 w-4" />} label="Impressions" value={formatNumber(totals.impressions)} loading={isLoading} />
         <KPICard icon={<MousePointerClick className="h-4 w-4" />} label="Clicks" value={formatNumber(totals.clicks)} loading={isLoading} />
@@ -742,7 +777,7 @@ export default function MarketingAnalytics() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
 
@@ -754,16 +789,21 @@ function KPICard({ icon, label, value, loading, accent }: {
   accent?: boolean;
 }) {
   return (
-    <Card className={accent ? 'border-primary/20 bg-primary/[0.02]' : ''}>
+    <Card className={cn(
+      'group min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/10 dark:border-white/10 dark:shadow-black/25',
+      accent && 'border-primary/25 bg-primary/[0.04] ring-1 ring-primary/10'
+    )}>
       <CardContent className="pt-4 pb-3 px-4">
-        <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
-          {icon}
-          <span className="text-[11px] font-medium uppercase tracking-wider">{label}</span>
+        <div className="mb-2 flex min-w-0 items-center gap-2 text-muted-foreground">
+          <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/65 transition-colors group-hover:border-primary/30 group-hover:text-primary', accent && 'border-primary/20 bg-primary/10 text-primary')}>
+            {icon}
+          </span>
+          <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider">{label}</span>
         </div>
         {loading ? (
-          <div className="h-7 w-20 bg-muted animate-pulse rounded mt-0.5" />
+          <div className="mt-0.5 h-7 w-20 animate-pulse rounded-xl bg-muted" />
         ) : (
-          <p className={`text-xl font-bold tracking-tight ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</p>
+          <p className={`min-w-0 truncate text-2xl font-bold tracking-tight ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</p>
         )}
       </CardContent>
     </Card>

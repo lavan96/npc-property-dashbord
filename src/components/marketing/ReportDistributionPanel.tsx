@@ -393,15 +393,17 @@ export function ReportDistributionPanel() {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            Report Distribution
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+              <Mail className="h-5 w-5 text-primary" />
+            </span>
+            <span>Report Distribution</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 py-10">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         </CardContent>
@@ -411,24 +413,26 @@ export function ReportDistributionPanel() {
 
   return (
     <>
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Mail className="h-5 w-5 text-primary" />
-                Report Distribution
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                  <Mail className="h-5 w-5 text-primary" />
+                </span>
+                <span className="truncate">Report Distribution</span>
               </CardTitle>
               <CardDescription className="mt-1">
                 Automated Market Intelligence Report delivery to GHL pipeline contacts
               </CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-1.5 text-xs">
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-1.5 rounded-xl border-primary/20 text-xs hover:bg-primary/10 hover:text-primary">
                 <Clock className="h-3.5 w-3.5" />
                 {showHistory ? 'Schedules' : 'History'}
               </Button>
-              <Button size="sm" onClick={openCreateDialog} className="gap-1.5 text-xs">
+              <Button size="sm" onClick={openCreateDialog} className="gap-1.5 rounded-xl text-xs shadow-sm">
                 <Plus className="h-3.5 w-3.5" />
                 New Schedule
               </Button>
@@ -440,10 +444,10 @@ export function ReportDistributionPanel() {
             <div className="space-y-3">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent Distribution History</h4>
               {history.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">No distribution history yet</p>
+                <p className="rounded-2xl border border-dashed border-border/70 bg-background/45 py-8 text-center text-sm text-muted-foreground">No distribution history yet</p>
               ) : (
-                <ScrollArea className="max-h-[300px]">
-                  <Table>
+                <ScrollArea className="max-h-[320px] rounded-2xl border border-border/70 bg-background/35">
+                  <Table className="min-w-[520px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-xs">Recipient</TableHead>
@@ -458,13 +462,13 @@ export function ReportDistributionPanel() {
                         return (
                           <TableRow key={log.id}>
                             <TableCell className="py-2">
-                              <div>
-                                <p className="text-xs font-medium">{log.recipient_name || 'Unknown'}</p>
-                                <p className="text-[11px] text-muted-foreground">{log.recipient_email}</p>
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-medium" title={log.recipient_name || 'Unknown'}>{log.recipient_name || 'Unknown'}</p>
+                                <p className="truncate text-[11px] text-muted-foreground" title={log.recipient_email}>{log.recipient_email}</p>
                               </div>
                             </TableCell>
                             <TableCell className="py-2">
-                              <Badge variant="outline" className={`text-[10px] gap-1 ${statusConfig.color}`}>
+                              <Badge variant="outline" className={`gap-1 rounded-full text-[10px] ${statusConfig.color}`}>
                                 <StatusIcon className="h-3 w-3" />
                                 {statusConfig.label}
                               </Badge>
@@ -488,7 +492,7 @@ export function ReportDistributionPanel() {
           ) : (
             <div className="space-y-3">
               {schedules.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="rounded-2xl border border-dashed border-border/70 bg-background/45 py-10 text-center">
                   <Mail className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No distribution schedules configured</p>
                   <p className="text-xs text-muted-foreground/70 mt-1">Create a schedule to automatically send reports to pipeline contacts</p>
@@ -497,28 +501,28 @@ export function ReportDistributionPanel() {
                 schedules.map(schedule => {
                   const targets = schedule.pipeline_stage_targets || [];
                   return (
-                    <div key={schedule.id} className="rounded-lg border border-border/50 bg-card p-4 space-y-2">
-                      <div className="flex items-start justify-between">
+                    <div key={schedule.id} className="space-y-3 rounded-2xl border border-border/70 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-primary/[0.03]">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold">{schedule.name}</span>
-                            <Badge variant="outline" className={`text-[10px] ${schedule.is_enabled ? 'border-emerald-500/30 text-emerald-600' : 'border-border text-muted-foreground'}`}>
+                            <span className="truncate text-sm font-semibold" title={schedule.name}>{schedule.name}</span>
+                            <Badge variant="outline" className={`rounded-full text-[10px] ${schedule.is_enabled ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600' : 'border-border text-muted-foreground'}`}>
                               {schedule.is_enabled ? 'Active' : 'Paused'}
                             </Badge>
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="rounded-full text-[10px]">
                               {FREQUENCY_LABELS[schedule.frequency] || schedule.frequency}
                             </Badge>
-                            <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
+                            <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/5 text-[10px] text-primary">
                               {schedule.content_rotation_enabled ? '🔄 Rotation' : (REPORT_TYPE_OPTIONS[schedule.report_type || 'full'] || 'Full')}
                             </Badge>
                             {schedule.audience_segment && schedule.audience_segment !== 'general' && (
-                              <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600">
+                              <Badge variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/5 text-[10px] text-amber-600">
                                 {AUDIENCE_OPTIONS[schedule.audience_segment] || schedule.audience_segment}
                               </Badge>
                             )}
                           </div>
                           {schedule.description && (
-                            <p className="text-[11px] text-muted-foreground mt-0.5">{schedule.description}</p>
+                            <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{schedule.description}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-1 shrink-0 ml-2">
@@ -530,27 +534,27 @@ export function ReportDistributionPanel() {
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1">
+                      <div className="grid gap-2 text-[11px] text-muted-foreground md:grid-cols-3">
+                        <span className="flex min-w-0 items-center gap-1 rounded-xl bg-muted/30 px-2.5 py-1.5" title={targets.length > 0 ? getTargetSummary(targets) : `${schedule.pipeline_name || 'Pipeline'}${schedule.stage_name ? ` → ${schedule.stage_name}` : ' (All stages)'}`}>
                           <Users className="h-3 w-3" />
-                          {targets.length > 0
+                          <span className="truncate">{targets.length > 0
                             ? getTargetSummary(targets)
                             : `${schedule.pipeline_name || 'Pipeline'}${schedule.stage_name ? ` → ${schedule.stage_name}` : ' (All stages)'}`
-                          }
+                          }</span>
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex min-w-0 items-center gap-1 rounded-xl bg-muted/30 px-2.5 py-1.5">
                           <Mail className="h-3 w-3" />
-                          {schedule.mailbox_source === 'personal' ? schedule.sender_mailbox_email || 'Personal' : 'Admin'}
+                          <span className="truncate">{schedule.mailbox_source === 'personal' ? schedule.sender_mailbox_email || 'Personal' : 'Admin'}</span>
                         </span>
                         {schedule.last_sent_at && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 rounded-xl bg-muted/30 px-2.5 py-1.5">
                             <Calendar className="h-3 w-3" />
                             Last: {format(new Date(schedule.last_sent_at), 'dd MMM yy')}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex gap-1.5 pt-1">
+                      <div className="flex flex-wrap gap-1.5 pt-1">
                         <Button
                           size="sm"
                           variant="outline"
@@ -620,14 +624,14 @@ export function ReportDistributionPanel() {
                       <Badge
                         key={i}
                         variant="secondary"
-                        className="text-[10px] gap-1 cursor-pointer hover:bg-destructive/20"
+                        className="max-w-full cursor-pointer gap-1 rounded-full text-[10px] hover:bg-destructive/20"
                         onClick={() => {
                           const pipeline = pipelines.find(p => p.id === t.pipeline_id);
                           const stage = t.stage_id ? stages.find(s => s.id === t.stage_id) : undefined;
                           if (pipeline) toggleStageTarget(pipeline, stage);
                         }}
                       >
-                        {t.pipeline_name} → {t.stage_name || 'All stages'}
+                        <span className="truncate">{t.pipeline_name} → {t.stage_name || 'All stages'}</span>
                         <XCircle className="h-2.5 w-2.5" />
                       </Badge>
                     ))}
