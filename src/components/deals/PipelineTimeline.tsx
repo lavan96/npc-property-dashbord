@@ -240,7 +240,7 @@ function DealTimelineRow({
         >
           {/* Stage segments */}
           <TooltipProvider>
-            <div className={cn('h-full flex rounded-xl overflow-hidden border shadow-lg shadow-black/5 ring-1 ring-background/70', isOverdue ? 'border-destructive/35' : 'border-border/60') }>
+            <div className={cn('h-full flex rounded-xl overflow-hidden border shadow-lg shadow-sm dark:shadow-black/5 ring-1 ring-background/70', isOverdue ? 'border-destructive/35' : 'border-border/60') }>
               {stages.length > 0 ? (
                 stages.map((stage, i) => {
                   const segWidth = 100 / stages.length;
@@ -256,7 +256,7 @@ function DealTimelineRow({
                           style={{ width: `${segWidth}%` }}
                         >
                           {stage.status === 'in_progress' && (
-                            <div className="absolute inset-0 bg-white/25 animate-pulse" />
+                            <div className="absolute inset-0 bg-card/25 dark:bg-white/25 animate-pulse" />
                           )}
                         </div>
                       </TooltipTrigger>
@@ -301,7 +301,7 @@ function DealTimelineRow({
                       className={cn('absolute z-20 -translate-x-1/2')}
                       style={{ left: `${mPct}%`, bottom: `${i % 2 === 0 ? 6 : -6}px` }}
                     >
-                      <div className={cn('h-5 w-5 rounded-full border-2 border-background flex items-center justify-center text-white shadow-md ring-1 ring-black/10', m.color)}>
+                      <div className={cn('h-5 w-5 rounded-full border-2 border-background flex items-center justify-center text-foreground dark:text-white shadow-md ring-1 ring-black/10', m.color)}>
                         {m.icon}
                       </div>
                     </div>
@@ -412,7 +412,7 @@ function TimelineLegend() {
         </div>
         {markers.map((marker) => (
           <div key={marker.label} className="flex items-center gap-1.5">
-            <div className={cn('flex h-4 w-4 items-center justify-center rounded-full border-2 border-background text-white shadow-sm ring-1 ring-black/10', marker.className)}>
+            <div className={cn('flex h-4 w-4 items-center justify-center rounded-full border-2 border-background text-foreground dark:text-white shadow-sm ring-1 ring-black/10', marker.className)}>
               {marker.icon}
             </div>
             <span>{marker.label}</span>
@@ -561,7 +561,7 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
       <TimelineLegend />
 
       {/* Timeline chart */}
-      <Card className="overflow-hidden border-border/70 bg-card/80 shadow-xl shadow-black/5">
+      <Card className="overflow-hidden border-border/70 bg-card/80 shadow-xl shadow-sm dark:shadow-black/5">
         <div className="min-w-0 overflow-x-auto scroll-smooth overscroll-x-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70" ref={scrollRef}>
           <div style={{ minWidth: `${Math.max(920, totalDays * 4)}px` }}>
             {/* Header with month markers */}

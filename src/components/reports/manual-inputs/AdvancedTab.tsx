@@ -545,7 +545,7 @@ export function AdvancedTab({
               <div className="flex h-8 rounded-lg overflow-hidden">
                 {parseFloat(stageDepositPercent) > 0 && (
                   <div 
-                    className="bg-blue-500 flex items-center justify-center text-xs text-white font-medium"
+                    className="bg-blue-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageDepositPercent}%` }}
                   >
                     {stageDepositPercent}%
@@ -553,7 +553,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageSlabPercent) > 0 && (
                   <div 
-                    className="bg-cyan-500 flex items-center justify-center text-xs text-white font-medium"
+                    className="bg-cyan-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageSlabPercent}%` }}
                   >
                     {stageSlabPercent}%
@@ -561,7 +561,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageFramePercent) > 0 && (
                   <div 
-                    className="bg-teal-500 flex items-center justify-center text-xs text-white font-medium"
+                    className="bg-teal-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageFramePercent}%` }}
                   >
                     {stageFramePercent}%
@@ -569,7 +569,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageLockupPercent) > 0 && (
                   <div 
-                    className="bg-green-500 flex items-center justify-center text-xs text-white font-medium"
+                    className="bg-green-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageLockupPercent}%` }}
                   >
                     {stageLockupPercent}%
@@ -577,7 +577,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageFixingPercent) > 0 && (
                   <div 
-                    className="bg-lime-500 flex items-center justify-center text-xs text-white font-medium"
+                    className="bg-lime-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageFixingPercent}%` }}
                   >
                     {stageFixingPercent}%
@@ -585,7 +585,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageCompletionPercent) > 0 && (
                   <div 
-                    className="bg-emerald-500 flex items-center justify-center text-xs text-white font-medium"
+                    className="bg-emerald-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageCompletionPercent}%` }}
                   >
                     {stageCompletionPercent}%

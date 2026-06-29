@@ -624,7 +624,7 @@ export default function ClientManagement() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-2">
             <div className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">Premium client workspace</div>
-            <h1 className="bg-gradient-to-r from-slate-950 via-amber-700 to-amber-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-amber-100 dark:to-amber-300 md:text-5xl">Client Management</h1>
+            <h1 className="bg-gradient-to-r from-card dark:from-slate-950 via-amber-700 to-amber-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-amber-100 dark:to-amber-300 md:text-5xl">Client Management</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
               Manage clients, properties, and sync with GoHighLevel
             </p>
@@ -792,7 +792,7 @@ export default function ClientManagement() {
               <Star className={`h-4 w-4 ${showActiveOnly ? 'fill-current' : ''}`} />
               Active Clients
               {activeClientCount > 0 && (
-                <Badge variant={showActiveOnly ? "secondary" : "default"} className={`ml-1 rounded-full px-2 font-bold ${showActiveOnly ? 'bg-black/15 text-black' : 'bg-amber-500/15 text-amber-100 border border-amber-500/25'}`}>
+                <Badge variant={showActiveOnly ? "secondary" : "default"} className={`ml-1 rounded-full px-2 font-bold ${showActiveOnly ? 'bg-background dark:bg-black/15 text-black' : 'bg-amber-500/15 text-amber-100 border border-amber-500/25'}`}>
                   {activeClientCount}
                 </Badge>
               )}
@@ -827,8 +827,8 @@ export default function ClientManagement() {
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-12 animate-pulse rounded-2xl bg-amber-300/15" />
                       <div className="flex-1 space-y-2">
-                        <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10" />
-                        <div className="h-3 w-1/2 animate-pulse rounded-full bg-white/5" />
+                        <div className="h-4 w-2/3 animate-pulse rounded-full bg-card/10 dark:bg-white/10" />
+                        <div className="h-3 w-1/2 animate-pulse rounded-full bg-card/5 dark:bg-white/5" />
                       </div>
                     </div>
                     <div className="grid gap-3">

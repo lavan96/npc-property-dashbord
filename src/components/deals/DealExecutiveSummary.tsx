@@ -96,8 +96,8 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
     );
   }
 
-  const kpiCardClass = "group relative overflow-hidden border-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/45 hover:shadow-[0_22px_54px_rgba(0,0,0,0.34),0_0_28px_rgba(245,158,11,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(24,24,27,0.84)_48%,rgba(0,0,0,0.88))] shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]";
-  const kpiLabelClass = "text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400";
+  const kpiCardClass = "group relative overflow-hidden border-border dark:border-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/45 hover:shadow-[0_22px_54px_rgba(0,0,0,0.34),0_0_28px_rgba(245,158,11,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(24,24,27,0.84)_48%,rgba(0,0,0,0.88))] shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]";
+  const kpiLabelClass = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-zinc-400";
 
   return (
     <div className="space-y-4">
@@ -106,7 +106,7 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
         <Card className={kpiCardClass}>
           <CardContent className="relative p-3 sm:p-4">
             <Layers3 className="mb-3 h-4 w-4 text-amber-200" />
-            <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{stats.total}</p>
+            <p className="text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl">{stats.total}</p>
             <p className={kpiLabelClass}>Total Deals</p>
           </CardContent>
         </Card>
@@ -141,18 +141,18 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
         <Card className={kpiCardClass}>
           <CardContent className="relative p-3 sm:p-4">
             <CalendarClock className="mb-3 h-4 w-4 text-sky-200" />
-            <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{stats.upcomingSettlements}</p>
+            <p className="text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl">{stats.upcomingSettlements}</p>
             <p className={kpiLabelClass}>Settlements (30d)</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Deal Table — filters now handled by parent toolbar */}
-      <Card className="overflow-hidden rounded-[1.25rem] border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(9,9,11,0.92))] shadow-[0_20px_60px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <Card className="overflow-hidden rounded-[1.25rem] border-border dark:border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(9,9,11,0.92))] shadow-[0_20px_60px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)]">
         <CardContent className="p-0">
           <div role="region" aria-label="Executive Summary deals table, horizontally scrollable" tabIndex={0} className="max-w-full overflow-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
             <Table className="min-w-[880px]" aria-label="Executive Summary deals">
-              <TableHeader className="bg-black/30">
+              <TableHeader className="bg-background dark:bg-black/30">
                 <TableRow className="border-amber-100/10 hover:bg-transparent">
                   <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Client</TableHead>
                   <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Type</TableHead>
@@ -166,7 +166,7 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
               </TableHeader>
               <TableBody>
                 {deals.length === 0 ? (
-                  <TableRow className="border-white/10">
+                  <TableRow className="border-border dark:border-white/10">
                     <TableCell colSpan={8} className="p-4">
                       <NoResultsState title="No deals found" description="Your current search or filters do not return any deals. Reset filters to review the full pipeline." />
                     </TableCell>
@@ -177,8 +177,8 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
                     const dateUrgency = getDateUrgency(deal.settlement_date);
 
                     return (
-                      <TableRow key={deal.id} tabIndex={onDealClick ? 0 : undefined} role={onDealClick ? 'button' : undefined} aria-label={`Open deal for ${deal.client_name}`} className={cn('border-white/10 transition-colors hover:bg-amber-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60', onDealClick && 'cursor-pointer')} onClick={() => onDealClick?.(deal)} onKeyDown={(event) => { if (onDealClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onDealClick(deal); } }}>
-                        <TableCell className="whitespace-nowrap py-4 text-xs font-semibold text-white sm:text-sm">{deal.client_name}</TableCell>
+                      <TableRow key={deal.id} tabIndex={onDealClick ? 0 : undefined} role={onDealClick ? 'button' : undefined} aria-label={`Open deal for ${deal.client_name}`} className={cn('border-border dark:border-white/10 transition-colors hover:bg-amber-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60', onDealClick && 'cursor-pointer')} onClick={() => onDealClick?.(deal)} onKeyDown={(event) => { if (onDealClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onDealClick(deal); } }}>
+                        <TableCell className="whitespace-nowrap py-4 text-xs font-semibold text-foreground dark:text-white sm:text-sm">{deal.client_name}</TableCell>
                         <TableCell className="py-4">
                           <Badge variant="outline" className="gap-1.5 border-amber-200/20 bg-amber-100/10 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
                             {getDealTypeIcon(deal.deal_type)}
@@ -188,21 +188,21 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
                         <TableCell className="py-4">
                           <div className="flex min-w-[150px] items-center gap-2">
                             <Badge variant="outline" className="border-sky-200/25 bg-sky-400/10 text-[10px] font-bold text-sky-100">S{deal.current_stage_number}</Badge>
-                            <span className="max-w-[180px] truncate text-xs font-medium text-zinc-100 sm:text-sm">{deal.current_stage}</span>
+                            <span className="max-w-[180px] truncate text-xs font-medium text-foreground dark:text-zinc-100 sm:text-sm">{deal.current_stage}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[240px] truncate py-4 text-xs text-zinc-300 sm:text-sm">
+                        <TableCell className="max-w-[240px] truncate py-4 text-xs text-muted-foreground dark:text-zinc-300 sm:text-sm">
                           {getNextAction(deal)}
                         </TableCell>
                         <TableCell className="py-4 text-xs sm:text-sm">
                           {deal.responsible_person ? (
-                            <span className="block max-w-[180px] break-words rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-medium leading-snug text-zinc-100">{deal.responsible_person}</span>
+                            <span className="block max-w-[180px] break-words rounded-md border border-border dark:border-white/10 bg-white/[0.04] px-2 py-1 font-medium leading-snug text-foreground dark:text-zinc-100">{deal.responsible_person}</span>
                           ) : (
-                            <span className="rounded-full border border-dashed border-white/15 px-2 py-0.5 text-xs text-zinc-500">—</span>
+                            <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-zinc-500">—</span>
                           )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap py-4 text-right text-xs font-bold text-amber-100 sm:text-sm">
-                          {deal.total_contract_price ? formatCurrency(deal.total_contract_price) : <span className="rounded-full border border-dashed border-white/15 px-2 py-0.5 text-xs font-normal text-zinc-500">—</span>}
+                          {deal.total_contract_price ? formatCurrency(deal.total_contract_price) : <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs font-normal text-muted-foreground dark:text-zinc-500">—</span>}
                         </TableCell>
                         <TableCell className="py-4">
                           {deal.settlement_date ? (
@@ -213,7 +213,7 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
                               )}
                             </div>
                           ) : (
-                            <span className="rounded-full border border-dashed border-white/15 px-2 py-0.5 text-xs text-zinc-500">—</span>
+                            <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-zinc-500">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-4">

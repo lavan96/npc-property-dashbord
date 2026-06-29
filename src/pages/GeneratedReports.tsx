@@ -154,14 +154,14 @@ export default function GeneratedReports() {
   // Helper function to get grade color classes
   const getGradeColor = (grade: string): string => {
     switch (grade?.toUpperCase()) {
-      case 'A+': return 'bg-emerald-500 text-white';
-      case 'A': return 'bg-green-500 text-white';
-      case 'B+': return 'bg-teal-500 text-white';
+      case 'A+': return 'bg-emerald-500 text-foreground dark:text-white';
+      case 'A': return 'bg-green-500 text-foreground dark:text-white';
+      case 'B+': return 'bg-teal-500 text-foreground dark:text-white';
       case 'B': return 'bg-yellow-500 text-black';
       case 'C+': return 'bg-amber-500 text-black';
-      case 'C': return 'bg-orange-500 text-white';
-      case 'D': return 'bg-red-400 text-white';
-      case 'F': return 'bg-red-600 text-white';
+      case 'C': return 'bg-orange-500 text-foreground dark:text-white';
+      case 'D': return 'bg-red-400 text-foreground dark:text-white';
+      case 'F': return 'bg-red-600 text-foreground dark:text-white';
       default: return 'bg-muted text-muted-foreground';
     }
   };

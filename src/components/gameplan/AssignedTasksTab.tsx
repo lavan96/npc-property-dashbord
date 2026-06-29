@@ -153,7 +153,7 @@ export function AssignedTasksTab() {
     return (
       <div className="space-y-3" aria-busy="true" aria-label="Loading assigned tasks">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20" aria-hidden="true">
+          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20" aria-hidden="true">
             <CardContent className="flex items-start gap-3 p-4">
               <div className="h-5 w-5 rounded-md bg-muted" />
               <div className="flex-1 space-y-3">
@@ -180,7 +180,7 @@ export function AssignedTasksTab() {
           { label: 'Overdue', value: counts.overdue, icon: AlertTriangle, color: 'text-red-500' },
           { label: 'Completed', value: counts.completed, icon: CheckCircle2, color: 'text-emerald-500' },
         ].map((stat) => (
-          <DashboardThemeFrame key={stat.label} variant="card" className="p-3 shadow-lg shadow-black/5 dark:shadow-black/20">
+          <DashboardThemeFrame key={stat.label} variant="card" className="p-3 shadow-lg shadow-sm dark:shadow-black/5 dark:shadow-black/20">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/70 dark:border-white/10 dark:bg-slate-950/45">
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
@@ -232,7 +232,7 @@ export function AssignedTasksTab() {
 
       {/* Task List */}
       {filtered.length === 0 ? (
-        <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20" role="status">
+        <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20" role="status">
           <CardContent className="flex flex-col items-center justify-center space-y-3 py-12">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
               <ListChecks className="h-7 w-7 text-primary" />
@@ -262,7 +262,7 @@ export function AssignedTasksTab() {
                 key={task.id}
                 role="listitem"
                 className={cn(
-                  'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20',
+                  'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20',
                   task.status === 'overdue' && 'border-red-500/30 bg-red-500/5',
                   task.status === 'completed' && 'opacity-70'
                 )}

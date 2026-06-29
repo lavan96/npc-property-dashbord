@@ -151,7 +151,7 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
 
   if (loading) {
     return (
-      <div className={cn('mx-auto my-10 max-w-sm rounded-3xl border border-amber-300/15 bg-black/25 px-6 py-8 text-center shadow-xl shadow-black/20', className)}>
+      <div className={cn('mx-auto my-10 max-w-sm rounded-3xl border border-amber-300/15 bg-background dark:bg-black/25 px-6 py-8 text-center shadow-xl shadow-sm dark:shadow-black/20', className)}>
         <Loader2 className="mx-auto h-5 w-5 animate-spin text-amber-200/80" />
         <p className="mt-3 text-sm font-medium text-foreground">Loading finance threads…</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">Preparing partner communication channels.</p>
@@ -161,7 +161,7 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
 
   if (error && threads.length === 0) {
     return (
-      <Card className="rounded-3xl border-violet-300/15 bg-black/25 shadow-xl shadow-black/20">
+      <Card className="rounded-3xl border-violet-300/15 bg-background dark:bg-black/25 shadow-xl shadow-sm dark:shadow-black/20">
         <CardContent className="py-12 text-center">
           <MessageSquare className="mx-auto mb-3 h-10 w-10 text-violet-200/55" />
           <p className="text-sm font-medium text-foreground">Finance messages could not load.</p>
@@ -174,7 +174,7 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
   return (
     <div className={cn('grid min-h-0 gap-4 lg:grid-cols-[minmax(220px,280px)_1fr]', className)}>
       {/* Thread list */}
-      <div className="flex min-h-0 flex-col space-y-2 rounded-3xl border border-amber-300/15 bg-black/25 p-2 shadow-xl shadow-black/15">
+      <div className="flex min-h-0 flex-col space-y-2 rounded-3xl border border-amber-300/15 bg-background dark:bg-black/25 p-2 shadow-xl shadow-sm dark:shadow-black/15">
         <div className="flex items-center justify-between px-2 py-1">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
             Threads ({sortedThreads.length})
@@ -198,7 +198,7 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
                     'group relative w-full overflow-hidden rounded-2xl border px-3.5 py-3 text-left transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/45',
                     isActive
                       ? 'border-amber-300/45 bg-amber-300/12 shadow-[inset_3px_0_0_rgba(251,191,36,0.95),0_14px_32px_rgba(0,0,0,0.24)] before:opacity-100'
-                      : 'border-white/5 bg-white/[0.025] hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_14px_32px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80',
+                      : 'border-border dark:border-white/5 bg-white/[0.025] hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_14px_32px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80',
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -212,7 +212,7 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
                   <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
                     {t.last_message_preview || 'No messages yet'}
                   </p>
-                  <p className="mt-1.5 inline-flex rounded-full border border-amber-300/15 bg-black/25 px-2 py-0.5 text-[10px] text-muted-foreground/80">
+                  <p className="mt-1.5 inline-flex rounded-full border border-amber-300/15 bg-background dark:bg-black/25 px-2 py-0.5 text-[10px] text-muted-foreground/80">
                     {t.last_message_at
                       ? formatDistanceToNow(new Date(t.last_message_at), { addSuffix: true })
                       : '—'}
@@ -225,7 +225,7 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
       </div>
 
       {/* Selected thread */}
-      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-amber-300/15 bg-zinc-950/90 shadow-xl shadow-black/20 lg:min-h-0">
+      <div className="min-h-[480px] overflow-hidden rounded-2xl border border-amber-300/15 bg-background dark:bg-zinc-950/90 shadow-xl shadow-sm dark:shadow-black/20 lg:min-h-0">
         {selectedThreadId ? (
           <div className="flex h-full min-h-[480px] flex-col lg:min-h-0">
             <div className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-blue-300/[0.04] to-transparent px-4 py-3.5">
@@ -263,7 +263,7 @@ export function StaffFinancePortalMessagesPanel({ clientId, className }: Props) 
             />
           </div>
         ) : (
-          <Card className="rounded-3xl border-violet-300/15 bg-black/25 shadow-xl shadow-black/20">
+          <Card className="rounded-3xl border-violet-300/15 bg-background dark:bg-black/25 shadow-xl shadow-sm dark:shadow-black/20">
             <CardContent className="py-12 text-center">
               <MessageSquare className="mx-auto mb-3 h-10 w-10 text-violet-200/55" />
               <p className="text-sm font-medium text-foreground">Select a thread to view messages</p>

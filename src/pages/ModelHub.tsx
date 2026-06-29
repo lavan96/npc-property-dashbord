@@ -145,7 +145,7 @@ function statusBadge(status: Status) {
 function ModelCard({ model }: { model: CatalogModel }) {
   const brand = PROVIDER_BRAND[model.provider] ?? PROVIDER_BRAND.gateway;
   return (
-    <Card className="group min-w-0 overflow-hidden border-border/60 bg-card/85 shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+    <Card className="group min-w-0 overflow-hidden border-border/60 bg-card/85 shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
       <CardHeader className="border-b border-border/50 bg-muted/20 pb-3 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
@@ -186,7 +186,7 @@ function ProviderHeader({ providerId, route, ok, keyConfigured, modelCount, erro
       ? 'border-warning/30 bg-warning/10 text-warning dark:text-amber-300'
       : 'border-destructive/30 bg-destructive/10 text-destructive dark:text-rose-300';
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-slate-950/50">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-slate-950/50">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
           {route === 'native' ? <KeyRound className="h-5 w-5" /> : route === 'gateway' ? <Globe className="h-5 w-5" /> : <Network className="h-5 w-5" />}
@@ -317,7 +317,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
       </Alert>
 
       {Object.entries(grouped).map(([category, agents]) => (
-        <Card key={category} className="overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/5 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+        <Card key={category} className="overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
           <CardHeader className="border-b border-border/60 bg-muted/30 pb-4 dark:border-white/10 dark:bg-white/[0.03]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="space-y-1">
@@ -570,7 +570,7 @@ export default function ModelHub() {
         <DashboardThemeFrame
           as="header"
           variant="hero"
-          className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.10))] shadow-2xl shadow-black/10 dark:shadow-black/35"
+          className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.10))] shadow-2xl shadow-sm dark:shadow-black/10 dark:shadow-black/35"
         >
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 space-y-4">

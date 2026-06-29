@@ -26,7 +26,7 @@ const themes: Theme[] = [
     id: 'ocean', 
     name: 'Ocean', 
     preview: 'bg-gradient-to-r from-blue-500 to-cyan-400',
-    userBg: 'bg-blue-500 text-white',
+    userBg: 'bg-blue-500 text-foreground dark:text-white',
     assistantBg: 'bg-blue-50 dark:bg-blue-950',
     accent: 'bg-blue-500/10'
   },
@@ -34,7 +34,7 @@ const themes: Theme[] = [
     id: 'forest', 
     name: 'Forest', 
     preview: 'bg-gradient-to-r from-green-600 to-emerald-400',
-    userBg: 'bg-green-600 text-white',
+    userBg: 'bg-green-600 text-foreground dark:text-white',
     assistantBg: 'bg-green-50 dark:bg-green-950',
     accent: 'bg-green-500/10'
   },
@@ -42,7 +42,7 @@ const themes: Theme[] = [
     id: 'sunset', 
     name: 'Sunset', 
     preview: 'bg-gradient-to-r from-orange-500 to-pink-500',
-    userBg: 'bg-gradient-to-r from-orange-500 to-pink-500 text-white',
+    userBg: 'bg-gradient-to-r from-orange-500 to-pink-500 text-foreground dark:text-white',
     assistantBg: 'bg-orange-50 dark:bg-orange-950',
     accent: 'bg-orange-500/10'
   },
@@ -50,7 +50,7 @@ const themes: Theme[] = [
     id: 'midnight', 
     name: 'Midnight', 
     preview: 'bg-gradient-to-r from-purple-600 to-indigo-600',
-    userBg: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white',
+    userBg: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-foreground dark:text-white',
     assistantBg: 'bg-purple-50 dark:bg-purple-950',
     accent: 'bg-purple-500/10'
   },
@@ -58,7 +58,7 @@ const themes: Theme[] = [
     id: 'minimal', 
     name: 'Minimal', 
     preview: 'bg-gradient-to-r from-gray-400 to-gray-600',
-    userBg: 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900',
+    userBg: 'bg-gray-800 text-foreground dark:text-white dark:bg-gray-200 dark:text-gray-900',
     assistantBg: 'bg-gray-100 dark:bg-gray-800',
     accent: 'bg-gray-500/10'
   },
