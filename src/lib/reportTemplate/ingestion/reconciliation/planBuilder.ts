@@ -26,6 +26,8 @@ export function buildBackgroundFirstImportPlan(
       color: page.backgroundColor,
       imageUrl: page.referenceImageUrl,
       opacity: 1,
+      // Full-page source raster must fill the exact page box, never crop/stretch.
+      ...(page.referenceImageUrl ? { imageFit: 'fill' as const } : {}),
     },
     overlays: [],
     sourcePageId: page.id,

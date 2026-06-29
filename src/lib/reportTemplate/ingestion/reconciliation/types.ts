@@ -179,6 +179,8 @@ export interface TemplateImportPagePlan {
     color?: string;
     imageUrl: string;
     opacity?: number;
+    /** Sizing for the background image; 'fill' for full-page source rasters. */
+    imageFit?: 'cover' | 'contain' | 'fill';
   };
   overlays: Overlay[];
   sourcePageId: string;

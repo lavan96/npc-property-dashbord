@@ -434,7 +434,12 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
     const url = resolveBindable(page.background.imageUrl, ctxBase);
     if (url) {
       bgImages.push(`url('${url}')`);
-      bgStyle += `background-size:cover;background-position:center;background-repeat:no-repeat;`;
+      // Full-page source rasters set imageFit:'fill' so the reference exactly
+      // covers the page box (no aspect-ratio crop/stretch). Decorative images
+      // keep the historical 'cover' default.
+      const fit = (page.background as any)?.imageFit;
+      const size = fit === 'fill' ? '100% 100%' : fit === 'contain' ? 'contain' : 'cover';
+      bgStyle += `background-size:${size};background-position:center;background-repeat:no-repeat;`;
     }
   }
   if (bgImages.length) bgStyle += `background-image:${bgImages.join(', ')};`;

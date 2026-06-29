@@ -790,6 +790,79 @@ function OverlayPreview({
       }}>image</div>
     );
   }
+  if (o.type === 'table') {
+    const t: any = o;
+    const cols: any[] = Array.isArray(t.columns) ? t.columns : [];
+    const rows: string[][] = Array.isArray(t.rows) ? t.rows : [];
+    const showHeader = t.showHeader !== false && cols.length > 0;
+    const fontSize = (Number(t.fontSize) || 10) * zoom;
+    const headerBg = previewCssColor(t.headerBg, tokenColors, 'rgba(0,0,0,0.06)');
+    const headerColor = previewCssColor(t.headerColor, tokenColors, '#111111');
+    const rowColor = previewCssColor(t.rowColor, tokenColors, '#111111');
+    const altRowBg = t.altRowBg ? previewCssColor(t.altRowBg, tokenColors, 'transparent') : null;
+    const borderColor = previewCssColor(t.borderColor, tokenColors, 'rgba(0,0,0,0.15)');
+    const border = `${(Number(t.borderWidth ?? 0.5)) * zoom}px solid ${borderColor}`;
+    const pad = (Number(t.cellPadding ?? 6)) * zoom;
+    const cell: React.CSSProperties = {
+      padding: `${pad / 2}px ${pad}px`, border,
+      overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+    };
+    return (
+      <div style={{ width: '100%', height: '100%', overflow: 'hidden', opacity: o.opacity ?? 1, pointerEvents: 'none' }}>
+        <table style={{
+          width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize,
+          fontFamily: typeof t.fontFamily === 'string' && !t.fontFamily.includes('{{') ? t.fontFamily : 'inherit',
+        }}>
+          {showHeader && (
+            <thead>
+              <tr>
+                {cols.map((c, ci) => (
+                  <th key={ci} style={{ ...cell, background: headerBg, color: headerColor, fontWeight: t.headerFontWeight === 'normal' ? 400 : 700, textAlign: (c.align || 'left') }}>
+                    {String(c.label ?? '')}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {rows.map((r, ri) => (
+              <tr key={ri} style={{ background: altRowBg && ri % 2 === 1 ? altRowBg : 'transparent' }}>
+                {cols.map((c, ci) => (
+                  <td key={ci} style={{ ...cell, color: rowColor, textAlign: (c.align || 'left') }}>
+                    {String(r?.[ci] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  if (o.type === 'vector') {
+    const v: any = o;
+    const paths: any[] = Array.isArray(v.paths) ? v.paths : [];
+    return (
+      <svg
+        viewBox={typeof v.viewBox === 'string' ? v.viewBox : '0 0 100 100'}
+        preserveAspectRatio={v.preserveAspectRatio || 'xMidYMid meet'}
+        width="100%" height="100%"
+        style={{ display: 'block', opacity: o.opacity ?? 1, pointerEvents: 'none' }}
+      >
+        {paths.map((p, pi) => (
+          <path
+            key={pi}
+            d={String(p.d ?? '')}
+            fill={p.fill ? previewCssColor(p.fill, tokenColors, '#000000') : 'none'}
+            stroke={p.stroke ? previewCssColor(p.stroke, tokenColors, 'none') : 'none'}
+            strokeWidth={p.strokeWidth ?? 0}
+            fillRule={p.fillRule || 'nonzero'}
+            opacity={p.opacity ?? 1}
+          />
+        ))}
+      </svg>
+    );
+  }
   // shape
   const s: any = o;
   const fill = previewCssColor(s.fill, tokenColors, 'rgba(0,0,0,0.08)');

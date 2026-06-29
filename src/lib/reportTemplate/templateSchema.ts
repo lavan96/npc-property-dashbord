@@ -489,6 +489,10 @@ export const PageSchema = z.object({
   background: z.object({
     color: BindableColorSchema.optional(),
     imageUrl: BindableStringSchema.optional(),
+    // How the background image is sized. Full-page source rasters (PDF import)
+    // must fill the exact page box — 'fill' (background-size:100% 100%) — so the
+    // reference never crops/stretches. Decorative images default to 'cover'.
+    imageFit: z.enum(['cover', 'contain', 'fill']).optional(),
     // Phase 11 — optional gradient overlay/fill. When present and stops.length>0
     // the HTML renderer composites it above any solid color / image.
     gradient: z.object({
