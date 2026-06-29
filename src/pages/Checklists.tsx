@@ -41,8 +41,15 @@ export default function Checklists() {
     return (
       <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
         <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
-          <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
+              <ClipboardList className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
+              <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
+            </div>
+          </div>
         </div>
         <TemplateBuilder template={selectedTemplate} onBack={() => setSelectedTemplate(null)} />
       </div>
@@ -54,8 +61,15 @@ export default function Checklists() {
     return (
       <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
         <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
-          <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
+              <ClipboardList className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
+              <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
+            </div>
+          </div>
         </div>
         <ChecklistInstanceView instance={selectedInstance} onBack={() => setSelectedInstance(null)} />
       </div>
@@ -137,9 +151,14 @@ export default function Checklists() {
     <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
       <div className="rounded-2xl border border-white/5 bg-black/35 p-5 shadow-inner shadow-amber-950/10">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
-            <p className="mt-1 text-sm text-zinc-400 md:text-base">Manage checklist templates and track operational workflows</p>
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200 shadow-[0_18px_42px_rgba(245,158,11,0.16)]">
+              <ClipboardList className="h-7 w-7" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl">Checklists</h1>
+              <p className="mt-1 text-sm leading-6 text-zinc-400 md:text-base">Manage checklist templates and track operational workflows</p>
+            </div>
           </div>
         </div>
       </div>
