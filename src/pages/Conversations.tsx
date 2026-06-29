@@ -1560,7 +1560,8 @@ export default function Conversations() {
                     </div>
                   </div>
                 </div>
-              </div>
+
+
 
               {/* Messages */}
               <ScrollArea
