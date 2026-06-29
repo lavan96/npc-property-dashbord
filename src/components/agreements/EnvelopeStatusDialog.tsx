@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { FlattenPdfIconButton } from '@/components/common/FlattenPdfIconButton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Loader2, RefreshCw, CheckCircle2, Clock, Mail, Eye, XCircle, AlertTriangle, FileText, Download } from 'lucide-react';
+import { Loader2, RefreshCw, CheckCircle2, Clock, Mail, Eye, XCircle, AlertTriangle, FileText, Download, UserRound, CalendarDays, FileCheck2, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import type { AgencyAgreement } from '@/hooks/useAgencyAgreements';
 
 interface Signer {
   name: string; email: string; status: string; routingOrder: string;
@@ -31,6 +31,7 @@ interface Props {
   scope: 'agreement' | 'document';
   recordId: string;
   title?: string;
+  agreement?: AgencyAgreement;
   onStatusRefreshed?: (mappedStatus: string) => void;
 }
 
@@ -68,9 +69,35 @@ export function DocuSignStatusBadge({ status }: { status?: string | null }) {
 }
 const StatusBadge = DocuSignStatusBadge;
 
-function fmt(ts?: string) { return ts ? format(new Date(ts), 'dd MMM yy HH:mm') : '—'; }
+function fmt(ts?: string | null) { return ts ? format(new Date(ts), 'dd MMM yy HH:mm') : '—'; }
+function fmtDate(ts?: string | null) { return ts ? format(new Date(ts), 'dd MMM yyyy') : '—'; }
 
-export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, title, onStatusRefreshed }: Props) {
+function DetailRow({ label, value, mono = false }: { label: string; value?: string | null; mono?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-border/55 bg-background/70 p-3 shadow-sm dark:bg-slate-950/35">
+      <dt className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
+      <dd className={`mt-1 break-words text-sm font-medium text-foreground ${mono ? 'font-mono text-xs leading-5' : ''}`}>
+        {value || '—'}
+      </dd>
+    </div>
+  );
+}
+
+function CaseFileSection({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-border/65 bg-card/88 shadow-sm ring-1 ring-primary/5 dark:border-slate-700/70 dark:bg-slate-950/42">
+      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/35 px-4 py-3 dark:bg-slate-900/42">
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+          <Icon className="h-4 w-4" />
+        </span>
+        <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-foreground">{title}</h4>
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, title, agreement, onStatusRefreshed }: Props) {
   const [loading, setLoading] = useState(false);
   const [envelope, setEnvelope] = useState<Envelope | null>(null);
   const [signers, setSigners] = useState<Signer[]>([]);
@@ -126,17 +153,36 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between gap-3 pr-8 flex-wrap">
-            <span className="flex items-center gap-2 min-w-0">
-              <FileText className="h-5 w-5 text-primary shrink-0" />
-              <span className="truncate">{title || 'Envelope Status'}</span>
-            </span>
-            <div className="flex items-center gap-2 shrink-0">
+      <DialogContent className="flex h-[min(92vh,58rem)] w-[calc(100vw-1.5rem)] max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/95 p-0 text-card-foreground shadow-2xl shadow-black/18 ring-1 ring-primary/10 backdrop-blur supports-[backdrop-filter]:bg-card/90 dark:border-slate-700/70 dark:bg-slate-950/95 dark:shadow-black/45 sm:w-full">
+        <DialogHeader className="border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.38))] px-5 py-5 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.22),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(222_47%_9%/0.92))] sm:px-6">
+          <DialogTitle className="flex min-w-0 flex-col gap-4 pr-8 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-primary shadow-sm">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Agreement case file
+              </div>
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                  <FileText className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <span className="block break-words text-xl font-bold leading-tight text-foreground sm:text-2xl">
+                    {agreement?.buyer_names || title || 'Envelope Status'}
+                  </span>
+                  {agreement?.buyer_email && (
+                    <span className="mt-1 block break-all text-sm font-medium text-muted-foreground">{agreement.buyer_email}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {agreement?.status && <StatusBadge status={agreement.status} />}
+                <StatusBadge status={envelope?.status || agreement?.docusign_status} />
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               {envelope?.status === 'completed' && (
                 <>
-                  <Button size="sm" variant="default" onClick={downloadSigned} disabled={downloading} className="gap-1">
+                  <Button size="sm" variant="default" onClick={downloadSigned} disabled={downloading} className="h-10 rounded-xl gap-2 shadow-md shadow-primary/15">
                     {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                     Download Signed PDF
                   </Button>
@@ -159,7 +205,7 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
                   />
                 </>
               )}
-              <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="gap-1">
+              <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="h-10 rounded-xl border-border/70 bg-background/80 gap-2 shadow-sm hover:bg-primary/10 hover:text-primary dark:bg-slate-950/55">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Refresh
               </Button>
@@ -167,84 +213,146 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive mb-4">
-              {error}
-            </div>
-          )}
-
-          {envelope && (
-            <div className="space-y-1 rounded-md border p-3 mb-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h4 className="text-sm font-semibold">Envelope</h4>
-                <StatusBadge status={envelope.status} />
+        <ScrollArea className="flex-1">
+          <div className="space-y-4 p-4 sm:p-6">
+            {error && (
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/8 p-4 text-sm font-medium text-destructive shadow-sm">
+                {error}
               </div>
-              <p className="text-xs text-muted-foreground">{envelope.emailSubject}</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
-                <span className="text-muted-foreground">Sent</span><span>{fmt(envelope.sentDateTime)}</span>
-                <span className="text-muted-foreground">Last update</span><span>{fmt(envelope.statusChangedDateTime)}</span>
-                {envelope.completedDateTime && (<><span className="text-muted-foreground">Completed</span><span>{fmt(envelope.completedDateTime)}</span></>)}
-                {envelope.voidedDateTime && (<><span className="text-muted-foreground">Voided</span><span>{fmt(envelope.voidedDateTime)}</span></>)}
-                {envelope.voidedReason && (<><span className="text-muted-foreground">Void reason</span><span>{envelope.voidedReason}</span></>)}
-                <span className="text-muted-foreground">Envelope ID</span><span className="font-mono text-[10px] truncate">{envelope.envelopeId}</span>
-              </div>
-            </div>
-          )}
+            )}
 
-          <h4 className="text-sm font-semibold mb-2">Signers ({signers.length})</h4>
-          {signers.length === 0 ? (
-            <p className="text-xs text-muted-foreground mb-4">No signers found.</p>
-          ) : (
-            <div className="space-y-2 mb-4">
-              {signers.map((s, i) => (
-                <div key={i} className="rounded-md border p-3 text-xs space-y-1">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div>
-                      <div className="font-medium text-sm">{s.name}</div>
-                      <div className="text-muted-foreground">{s.email}</div>
-                    </div>
-                    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-                      <span className="text-muted-foreground">Order {s.routingOrder}</span>
-                      <StatusBadge status={s.status} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-[11px] text-muted-foreground pt-1">
-                    <span>Sent: {fmt(s.sentAt)}</span>
-                    <span>Delivered: {fmt(s.deliveredAt)}</span>
-                    <span>Signed: {fmt(s.signedAt)}</span>
-                  </div>
-                  {s.declinedReason && <p className="text-destructive">Declined: {s.declinedReason}</p>}
+            {agreement && (
+              <CaseFileSection title="Buyer details" icon={UserRound}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <DetailRow label="Primary buyer" value={agreement.buyer_names} />
+                  <DetailRow label="Secondary buyer" value={agreement.secondary_buyer_name} />
+                  <DetailRow label="Buyer email" value={agreement.buyer_email} />
+                  <DetailRow label="Buyer phone" value={agreement.buyer_phone} />
+                  <div className="md:col-span-2"><DetailRow label="Buyer address" value={agreement.buyer_address} /></div>
                 </div>
-              ))}
-            </div>
-          )}
+              </CaseFileSection>
+            )}
 
-          <Separator className="my-3" />
+            <CaseFileSection title="Agreement status" icon={FileCheck2}>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-border/55 bg-background/70 p-3 shadow-sm dark:bg-slate-950/35">
+                  <dt className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">Agreement status</dt>
+                  <dd className="mt-2"><StatusBadge status={agreement?.status || envelope?.status} /></dd>
+                </div>
+                <DetailRow label="Sent via" value={agreement?.sent_via} />
+                <DetailRow label="Record ID" value={agreement?.id || recordId} mono />
+                {agreement?.notes && <div className="md:col-span-3"><DetailRow label="Notes" value={agreement.notes} /></div>}
+              </div>
+            </CaseFileSection>
 
-          <h4 className="text-sm font-semibold mb-2">Audit Trail ({events.length})</h4>
-          {events.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No events recorded yet.</p>
-          ) : (
-            <div className="space-y-1">
-              {events.slice().reverse().map((ev, i) => (
-                <div key={i} className="flex gap-2 text-xs py-1.5 border-b border-border/40 last:border-0">
-                  <span className="text-muted-foreground shrink-0 w-32">{fmt(ev.timestamp)}</span>
-                  <div className="min-w-0 flex-1">
-                    <span className="font-medium">{ev.action}</span>
-                    {ev.description && ev.description !== ev.action && <span className="text-muted-foreground"> — {ev.description}</span>}
-                    {(ev.user || ev.email) && <div className="text-muted-foreground truncate">{ev.user}{ev.email ? ` <${ev.email}>` : ''}</div>}
+            <CaseFileSection title="DocuSign tracking" icon={Mail}>
+              {envelope && (
+                <div className="mb-3 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-foreground">{envelope.emailSubject || 'DocuSign envelope'}</p>
+                      <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{envelope.envelopeId}</p>
+                    </div>
+                    <StatusBadge status={envelope.status} />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <DetailRow label="Envelope ID" value={envelope?.envelopeId || agreement?.docusign_envelope_id} mono />
+                <DetailRow label="DocuSign status" value={envelope?.status || agreement?.docusign_status} />
+                <DetailRow label="Sent" value={fmt(envelope?.sentDateTime || agreement?.docusign_sent_at)} />
+                <DetailRow label="Completed / signed" value={fmt(envelope?.completedDateTime || agreement?.docusign_signed_at)} />
+                {envelope?.voidedDateTime && <DetailRow label="Voided" value={fmt(envelope.voidedDateTime)} />}
+                {envelope?.voidedReason && <div className="lg:col-span-3"><DetailRow label="Void reason" value={envelope.voidedReason} /></div>}
+              </div>
+            </CaseFileSection>
 
-          {loading && !envelope && (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          )}
+            <CaseFileSection title={`Signers (${signers.length})`} icon={UserRound}>
+              {signers.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border/70 bg-muted/25 p-4 text-sm text-muted-foreground">No signers found.</p>
+              ) : (
+                <div className="space-y-3">
+                  {signers.map((s, i) => (
+                    <div key={i} className="rounded-2xl border border-border/65 bg-background/75 p-4 text-sm shadow-sm dark:bg-slate-950/35">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="break-words font-bold text-foreground">{s.name}</div>
+                          <div className="mt-1 break-all text-xs font-medium text-muted-foreground">{s.email}</div>
+                        </div>
+                        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">Order {s.routingOrder}</span>
+                          <StatusBadge status={s.status} />
+                        </div>
+                      </div>
+                      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                        <span>Sent: {fmt(s.sentAt)}</span>
+                        <span>Delivered: {fmt(s.deliveredAt)}</span>
+                        <span>Signed: {fmt(s.signedAt)}</span>
+                      </div>
+                      {s.declinedReason && <p className="mt-2 break-words text-sm font-medium text-destructive">Declined: {s.declinedReason}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CaseFileSection>
+
+            {agreement && (
+              <CaseFileSection title="Dates and audit trail" icon={CalendarDays}>
+                <div className="mb-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  <DetailRow label="Agreement date" value={fmtDate(agreement.agreement_date)} />
+                  <DetailRow label="Created" value={fmt(agreement.created_at)} />
+                  <DetailRow label="Updated" value={fmt(agreement.updated_at)} />
+                  <DetailRow label="Status changed" value={fmt(envelope?.statusChangedDateTime)} />
+                </div>
+                {events.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-border/70 bg-muted/25 p-4 text-sm text-muted-foreground">No events recorded yet.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-2xl border border-border/65 bg-background/70 dark:bg-slate-950/35">
+                    {events.slice().reverse().map((ev, i) => (
+                      <div key={i} className="grid gap-2 border-b border-border/45 p-3 text-xs last:border-0 sm:grid-cols-[9rem_1fr]">
+                        <span className="font-semibold text-muted-foreground">{fmt(ev.timestamp)}</span>
+                        <div className="min-w-0">
+                          <span className="break-words font-bold text-foreground">{ev.action}</span>
+                          {ev.description && ev.description !== ev.action && <span className="break-words text-muted-foreground"> — {ev.description}</span>}
+                          {(ev.user || ev.email) && <div className="mt-1 break-all text-muted-foreground">{ev.user}{ev.email ? ` <${ev.email}>` : ''}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CaseFileSection>
+            )}
+
+            {agreement && (
+              <CaseFileSection title="Template used" icon={FileText}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <DetailRow label="PDF storage path" value={agreement.pdf_storage_path} mono />
+                  <DetailRow label="Signed PDF storage path" value={agreement.signed_pdf_storage_path} mono />
+                </div>
+              </CaseFileSection>
+            )}
+
+            <CaseFileSection title="Actions" icon={Download}>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="rounded-xl gap-2">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Refresh DocuSign status
+                </Button>
+                {envelope?.status === 'completed' && (
+                  <Button size="sm" onClick={downloadSigned} disabled={downloading} className="rounded-xl gap-2">
+                    {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Download signed PDF
+                  </Button>
+                )}
+              </div>
+            </CaseFileSection>
+
+            {loading && !envelope && (
+              <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 py-12 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            )}
+          </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>

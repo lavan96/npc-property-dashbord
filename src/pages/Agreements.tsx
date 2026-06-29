@@ -891,6 +891,7 @@ export default function Agreements() {
           scope="agreement"
           recordId={statusAgreement.id}
           title={`${statusAgreement.buyer_names} — Envelope`}
+          agreement={statusAgreement}
         />
       )}
     </DashboardThemeFrame>
