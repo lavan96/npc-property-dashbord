@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertTriangle, CheckCircle2, ExternalLink, KeyRound, Sparkles, Zap,
   Brain, Image as ImageIcon, Search, RefreshCw, ShieldCheck, Globe,
-  Network, Workflow, Save, FlaskConical, ArrowUpCircle
+  Network, Workflow, FlaskConical, ArrowUpCircle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -145,32 +144,34 @@ function statusBadge(status: Status) {
 function ModelCard({ model }: { model: CatalogModel }) {
   const brand = PROVIDER_BRAND[model.provider] ?? PROVIDER_BRAND.gateway;
   return (
-    <Card className="border-border/60 bg-card/50 backdrop-blur transition-all hover:border-primary/40 hover:bg-card/80">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <CardTitle className={`text-sm ${brand.color} truncate`}>{model.display_name}</CardTitle>
-            <CardDescription className="mt-1 font-mono text-[10px] truncate">{model.model_id}</CardDescription>
+    <Card className="group min-w-0 overflow-hidden border-border/60 bg-card/85 shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+      <CardHeader className="border-b border-border/50 bg-muted/20 pb-3 dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <CardTitle className={`truncate text-sm font-semibold ${brand.color}`} title={model.display_name}>{model.display_name}</CardTitle>
+            <CardDescription className="truncate font-mono text-[10px]" title={model.model_id}>{model.model_id}</CardDescription>
           </div>
-          <Badge variant="outline" className={`${statusBadge(model.status)} text-[10px]`}>{model.status}</Badge>
+          <Badge variant="outline" className={`${statusBadge(model.status)} shrink-0 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em]`}>{model.status}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2 pt-0">
-        <div className="flex flex-wrap gap-1">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex flex-wrap gap-1.5">
           {(model.capabilities ?? []).slice(0, 5).map((cap) => (
-            <Badge key={cap} variant="secondary" className="gap-1 bg-muted/50 text-[10px] font-normal">
+            <Badge key={cap} variant="secondary" className="gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-normal text-muted-foreground">
               {capabilityIcon[cap]} {cap}
             </Badge>
           ))}
         </div>
-        {model.context_window && (
-          <p className="text-[11px] text-muted-foreground">Context: {(model.context_window / 1000).toFixed(0)}k tokens</p>
-        )}
-        {(model.pricing_input_per_1m || model.pricing_output_per_1m) && (
-          <p className="text-[11px] text-muted-foreground">
-            ${model.pricing_input_per_1m?.toFixed(2) ?? '–'} in / ${model.pricing_output_per_1m?.toFixed(2) ?? '–'} out per 1M
-          </p>
-        )}
+        <div className="grid gap-2 text-[11px] text-muted-foreground">
+          {model.context_window && (
+            <p className="rounded-lg border border-border/50 bg-background/55 px-2 py-1">Context: <span className="font-medium text-foreground">{(model.context_window / 1000).toFixed(0)}k tokens</span></p>
+          )}
+          {(model.pricing_input_per_1m || model.pricing_output_per_1m) && (
+            <p className="rounded-lg border border-border/50 bg-background/55 px-2 py-1">
+              ${model.pricing_input_per_1m?.toFixed(2) ?? '–'} in / ${model.pricing_output_per_1m?.toFixed(2) ?? '–'} out per 1M
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -178,17 +179,28 @@ function ModelCard({ model }: { model: CatalogModel }) {
 
 function ProviderHeader({ providerId, route, ok, keyConfigured, modelCount, error }: { providerId: string; route: Route; ok: boolean; keyConfigured: boolean; modelCount: number; error?: string }) {
   const brand = PROVIDER_BRAND[providerId] ?? PROVIDER_BRAND.gateway;
+  const statusClass = ok && keyConfigured
+    ? 'border-success/30 bg-success/10 text-success dark:text-emerald-300'
+    : keyConfigured
+      ? 'border-warning/30 bg-warning/10 text-warning dark:text-amber-300'
+      : 'border-destructive/30 bg-destructive/10 text-destructive dark:text-rose-300';
   return (
-    <div className="flex items-center justify-between flex-wrap gap-2">
-      <div className="flex items-center gap-3 flex-wrap">
-        <h3 className={`text-lg font-semibold ${brand.color}`}>{brand.name}</h3>
-        <Badge variant="outline" className={ok && keyConfigured ? 'border-emerald-500/30 text-emerald-300' : keyConfigured ? 'border-amber-500/30 text-amber-300' : 'border-rose-500/30 text-rose-300'}>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-slate-950/50">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+          {route === 'native' ? <KeyRound className="h-5 w-5" /> : route === 'gateway' ? <Globe className="h-5 w-5" /> : <Network className="h-5 w-5" />}
+        </div>
+        <div className="min-w-0">
+          <h3 className={`truncate text-lg font-semibold ${brand.color}`} title={brand.name}>{brand.name}</h3>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{route} provider route</p>
+        </div>
+        <Badge variant="outline" className={`${statusClass} rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]`}>
           {ok && keyConfigured ? <><CheckCircle2 className="mr-1 h-3 w-3" /> Live ({modelCount})</> : keyConfigured ? <><AlertTriangle className="mr-1 h-3 w-3" /> Probe failed</> : <><KeyRound className="mr-1 h-3 w-3" /> Key missing</>}
         </Badge>
-        {error && <span className="text-xs text-rose-300/80 truncate max-w-[300px]" title={error}>{error.slice(0, 60)}</span>}
+        {error && <span className="max-w-[360px] truncate rounded-full border border-destructive/20 bg-destructive/10 px-2 py-1 text-xs text-destructive dark:text-rose-300" title={error}>{error.slice(0, 60)}</span>}
       </div>
-      <Button variant="ghost" size="sm" asChild>
-        <a href={brand.docs} target="_blank" rel="noopener noreferrer">Docs <ExternalLink className="ml-1 h-3 w-3" /></a>
+      <Button variant="ghost" size="sm" asChild className="rounded-xl border border-border/60 bg-background/60 hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-ring">
+        <a href={brand.docs} target="_blank" rel="noopener noreferrer" aria-label={`Open ${brand.name} documentation`}>Docs <ExternalLink className="ml-1 h-3 w-3" /></a>
       </Button>
     </div>
   );
@@ -196,9 +208,23 @@ function ProviderHeader({ providerId, route, ok, keyConfigured, modelCount, erro
 
 function ProviderModels({ models, providerId, route }: { models: CatalogModel[]; providerId: string; route: Route }) {
   const filtered = models.filter((m) => m.provider === providerId && m.route === route);
-  if (filtered.length === 0) return <p className="text-xs text-muted-foreground italic">No models available — configure API key or try refreshing.</p>;
+  if (filtered.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 p-5 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <Search className="h-4 w-4" />
+          </div>
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">No models available for this provider route</p>
+            <p className="text-xs leading-5">Configure the provider key if required, or use the existing Reload / Live re-probe actions to refresh live availability.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {filtered.map((m) => <ModelCard key={`${m.route}-${m.model_id}`} model={m} />)}
     </div>
   );
@@ -449,11 +475,12 @@ function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
 
   if (orModels.length === 0) {
     return (
-      <Alert className="border-amber-500/30 bg-amber-500/10">
-        <KeyRound className="h-4 w-4 text-amber-400" />
-        <AlertTitle className="text-amber-200">OpenRouter not configured</AlertTitle>
-        <AlertDescription className="text-sm text-amber-100/80">
-          Add <code className="font-mono">OPENROUTER_API_KEY</code> in the <strong>Integrations</strong> page → OpenRouter card.
+      <Alert className="relative overflow-hidden border-warning/30 bg-[linear-gradient(135deg,hsl(var(--warning)/0.14),hsl(var(--card)/0.92)_48%,hsl(var(--background)/0.78))] p-6 shadow-lg shadow-amber-500/10 dark:border-warning/25">
+        <div className="absolute inset-y-0 left-0 w-1 bg-warning/80" />
+        <KeyRound className="h-5 w-5 text-warning dark:text-amber-300" />
+        <AlertTitle className="text-base font-semibold text-foreground">OpenRouter not configured</AlertTitle>
+        <AlertDescription className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+          Add <code className="rounded bg-background/70 px-1.5 py-0.5 font-mono text-foreground">OPENROUTER_API_KEY</code> in the <strong>Integrations</strong> page → OpenRouter card.
           Once enabled, 300+ models from Anthropic, OpenAI, Meta, Mistral, DeepSeek, Qwen and more will appear here.
         </AlertDescription>
       </Alert>
@@ -461,28 +488,28 @@ function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
   }
 
   return (
-    <div className="space-y-4">
-      <Alert className="border-pink-500/30 bg-pink-500/5">
-        <Network className="h-4 w-4 text-pink-400" />
-        <AlertTitle className="text-pink-200">OpenRouter unified gateway active</AlertTitle>
-        <AlertDescription className="text-sm text-pink-100/80">
+    <div className="space-y-5">
+      <Alert className="border-pink-500/25 bg-pink-500/10 p-5 shadow-lg shadow-pink-500/5">
+        <Network className="h-5 w-5 text-pink-400" />
+        <AlertTitle className="text-base font-semibold text-foreground">OpenRouter unified gateway active</AlertTitle>
+        <AlertDescription className="mt-1 text-sm leading-6 text-muted-foreground">
           {orModels.length} models available. Per-model pricing shown where published. Any agent in the <strong>Agent Bindings</strong> tab can be pointed at any model here.
         </AlertDescription>
       </Alert>
-      <div className="flex gap-2 flex-wrap">
-        <Input placeholder="Search models…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm h-9" />
+      <DashboardThemeFrame variant="toolbar" className="items-center p-3">
+        <Input placeholder="Search models…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 min-w-[220px] max-w-sm flex-1 rounded-xl bg-background/80" />
         <Select value={family} onValueChange={setFamily}>
-          <SelectTrigger className="w-[200px] h-9"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-9 w-full rounded-xl bg-background/80 sm:w-[220px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {families.map((f) => <SelectItem key={f} value={f}>{f === 'all' ? 'All families' : f}</SelectItem>)}
           </SelectContent>
         </Select>
-        <span className="text-xs text-muted-foreground self-center ml-2">{filtered.length} shown</span>
-      </div>
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        <span className="ml-auto rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">{filtered.length} shown</span>
+      </DashboardThemeFrame>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {filtered.slice(0, 60).map((m) => <ModelCard key={m.model_id} model={m} />)}
       </div>
-      {filtered.length > 60 && <p className="text-xs text-center text-muted-foreground">Showing first 60 of {filtered.length} — refine search to see more.</p>}
+      {filtered.length > 60 && <p className="text-center text-xs text-muted-foreground">Showing first 60 of {filtered.length} — refine search to see more.</p>}
     </div>
   );
 }
@@ -591,48 +618,50 @@ export default function ModelHub() {
         </TabsContent>
 
         <TabsContent value="gateway" className="space-y-6">
-          <Alert className="border-emerald-500/30 bg-emerald-500/5">
-            <ShieldCheck className="h-4 w-4 text-emerald-400" />
-            <AlertTitle className="text-emerald-200">Lovable Gateway</AlertTitle>
-            <AlertDescription className="text-sm text-emerald-100/80">
+          <Alert className="relative overflow-hidden border-success/25 bg-[linear-gradient(135deg,hsl(var(--success)/0.12),hsl(var(--card)/0.90)_46%,hsl(var(--background)/0.75))] p-5 shadow-lg shadow-emerald-500/5">
+            <div className="absolute inset-y-0 left-0 w-1 bg-success/80" />
+            <ShieldCheck className="h-5 w-5 text-success dark:text-emerald-300" />
+            <AlertTitle className="text-base font-semibold text-foreground">Lovable Gateway</AlertTitle>
+            <AlertDescription className="mt-1 text-sm leading-6 text-muted-foreground">
               Billed via workspace credits. No per-provider keys required.
             </AlertDescription>
           </Alert>
           {loading ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40" />)}</div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}</div>
           ) : (
             <div className="space-y-6">
-              {providersByRoute('gateway').map((p) => (
-                <div key={`${p.provider}-${p.route}`} className="space-y-3">
+              {providersByRoute('gateway').length === 0 ? (
+                <ProviderModels models={data?.models ?? []} providerId="gateway" route="gateway" />
+              ) : providersByRoute('gateway').map((p) => (
+                <DashboardThemeFrame key={`${p.provider}-${p.route}`} variant="section" className="space-y-4 p-4 sm:p-5">
                   <ProviderHeader providerId={p.provider} route={p.route} ok={p.ok} keyConfigured={p.keyConfigured} modelCount={p.modelCount} error={p.error} />
                   <ProviderModels models={data?.models ?? []} providerId={p.provider} route="gateway" />
-                  <Separator />
-                </div>
+                </DashboardThemeFrame>
               ))}
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="native" className="space-y-6">
-          <Alert className="border-primary/30 bg-card/40">
-            <KeyRound className="h-4 w-4" />
-            <AlertTitle>Direct provider keys</AlertTitle>
-            <AlertDescription className="text-sm text-muted-foreground">
+          <Alert className="relative overflow-hidden border-primary/25 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.90)_46%,hsl(var(--background)/0.75))] p-5 shadow-lg shadow-primary/5">
+            <div className="absolute inset-y-0 left-0 w-1 bg-primary/75" />
+            <KeyRound className="h-5 w-5 text-primary" />
+            <AlertTitle className="text-base font-semibold text-foreground">Direct provider keys</AlertTitle>
+            <AlertDescription className="mt-1 text-sm leading-6 text-muted-foreground">
               Configure keys in the <strong>Integrations</strong> page. Missing keys grey out the section.
             </AlertDescription>
           </Alert>
           {loading ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40" />)}</div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}</div>
           ) : (
             <div className="space-y-6">
               {(['openai', 'anthropic', 'gemini', 'perplexity'] as const).map((prov) => {
                 const p = providersByRoute('native').find((x) => x.provider === prov) ?? { provider: prov, route: 'native' as Route, ok: false, keyConfigured: false, modelCount: 0, probedAt: '' };
                 return (
-                  <div key={prov} className="space-y-3">
+                  <DashboardThemeFrame key={prov} variant="section" className="space-y-4 p-4 sm:p-5">
                     <ProviderHeader providerId={prov} route="native" ok={p.ok} keyConfigured={p.keyConfigured} modelCount={p.modelCount} error={p.error} />
                     <ProviderModels models={data?.models ?? []} providerId={prov} route="native" />
-                    <Separator />
-                  </div>
+                  </DashboardThemeFrame>
                 );
               })}
             </div>
