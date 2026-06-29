@@ -24,7 +24,7 @@ import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImpor
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
 import { buildEmbeddedFontFace, type FontFaceEntry } from './fontFaceBuilder';
-import { fontLookupKey } from './fontResolver';
+import { fontLookupKey, resolveSourceFontFamily, lookupEmbeddedFamily } from './fontResolver';
 import type {
   DoclingDocument,
   DoclingRasterByPage,
@@ -790,9 +790,21 @@ export async function extractPdfViaDocling(
         rasterizedPages: effectiveMode === 'semantic' ? 0 : totalPages,
         textBlocks,
         images,
-        vectors: 0,
-        fontsEmbedded: 0,
-        fontsSubstituted: [],
+        // Phase 4: surface the real counts (were hardcoded 0/[]). Vectors (Phase 2),
+        // embedded faces (Phase 3), and the distinct source fonts that fell back to
+        // a substitute because they aren't available as web fonts.
+        vectors: doclingDoc.vectors?.length ?? 0,
+        fontsEmbedded: embeddedFaces.length,
+        fontsSubstituted: (() => {
+          const out = new Set<string>();
+          for (const t of doclingDoc.texts ?? []) {
+            const fam = t.font?.family;
+            if (!fam) continue;
+            if (lookupEmbeddedFamily(fam, embeddedFontFamilies)) continue;
+            if (resolveSourceFontFamily(fam).substituted) out.add(fam.replace(/^[A-Z]{6}\+/, ''));
+          }
+          return Array.from(out);
+        })(),
       },
     };
   } catch (err) {

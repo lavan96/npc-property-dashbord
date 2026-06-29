@@ -87,8 +87,11 @@ export function buildHybridImportPlanFromManifests(
   manifests: RawImportManifest[],
   options: HybridPlanOptions = {},
 ): TemplateImportPlan {
-  const minEditableConfidence = options.minEditableConfidence ?? 0.65;
-  const unlockConfidence = options.unlockConfidence ?? 0.85;
+  // Phase 4: lowered (0.65 → 0.6 / 0.85 → 0.75) now that reconstruction is faithful.
+  // Lower minEditableConfidence keeps fewer blocks in the locked raster background
+  // (higher native coverage); lower unlockConfidence makes more overlays editable.
+  const minEditableConfidence = options.minEditableConfidence ?? 0.6;
+  const unlockConfidence = options.unlockConfidence ?? 0.75;
   const maxEditableElementsPerPage = options.maxEditableElementsPerPage ?? 150;
   const plan = buildBackgroundFirstImportPlan(asset, {
     importId: options.importId ?? asset.fileId,

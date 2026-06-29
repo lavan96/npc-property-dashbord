@@ -38,7 +38,11 @@ export interface DoclingPlanOptions {
   embeddedFontFamilies?: Record<string, string>;
 }
 
-const DEFAULT_LOCK_THRESHOLD = 0.7;
+// Phase 4: lowered 0.7 → 0.6 now that reconstruction (vectors/typography/fonts) is
+// faithful — default-confidence pictures (0.6) and medium-confidence text become
+// editable in hybrid instead of locked. Locking only gates editing; the overlay
+// still renders identically either way.
+const DEFAULT_LOCK_THRESHOLD = 0.6;
 
 function pageId(pageNo: number): string {
   return `docling-page-${pageNo}`;
