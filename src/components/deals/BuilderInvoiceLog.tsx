@@ -129,7 +129,7 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
   }
 
   return (
-    <Card className="overflow-hidden border-white/10 bg-gradient-to-br from-card via-card to-muted/25 shadow-xl shadow-black/5">
+    <Card className="min-w-0 overflow-hidden border-white/10 bg-gradient-to-br from-card via-card to-muted/25 shadow-xl shadow-black/5">
       <CardHeader className="border-b border-border/60 bg-muted/20 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
@@ -146,8 +146,8 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="p-3 sm:p-4">
-        <div className="max-w-full overflow-x-auto rounded-2xl border border-border/70 bg-background/80 shadow-inner">
+      <CardContent className="min-w-0 p-3 sm:p-4">
+        <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-border/70 bg-background/80 shadow-inner [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
           <Table className="min-w-[900px]">
             <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur supports-[backdrop-filter]:bg-muted/55">
               <TableRow className="hover:bg-transparent">
