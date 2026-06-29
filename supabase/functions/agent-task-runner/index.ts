@@ -137,7 +137,9 @@ Deno.serve(async (req) => {
           }
 
           const occurrenceDate = now.slice(0, 10);
-          const recurrenceKey = `${tmpl.id}:${occurrenceDate}`;
+          const ownerContext = tmpl.created_by || 'global';
+          const recurrenceKey = `${tmpl.id}:${occurrenceDate}:${ownerContext}`;
+          const legacyRecurrenceKey = `${tmpl.id}:${occurrenceDate}`;
 
           // Recurrence audit note: Daily Operations and other cron templates must generate instances, not templates.
           // Idempotency is enforced per template/date so completed or archived occurrences are not regenerated
@@ -145,7 +147,7 @@ Deno.serve(async (req) => {
           const { data: existingInstance, error: existingErr } = await sb
             .from('checklist_instances')
             .select('id,status')
-            .eq('recurrence_key', recurrenceKey)
+            .in('recurrence_key', [recurrenceKey, legacyRecurrenceKey])
             .maybeSingle();
 
           if (existingErr) {

@@ -15,19 +15,20 @@ SET archived_at = COALESCE(archived_at, updated_at)
 WHERE status = 'archived'
   AND archived_at IS NULL;
 
--- Preserve every existing row even if historical duplicates already exist for the same template/date.
--- The first historical occurrence gets the canonical template:date key used by recurrence checks;
+-- Preserve every existing row even if historical duplicates already exist for the same template/date/owner.
+-- The first historical occurrence gets the canonical template:date:owner key used by recurrence checks;
 -- additional historical duplicates keep unique suffixes instead of blocking the migration.
 WITH ranked_instances AS (
   SELECT
-    id,
-    COALESCE(template_id::text, id::text) || ':' || due_date::text AS canonical_key,
+    ci.id,
+    COALESCE(ci.template_id::text, ci.id::text) || ':' || ci.due_date::text || ':' || COALESCE(ct.created_by, ci.generated_by, 'global') AS canonical_key,
     row_number() OVER (
-      PARTITION BY template_id, due_date
-      ORDER BY created_at, id
+      PARTITION BY ci.template_id, ci.due_date, COALESCE(ct.created_by, ci.generated_by, 'global')
+      ORDER BY ci.created_at, ci.id
     ) AS duplicate_rank
-  FROM public.checklist_instances
-  WHERE recurrence_key IS NULL
+  FROM public.checklist_instances ci
+  LEFT JOIN public.checklist_templates ct ON ct.id = ci.template_id
+  WHERE ci.recurrence_key IS NULL
 )
 UPDATE public.checklist_instances ci
 SET recurrence_key = CASE

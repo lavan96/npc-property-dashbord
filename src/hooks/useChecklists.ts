@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Types ───
 export interface ChecklistTemplate {
@@ -75,7 +76,11 @@ function getChecklistOccurrenceDate(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
-function buildChecklistRecurrenceKey(templateId: string, dueDate = getChecklistOccurrenceDate()) {
+function buildChecklistRecurrenceKey(templateId: string, dueDate = getChecklistOccurrenceDate(), ownerContext = 'global') {
+  return `${templateId}:${dueDate}:${ownerContext}`;
+}
+
+function buildLegacyChecklistRecurrenceKey(templateId: string, dueDate = getChecklistOccurrenceDate()) {
   return `${templateId}:${dueDate}`;
 }
 
@@ -148,6 +153,7 @@ export function useChecklistInstanceItems(instanceId: string | null) {
 // ─── Mutations ───
 export function useChecklistMutations() {
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const createTemplate = useMutation({
     mutationFn: async (data: Partial<ChecklistTemplate>) => {
@@ -243,14 +249,26 @@ export function useChecklistMutations() {
   const generateFromTemplate = useMutation({
     mutationFn: async (template: ChecklistTemplate) => {
       const dueDate = getChecklistOccurrenceDate();
-      const recurrenceKey = buildChecklistRecurrenceKey(template.id, dueDate);
+      const ownerContext = template.created_by || user?.id || 'global';
+      const recurrenceKey = buildChecklistRecurrenceKey(template.id, dueDate, ownerContext);
+      const legacyRecurrenceKey = buildLegacyChecklistRecurrenceKey(template.id, dueDate);
 
       const existingResult = await invoke({
         operation: 'list',
         table: 'checklist_instances',
         listOptions: { filters: { recurrence_key: recurrenceKey }, limit: 1 },
       });
-      const existing = existingResult?.records?.[0];
+      let existing = existingResult?.records?.[0];
+
+      if (!existing) {
+        const legacyExistingResult = await invoke({
+          operation: 'list',
+          table: 'checklist_instances',
+          listOptions: { filters: { recurrence_key: legacyRecurrenceKey }, limit: 1 },
+        });
+        existing = legacyExistingResult?.records?.[0];
+      }
+
       if (existing) return existing;
 
       // 1. Create instance
