@@ -271,7 +271,7 @@ export default function GammaTemplateManager() {
                     </code>
                   </TableCell>
                   <TableCell className="py-4">
-                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-indigo-300/50 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-indigo-200/20 dark:bg-indigo-300/10 dark:text-indigo-100">
+                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-slate-300/70 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-200">
                       <Layers3 className="h-3 w-3" />
                       {t.placeholder_mappings.length} mappings
                     </Badge>
@@ -287,7 +287,7 @@ export default function GammaTemplateManager() {
                       <Button variant="ghost" size="icon" aria-label={t.is_default ? "Default template" : `Set ${t.name} as default template`} className="h-11 w-11 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_18px_hsl(43_84%_52%/0.16)] focus-visible:border-amber-400/60 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:hover:border-amber-200/25 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
                         {t.is_default ? <Star className="h-4 w-4 fill-amber-400 text-amber-500 drop-shadow-[0_0_7px_rgba(245,158,11,0.45)]" /> : <StarOff className="h-4 w-4" />}
                       </Button>
-                      <Button variant="ghost" size="icon" aria-label={`Edit ${t.name} template`} className="h-11 w-11 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-sky-300/45 hover:bg-sky-500/10 hover:text-sky-700 hover:shadow-[0_8px_18px_rgba(14,165,233,0.14)] focus-visible:border-sky-400/60 focus-visible:ring-2 focus-visible:ring-sky-300/40 dark:hover:border-sky-200/25 dark:hover:text-sky-200" onClick={() => openEdit(t)} title="Edit template">
+                      <Button variant="ghost" size="icon" aria-label={`Edit ${t.name} template`} className="h-11 w-11 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_18px_hsl(43_84%_52%/0.16)] focus-visible:border-amber-400/60 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:hover:border-amber-200/25 dark:hover:text-amber-200" onClick={() => openEdit(t)} title="Edit template">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button variant="ghost" size="icon" aria-label={`Delete ${t.name} template`} className="h-11 w-11 rounded-xl border border-transparent text-destructive/80 transition-all hover:-translate-y-0.5 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_8px_18px_hsl(var(--destructive)/0.12)] focus-visible:border-destructive/40 focus-visible:ring-2 focus-visible:ring-destructive/25" title="Delete template" onClick={() => setDeleteTarget(t)}>
@@ -446,17 +446,17 @@ export default function GammaTemplateManager() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-border/80 p-5 sm:p-6">
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] p-5 shadow-[0_28px_90px_rgba(15,23,42,0.26)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:ring-white/10 sm:p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete template?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl font-semibold tracking-[-0.02em] text-foreground">Delete template?</AlertDialogTitle>
             <AlertDialogDescription className="leading-6">
               This will delete {deleteTarget?.name ? `"${deleteTarget.name}"` : 'this template'}. Existing agreement data and rows are not changed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
-            <AlertDialogCancel className="min-h-11 rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="min-h-11 rounded-xl border-border/75 bg-background/75 font-semibold text-muted-foreground hover:bg-muted hover:text-foreground">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="min-h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="min-h-11 rounded-xl bg-destructive font-semibold text-destructive-foreground shadow-[0_14px_34px_hsl(var(--destructive)/0.22)] hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-destructive/30"
               onClick={() => {
                 if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
                 setDeleteTarget(null);

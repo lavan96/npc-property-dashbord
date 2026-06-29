@@ -36,7 +36,7 @@ interface Props {
 }
 
 const STATUS_TONE: Record<string, { tone: string; icon: any; label: string }> = {
-  sent: { tone: 'border-sky-300/70 bg-sky-500/12 text-sky-900 ring-1 ring-sky-300/20 dark:border-sky-200/35 dark:bg-sky-300/12 dark:text-sky-100 dark:ring-sky-200/10', icon: Mail, label: 'Sent' },
+  sent: { tone: 'border-amber-300/70 bg-amber-500/14 text-amber-950 ring-1 ring-amber-300/25 dark:border-amber-200/40 dark:bg-amber-300/14 dark:text-amber-100 dark:ring-amber-200/10', icon: Mail, label: 'Sent' },
   delivered: { tone: 'border-amber-300/70 bg-amber-500/14 text-amber-950 ring-1 ring-amber-300/25 dark:border-amber-200/40 dark:bg-amber-300/14 dark:text-amber-100 dark:ring-amber-200/10', icon: Eye, label: 'Delivered' },
   completed: { tone: 'border-emerald-300/70 bg-emerald-500/14 text-emerald-900 ring-1 ring-emerald-300/25 dark:border-emerald-200/40 dark:bg-emerald-300/14 dark:text-emerald-100 dark:ring-emerald-200/10', icon: CheckCircle2, label: 'Completed' },
   signed: { tone: 'border-emerald-300/70 bg-emerald-500/14 text-emerald-900 ring-1 ring-emerald-300/25 dark:border-emerald-200/40 dark:bg-emerald-300/14 dark:text-emerald-100 dark:ring-emerald-200/10', icon: CheckCircle2, label: 'Signed' },
@@ -74,7 +74,7 @@ function fmtDate(ts?: string | null) { return ts ? format(new Date(ts), 'dd MMM 
 
 function DetailRow({ label, value, mono = false }: { label: string; value?: string | null; mono?: boolean }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border/55 bg-background/70 p-3 shadow-sm dark:bg-slate-950/35">
+    <div className="min-w-0 rounded-xl border border-border/60 bg-background/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45),0_8px_22px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
       <dt className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
       <dd className={`mt-1 break-words text-sm font-medium text-foreground ${mono ? 'font-mono text-xs leading-5' : ''}`}>
         {value || '—'}
@@ -85,8 +85,8 @@ function DetailRow({ label, value, mono = false }: { label: string; value?: stri
 
 function CaseFileSection({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border/65 bg-card/88 shadow-sm ring-1 ring-primary/5 dark:border-slate-700/70 dark:bg-slate-950/42">
-      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/35 px-4 py-3 dark:bg-slate-900/42">
+    <section className="overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.52),0_16px_42px_rgba(15,23,42,0.07)] ring-1 ring-white/50 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_20px_48px_rgba(0,0,0,0.30)] dark:ring-white/10">
+      <div className="flex items-center gap-2 border-b border-border/65 bg-muted/40 px-4 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.045]">
         <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
           <Icon className="h-4 w-4" />
         </span>
@@ -153,16 +153,16 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(92vh,58rem)] w-[calc(100vw-1.5rem)] max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/95 p-0 text-card-foreground shadow-2xl shadow-black/18 ring-1 ring-primary/10 backdrop-blur supports-[backdrop-filter]:bg-card/90 dark:border-slate-700/70 dark:bg-slate-950/95 dark:shadow-black/45 sm:w-full">
-        <DialogHeader className="border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.38))] px-5 py-5 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.22),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(222_47%_9%/0.92))] sm:px-6">
+      <DialogContent className="flex h-[min(92vh,58rem)] w-[calc(100vw-1.5rem)] max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 backdrop-blur supports-[backdrop-filter]:bg-card/90 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:shadow-black/45 dark:ring-white/10 sm:w-full">
+        <DialogHeader className="border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.38))] px-5 py-5 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.86))] sm:px-6">
           <DialogTitle className="flex min-w-0 flex-col gap-4 pr-8 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-primary shadow-sm">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-amber-700 shadow-sm dark:border-amber-200/25 dark:text-amber-100">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Agreement case file
               </div>
               <div className="flex min-w-0 items-start gap-3">
-                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_52%,hsl(38_92%_50%))] text-slate-950 shadow-lg shadow-amber-500/20">
                   <FileText className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
