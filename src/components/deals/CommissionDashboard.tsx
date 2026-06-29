@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
+import { DealLoadingState, NoResultsState } from '@/components/deals/DealStatePresentation';
 
 
 const kpiCardBase = 'relative overflow-hidden rounded-2xl border shadow-xl shadow-black/5 before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent';
@@ -132,12 +133,7 @@ export function CommissionDashboard({ deals, isLoading, onUpdatePayment }: Props
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 sm:h-24 rounded-lg" />)}
-        </div>
-        <Skeleton className="h-64 rounded-lg" />
-      </div>
+      <DealLoadingState title="Loading commission dashboard" description="Reviewing commission triggers, invoice dates and received funds without estimating missing values." />
     );
   }
 
@@ -208,8 +204,8 @@ export function CommissionDashboard({ deals, isLoading, onUpdatePayment }: Props
               <TableBody>
                 {stats.pending.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-sm">
-                      No pending commission triggers
+                    <TableCell colSpan={8} className="p-4">
+                      <NoResultsState title="No pending commission triggers" description="There are no commission events waiting in this view. Received and zero-value states remain visible where recorded." />
                     </TableCell>
                   </TableRow>
                 ) : (

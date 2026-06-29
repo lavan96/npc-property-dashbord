@@ -25,6 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
+import { DealLoadingState, NoResultsState } from '@/components/deals/DealStatePresentation';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -91,14 +92,7 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-20 sm:h-24 rounded-lg" />
-          ))}
-        </div>
-        <Skeleton className="h-64 rounded-lg" />
-      </div>
+      <DealLoadingState title="Loading executive summary" description="Assembling KPIs, risk signals and next actions from the current deal set." />
     );
   }
 
@@ -173,8 +167,8 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
               <TableBody>
                 {deals.length === 0 ? (
                   <TableRow className="border-white/10">
-                    <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
-                      No deals found
+                    <TableCell colSpan={8} className="p-4">
+                      <NoResultsState title="No deals found" description="Your current search or filters do not return any deals. Reset filters to review the full pipeline." />
                     </TableCell>
                   </TableRow>
                 ) : (

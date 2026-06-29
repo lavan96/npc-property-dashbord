@@ -25,6 +25,7 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
+import { DealLoadingState } from '@/components/deals/DealStatePresentation';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -285,8 +286,8 @@ function KanbanColumn({
             {deals.length === 0 ? (
               <div className="flex h-32 flex-col items-center justify-center rounded-[1rem] border border-dashed border-amber-200/15 bg-white/[0.025] px-4 text-center text-[11px] text-zinc-500">
                 <span className="text-lg opacity-60">{column.icon}</span>
-                <span className="mt-1 font-medium not-italic">No active deals</span>
-                <span className="mt-0.5 text-[10px]">Stage ready for the next opportunity.</span>
+                <span className="mt-1 font-semibold not-italic text-zinc-300">Stage is empty</span>
+                <span className="mt-0.5 text-[10px]">No deals currently sit in this stage.</span>
               </div>
             ) : (
               deals.map(deal => (
@@ -346,17 +347,7 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex gap-3 overflow-hidden">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="min-w-[260px] space-y-2">
-              <Skeleton className="h-16 rounded-lg" />
-              <Skeleton className="h-32 rounded-lg" />
-              <Skeleton className="h-32 rounded-lg" />
-            </div>
-          ))}
-        </div>
-      </div>
+      <DealLoadingState title="Loading pipeline board" description="Preparing stage columns and placing each real deal in its current workflow position." />
     );
   }
 
