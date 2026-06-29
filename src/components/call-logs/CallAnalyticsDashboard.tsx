@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp, Users, Smile, Frown, Meh, MessageSquare, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CallStatePanel } from './CallStatePanel';
 
 interface CallLog {
   id: string;
@@ -279,13 +280,13 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
-                <div className="text-center">
-                  <Meh className="mx-auto mb-3 h-12 w-12 text-zinc-500" />
-                  <p className="font-semibold text-zinc-100">No sentiment data available</p>
-                  <p className="text-sm text-zinc-500">AI analysis runs on completed calls</p>
-                </div>
-              </div>
+              <CallStatePanel
+                className="h-[300px] justify-center py-8"
+                tone="neutral"
+                icon={<Meh className="h-8 w-8" />}
+                title="No sentiment data available"
+                description="AI sentiment analysis appears here once analyzed calls exist in the current filtered set."
+              />
             )}
           </CardContent>
         </Card>
@@ -324,12 +325,13 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
-                <div className="text-center">
-                  <Frown className="mx-auto mb-3 h-12 w-12 text-zinc-500" />
-                  <p className="font-semibold text-zinc-100">No call outcome data available</p>
-                </div>
-              </div>
+              <CallStatePanel
+                className="h-[300px] justify-center py-8"
+                tone="blue"
+                icon={<Frown className="h-8 w-8" />}
+                title="No call outcome data available"
+                description="Outcome breakdowns populate when matching calls include outcome values."
+              />
             )}
           </CardContent>
         </Card>
@@ -370,13 +372,13 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="flex h-[350px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
-              <div className="text-center">
-                <Users className="mx-auto mb-3 h-12 w-12 text-zinc-500" />
-                <p className="font-semibold text-zinc-100">No agent data available</p>
-                <p className="text-sm text-zinc-500">Calls need agent information to display here</p>
-              </div>
-            </div>
+            <CallStatePanel
+              className="h-[350px] justify-center py-8"
+              tone="purple"
+              icon={<Users className="h-8 w-8" />}
+              title="No agent data available"
+              description="Agent comparisons appear once matching calls include agent information."
+            />
           )}
         </CardContent>
       </Card>

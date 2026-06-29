@@ -8,6 +8,7 @@ import { format, subDays, startOfDay, eachDayOfInterval, parseISO, isWithinInter
 import { TrendingUp, TrendingDown, Clock, Phone, CheckCircle, Activity } from 'lucide-react';
 import { callLogBadgeTone } from './badgeStyles';
 import { cn } from '@/lib/utils';
+import { CallStatePanel } from './CallStatePanel';
 
 interface CallLog {
   id: string;
@@ -222,12 +223,13 @@ export const CallAnalyticsTrends = ({ calls }: CallAnalyticsTrendsProps) => {
 
       {trendData.every(d => d.callVolume === 0) && (
         <Card className={trendPanel}>
-          <CardContent className="flex flex-col items-center justify-center px-6 py-10 text-center">
-            <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <Phone className="h-8 w-8 text-zinc-400" />
-            </div>
-            <p className="font-semibold text-zinc-100">No trend activity in this range</p>
-            <p className="mt-1 text-sm text-zinc-500">Charts remain ready and will populate when calls exist for the selected date range.</p>
+          <CardContent className="p-0">
+            <CallStatePanel
+              tone="blue"
+              icon={<Phone className="h-8 w-8" />}
+              title="No trend activity in this range"
+              description="Charts remain ready and will populate when calls exist for the selected date range."
+            />
           </CardContent>
         </Card>
       )}

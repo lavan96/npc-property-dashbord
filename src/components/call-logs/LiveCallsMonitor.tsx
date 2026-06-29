@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { CallStatePanel } from './CallStatePanel';
 
 interface LiveCall {
   id: string;
@@ -179,23 +180,19 @@ export const LiveCallsMonitor = () => {
       </CardHeader>
       <CardContent className="relative p-4">
         {loading ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/30 px-6 py-12 text-center shadow-inner shadow-black/30">
-            <div className="mb-4 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-4 text-emerald-200 shadow-lg shadow-emerald-500/10">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-            <p className="font-semibold text-zinc-100">Syncing live monitor...</p>
-            <p className="mt-1 text-sm text-zinc-500">Checking active voice sessions.</p>
-          </div>
+          <CallStatePanel
+            tone="emerald"
+            icon={<Loader2 className="h-8 w-8 animate-spin" />}
+            title="Syncing live monitor..."
+            description="Checking active, ringing, and queued voice-agent sessions."
+          />
         ) : liveCalls.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/30 px-6 py-12 text-center shadow-inner shadow-black/30">
-            <div className="p-4 rounded-2xl border border-zinc-400/20 bg-zinc-400/10 mb-4">
-              <Phone className="w-8 h-8 text-zinc-400" />
-            </div>
-            <p className="font-semibold text-zinc-100">No active calls</p>
-            <p className="text-sm text-zinc-500 mt-1">
-              Live calls will appear here in real-time
-            </p>
-          </div>
+          <CallStatePanel
+            tone="neutral"
+            icon={<Phone className="h-8 w-8" />}
+            title="No active calls"
+            description="Live calls will appear here in real time when an agent is in progress, ringing, or queued."
+          />
         ) : (
           <ScrollArea className="h-[430px] pr-3 [scrollbar-color:rgba(16,185,129,0.45)_rgba(0,0,0,0.35)] [scrollbar-width:thin]">
             <div className="space-y-3">

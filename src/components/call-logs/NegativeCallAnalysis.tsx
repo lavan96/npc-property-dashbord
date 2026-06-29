@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
 import { cn } from '@/lib/utils';
 import { callLogBadgeBase, callLogBadgeTone } from './badgeStyles';
+import { CallStatePanel } from './CallStatePanel';
 import { format } from 'date-fns';
 import { 
   AlertTriangle,
@@ -448,13 +449,12 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               <ScrollArea className="h-[500px] pr-3 [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.35)] [scrollbar-width:thin]">
                 <div className="space-y-3">
                   {filteredCalls.length === 0 ? (
-                    <div className="rounded-3xl border border-emerald-300/15 bg-emerald-500/5 px-6 py-12 text-center">
-                      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-500/10">
-                        <CheckCircle className="h-7 w-7 text-emerald-300" />
-                      </div>
-                      <p className="font-semibold text-zinc-100">No negative calls found</p>
-                      <p className="text-sm text-zinc-500">All calls are looking positive!</p>
-                    </div>
+                    <CallStatePanel
+                      tone="emerald"
+                      icon={<CheckCircle className="h-8 w-8" />}
+                      title="No negative calls found"
+                      description="All matching calls are clear of negative sentiment or escalation indicators."
+                    />
                   ) : (
                     filteredCalls.map(call => (
                       <div
@@ -533,13 +533,12 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             </CardHeader>
             <CardContent className="p-4">
               {recoveryQueue.length === 0 ? (
-                <div className="rounded-3xl border border-emerald-300/15 bg-emerald-500/5 px-6 py-12 text-center">
-                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-500/10">
-                    <CheckCircle className="h-7 w-7 text-emerald-300" />
-                  </div>
-                  <p className="font-semibold text-zinc-100">Recovery queue is empty</p>
-                  <p className="text-sm text-zinc-500">No high-priority customers need immediate follow-up</p>
-                </div>
+                <CallStatePanel
+                  tone="emerald"
+                  icon={<CheckCircle className="h-8 w-8" />}
+                  title="Recovery queue is empty"
+                  description="No high-priority customers need immediate follow-up right now."
+                />
               ) : (
                 <div className="space-y-3">
                   {recoveryQueue.map((call, index) => (
@@ -619,13 +618,12 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             </CardHeader>
             <CardContent className="p-4">
               {Object.keys(stats.rootCauseBreakdown).length === 0 ? (
-                <div className="rounded-3xl border border-white/10 bg-black/25 px-6 py-12 text-center">
-                  <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-                    <FileText className="h-7 w-7 text-zinc-400" />
-                  </div>
-                  <p className="font-semibold text-zinc-100">No root causes identified</p>
-                  <p className="text-sm text-zinc-500">Root causes will appear as calls are analyzed</p>
-                </div>
+                <CallStatePanel
+                  tone="neutral"
+                  icon={<FileText className="h-8 w-8" />}
+                  title="No root causes identified"
+                  description="Root causes will appear as calls are analyzed and categorized."
+                />
               ) : (
                 <div className="space-y-4">
                   {Object.entries(stats.rootCauseBreakdown)

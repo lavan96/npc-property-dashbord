@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Users, GitBranch, Target, TrendingUp, CheckCircle, Clock } from 'lucide-react';
 import { callLogBadgeTone } from './badgeStyles';
 import { cn } from '@/lib/utils';
+import { CallStatePanel } from './CallStatePanel';
 
 interface SquadAssistant {
   id: string;
@@ -213,15 +214,13 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
   if (squadCalls.length === 0) {
     return (
       <Card className={squadPanel}>
-        <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <div className="mb-4 rounded-3xl border border-purple-300/20 bg-purple-500/10 p-5 shadow-inner shadow-purple-950/40">
-            <Users className="h-16 w-16 text-purple-300" />
-          </div>
-          <h3 className="mb-2 text-lg font-semibold text-zinc-50">No Squad Calls Yet</h3>
-          <p className="max-w-md text-sm text-zinc-500">
-            Squad analytics will appear here once your Vapi Squads start handling calls.
-            Squad calls involve multiple assistants working together.
-          </p>
+        <CardContent className="p-0">
+          <CallStatePanel
+            tone="purple"
+            icon={<Users className="h-10 w-10" />}
+            title="No Squad Calls Yet"
+            description="Squad analytics will appear here once your Vapi Squads start handling calls. Squad calls involve multiple assistants working together."
+          />
         </CardContent>
       </Card>
     );
@@ -354,9 +353,13 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
-                <p className="font-semibold text-zinc-100">No intent data available</p>
-              </div>
+              <CallStatePanel
+                className="h-[300px] py-8"
+                tone="purple"
+                icon={<Target className="h-8 w-8" />}
+                title="No intent data available"
+                description="Intent charts populate once squad calls include intent labels."
+              />
             )}
           </CardContent>
         </Card>
@@ -395,9 +398,13 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-[300px] items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-zinc-400">
-                <p className="font-semibold text-zinc-100">No success data available</p>
-              </div>
+              <CallStatePanel
+                className="h-[300px] py-8"
+                tone="emerald"
+                icon={<TrendingUp className="h-8 w-8" />}
+                title="No success data available"
+                description="Success-rate comparisons appear when squad calls include outcome values."
+              />
             )}
           </CardContent>
         </Card>
@@ -446,9 +453,13 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
               })}
             </div>
           ) : (
-            <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-black/20 py-10 text-zinc-400">
-              <p className="font-semibold text-zinc-100">No assistant data available</p>
-            </div>
+            <CallStatePanel
+              className="py-10"
+              tone="neutral"
+              icon={<Users className="h-8 w-8" />}
+              title="No assistant data available"
+              description="Assistant involvement appears here once squad call handoff metadata is available."
+            />
           )}
         </CardContent>
       </Card>

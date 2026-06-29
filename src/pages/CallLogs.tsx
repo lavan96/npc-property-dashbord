@@ -33,6 +33,7 @@ import { NegativeCallAnalysis } from '@/components/call-logs/NegativeCallAnalysi
 import { CallToolCalls } from '@/components/call-logs/CallToolCalls';
 import { CallTranscriptChat } from '@/components/call-logs/CallTranscriptChat';
 import { callLogBadgeTone } from '@/components/call-logs/badgeStyles';
+import { CallStatePanel } from '@/components/call-logs/CallStatePanel';
 import { 
   Phone, 
   PhoneIncoming, 
@@ -1109,31 +1110,29 @@ const CallLogs = () => {
         </CardHeader>
         <CardContent className="relative min-h-0 p-0">
           {loading ? (
-            <div className="mx-4 my-5 flex flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 bg-black/30 px-6 py-16 text-center shadow-inner shadow-black/30 sm:mx-6">
-              <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-4 text-amber-200 shadow-lg shadow-amber-500/10">
-                <RefreshCw className="h-8 w-8 animate-spin" />
-              </div>
-              <div>
-                <p className="font-semibold text-zinc-100">Loading call logs...</p>
-                <p className="mt-1 text-sm text-zinc-500">Refreshing the voice activity register.</p>
-              </div>
-            </div>
+            <CallStatePanel
+              className="mx-4 my-5 sm:mx-6"
+              tone="amber"
+              icon={<RefreshCw className="h-8 w-8 animate-spin" />}
+              title="Loading call logs..."
+              description="Refreshing the voice activity register while preserving your current filters."
+            />
           ) : filteredCalls.length === 0 ? (
-            <div className="mx-4 my-5 rounded-3xl border border-white/10 bg-black/30 px-6 py-16 text-center shadow-inner shadow-black/30 sm:mx-6">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 shadow-lg shadow-amber-500/10">
-                <Phone className="h-8 w-8 text-amber-200" />
-              </div>
-              <p className="mb-1 font-semibold text-zinc-100">No call logs found</p>
-              <p className="mx-auto max-w-sm text-sm text-zinc-500">
-                {calls.length > 0 
-                  ? 'Try adjusting your filters to see more results'
-                  : 'Calls will appear here once your Vapi agents start making calls'}
-              </p>
-              {calls.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={cn("mt-4", premiumSecondaryAction)}
+            <CallStatePanel
+              className="mx-4 my-5 sm:mx-6"
+              tone={calls.length > 0 ? 'amber' : 'neutral'}
+              icon={<Phone className="h-8 w-8" />}
+              title={calls.length > 0 ? 'No matching calls found' : 'No call logs found'}
+              description={
+                calls.length > 0
+                  ? 'No calls match the current search, filters, tags, or date range. Reset filters to return to the full voice activity register.'
+                  : 'Calls will appear here once your Vapi agents start making calls.'
+              }
+              action={calls.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={premiumSecondaryAction}
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1147,7 +1146,7 @@ const CallLogs = () => {
                   Clear all filters
                 </Button>
               )}
-            </div>
+            />
           ) : (
             <div className={cn("max-h-[min(64rem,calc(100vh-18rem))] min-h-[18rem] space-y-3 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6", premiumScrollbar)}>
               {filteredCalls.map(call => (
