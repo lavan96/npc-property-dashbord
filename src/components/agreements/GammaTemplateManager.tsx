@@ -173,7 +173,7 @@ export default function GammaTemplateManager() {
     <DashboardThemeFrame
       as="section"
       variant="section"
-      className="overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.14),transparent_30%),linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
+      className="flex min-h-0 flex-col overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.14),transparent_30%),linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
     >
       <CardHeader className="border-b border-border/70 bg-muted/35 pb-5 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -194,7 +194,7 @@ export default function GammaTemplateManager() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-3 sm:p-5">
+      <CardContent className="min-h-0 p-3 sm:p-5">
         {isLoading ? (
           <div className="overflow-hidden rounded-2xl border border-border/70 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.12),transparent_36%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.84))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.60),0_16px_42px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.12),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
             <div className="mb-5 flex items-center gap-3">
@@ -237,8 +237,8 @@ export default function GammaTemplateManager() {
             <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-muted-foreground">Add a Gamma template to get started with reusable agreement blueprints.</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.58),0_18px_46px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_52px_rgba(0,0,0,0.28)]">
-            <Table>
+          <div className="max-h-[min(46dvh,34rem)] min-h-[16rem] overflow-auto overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.58),0_18px_46px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_52px_rgba(0,0,0,0.28)]">
+            <Table className="min-w-[760px]">
             <TableHeader className="bg-muted/85 shadow-[0_1px_0_hsl(var(--border)/0.85)] dark:bg-white/[0.04]">
               <TableRow>
                 <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Name</TableHead>
@@ -302,8 +302,8 @@ export default function GammaTemplateManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-        <DialogContent className="max-h-[min(92vh,900px)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-300/50 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.97))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
-          <div className="flex max-h-[min(92vh,900px)] flex-col">
+        <DialogContent className="max-h-[min(92dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-300/50 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.97))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
+          <div className="flex max-h-[min(92dvh,900px)] min-h-0 flex-col">
             <DialogHeader className="border-b border-border/70 bg-muted/45 px-6 py-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
               <div className="flex items-start gap-4">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.24),hsl(38_92%_50%/0.12))] text-amber-600 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.68),0_16px_34px_hsl(43_84%_52%/0.18)] dark:border-amber-200/20 dark:text-amber-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_18px_42px_rgba(0,0,0,0.34)]">
@@ -319,7 +319,7 @@ export default function GammaTemplateManager() {
               </div>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-7">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] sm:px-7">
               <div className="space-y-5">
                 {editingTemplate && (
                   <div className="rounded-2xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.48)] dark:border-amber-200/20 dark:bg-amber-200/10">

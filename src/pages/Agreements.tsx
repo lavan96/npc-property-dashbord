@@ -528,7 +528,7 @@ export default function Agreements() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="space-y-7 px-3 py-4 text-foreground sm:px-6 sm:py-7 lg:px-8"
+      className="flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col space-y-7 overflow-y-auto overscroll-contain px-3 py-4 text-foreground [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-background/70 [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent sm:px-6 sm:py-7 lg:px-8"
     >
       <DashboardThemeFrame
         as="header"
@@ -660,7 +660,7 @@ export default function Agreements() {
       <DashboardThemeFrame
         as="section"
         variant="section"
-        className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/50 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.72))] dark:ring-white/10"
+        className="flex min-h-0 flex-col overflow-visible border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/50 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.72))] dark:ring-white/10"
       >
         <div className="relative flex flex-col gap-5 border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--muted)/0.45),hsl(var(--card)/0.55))] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="min-w-0">
@@ -687,7 +687,7 @@ export default function Agreements() {
             />
           </div>
         </div>
-        <div className="bg-muted/18 p-3 sm:p-4">
+        <div className="min-h-0 bg-muted/18 p-3 sm:p-4">
           {isLoading ? (
             renderAgreementsLoading()
           ) : isError ? (
@@ -713,8 +713,8 @@ export default function Agreements() {
               )}
             </div>
           ) : (
-            <ScrollArea className="max-h-[600px] rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_18px_44px_rgba(15,23,42,0.10)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
-              <div className="overflow-x-auto">
+            <ScrollArea className="min-h-[22rem] max-h-[min(58dvh,46rem)] rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_18px_44px_rgba(15,23,42,0.10)] [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&_[data-radix-scroll-area-viewport]]:overscroll-contain dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+              <div className="min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
                 <Table className="min-w-[880px]">
                   <TableHeader className="sticky top-0 z-10 border-b border-border/70 bg-muted/90 shadow-[0_1px_0_hsl(var(--border)/0.95),0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-slate-900/90">
                     <TableRow className="border-border/70 hover:bg-transparent">
@@ -815,7 +815,7 @@ export default function Agreements() {
                             <DropdownMenuContent
                               align="end"
                               sideOffset={10}
-                              collisionPadding={16}
+                              collisionPadding={{ top: 16, right: 16, bottom: 24, left: 16 }}
                               className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border-border/80 bg-popover p-2 ring-1 ring-white/70 text-popover-foreground shadow-2xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-slate-700/70 dark:shadow-black/35"
                             >
                               <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -953,7 +953,7 @@ export default function Agreements() {
           }
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.28)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92))] dark:ring-white/10">
+        <DialogContent className="flex max-h-[min(90dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.28)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92))] dark:ring-white/10">
           <DialogHeader>
             <DialogTitle>{previewTitle}</DialogTitle>
           </DialogHeader>
@@ -966,7 +966,7 @@ export default function Agreements() {
               <p className="max-w-sm text-xs leading-5 text-muted-foreground">Fetching the latest PDF or HTML preview without changing the saved agreement.</p>
             </div>
           ) : previewHtml ? (
-            <div className="flex-1 overflow-auto rounded-xl border border-border/70 bg-background">
+            <div className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-xl border border-border/70 bg-background [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin]">
               {previewHtml.startsWith("__PDF__") ? (
                 <iframe
                   src={previewHtml.replace("__PDF__", "")}
