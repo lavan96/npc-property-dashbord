@@ -13,7 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles, Layers3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles, Layers3, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
@@ -269,8 +269,8 @@ export default function GammaTemplateManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-        <DialogContent className="max-h-[min(92vh,880px)] max-w-3xl overflow-hidden rounded-[1.75rem] border border-amber-200/40 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.16),transparent_34%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--card)/0.96))] p-0 text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.26)] ring-1 ring-white/65 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:ring-white/10">
-          <div className="flex max-h-[min(92vh,880px)] flex-col">
+        <DialogContent className="max-h-[min(92vh,900px)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-200/45 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--card)/0.96))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
+          <div className="flex max-h-[min(92vh,900px)] flex-col">
             <DialogHeader className="border-b border-border/60 bg-background/45 px-6 py-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
               <div className="flex items-start gap-4">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.24),hsl(38_92%_50%/0.12))] text-amber-600 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.68),0_16px_34px_hsl(43_84%_52%/0.18)] dark:border-amber-200/20 dark:text-amber-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_18px_42px_rgba(0,0,0,0.34)]">
@@ -278,17 +278,33 @@ export default function GammaTemplateManager() {
                 </span>
                 <div className="min-w-0">
                   <p className="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-amber-600/90 dark:text-amber-200/80">Template workflow</p>
-                  <DialogTitle className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{editingTemplate ? 'Edit Gamma Template' : 'Add Gamma Template'}</DialogTitle>
+                  <DialogTitle className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{editingTemplate ? 'Edit Template' : 'Add Gamma Template'}</DialogTitle>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                    Configure the Gamma source, merge fields, and fallback values used when agreement documents are created.
+                    Configure the Gamma source, merge fields, and fallback values used when agreement documents are created. Existing edit values are shown exactly as saved.
                   </p>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5 sm:px-7">
+            <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-7">
               <div className="space-y-5">
-                <section className="rounded-2xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+                {editingTemplate && (
+                  <div className="rounded-2xl border border-amber-300/35 bg-amber-500/10 px-4 py-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.48)] dark:border-amber-200/20 dark:bg-amber-200/10">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-200" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground">Editing saved template values</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">Review the existing Gamma ID and mappings before saving. Long IDs and placeholders wrap below to keep the workflow controlled.</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="w-fit rounded-full border-amber-300/45 bg-background/70 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-amber-700 dark:border-amber-200/20 dark:bg-slate-950/45 dark:text-amber-200">
+                        {mappings.filter((m) => m.placeholder && m.field).length} active mappings
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+                <section className="rounded-3xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground">Template details</h3>
@@ -304,7 +320,7 @@ export default function GammaTemplateManager() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-[0.14em] text-foreground/80">Gamma Template ID</Label>
-                      <Input value={gammaId} onChange={(e) => setGammaId(e.target.value)} placeholder="e.g. g_abc123xyz" className="h-11 rounded-xl border-border/70 bg-background/85 font-mono text-sm shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70" />
+                      <Input value={gammaId} onChange={(e) => setGammaId(e.target.value)} placeholder="e.g. g_abc123xyz" className="h-11 rounded-xl border-border/70 bg-background/85 font-mono text-sm shadow-sm transition-all placeholder:text-muted-foreground/65 focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/55 dark:focus-visible:border-amber-300/70 [overflow-wrap:anywhere]" />
                       {!gammaId && <p className="text-xs font-medium text-muted-foreground">Use the Gamma ID already connected to the agreement automation.</p>}
                     </div>
                   </div>
@@ -314,7 +330,7 @@ export default function GammaTemplateManager() {
                   </div>
                 </section>
 
-                <section className="rounded-2xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+                <section className="rounded-3xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                   <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground">Placeholder Mappings</h3>
@@ -326,17 +342,17 @@ export default function GammaTemplateManager() {
                   </div>
                   <div className="space-y-3">
                     {mappings.map((m, idx) => (
-                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/60 bg-muted/25 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44)] dark:border-white/10 dark:bg-slate-950/35 sm:grid-cols-[1fr_auto_1fr_9rem_auto] sm:items-end">
+                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/60 bg-muted/25 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_12px_30px_rgba(15,23,42,0.05)] transition-all hover:border-amber-300/40 hover:bg-amber-500/[0.06] dark:border-white/10 dark:bg-slate-950/35 dark:hover:border-amber-200/20 dark:hover:bg-amber-200/[0.07] sm:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1fr)_minmax(0,10rem)_auto] sm:items-end">
                         <div className="space-y-1.5">
                           <Label className="text-[0.66rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">Gamma placeholder</Label>
                           <Input
                             value={m.placeholder}
                             onChange={(e) => updateMapping(idx, 'placeholder', e.target.value)}
                             placeholder="[Placeholder]"
-                            className="h-10 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65"
+                            className="h-10 rounded-xl border-border/70 bg-background/90 text-sm shadow-sm transition-all focus-visible:border-amber-400 focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/65 [overflow-wrap:anywhere]"
                           />
                         </div>
-                        <span className="hidden pb-3 text-lg font-semibold text-amber-500 sm:block">→</span>
+                        <span className="hidden pb-3 text-amber-500 sm:block"><ArrowRight className="h-5 w-5" /></span>
                         <div className="space-y-1.5">
                           <Label className="text-[0.66rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">Agreement field</Label>
                           <select
@@ -362,6 +378,13 @@ export default function GammaTemplateManager() {
                         <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground transition-all hover:border hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
                           <X className="h-4 w-4" />
                         </Button>
+                        <div className="min-w-0 rounded-xl border border-border/50 bg-background/65 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] sm:col-span-5">
+                          <span className="font-semibold text-foreground">Preview:</span>{' '}
+                          <code className="font-mono text-foreground/80 [overflow-wrap:anywhere]">{m.placeholder || '[Placeholder]'}</code>
+                          <span className="mx-2 text-amber-500">→</span>
+                          <span className="font-medium text-foreground/80">{AVAILABLE_FIELDS.find((f) => f.value === m.field)?.label || 'Select field...'}</span>
+                          {m.defaultValue && <span className="ml-2 [overflow-wrap:anywhere]">Fallback: {m.defaultValue}</span>}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -369,12 +392,18 @@ export default function GammaTemplateManager() {
               </div>
             </div>
 
-            <DialogFooter className="border-t border-border/60 bg-background/55 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
-              <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }} className="rounded-xl border-border/75 bg-background/70 font-semibold text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/45">Cancel</Button>
-              <Button onClick={() => saveMutation.mutate()} disabled={!name || !gammaId || saveMutation.isPending} className="rounded-xl bg-[linear-gradient(135deg,hsl(43_84%_52%),hsl(38_92%_50%))] px-5 font-bold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.34)] focus-visible:ring-2 focus-visible:ring-amber-300/60 disabled:translate-y-0 disabled:opacity-55 dark:text-slate-950">
+            <DialogFooter className="flex-col gap-3 border-t border-border/60 bg-background/55 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between sm:px-7">
+              <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                {(!name || !gammaId) ? <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-200" /> : <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />}
+                <span>{(!name || !gammaId) ? 'Template name and Gamma template ID are required before saving.' : 'Ready to save with the existing update workflow.'}</span>
+              </div>
+              <div className="flex w-full justify-end gap-2 sm:w-auto">
+              <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }} className="h-11 rounded-xl border-border/75 bg-background/75 px-5 font-semibold text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-amber-300/45 dark:border-white/10 dark:bg-slate-950/45 dark:hover:border-white/20">Cancel</Button>
+              <Button onClick={() => saveMutation.mutate()} disabled={!name || !gammaId || saveMutation.isPending} className="h-11 rounded-xl bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_42%,hsl(38_92%_50%))] px-6 font-black text-slate-950 shadow-[0_16px_38px_hsl(43_84%_52%/0.34),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_hsl(43_84%_52%/0.42),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 disabled:translate-y-0 disabled:opacity-55 dark:text-slate-950">
                 {saveMutation.isPending && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-                {editingTemplate ? 'Update Template' : 'Create Template'}
+                {editingTemplate ? 'Save Changes' : 'Create Template'}
               </Button>
+              </div>
             </DialogFooter>
           </div>
         </DialogContent>
