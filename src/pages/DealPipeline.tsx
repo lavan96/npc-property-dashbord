@@ -131,7 +131,7 @@ export default function DealPipeline() {
   }
 
   return (
-    <div className={cn("deal-pipeline-polish relative mx-auto flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1800px] flex-col space-y-5 overflow-y-auto overflow-x-hidden rounded-[2rem] border border-amber-300/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.92)_42%,rgba(10,10,10,0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
+    <div className={cn("deal-pipeline-polish relative mx-auto flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1800px] flex-col space-y-5 overflow-y-auto overflow-x-hidden rounded-[2rem] border border-amber-300/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.92)_42%,rgba(10,10,10,0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
@@ -185,7 +185,7 @@ export default function DealPipeline() {
       </section>
 
       {/* Global Pipeline Toolbar */}
-      <section className="relative rounded-[1.35rem] border border-white/10 bg-black/25 p-3 shadow-[0_18px_55px_rgba(0,0,0,0.22)] backdrop-blur">
+      <section className="relative overflow-hidden rounded-[1.35rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(24,24,27,0.82)_48%,rgba(0,0,0,0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur">
         <PipelineToolbar
           deals={deals}
           filters={filters}
@@ -199,7 +199,7 @@ export default function DealPipeline() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="relative flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-black/30 p-2 shadow-[0_22px_70px_rgba(0,0,0,0.26)] backdrop-blur sm:p-3"
+        className="relative flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
       >
         <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
