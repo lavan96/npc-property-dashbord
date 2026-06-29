@@ -67,7 +67,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 
-const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_34%),radial-gradient(circle_at_80%_8%,rgba(124,58,237,0.10),transparent_28%),linear-gradient(135deg,hsl(222_47%_5%),hsl(220_34%_8%)_46%,hsl(0_0%_4%))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
+const premiumScrollbar = "[scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.35)] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-black/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-thumb:hover]:bg-amber-200/60";
+const premiumPageShell = "relative -mx-4 -mt-4 min-h-[calc(100vh-1rem)] overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_34%),radial-gradient(circle_at_80%_8%,rgba(124,58,237,0.10),transparent_28%),linear-gradient(135deg,hsl(222_47%_5%),hsl(220_34%_8%)_46%,hsl(0_0%_4%))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
 const premiumPanel = "border-white/10 bg-black/35 shadow-2xl shadow-black/30 backdrop-blur-xl";
 const premiumCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
 const premiumMetricCard = "group relative overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10";
@@ -515,9 +516,9 @@ const CallLogs = () => {
   };
 
   return (
-    <div className={premiumPageShell}>
+    <div className={cn(premiumPageShell, premiumScrollbar)}>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/50 to-transparent" />
-      <div className="mx-auto max-w-[1800px] space-y-5 md:space-y-7 pb-20 md:pb-0">
+      <div className="mx-auto flex min-h-0 max-w-[1800px] flex-col space-y-5 pb-20 md:space-y-7 md:pb-0">
       {/* Header */}
       <div className={cn("flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-3xl border p-5 md:p-6", premiumPanel)}>
         <div>
@@ -542,8 +543,8 @@ const CallLogs = () => {
       </div>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="logs" className="w-full">
-        <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)] md:mx-0 md:px-0">
+      <Tabs defaultValue="logs" className="flex min-h-0 w-full flex-1 flex-col">
+        <div className={cn("-mx-4 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0", premiumScrollbar)}>
           <TabsList className={cn(premiumTabList, isMobile ? "w-auto" : "")}>
             <TabsTrigger value="logs" className={cn("flex items-center gap-1.5 whitespace-nowrap md:gap-2", premiumTabTrigger)}>
               <Phone className="h-3.5 w-3.5 shrink-0 transition-colors group-data-[state=active]:text-amber-200 md:h-4 md:w-4" />
@@ -572,30 +573,36 @@ const CallLogs = () => {
           </TabsList>
         </div>
 
-        <TabsContent value="issues" className="mt-4 md:mt-6">
+        <TabsContent value="issues" className="mt-4 min-h-0 overflow-x-hidden md:mt-6">
           <NegativeCallAnalysis calls={filteredCalls as any} onRefresh={fetchCalls} />
         </TabsContent>
 
-        <TabsContent value="live" className="mt-4 md:mt-6">
+        <TabsContent value="live" className="mt-4 min-h-0 overflow-x-hidden md:mt-6">
           <LiveCallsMonitor />
         </TabsContent>
 
-        <TabsContent value="trends" className="mt-4 md:mt-6">
-          <CallAnalyticsTrends calls={filteredCalls} />
+        <TabsContent value="trends" className={cn("mt-4 min-h-0 overflow-x-auto md:mt-6", premiumScrollbar)}>
+          <div className="min-w-0">
+            <CallAnalyticsTrends calls={filteredCalls} />
+          </div>
         </TabsContent>
 
-        <TabsContent value="analytics" className="mt-4 md:mt-6">
-          <CallAnalyticsDashboard calls={filteredCalls} />
+        <TabsContent value="analytics" className={cn("mt-4 min-h-0 overflow-x-auto md:mt-6", premiumScrollbar)}>
+          <div className="min-w-0">
+            <CallAnalyticsDashboard calls={filteredCalls} />
+          </div>
         </TabsContent>
 
-        <TabsContent value="squad-analytics" className="mt-4 md:mt-6">
-          <SquadAnalyticsDashboard calls={filteredCalls} />
+        <TabsContent value="squad-analytics" className={cn("mt-4 min-h-0 overflow-x-auto md:mt-6", premiumScrollbar)}>
+          <div className="min-w-0">
+            <SquadAnalyticsDashboard calls={filteredCalls} />
+          </div>
         </TabsContent>
 
-        <TabsContent value="logs" className="mt-4 md:mt-6 space-y-0">
+        <TabsContent value="logs" className="mt-4 min-h-0 space-y-0 overflow-hidden md:mt-6">
 
       {/* Sticky header: Stats + Filters */}
-      <div className="sticky top-0 z-20 rounded-b-3xl border-x border-b border-white/10 bg-black/70 pb-4 pt-2 space-y-4 md:space-y-6 backdrop-blur-xl shadow-2xl shadow-black/30">
+      <div className="sticky top-0 z-20 space-y-4 rounded-b-3xl border-x border-b border-white/10 bg-black/70 pb-4 pt-2 shadow-2xl shadow-black/30 backdrop-blur-xl md:space-y-6">
 
       {/* Stats Cards - Responsive grid */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9">
@@ -719,14 +726,14 @@ const CallLogs = () => {
                   <SlidersHorizontal className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="flex h-[70vh] flex-col border-white/10 bg-zinc-950/95 p-0 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              <SheetContent side="bottom" className="flex h-[70vh] min-h-0 flex-col overflow-hidden border-white/10 bg-zinc-950/95 p-0 shadow-2xl shadow-black/50 backdrop-blur-xl">
                 <SheetHeader className="border-b border-white/10 bg-amber-300/5 p-4">
                   <SheetTitle className="flex items-center gap-2">
                     <Filter className="h-5 w-5" />
                     Call Filters
                   </SheetTitle>
                 </SheetHeader>
-                <ScrollArea className="flex-1 p-4">
+                <ScrollArea className={cn("min-h-0 flex-1 p-4", premiumScrollbar)}>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Agent</label>
@@ -859,7 +866,7 @@ const CallLogs = () => {
         <Card className={cn(premiumPanel, "relative overflow-hidden rounded-3xl border-amber-300/10")}>
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
           <CardContent className="p-4 md:p-5">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex min-w-0 flex-wrap items-center gap-3 overflow-hidden">
               <div className="min-w-[260px] flex-[1.5]">
                 <div className="relative">
                   <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
@@ -872,7 +879,7 @@ const CallLogs = () => {
                 </div>
               </div>
               <Select value={selectedAgent} onValueChange={setSelectedAgent}>
-                <SelectTrigger className={cn("w-[180px]", premiumFilterControl, selectedAgent !== 'all' && premiumFilterControlActive)}>
+                <SelectTrigger className={cn("w-full min-w-[160px] sm:w-[180px]", premiumFilterControl, selectedAgent !== 'all' && premiumFilterControlActive)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Agents" />
                 </SelectTrigger>
@@ -884,7 +891,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedOutcome} onValueChange={setSelectedOutcome}>
-                <SelectTrigger className={cn("w-[180px]", premiumFilterControl, selectedOutcome !== 'all' && premiumFilterControlActive)}>
+                <SelectTrigger className={cn("w-full min-w-[160px] sm:w-[180px]", premiumFilterControl, selectedOutcome !== 'all' && premiumFilterControlActive)}>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="All Outcomes" />
                 </SelectTrigger>
@@ -907,7 +914,7 @@ const CallLogs = () => {
                 </SelectContent>
               </Select>
               <Select value={selectedSquadType} onValueChange={setSelectedSquadType}>
-                <SelectTrigger className={cn("w-[160px]", premiumFilterControl, selectedSquadType !== 'all' && premiumFilterControlActive)}>
+                <SelectTrigger className={cn("w-full min-w-[150px] sm:w-[160px]", premiumFilterControl, selectedSquadType !== 'all' && premiumFilterControlActive)}>
                   <Users className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Call Type" />
                 </SelectTrigger>
@@ -919,7 +926,7 @@ const CallLogs = () => {
               </Select>
               {squads.length > 0 && (
                 <Select value={selectedSquad} onValueChange={setSelectedSquad}>
-                  <SelectTrigger className={cn("w-[200px]", premiumFilterControl, selectedSquad !== 'all' && premiumFilterControlActive)}>
+                  <SelectTrigger className={cn("w-full min-w-[180px] sm:w-[200px]", premiumFilterControl, selectedSquad !== 'all' && premiumFilterControlActive)}>
                     <GitBranch className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="All Squads" />
                   </SelectTrigger>
@@ -932,7 +939,7 @@ const CallLogs = () => {
                 </Select>
               )}
               <Select value={selectedIntent} onValueChange={setSelectedIntent}>
-                <SelectTrigger className={cn("w-[160px]", premiumFilterControl, selectedIntent !== 'all' && premiumFilterControlActive)}>
+                <SelectTrigger className={cn("w-full min-w-[150px] sm:w-[160px]", premiumFilterControl, selectedIntent !== 'all' && premiumFilterControlActive)}>
                   <Target className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Intent" />
                 </SelectTrigger>
@@ -952,7 +959,7 @@ const CallLogs = () => {
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal", premiumFilterControl,
+                      "w-full min-w-[210px] justify-start text-left font-normal sm:w-[240px]", premiumFilterControl,
                       dateRange && premiumFilterControlActive,
                       !dateRange && "text-zinc-500"
                     )}
@@ -1026,9 +1033,9 @@ const CallLogs = () => {
       </div>
       {/* End sticky header */}
 
-      <div className="mt-4 md:mt-6">
+      <div className="mt-4 min-h-0 md:mt-6">
       {/* Call List */}
-      <Card className={cn(premiumPanel, "relative overflow-hidden rounded-[2rem] border-amber-300/15 bg-gradient-to-br from-zinc-950/95 via-black/80 to-zinc-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]")}>
+      <Card className={cn(premiumPanel, "relative flex min-h-0 flex-col overflow-hidden rounded-[2rem] border-amber-300/15 bg-gradient-to-br from-zinc-950/95 via-black/80 to-zinc-950/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]")}>
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
         <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl" />
         <CardHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_32%),linear-gradient(90deg,rgba(24,24,27,0.94),rgba(0,0,0,0.68),rgba(88,28,135,0.18))] px-4 py-4 sm:px-6 sm:py-5">
@@ -1100,7 +1107,7 @@ const CallLogs = () => {
             )}
           </div>
         </CardHeader>
-        <CardContent className="relative p-0">
+        <CardContent className="relative min-h-0 p-0">
           {loading ? (
             <div className="mx-4 my-5 flex flex-col items-center justify-center gap-4 rounded-3xl border border-white/10 bg-black/30 px-6 py-16 text-center shadow-inner shadow-black/30 sm:mx-6">
               <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-4 text-amber-200 shadow-lg shadow-amber-500/10">
@@ -1142,7 +1149,7 @@ const CallLogs = () => {
               )}
             </div>
           ) : (
-            <div className="max-h-[calc(100vh-17rem)] space-y-3 overflow-y-auto px-4 py-5 [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.35)] [scrollbar-width:thin] sm:px-6">
+            <div className={cn("max-h-[min(64rem,calc(100vh-18rem))] min-h-[18rem] space-y-3 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6", premiumScrollbar)}>
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
@@ -1293,7 +1300,7 @@ const CallLogs = () => {
         <DialogContent className={cn(
           "flex flex-col p-0",
           detailDialogShell,
-          isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "max-w-4xl h-[85vh] max-h-[85vh]"
+          isMobile ? "h-[95dvh] max-h-[95dvh] w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] rounded-xl" : "h-[85dvh] max-h-[85dvh] max-w-4xl"
         )}>
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
           <div className="pointer-events-none absolute -right-20 -top-24 h-60 w-60 rounded-full bg-amber-500/10 blur-3xl" />
@@ -1341,7 +1348,7 @@ const CallLogs = () => {
                 </TabsList>
               </div>
               
-              <ScrollArea className={cn("mt-4 max-w-full rounded-3xl border border-white/10 bg-black/20 p-3", isMobile ? "h-[60vh]" : "flex-1")}>
+              <ScrollArea className={cn("mt-4 min-h-0 max-w-full rounded-3xl border border-white/10 bg-black/20 p-3", premiumScrollbar, isMobile ? "h-[60dvh]" : "flex-1")}>
                 <TabsContent value="overview" className={cn("space-y-3 sm:space-y-4 min-w-0", isMobile ? "px-1 max-w-[calc(100vw-56px)] overflow-hidden" : "pr-4")}>
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
