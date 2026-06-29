@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Activity, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface HealthFactor {
   ctr_score: number;
@@ -65,17 +66,19 @@ interface CampaignHealthPanelProps {
 export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPanelProps) {
   if (loading) {
     return (
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
+          <CardTitle className="flex items-center gap-2 text-base">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <Activity className="h-4 w-4 text-primary" />
+            </span>
             Campaign Health
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
         </CardContent>
@@ -90,18 +93,20 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
   const sorted = [...healthScores].sort((a, b) => a.score - b.score);
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
-            Campaign Health
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <Activity className="h-4 w-4 text-primary" />
+            </span>
+            <span className="truncate">Campaign Health</span>
           </CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 rounded-full border border-border/60 bg-background/55 px-2.5 py-1.5">
             <span className="text-xs text-muted-foreground">Avg Score</span>
             <Badge
               variant="outline"
-              className={`font-mono text-xs ${
+              className={`rounded-full font-mono text-xs ${
                 avgScore >= 60 ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400' :
                 avgScore >= 35 ? 'border-amber-500/30 text-amber-600 dark:text-amber-400' :
                 'border-red-500/30 text-red-600 dark:text-red-400'
@@ -114,8 +119,9 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
       </CardHeader>
       <CardContent>
         {healthScores.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            <p className="text-sm">No campaign data to score</p>
+          <div className="rounded-2xl border border-dashed border-border/70 bg-background/45 py-7 text-center text-muted-foreground">
+            <Activity className="mx-auto mb-2 h-8 w-8 text-primary/35" />
+            <p className="text-sm font-medium">No campaign data to score</p>
           </div>
         ) : (
           <ScrollArea className="max-h-[340px]">
@@ -125,13 +131,13 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
                 return (
                   <Tooltip key={health.campaign_id}>
                     <TooltipTrigger asChild>
-                      <div className={`rounded-lg border p-3 cursor-default transition-colors hover:bg-accent/50 ${config.borderColor}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className={cn('cursor-default rounded-2xl border bg-background/35 p-3 shadow-sm transition-all hover:border-primary/25 hover:bg-background/55', config.borderColor)}>
+                        <div className="mb-2 flex min-w-0 items-center justify-between gap-3">
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
                             <span className="text-sm">{config.emoji}</span>
-                            <span className="text-sm font-medium truncate">{health.campaign_name}</span>
+                            <span className="truncate text-sm font-medium" title={health.campaign_name}>{health.campaign_name}</span>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex shrink-0 items-center gap-2">
                             <span className={`text-sm font-bold font-mono ${config.textColor}`}>
                               {health.score}
                             </span>
@@ -142,7 +148,7 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
                           value={health.score}
                           className="h-1.5"
                         />
-                        <div className="flex items-center gap-3 mt-2">
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                           {Object.entries(health.factors).map(([key, value]) => (
                             <div key={key} className="flex items-center gap-1">
                               <span className="text-[10px] text-muted-foreground">
@@ -160,9 +166,9 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
+                    <TooltipContent side="bottom" className="max-w-xs break-words">
                       <div className="space-y-1">
-                        <p className="font-semibold text-sm">{health.campaign_name}</p>
+                        <p className="text-sm font-semibold">{health.campaign_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {config.label} — Score: {health.score}/100
                         </p>
