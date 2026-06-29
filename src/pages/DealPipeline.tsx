@@ -40,7 +40,7 @@ import { useModulePermissions } from "@/hooks/useModulePermissions";
 import type { DealWithClient } from "@/hooks/useAllDeals";
 
 const pipelineTabTriggerClass = cn(
-  "group relative flex h-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-zinc-300/82 transition-all duration-200",
+  "group relative flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-zinc-300/82 transition-all duration-200",
   "border border-transparent hover:-translate-y-0.5 hover:border-amber-200/20 hover:bg-white/[0.075] hover:text-amber-100 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
   "data-[state=active]:border-amber-100/60 data-[state=active]:bg-[linear-gradient(135deg,#fde68a,#f59e0b_58%,#b45309)] data-[state=active]:text-amber-950",
@@ -54,8 +54,8 @@ const premiumScrollbarClass =
   "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950/80 [&::-webkit-scrollbar-thumb]:bg-amber-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/75";
 
 const pipelineTabContentClass = cn(
-  "mt-4 min-h-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4",
-  "data-[state=active]:flex data-[state=active]:max-h-[min(72dvh,calc(100dvh-12rem))] data-[state=active]:flex-col",
+  "mt-4 min-h-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-2 shadow-inner sm:p-4",
+  "data-[state=active]:flex data-[state=active]:max-h-none data-[state=active]:flex-col md:data-[state=active]:max-h-[min(72dvh,calc(100dvh-12rem))]",
   premiumScrollbarClass,
 );
 
@@ -136,7 +136,7 @@ export default function DealPipeline() {
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
 
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.085)_34%,rgba(0,0,0,0.34))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.28)] backdrop-blur sm:p-6">
+      <section aria-labelledby="deal-pipeline-title" className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.085)_34%,rgba(0,0,0,0.34))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.28)] backdrop-blur sm:p-6">
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/75 to-transparent" />
         <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
         <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-amber-100 via-amber-400 to-amber-700 shadow-[0_0_24px_rgba(245,158,11,0.35)]" />
@@ -151,7 +151,7 @@ export default function DealPipeline() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-amber-200/80">
               Deal command centre
             </p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
+            <h1 id="deal-pipeline-title" className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
               Deal Pipeline
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
@@ -201,7 +201,7 @@ export default function DealPipeline() {
         onValueChange={setActiveTab}
         className="relative flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-black/30 p-2 shadow-[0_22px_70px_rgba(0,0,0,0.26)] backdrop-blur sm:p-3"
       >
-        <TabsList className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
+        <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
             <LayoutDashboard className={pipelineTabIconClass} />
             <span className="hidden sm:inline">Executive </span>Summary

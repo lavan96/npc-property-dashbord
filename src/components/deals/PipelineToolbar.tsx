@@ -186,7 +186,7 @@ export function PipelineToolbar({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" role="search" aria-label="Deal pipeline search and filters">
       {/* Row 1: Search + Filter toggle + Reset */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative w-full flex-1 lg:max-w-2xl">
@@ -194,6 +194,9 @@ export function PipelineToolbar({
             <Search className="h-4 w-4" />
           </div>
           <Input
+            id="deal-pipeline-search"
+            type="search"
+            aria-label="Search deals by client, stage, or responsible person"
             placeholder="Search client, stage, person..."
             value={filters.search}
             onChange={(e) => update({ search: e.target.value })}
@@ -202,15 +205,15 @@ export function PipelineToolbar({
           {filters.search && (
             <button
               onClick={() => update({ search: "" })}
-              className="absolute right-3.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
-              aria-label="Clear search"
+              className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+              aria-label="Clear deal search"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 lg:justify-end">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 lg:justify-end" aria-label="Filter actions">
           <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
             <CollapsibleTrigger asChild>
               <Button
@@ -257,7 +260,7 @@ export function PipelineToolbar({
           )}
 
           {/* Results count */}
-          <div className="ml-auto flex h-12 items-center whitespace-nowrap rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-xs font-semibold text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:text-sm">
+          <div className="flex h-12 items-center whitespace-nowrap rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-xs font-semibold text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:text-sm">
             {filteredCount === counts.total ? (
               <span>
                 {counts.total} deal{counts.total !== 1 ? "s" : ""}
@@ -275,7 +278,7 @@ export function PipelineToolbar({
       {/* Row 2: Expandable filter controls */}
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
         <CollapsibleContent>
-          <div className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-amber-300/20 bg-gradient-to-br from-zinc-950/90 via-zinc-950/80 to-amber-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
+          <div id="deal-pipeline-filters" className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-amber-300/20 bg-gradient-to-br from-zinc-950/90 via-zinc-950/80 to-amber-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
             {/* Deal Type Chips */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -291,8 +294,10 @@ export function PipelineToolbar({
                       onClick={() =>
                         update({ dealType: isActive ? "all" : opt.value })
                       }
+                      aria-pressed={isActive}
+                      aria-label={`Filter deal type: ${opt.label} (${count})`}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                        "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                         isActive
                           ? "border-amber-300 bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 shadow-[0_10px_24px_rgba(245,158,11,0.22)]"
                           : "border-white/10 bg-black/35 text-muted-foreground hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100",
@@ -332,8 +337,10 @@ export function PipelineToolbar({
                       onClick={() =>
                         update({ riskStatus: isActive ? "all" : opt.value })
                       }
+                      aria-pressed={isActive}
+                      aria-label={`Filter risk status: ${opt.label} (${count})`}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                        "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                         isActive
                           ? opt.activeClass + " shadow-sm"
                           : "border-white/10 bg-black/35 text-muted-foreground hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100",
@@ -367,7 +374,7 @@ export function PipelineToolbar({
                   value={filters.responsiblePerson}
                   onValueChange={(v) => update({ responsiblePerson: v })}
                 >
-                  <SelectTrigger className="h-10 w-[170px] rounded-xl border-white/10 bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[190px]">
+                  <SelectTrigger aria-label="Filter by responsible person" className="h-11 w-full min-w-[170px] rounded-xl border-white/10 bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[190px]">
                     <SelectValue placeholder="All People" />
                   </SelectTrigger>
                   <SelectContent>
@@ -382,16 +389,16 @@ export function PipelineToolbar({
               </div>
 
               {/* Sort */}
-              <div className="space-y-1 ml-auto">
+              <div className="w-full space-y-1 sm:w-auto sm:ml-auto">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                   Sort By
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="flex w-full items-center gap-1 sm:w-auto">
                   <Select
                     value={filters.sortField}
                     onValueChange={(v) => update({ sortField: v as SortField })}
                   >
-                    <SelectTrigger className="h-10 w-[150px] rounded-xl border-white/10 bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[170px]">
+                    <SelectTrigger aria-label="Sort deals by" className="h-11 w-full min-w-[150px] rounded-xl border-white/10 bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[170px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -405,7 +412,8 @@ export function PipelineToolbar({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-10 w-10 rounded-xl border-white/10 bg-black/45 p-0 hover:border-amber-300/30 hover:bg-amber-300/10"
+                    aria-label={`Toggle sort direction, currently ${filters.sortDirection === "asc" ? "ascending" : "descending"}`}
+                    className="h-11 w-11 rounded-xl border-white/10 bg-black/45 p-0 hover:border-amber-300/30 hover:bg-amber-300/10"
                     onClick={() =>
                       update({
                         sortDirection:
@@ -447,7 +455,8 @@ export function PipelineToolbar({
                     }
                     <button
                       onClick={() => update({ dealType: "all" })}
-                      className="hover:text-destructive"
+                      aria-label="Remove deal type filter"
+                      className="min-h-6 min-w-6 rounded-full hover:text-destructive"
                     >
                       <X className="h-2.5 w-2.5" />
                     </button>
@@ -464,7 +473,8 @@ export function PipelineToolbar({
                     }
                     <button
                       onClick={() => update({ riskStatus: "all" })}
-                      className="hover:text-destructive"
+                      aria-label="Remove risk status filter"
+                      className="min-h-6 min-w-6 rounded-full hover:text-destructive"
                     >
                       <X className="h-2.5 w-2.5" />
                     </button>
@@ -478,7 +488,8 @@ export function PipelineToolbar({
                     👤 {filters.responsiblePerson}
                     <button
                       onClick={() => update({ responsiblePerson: "all" })}
-                      className="hover:text-destructive"
+                      aria-label="Remove responsible person filter"
+                      className="min-h-6 min-w-6 rounded-full hover:text-destructive"
                     >
                       <X className="h-2.5 w-2.5" />
                     </button>
@@ -492,7 +503,8 @@ export function PipelineToolbar({
                     🔍 "{filters.search}"
                     <button
                       onClick={() => update({ search: "" })}
-                      className="hover:text-destructive"
+                      aria-label="Remove search filter"
+                      className="min-h-6 min-w-6 rounded-full hover:text-destructive"
                     >
                       <X className="h-2.5 w-2.5" />
                     </button>
