@@ -307,30 +307,32 @@ export default function Checklists() {
                       <Plus className="h-3 w-3" /> New Template
                     </Button>
                   </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Template</DialogTitle>
-                    <DialogDescription>Build a reusable checklist template from scratch</DialogDescription>
+                <DialogContent className="max-h-[85vh] overflow-y-auto border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40">
+                  <DialogHeader className="rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
+                    <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-50">Create New Template</DialogTitle>
+                    <DialogDescription className="text-zinc-400">Build a reusable checklist template from scratch</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex gap-3">
+                  <div className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/70 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row">
                       <div className="w-20">
-                        <Label className="text-xs text-muted-foreground">Icon</Label>
-                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} className="text-center text-xl" />
+                        <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Icon</Label>
+                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} className="mt-1 border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-amber-300/45" />
                       </div>
                       <div className="flex-1">
-                        <Label className="text-xs text-muted-foreground">Name</Label>
-                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" />
+                        <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Name</Label>
+                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                        <p className="mt-1.5 text-[11px] text-zinc-500">Give this blueprint a clear operational name.</p>
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Description (optional)</Label>
-                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} />
+                      <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Description (optional)</Label>
+                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                      <p className="mt-1.5 text-[11px] text-zinc-500">Use this to clarify when the template should be generated or followed.</p>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
+                  <DialogFooter className="gap-2">
+                    <Button variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-zinc-50" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                    <Button className="bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black shadow-[0_12px_28px_rgba(245,158,11,0.24)] hover:from-amber-400 hover:to-yellow-300" onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
                   </DialogFooter>
                 </DialogContent>
                 </Dialog>
