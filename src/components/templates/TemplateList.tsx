@@ -458,25 +458,38 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
                     
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Delete">
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={`Delete template ${template.name}`}
+                          aria-label={`Delete template ${template.name}`}
+                          className="rounded-full text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{template.name}"? This will also remove
-                            all associated embeddings and cannot be undone.
+                      <AlertDialogContent className="border-destructive/25 bg-background text-foreground shadow-2xl shadow-destructive/10 sm:max-w-md">
+                        <AlertDialogHeader className="space-y-3">
+                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive sm:mx-0">
+                            <Trash2 className="h-5 w-5" />
+                          </div>
+                          <AlertDialogTitle className="text-destructive">Delete template?</AlertDialogTitle>
+                          <AlertDialogDescription className="space-y-2 text-left text-muted-foreground">
+                            <span className="block">
+                              This will permanently delete <span className="font-medium text-foreground">{template.name}</span>.
+                            </span>
+                            <span className="block">
+                              The template file and all associated embeddings will be removed. This cannot be undone.
+                            </span>
                           </AlertDialogDescription>
                         </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogFooter className="gap-2 sm:gap-0">
+                          <AlertDialogCancel className="border-border bg-background text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => deleteMutation.mutate(template)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/40"
                           >
-                            Delete
+                            Delete template
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

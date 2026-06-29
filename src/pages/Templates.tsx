@@ -7,6 +7,17 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -435,18 +446,42 @@ export default function Templates() {
                             >
                               <Edit className="h-3.5 w-3.5 mr-1" /> Open in Builder
                             </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => {
-                                if (confirm(`Delete "${tpl.name}"? This cannot be undone.`)) {
-                                  removeReportTemplate.mutate(tpl.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 rounded-full text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-destructive/40"
+                                  title={`Delete template ${tpl.name}`}
+                                  aria-label={`Delete template ${tpl.name}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="border-destructive/25 bg-background text-foreground shadow-2xl shadow-destructive/10 sm:max-w-md">
+                                <AlertDialogHeader className="space-y-3">
+                                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive sm:mx-0">
+                                    <Trash2 className="h-5 w-5" />
+                                  </div>
+                                  <AlertDialogTitle className="text-destructive">Delete template?</AlertDialogTitle>
+                                  <AlertDialogDescription className="space-y-2 text-left text-muted-foreground">
+                                    <span className="block">
+                                      This will permanently delete <span className="font-medium text-foreground">{tpl.name}</span>.
+                                    </span>
+                                    <span className="block">This cannot be undone.</span>
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="gap-2 sm:gap-0">
+                                  <AlertDialogCancel className="border-border bg-background text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/40"
+                                    onClick={() => removeReportTemplate.mutate(tpl.id)}
+                                  >
+                                    Delete template
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </CardContent>
                       </Card>
