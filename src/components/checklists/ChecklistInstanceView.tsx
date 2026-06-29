@@ -73,12 +73,18 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   };
 
   const handleArchive = () => {
-    mutations.updateInstance.mutate({ id: instance.id, status: 'archived' });
-    onBack();
+    mutations.updateInstance.mutate(
+      { id: instance.id, status: 'archived', archived_at: new Date().toISOString() },
+      { onSuccess: onBack },
+    );
+  };
+
+  const handleDelete = () => {
+    mutations.deleteInstance.mutate(instance.id, { onSuccess: onBack });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -86,7 +92,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-zinc-50">
               <span className="text-2xl">{instance.icon}</span>
               {instance.name}
             </h2>
@@ -101,7 +107,13 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleArchive} className="gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleArchive}
+            className="gap-1"
+            disabled={mutations.updateInstance.isPending}
+          >
             <Archive className="h-3 w-3" /> Archive
           </Button>
           <AlertDialog>
@@ -112,12 +124,14 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Delete Checklist</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently delete this checklist and all its items.</AlertDialogDescription>
+                <AlertDialogTitle>Delete Checklist Instance</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete this generated checklist instance and all its items. The parent template remains available in Templates.
+                </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { mutations.deleteInstance.mutate(instance.id); onBack(); }}>Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleDelete} disabled={mutations.deleteInstance.isPending}>Delete Instance</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -125,13 +139,13 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
       </div>
 
       {/* Progress */}
-      <Card>
+      <Card className="border-amber-500/15 bg-zinc-950/90 shadow-lg shadow-black/30">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">{checkedCount} of {totalCount} completed</span>
             <span className="text-sm font-bold text-primary">{progress}%</span>
           </div>
-          <Progress value={progress} className="h-3" />
+          <Progress value={progress} className="h-3 bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-yellow-300" />
         </CardContent>
       </Card>
 
@@ -146,10 +160,10 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
           const sectionTotal = section.items.length;
 
           return (
-            <Card key={idx}>
+            <Card key={idx} className="border-amber-500/15 bg-zinc-950/90 shadow-lg shadow-black/30">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-base text-zinc-100">
                     <span>{section.icon}</span>
                     {section.title}
                   </CardTitle>
@@ -162,7 +176,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                 {section.items.map(item => (
                   <div
                     key={item.id}
-                    className={`flex items-center gap-3 py-2 px-3 rounded-md transition-all cursor-pointer hover:bg-muted/40 ${item.is_checked ? 'opacity-60' : ''}`}
+                    className={`flex items-center gap-3 py-2 px-3 rounded-md transition-all cursor-pointer hover:bg-amber-500/10 ${item.is_checked ? 'opacity-60' : ''}`}
                     onClick={() => handleToggleItem(item.id, item.is_checked)}
                   >
                     <Checkbox
