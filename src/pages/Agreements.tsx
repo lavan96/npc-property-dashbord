@@ -23,6 +23,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -693,32 +695,41 @@ export default function Agreements() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
-                                className="ml-auto h-9 w-9 rounded-xl text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary group-hover:bg-background/80 group-hover:shadow-sm focus-visible:ring-primary/50 dark:group-hover:bg-slate-950/55"
+                                aria-label={`Open actions for agreement with ${agreement.buyer_names}`}
+                                className="ml-auto h-10 w-10 rounded-2xl border-border/70 bg-background/85 text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 data-[state=open]:border-primary/50 data-[state=open]:bg-primary/12 data-[state=open]:text-primary dark:bg-slate-950/55 dark:hover:bg-primary/15"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                               align="end"
-                              className="border-border/70 bg-popover/95 shadow-xl shadow-black/10 backdrop-blur"
+                              sideOffset={10}
+                              collisionPadding={16}
+                              className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-2xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-slate-700/70 dark:shadow-black/35"
                             >
+                              <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Agreement actions
+                              </DropdownMenuLabel>
                               <DropdownMenuItem
                                 onClick={() => handleViewAgreement(agreement)}
+                                className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary"
                               >
-                                <FileText className="h-4 w-4 mr-2" />
+                                <FileText className="h-4 w-4 text-primary" />
                                 View Agreement
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() =>
                                   handleDownloadAgreement(agreement)
                                 }
+                                className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
                               >
-                                <Download className="h-4 w-4 mr-2" />
+                                <Download className="h-4 w-4 text-muted-foreground" />
                                 Download Agreement
                               </DropdownMenuItem>
                               <FlattenPdfMenuItem
+                                className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground data-[disabled]:bg-muted/30 data-[disabled]:text-muted-foreground"
                                 getPdfBlob={async () => {
                                   const { pdf_url } =
                                     await fetchAgreementPreview(agreement.id);
@@ -734,47 +745,54 @@ export default function Agreements() {
                                 onClick={() =>
                                   handleViewClient(agreement.client_id)
                                 }
+                                className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
                               >
-                                <Eye className="h-4 w-4 mr-2" />
+                                <Eye className="h-4 w-4 text-muted-foreground" />
                                 View Client
                               </DropdownMenuItem>
                               {canEditAgreements &&
                                 agreement.status === "generated" && (
                                   <>
+                                    <DropdownMenuSeparator className="mx-1 my-2 bg-border/70" />
                                     <DropdownMenuItem
                                       onClick={() =>
                                         openPrepareForSigning(agreement)
                                       }
+                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary"
                                     >
-                                      <FileSignature className="h-4 w-4 mr-2" />
+                                      <FileSignature className="h-4 w-4 text-primary" />
                                       Prepare for Signing
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
                                       onClick={() =>
                                         handleSendViaDocuSign(agreement)
                                       }
+                                      className="gap-3 rounded-xl px-3 py-2.5 font-medium focus:bg-primary/10 focus:text-primary"
                                     >
-                                      <Send className="h-4 w-4 mr-2" />
+                                      <Send className="h-4 w-4 text-primary" />
                                       Send via DocuSign (legacy anchors)
                                     </DropdownMenuItem>
                                   </>
                                 )}
                               {agreement.docusign_envelope_id && (
                                 <>
+                                  <DropdownMenuSeparator className="mx-1 my-2 bg-border/70" />
                                   <DropdownMenuItem
                                     onClick={() =>
                                       setStatusAgreement(agreement)
                                     }
+                                    className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
                                   >
-                                    <Eye className="h-4 w-4 mr-2" />
+                                    <Eye className="h-4 w-4 text-muted-foreground" />
                                     Envelope Status &amp; Audit
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() =>
                                       handleRefreshStatus(agreement.id)
                                     }
+                                    className="gap-3 rounded-xl px-3 py-2.5 focus:bg-accent focus:text-accent-foreground"
                                   >
-                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    <RefreshCw className="h-4 w-4 text-muted-foreground" />
                                     Refresh Status
                                   </DropdownMenuItem>
                                 </>
@@ -783,13 +801,16 @@ export default function Agreements() {
                                 ["sent", "delivered", "viewed"].includes(
                                   agreement.status,
                                 ) && (
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => handleVoid(agreement.id)}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Void Agreement
-                                  </DropdownMenuItem>
+                                  <>
+                                    <DropdownMenuSeparator className="mx-1 my-2 bg-border/70" />
+                                    <DropdownMenuItem
+                                      className="gap-3 rounded-xl px-3 py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                      onClick={() => handleVoid(agreement.id)}
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      Void Agreement
+                                    </DropdownMenuItem>
+                                  </>
                                 )}
                             </DropdownMenuContent>
                           </DropdownMenu>

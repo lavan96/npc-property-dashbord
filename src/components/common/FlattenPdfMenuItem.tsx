@@ -17,6 +17,7 @@ import { FileLock2, Loader2 } from 'lucide-react';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { flattenAndDownloadPdf } from '@/lib/pdf/downloadPdf';
+import { cn } from '@/lib/utils';
 
 export interface FlattenPdfMenuItemProps {
   /** Async producer of the PDF Blob — runs only when the user clicks Flatten. */
@@ -27,6 +28,8 @@ export interface FlattenPdfMenuItemProps {
   label?: string;
   /** Optional disabled flag (e.g. when the source isn't ready yet). */
   disabled?: boolean;
+  /** Optional styling hook for menu-specific item presentation. */
+  className?: string;
 }
 
 export function FlattenPdfMenuItem({
@@ -34,6 +37,7 @@ export function FlattenPdfMenuItem({
   filename,
   label = 'Download as Flattened PDF',
   disabled,
+  className,
 }: FlattenPdfMenuItemProps) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -63,7 +67,7 @@ export function FlattenPdfMenuItem({
   };
 
   return (
-    <DropdownMenuItem onSelect={handleClick} disabled={disabled || busy}>
+    <DropdownMenuItem onSelect={handleClick} disabled={disabled || busy} className={cn(className)}>
       {busy ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
