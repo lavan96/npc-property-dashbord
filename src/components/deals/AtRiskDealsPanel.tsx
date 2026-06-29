@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import type { DealWithClient } from '@/hooks/useAllDeals';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 
 interface Props {
   deals: DealWithClient[];
@@ -122,11 +123,8 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
             </div>
           </div>
           <Badge
-            variant={critical > 0 ? 'destructive' : 'outline'}
-            className={cn(
-              'shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide shadow-sm',
-              critical === 0 && 'border-amber-500/30 bg-amber-500/10 text-amber-700'
-            )}
+            variant="outline"
+            className={pipelineBadgeClass(critical > 0 ? 'danger' : 'warning', false, 'shrink-0 uppercase tracking-wide')}
           >
             {critical > 0 ? `${critical} critical` : `${riskItems.length} warnings`}
           </Badge>
@@ -166,7 +164,7 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
                       <div className="min-w-0">
                         <p className="break-words text-sm font-semibold leading-5 text-foreground">{deal.client_name}</p>
                       </div>
-                      <Badge className={cn('h-5 shrink-0 border px-1.5 text-[10px] leading-none', riskCfg.color)}>
+                      <Badge className={cn(pipelineBadgeClass(deal.risk_status === 'on_track' ? 'success' : deal.risk_status === 'needs_follow_up' ? 'warning' : 'danger', true, 'h-5 shrink-0 px-1.5'), riskCfg.color)}>
                         {riskCfg.emoji}
                       </Badge>
                     </div>

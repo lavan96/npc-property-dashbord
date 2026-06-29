@@ -51,6 +51,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -325,10 +326,10 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
   const deal = info.deal;
   const riskCfg = RISK_STATUS_CONFIG[deal.risk_status];
 
-  const statusBadgeVariant = info.status === 'active_critical' ? 'destructive'
+  const statusBadgeTone = info.status === 'active_critical' ? 'danger'
     : info.status === 'active_warning' ? 'warning'
     : info.status === 'expired_safe' ? 'success'
-    : 'secondary';
+    : 'neutral';
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded}>
@@ -355,7 +356,7 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
               <span className="block truncate text-xs font-semibold">{deal.client_name}</span>
               <span className="text-[9px] text-muted-foreground">{getDealTypeLabel(deal.deal_type)}</span>
             </div>
-            <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', riskCfg.color)}>
+            <Badge className={cn(pipelineBadgeClass(deal.risk_status === 'on_track' ? 'success' : deal.risk_status === 'needs_follow_up' ? 'warning' : 'danger', true, 'h-4 shrink-0 px-1'), riskCfg.color)}>
               {riskCfg.emoji}
             </Badge>
           </div>
@@ -363,7 +364,7 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
 
         {/* Status */}
         <TableCell>
-          <Badge variant={statusBadgeVariant as any} className="text-[10px] gap-1">
+          <Badge variant="outline" className={pipelineBadgeClass(statusBadgeTone)}>
             {info.status === 'active_critical' && <AlertTriangle className="h-2.5 w-2.5" />}
             {info.status === 'active_warning' && <Timer className="h-2.5 w-2.5" />}
             {info.status === 'expired_safe' && <CheckCircle2 className="h-2.5 w-2.5" />}
@@ -460,8 +461,8 @@ function ClawbackDealRow({ info, onDealClick }: { info: ClawbackDealInfo; onDeal
                       .map((p, i) => (
                         <Badge
                           key={p.id || i}
-                          variant={p.commission_received ? 'success' : 'outline'}
-                          className="text-[9px] gap-1"
+                          variant="outline"
+                          className={pipelineBadgeClass(p.commission_received ? 'success' : 'warning', true, 'text-[9px]')}
                         >
                           {p.stage_name}: {formatCurrency(p.commission_amount)}
                           {p.commission_received && <CheckCircle2 className="h-2 w-2" />}

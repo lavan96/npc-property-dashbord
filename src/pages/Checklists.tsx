@@ -18,6 +18,19 @@ import { TemplateImportDialog } from '@/components/checklists/TemplateImportDial
 import type { ParsedTemplate } from '@/utils/checklistTemplateParser';
 import { toast } from 'sonner';
 
+
+const ChecklistLoadingState = ({ message }: { message: string }) => (
+  <Card className="overflow-hidden border border-amber-500/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+    <CardContent className="py-10 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
+        <Loader2 className="h-7 w-7 animate-spin" />
+      </div>
+      <p className="text-sm font-semibold text-zinc-100">{message}</p>
+      <p className="mt-1 text-xs text-zinc-500">Preparing the workflow workspace</p>
+    </CardContent>
+  </Card>
+);
+
 export default function Checklists() {
   const { canEdit, canDelete } = useModulePermissions('checklists');
   const [activeTab, setActiveTab] = useState('active');
@@ -39,7 +52,7 @@ export default function Checklists() {
   // If viewing a template builder
   if (selectedTemplate) {
     return (
-      <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
+      <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
         <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
@@ -51,7 +64,9 @@ export default function Checklists() {
             </div>
           </div>
         </div>
-        <TemplateBuilder template={selectedTemplate} onBack={() => setSelectedTemplate(null)} />
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
+          <TemplateBuilder template={selectedTemplate} onBack={() => setSelectedTemplate(null)} />
+        </div>
       </div>
     );
   }
@@ -59,7 +74,7 @@ export default function Checklists() {
   // If viewing an instance
   if (selectedInstance) {
     return (
-      <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
+      <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
         <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
@@ -71,7 +86,9 @@ export default function Checklists() {
             </div>
           </div>
         </div>
-        <ChecklistInstanceView instance={selectedInstance} onBack={() => setSelectedInstance(null)} />
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
+          <ChecklistInstanceView instance={selectedInstance} onBack={() => setSelectedInstance(null)} />
+        </div>
       </div>
     );
   }
@@ -123,11 +140,16 @@ export default function Checklists() {
     const statusClass = instance.status === 'completed'
       ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-200'
       : instance.status === 'archived'
-        ? 'border-zinc-500/35 bg-zinc-500/10 text-zinc-300'
+        ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
         : 'border-amber-300/40 bg-amber-400/10 text-amber-200';
     const progressClass = instance.status === 'completed'
       ? '[&>div]:from-emerald-500 [&>div]:via-teal-300 [&>div]:to-emerald-200'
       : '[&>div]:from-amber-500 [&>div]:via-yellow-300 [&>div]:to-amber-200';
+    const progressPercentClass = instance.status === 'completed'
+      ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200'
+      : instance.status === 'archived'
+        ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
+        : 'border-amber-300/20 bg-amber-300/10 text-amber-200';
 
     return (
       <Card
@@ -165,7 +187,7 @@ export default function Checklists() {
           <div className="rounded-xl border border-white/5 bg-black/35 p-3.5 shadow-inner shadow-black/35">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Progress</span>
-              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-amber-200">{instance.progress_percent}%</span>
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums ${progressPercentClass}`}>{instance.progress_percent}%</span>
             </div>
             <Progress value={instance.progress_percent} className={`h-2.5 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r ${progressClass}`} />
             {instance.progress_percent === 0 && (
@@ -178,7 +200,7 @@ export default function Checklists() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
+    <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
       <div className="rounded-2xl border border-white/5 bg-black/35 p-5 shadow-inner shadow-amber-950/10">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -193,8 +215,8 @@ export default function Checklists() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-        <div className="overflow-x-auto rounded-3xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(9,9,11,0.92)_32%,rgba(3,3,3,0.96))] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-0 flex-1 space-y-5">
+        <div className="overflow-x-auto overscroll-x-contain rounded-3xl [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border border-amber-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(9,9,11,0.92)_32%,rgba(3,3,3,0.96))] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
           <TabsList className="inline-flex h-auto w-auto min-w-full gap-1 rounded-2xl border border-white/5 bg-black/70 p-1.5 md:grid md:w-full md:grid-cols-4">
             <TabsTrigger value="active" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
               <ClipboardList className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
@@ -220,31 +242,31 @@ export default function Checklists() {
         </div>
 
         {/* Active Checklists */}
-        <TabsContent value="active" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
+        <TabsContent value="active" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
           {instancesLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-            </div>
+            <ChecklistLoadingState message="Loading..." />
           ) : activeInstances.length === 0 ? (
-            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
-              <CardContent className="py-12 text-center">
-                <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="font-semibold mb-1">No active checklists</h3>
-                <p className="text-sm text-muted-foreground mb-4">Generate one from a template to get started</p>
-                <Button variant="secondary" onClick={() => setActiveTab('templates')}>
+            <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+              <CardContent className="relative py-14 text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.16)]">
+                  <ClipboardList className="h-8 w-8" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-50">No active checklists</h3>
+                <p className="mb-5 text-sm text-zinc-400">Generate one from a template to get started</p>
+                <Button variant="secondary" className="border border-amber-300/20 bg-amber-400/10 text-amber-100 hover:bg-amber-400/20 hover:text-amber-50" onClick={() => setActiveTab('templates')}>
                   <LayoutTemplate className="h-4 w-4 mr-2" /> View Templates
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {activeInstances.map(renderInstanceCard)}
             </div>
           )}
         </TabsContent>
 
         {/* Completed */}
-        <TabsContent value="completed" className="space-y-4 rounded-2xl border border-emerald-400/10 bg-[linear-gradient(180deg,rgba(6,78,59,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20">
+        <TabsContent value="completed" className="space-y-4 rounded-2xl border border-emerald-400/10 bg-[linear-gradient(180deg,rgba(6,78,59,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
           {completedInstances.length === 0 ? (
             <Card className="overflow-hidden border-dashed border-emerald-400/25 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,7,18,0.96))] shadow-inner shadow-emerald-950/20">
               <CardContent className="relative py-14 text-center">
@@ -256,14 +278,14 @@ export default function Checklists() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {completedInstances.map(renderInstanceCard)}
             </div>
           )}
         </TabsContent>
 
         {/* Archived */}
-        <TabsContent value="archived" className="space-y-4 rounded-2xl border border-amber-700/15 bg-[linear-gradient(180deg,rgba(120,53,15,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20">
+        <TabsContent value="archived" className="space-y-4 rounded-2xl border border-amber-700/15 bg-[linear-gradient(180deg,rgba(120,53,15,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
           {archivedInstances.length === 0 ? (
             <Card className="overflow-hidden border-dashed border-amber-700/30 bg-[radial-gradient(circle_at_top,rgba(180,83,9,0.13),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(12,10,9,0.96))] shadow-inner shadow-amber-950/20">
               <CardContent className="relative py-14 text-center">
@@ -275,14 +297,14 @@ export default function Checklists() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {archivedInstances.map(renderInstanceCard)}
             </div>
           )}
         </TabsContent>
 
         {/* Templates */}
-        <TabsContent value="templates" className="space-y-5 rounded-2xl border border-amber-500/10 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20">
+        <TabsContent value="templates" className="space-y-5 rounded-2xl border border-amber-500/10 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
           <div className="flex flex-col gap-4 rounded-2xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.1),rgba(0,0,0,0.42)_42%,rgba(0,0,0,0.72))] p-4 shadow-inner shadow-amber-950/10 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-zinc-50">Checklist Templates</h2>
@@ -307,30 +329,32 @@ export default function Checklists() {
                       <Plus className="h-3 w-3" /> New Template
                     </Button>
                   </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Template</DialogTitle>
-                    <DialogDescription>Build a reusable checklist template from scratch</DialogDescription>
+                <DialogContent className="max-h-[min(85vh,720px)] w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40">
+                  <DialogHeader className="rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
+                    <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-50">Create New Template</DialogTitle>
+                    <DialogDescription className="text-zinc-400">Build a reusable checklist template from scratch</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex gap-3">
+                  <div className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/70 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row">
                       <div className="w-20">
-                        <Label className="text-xs text-muted-foreground">Icon</Label>
-                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} className="text-center text-xl" />
+                        <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Icon</Label>
+                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} className="mt-1 border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-amber-300/45" />
                       </div>
                       <div className="flex-1">
-                        <Label className="text-xs text-muted-foreground">Name</Label>
-                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" />
+                        <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Name</Label>
+                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                        <p className="mt-1.5 text-[11px] text-zinc-500">Give this blueprint a clear operational name.</p>
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Description (optional)</Label>
-                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} />
+                      <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Description (optional)</Label>
+                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                      <p className="mt-1.5 text-[11px] text-zinc-500">Use this to clarify when the template should be generated or followed.</p>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
+                  <DialogFooter className="gap-2">
+                    <Button variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-zinc-50" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                    <Button className="bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black shadow-[0_12px_28px_rgba(245,158,11,0.24)] hover:from-amber-400 hover:to-yellow-300" onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
                   </DialogFooter>
                 </DialogContent>
                 </Dialog>
@@ -339,19 +363,19 @@ export default function Checklists() {
           </div>
 
           {templatesLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading templates...
-            </div>
+            <ChecklistLoadingState message="Loading templates..." />
           ) : templates.length === 0 ? (
-            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
-              <CardContent className="py-12 text-center">
-                <LayoutTemplate className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="font-semibold mb-1">No templates yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">Create your first checklist template or import one</p>
+            <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+              <CardContent className="relative py-14 text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
+                  <LayoutTemplate className="h-8 w-8" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-50">No templates yet</h3>
+                <p className="text-sm text-zinc-400">Create your first checklist template or import one</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {templates.map(template => (
                 <Card
                   key={template.id}

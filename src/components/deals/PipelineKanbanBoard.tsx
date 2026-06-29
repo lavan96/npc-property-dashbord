@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -127,13 +128,13 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
           <div className="min-w-0 flex-1 space-y-1">
             <p className="line-clamp-2 break-words text-[15px] font-bold leading-snug tracking-[-0.01em] text-zinc-50 drop-shadow-sm">{deal.client_name}</p>
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className="h-5 min-w-0 max-w-full gap-1 rounded-full border-white/15 bg-white/[0.055] px-2 py-0 text-[10px] font-semibold text-zinc-200 shadow-inner">
+              <Badge variant="outline" className={pipelineBadgeClass('neutral', true, 'h-5 text-zinc-200 dark:text-zinc-200')}>
                 <span className="shrink-0 text-amber-200">{getDealTypeIcon(deal.deal_type)}</span>
                 <span className="truncate">{getDealTypeLabel(deal.deal_type)}</span>
               </Badge>
             </div>
           </div>
-          <Badge className={cn('h-6 shrink-0 gap-1 rounded-full border px-2 py-0 text-[10px] font-bold shadow-[0_0_18px_rgba(255,255,255,0.08)]', riskCfg.color)}>
+          <Badge className={cn(pipelineBadgeClass(deal.risk_status === 'on_track' ? 'success' : deal.risk_status === 'needs_follow_up' ? 'warning' : 'danger'), 'h-6 shrink-0 px-2', riskCfg.color)}>
             <span className="text-xs leading-none">{riskCfg.emoji}</span>
             <span className="sr-only">{riskCfg.label}</span>
           </Badge>
@@ -141,7 +142,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
 
         {/* Current stage */}
         <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-amber-200/15 bg-amber-300/[0.055] px-2 py-1.5">
-          <Badge variant="outline" className="h-5 shrink-0 rounded-md border-amber-200/35 bg-amber-300/15 px-1.5 text-[9px] font-black text-amber-100">
+          <Badge variant="outline" className={pipelineBadgeClass('gold', true, 'h-5 shrink-0 rounded-md px-1.5 text-[9px]')}>
             S{deal.current_stage_number}
           </Badge>
           <span className="min-w-0 truncate text-[11px] font-semibold text-zinc-200">{deal.current_stage}</span>
@@ -254,7 +255,7 @@ function KanbanColumn({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Badge variant="destructive" className="h-5 px-1.5 text-[9px] shadow-[0_0_18px_rgba(239,68,68,0.24)]">
+                    <Badge variant="outline" className={pipelineBadgeClass('danger', true, 'h-5 px-1.5 shadow-[0_0_18px_rgba(239,68,68,0.18)]')}>
                       <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
                       {urgentCount}
                     </Badge>
@@ -265,7 +266,7 @@ function KanbanColumn({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <Badge variant="secondary" className="h-6 rounded-full border border-amber-200/20 bg-amber-300/15 px-2 text-[10px] font-bold text-amber-100">
+            <Badge variant="outline" className={pipelineBadgeClass('gold', false, 'h-6 px-2 text-[10px]')}>
               {deals.length}
             </Badge>
           </div>
