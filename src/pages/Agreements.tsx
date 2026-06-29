@@ -298,13 +298,31 @@ export default function Agreements() {
     return (
       <Badge
         variant={config.variant}
-        className="gap-1 border-border/50 bg-background/60 shadow-sm dark:bg-slate-950/50"
+        className="w-fit gap-1.5 whitespace-nowrap border-border/50 bg-background/75 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.08em] shadow-sm backdrop-blur dark:bg-slate-950/60"
       >
-        <Icon className="h-3 w-3" />
+        <Icon className="h-3 w-3 shrink-0" />
         {config.label}
       </Badge>
     );
   };
+
+  const renderAgreementDate = (date: string) => (
+    <span className="inline-flex min-w-[7.25rem] items-center justify-center rounded-xl border border-border/55 bg-background/65 px-2.5 py-1.5 text-sm font-semibold text-foreground shadow-sm dark:bg-slate-950/35">
+      {format(new Date(date), "dd MMM yyyy")}
+    </span>
+  );
+
+  const renderOptionalDate = (
+    date: string | null | undefined,
+    emptyLabel: string,
+  ) =>
+    date ? (
+      renderAgreementDate(date)
+    ) : (
+      <span className="inline-flex min-w-[7.25rem] items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/35 px-2.5 py-1.5 text-sm font-semibold text-muted-foreground/70 dark:bg-slate-900/35">
+        {emptyLabel}
+      </span>
+    );
 
   return (
     <DashboardThemeFrame
@@ -525,11 +543,12 @@ export default function Agreements() {
                     {filteredAgreements.map((agreement) => (
                       <TableRow
                         key={agreement.id}
-                        className="group border-border/55 transition-all duration-200 hover:bg-[linear-gradient(90deg,hsl(var(--primary)/0.10),hsl(var(--primary)/0.035)_42%,transparent)] hover:shadow-[inset_3px_0_0_hsl(var(--primary)/0.78)]"
+                        className="group border-border/55 transition-all duration-300 hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.14),hsl(var(--primary)/0.06)_34%,hsl(var(--card)/0.32))] hover:shadow-[inset_4px_0_0_hsl(43_84%_52%/0.9),0_14px_34px_hsl(43_84%_52%/0.10)] dark:hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.16),hsl(var(--primary)/0.08)_36%,hsl(var(--card)/0.18))]"
                       >
-                        <TableCell className="py-4 font-medium">
+                        <TableCell className="max-w-[18rem] py-4 pr-5 font-medium">
                           <button
-                            className="text-left text-base font-semibold leading-6 text-foreground transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            className="block max-w-full truncate text-left text-base font-bold leading-6 text-foreground transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[1.02rem]"
+                            title={agreement.buyer_names}
                             onClick={() =>
                               handleViewClient(agreement.client_id)
                             }
@@ -537,18 +556,30 @@ export default function Agreements() {
                             {agreement.buyer_names}
                           </button>
                           {agreement.secondary_buyer_name && (
-                            <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                            <span
+                              className="mt-1 block max-w-full truncate text-xs font-semibold text-muted-foreground"
+                              title={agreement.secondary_buyer_name}
+                            >
                               & {agreement.secondary_buyer_name}
                             </span>
                           )}
                         </TableCell>
-                        <TableCell className="hidden py-4 text-sm font-medium text-muted-foreground md:table-cell">
-                          {agreement.buyer_email || (
-                            <span className="text-muted-foreground/55">—</span>
+                        <TableCell className="hidden max-w-[17rem] py-4 pr-5 text-sm font-medium text-muted-foreground md:table-cell">
+                          {agreement.buyer_email ? (
+                            <span
+                              className="block max-w-[15.5rem] truncate rounded-lg px-0.5 py-1 transition-colors group-hover:text-foreground/75"
+                              title={agreement.buyer_email}
+                            >
+                              {agreement.buyer_email}
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-lg border border-dashed border-border/60 bg-muted/30 px-2 py-1 text-muted-foreground/60">
+                              No email
+                            </span>
                           )}
                         </TableCell>
-                        <TableCell className="py-4">
-                          <div className="flex flex-col gap-1.5">
+                        <TableCell className="py-4 pr-5 align-middle">
+                          <div className="flex max-w-[11rem] flex-wrap items-center gap-1.5">
                             {renderStatusBadge(agreement.status)}
                             {agreement.docusign_envelope_id &&
                               agreement.docusign_status && (
@@ -558,39 +589,28 @@ export default function Agreements() {
                               )}
                           </div>
                         </TableCell>
-                        <TableCell className="hidden py-4 text-sm font-medium text-muted-foreground sm:table-cell">
-                          {format(
-                            new Date(agreement.agreement_date),
-                            "dd MMM yyyy",
+                        <TableCell className="hidden py-4 pr-5 text-sm font-medium text-muted-foreground sm:table-cell">
+                          {renderAgreementDate(agreement.agreement_date)}
+                        </TableCell>
+                        <TableCell className="hidden py-4 pr-5 text-sm font-medium text-muted-foreground lg:table-cell">
+                          {renderOptionalDate(
+                            agreement.docusign_sent_at,
+                            "Not sent",
                           )}
                         </TableCell>
-                        <TableCell className="hidden py-4 text-sm font-medium text-muted-foreground lg:table-cell">
-                          {agreement.docusign_sent_at ? (
-                            format(
-                              new Date(agreement.docusign_sent_at),
-                              "dd MMM yyyy",
-                            )
-                          ) : (
-                            <span className="text-muted-foreground/55">—</span>
+                        <TableCell className="hidden py-4 pr-5 text-sm font-medium text-muted-foreground lg:table-cell">
+                          {renderOptionalDate(
+                            agreement.docusign_signed_at,
+                            "Not signed",
                           )}
                         </TableCell>
-                        <TableCell className="hidden py-4 text-sm font-medium text-muted-foreground lg:table-cell">
-                          {agreement.docusign_signed_at ? (
-                            format(
-                              new Date(agreement.docusign_signed_at),
-                              "dd MMM yyyy",
-                            )
-                          ) : (
-                            <span className="text-muted-foreground/55">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-4 text-right">
+                        <TableCell className="py-4 pl-2 pr-4 text-right align-middle">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 rounded-xl hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/50"
+                                className="ml-auto h-9 w-9 rounded-xl text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary group-hover:bg-background/80 group-hover:shadow-sm focus-visible:ring-primary/50 dark:group-hover:bg-slate-950/55"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
