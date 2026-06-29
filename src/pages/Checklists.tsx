@@ -164,22 +164,27 @@ export default function Checklists() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-        <div className="overflow-x-auto rounded-2xl border border-amber-500/10 bg-zinc-950/70 p-2 shadow-lg shadow-black/20">
-          <TabsList className="inline-flex h-auto w-auto min-w-full border border-amber-500/15 bg-black/60 p-1 md:grid md:w-full md:grid-cols-4">
-            <TabsTrigger value="active" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
-              <ClipboardList className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              Active ({activeInstances.length})
+        <div className="overflow-x-auto rounded-3xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(9,9,11,0.92)_32%,rgba(3,3,3,0.96))] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+          <TabsList className="inline-flex h-auto w-auto min-w-full gap-1 rounded-2xl border border-white/5 bg-black/70 p-1.5 md:grid md:w-full md:grid-cols-4">
+            <TabsTrigger value="active" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+              <ClipboardList className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
+              <span>Active</span>
+              <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{activeInstances.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="completed" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
-              <CheckCircle2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              Completed ({completedInstances.length})
+            <TabsTrigger value="completed" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
+              <span>Completed</span>
+              <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{completedInstances.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="archived" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
-              📦 Archived ({archivedInstances.length})
+            <TabsTrigger value="archived" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+              <span className="shrink-0 text-sm leading-none transition-transform duration-200 group-data-[state=active]:scale-110">📦</span>
+              <span>Archived</span>
+              <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{archivedInstances.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-1.5 whitespace-nowrap text-xs data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black md:text-sm">
-              <LayoutTemplate className="h-3.5 w-3.5 md:h-4 md:w-4" />
-              Templates ({templates.length})
+            <TabsTrigger value="templates" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+              <LayoutTemplate className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
+              <span>Templates</span>
+              <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{templates.length}</span>
             </TabsTrigger>
           </TabsList>
         </div>
