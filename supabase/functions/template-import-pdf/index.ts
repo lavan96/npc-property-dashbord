@@ -935,11 +935,30 @@ Deno.serve(async (req) => {
         ? importManifests.pdf_import_job
         : null;
 
-      const pdfPageManifestPath = typeof pdfImportJob?.per_page_docling_manifest_path === 'string'
+      const explicitPdfPageManifestPath = typeof pdfImportJob?.per_page_docling_manifest_path === 'string'
         ? pdfImportJob.per_page_docling_manifest_path
         : null;
 
-      const pdfPageManifest = await readPdfDiagnosticsJsonArtifact(admin, pdfPageManifestPath);
+      const derivedPdfPageManifestPath = !explicitPdfPageManifestPath && typeof pdfImportJob?.job_id === 'string'
+        ? `${pdfImportJob.job_id}/pages-manifest.json`
+        : null;
+
+      let pdfPageManifestPath = explicitPdfPageManifestPath ?? derivedPdfPageManifestPath;
+      let pdfPageManifest = await readPdfDiagnosticsJsonArtifact(admin, pdfPageManifestPath);
+
+      // Phase 7A.4 recovery:
+      // Some live imports have the parent pages-manifest.json in pdf-import-diagnostics,
+      // but the import manifest does not carry per_page_docling_manifest_path.
+      // Recover the manifest from {job_id}/pages-manifest.json so Review Quality,
+      // Visual QA, and Repair can receive page contexts/source rasters.
+      if (!pdfPageManifest && derivedPdfPageManifestPath && pdfPageManifestPath !== derivedPdfPageManifestPath) {
+        const recovered = await readPdfDiagnosticsJsonArtifact(admin, derivedPdfPageManifestPath);
+        if (recovered) {
+          pdfPageManifestPath = derivedPdfPageManifestPath;
+          pdfPageManifest = recovered;
+        }
+      }
+
       const pdfPageManifestSummary = summarizePdfPageManifest(pdfPageManifest);
       const pdfPageContexts = buildPdfPageContexts(pdfPageManifest);
       const pdfPageContextSummary = summarizePdfPageContexts(pdfPageContexts, pdfPageManifest);

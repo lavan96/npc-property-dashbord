@@ -186,86 +186,96 @@ export function PipelineToolbar({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Row 1: Search + Filter toggle + Reset */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative w-full flex-1 sm:max-w-lg">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative w-full flex-1 lg:max-w-2xl">
+          <div className="pointer-events-none absolute left-3.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.14)]">
+            <Search className="h-4 w-4" />
+          </div>
           <Input
             placeholder="Search client, stage, person..."
             value={filters.search}
             onChange={(e) => update({ search: e.target.value })}
-            className="h-10 rounded-xl border-white/10 bg-zinc-950/70 pl-9 text-xs shadow-inner placeholder:text-muted-foreground/70 focus-visible:ring-amber-300/40 sm:text-sm"
+            className="h-12 rounded-2xl border-amber-200/15 bg-gradient-to-r from-zinc-950/95 via-zinc-950/80 to-zinc-900/70 pl-14 pr-11 text-sm font-medium text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_42px_rgba(0,0,0,0.24)] outline-none placeholder:text-muted-foreground/85 hover:border-amber-200/25 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-0"
           />
           {filters.search && (
             <button
               onClick={() => update({ search: "" })}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
+              aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
 
-        <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
-          <CollapsibleTrigger asChild>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 lg:justify-end">
+          <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant={hasActiveFilters ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-12 gap-2 rounded-2xl px-4 text-sm font-semibold shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition-all",
+                  hasActiveFilters
+                    ? "border-amber-300/50 bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 hover:from-amber-200 hover:to-yellow-400"
+                    : "border-amber-200/20 bg-white/[0.04] text-amber-100 hover:border-amber-300/40 hover:bg-amber-300/10 hover:text-amber-50",
+                )}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="hidden sm:inline">Filters</span>
+                {hasActiveFilters && (
+                  <Badge
+                    variant="secondary"
+                    className="h-4 px-1 text-[10px] min-w-[16px] flex items-center justify-center"
+                  >
+                    {
+                      [
+                        filters.dealType !== "all",
+                        filters.riskStatus !== "all",
+                        filters.responsiblePerson !== "all",
+                        filters.sortField !== "created_at",
+                      ].filter(Boolean).length
+                    }
+                  </Badge>
+                )}
+              </Button>
+            </CollapsibleTrigger>
+          </Collapsible>
+
+          {hasActiveFilters && (
             <Button
-              variant={hasActiveFilters ? "default" : "outline"}
+              variant="ghost"
               size="sm"
-              className="h-10 gap-1.5 rounded-xl border-amber-300/25 text-xs shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+              onClick={resetFilters}
+              className="h-12 gap-1.5 rounded-2xl px-3 text-xs font-semibold text-muted-foreground hover:bg-white/10 hover:text-amber-100"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Filters</span>
-              {hasActiveFilters && (
-                <Badge
-                  variant="secondary"
-                  className="h-4 px-1 text-[10px] min-w-[16px] flex items-center justify-center"
-                >
-                  {
-                    [
-                      filters.dealType !== "all",
-                      filters.riskStatus !== "all",
-                      filters.responsiblePerson !== "all",
-                      filters.sortField !== "created_at",
-                    ].filter(Boolean).length
-                  }
-                </Badge>
-              )}
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Reset</span>
             </Button>
-          </CollapsibleTrigger>
-        </Collapsible>
-
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetFilters}
-            className="h-10 gap-1 rounded-xl text-xs text-muted-foreground hover:text-amber-100"
-          >
-            <RotateCcw className="h-3 w-3" />
-            <span className="hidden sm:inline">Reset</span>
-          </Button>
-        )}
-
-        {/* Results count */}
-        <div className="ml-auto whitespace-nowrap rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground">
-          {filteredCount === counts.total ? (
-            <span>
-              {counts.total} deal{counts.total !== 1 ? "s" : ""}
-            </span>
-          ) : (
-            <span>
-              <strong className="text-foreground">{filteredCount}</strong> of{" "}
-              {counts.total}
-            </span>
           )}
+
+          {/* Results count */}
+          <div className="ml-auto flex h-12 items-center whitespace-nowrap rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-xs font-semibold text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:text-sm">
+            {filteredCount === counts.total ? (
+              <span>
+                {counts.total} deal{counts.total !== 1 ? "s" : ""}
+              </span>
+            ) : (
+              <span>
+                <strong className="text-foreground">{filteredCount}</strong> of{" "}
+                {counts.total}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Row 2: Expandable filter controls */}
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
         <CollapsibleContent>
-          <div className="animate-in slide-in-from-top-1 space-y-3 rounded-2xl border border-amber-300/15 bg-zinc-950/75 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] duration-200">
+          <div className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-amber-300/20 bg-gradient-to-br from-zinc-950/90 via-zinc-950/80 to-amber-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
             {/* Deal Type Chips */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -282,7 +292,7 @@ export function PipelineToolbar({
                         update({ dealType: isActive ? "all" : opt.value })
                       }
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all",
+                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                         isActive
                           ? "border-amber-300 bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 shadow-[0_10px_24px_rgba(245,158,11,0.22)]"
                           : "border-white/10 bg-black/35 text-muted-foreground hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100",
@@ -323,7 +333,7 @@ export function PipelineToolbar({
                         update({ riskStatus: isActive ? "all" : opt.value })
                       }
                       className={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium transition-all",
+                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                         isActive
                           ? opt.activeClass + " shadow-sm"
                           : "border-white/10 bg-black/35 text-muted-foreground hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100",
@@ -357,7 +367,7 @@ export function PipelineToolbar({
                   value={filters.responsiblePerson}
                   onValueChange={(v) => update({ responsiblePerson: v })}
                 >
-                  <SelectTrigger className="h-9 w-[160px] rounded-xl border-white/10 bg-black/40 text-xs sm:w-[180px]">
+                  <SelectTrigger className="h-10 w-[170px] rounded-xl border-white/10 bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[190px]">
                     <SelectValue placeholder="All People" />
                   </SelectTrigger>
                   <SelectContent>
@@ -381,7 +391,7 @@ export function PipelineToolbar({
                     value={filters.sortField}
                     onValueChange={(v) => update({ sortField: v as SortField })}
                   >
-                    <SelectTrigger className="h-9 w-[140px] rounded-xl border-white/10 bg-black/40 text-xs sm:w-[160px]">
+                    <SelectTrigger className="h-10 w-[150px] rounded-xl border-white/10 bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[170px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -395,7 +405,7 @@ export function PipelineToolbar({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 w-9 rounded-xl border-white/10 bg-black/40 p-0"
+                    className="h-10 w-10 rounded-xl border-white/10 bg-black/45 p-0 hover:border-amber-300/30 hover:bg-amber-300/10"
                     onClick={() =>
                       update({
                         sortDirection:
@@ -421,12 +431,15 @@ export function PipelineToolbar({
 
             {/* Active filter summary pills */}
             {hasActiveFilters && (
-              <div className="flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-300/15 bg-amber-300/[0.04] p-2.5 shadow-inner">
                 <span className="text-[10px] text-muted-foreground">
                   Active:
                 </span>
                 {filters.dealType !== "all" && (
-                  <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                  >
                     {
                       DEAL_TYPE_OPTIONS.find(
                         (o) => o.value === filters.dealType,
@@ -441,7 +454,10 @@ export function PipelineToolbar({
                   </Badge>
                 )}
                 {filters.riskStatus !== "all" && (
-                  <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                  >
                     {
                       RISK_OPTIONS.find((o) => o.value === filters.riskStatus)
                         ?.label
@@ -455,7 +471,10 @@ export function PipelineToolbar({
                   </Badge>
                 )}
                 {filters.responsiblePerson !== "all" && (
-                  <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                  >
                     👤 {filters.responsiblePerson}
                     <button
                       onClick={() => update({ responsiblePerson: "all" })}
@@ -466,7 +485,10 @@ export function PipelineToolbar({
                   </Badge>
                 )}
                 {filters.search && (
-                  <Badge variant="secondary" className="text-[10px] gap-1 pr-1">
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                  >
                     🔍 "{filters.search}"
                     <button
                       onClick={() => update({ search: "" })}
