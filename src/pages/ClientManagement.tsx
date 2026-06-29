@@ -603,7 +603,7 @@ export default function ClientManagement() {
   ];
 
   return (
-    <div className="relative -mx-3 space-y-6 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
+    <div className="client-management-page relative -mx-3 space-y-6 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))]" />
       <GHLExportDialog
         open={showExportDialog}
@@ -618,27 +618,27 @@ export default function ClientManagement() {
       />
 
       {/* Header */}
-      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-6">
+      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-white dark:bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-2xl shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 backdrop-blur md:p-6">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
         <div className="pointer-events-none absolute -right-14 -top-20 h-44 w-44 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-2">
-            <div className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-200">Premium client workspace</div>
-            <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-5xl">Client Management</h1>
+            <div className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">Premium client workspace</div>
+            <h1 className="bg-gradient-to-r from-slate-950 via-amber-700 to-amber-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-amber-100 dark:to-amber-300 md:text-5xl">Client Management</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
               Manage clients, properties, and sync with GoHighLevel
             </p>
             <p className="text-xs text-muted-foreground">Last auto-sync: {formatLastSync(lastSyncTime)}</p>
           </div>
-          <div className="flex w-full flex-col items-stretch gap-2 rounded-3xl border border-white/10 bg-black/30 p-2 shadow-inner shadow-black/30 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
+          <div className="flex w-full flex-col items-stretch gap-2 rounded-3xl border border-border/60 bg-background/70 p-2 shadow-inner shadow-[0_12px_32px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-black/30 dark:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
           {/* Auto-sync toggle - compact on mobile */}
-          <div className={`flex min-h-11 items-center justify-between gap-2 rounded-2xl border px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/30 sm:justify-start ${autoSyncEnabled ? 'border-amber-300/35 bg-amber-400/10 shadow-amber-950/20' : 'border-white/10 bg-white/[0.04]'}`}>
+          <div className={`flex min-h-11 items-center justify-between gap-2 rounded-2xl border px-3 py-1.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/30 sm:justify-start ${autoSyncEnabled ? 'border-amber-300/35 bg-amber-400/10 shadow-amber-950/20' : 'border-border/60 bg-background/60 dark:border-white/10 dark:bg-white/[0.04]'}`}>
             {isAutoSyncing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             ) : (
               <Zap className={`h-3.5 w-3.5 ${autoSyncEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
             )}
-            <span className={`text-xs font-semibold ${autoSyncEnabled ? 'text-amber-100' : 'text-muted-foreground'}`}>Auto-sync</span>
+            <span className={`text-xs font-semibold ${autoSyncEnabled ? 'text-amber-800 dark:text-amber-100' : 'text-muted-foreground'}`}>Auto-sync</span>
             <Switch
               checked={autoSyncEnabled}
               onCheckedChange={setAutoSyncEnabled}
@@ -669,7 +669,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-11 flex-1 rounded-2xl border-white/15 bg-white/[0.04] px-4 text-xs font-semibold text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
+            className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-4 text-xs font-semibold text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -692,13 +692,13 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-11 flex-1 rounded-2xl border-white/15 bg-white/[0.04] px-3 text-slate-200 transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-amber-300/50 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-100 sm:flex-none" aria-label="More actions">
+              <Button variant="outline" size="sm" className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-3 text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-200 transition-all hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-500/10 hover:text-amber-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-amber-300/50 data-[state=open]:bg-amber-500/15 data-[state=open]:text-amber-100 sm:flex-none" aria-label="More actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-56 rounded-2xl border-amber-500/20 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-2 shadow-2xl shadow-black/30">
-              <DropdownMenuItem onClick={handleClearAndReimport} disabled={isImportingFromGHL} className="rounded-xl text-red-200 transition-colors focus:bg-red-500/10 focus:text-red-100 disabled:opacity-50">
-                <Trash2 className="h-4 w-4 mr-2 text-red-300" />
+            <DropdownMenuContent align="end" className="min-w-56 rounded-2xl border-amber-500/20 bg-popover dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-2 shadow-2xl shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30">
+              <DropdownMenuItem onClick={handleClearAndReimport} disabled={isImportingFromGHL} className="rounded-xl text-red-700 transition-colors focus:bg-red-500/10 focus:text-red-700 dark:text-red-200 dark:focus:text-red-100 disabled:opacity-50">
+                <Trash2 className="h-4 w-4 mr-2 text-red-600 dark:text-red-300" />
                 Clear & Reimport
               </DropdownMenuItem>
               {pendingSyncCount > 0 && (
@@ -708,11 +708,11 @@ export default function ClientManagement() {
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => refetch()} className="rounded-xl transition-colors focus:bg-amber-500/10 focus:text-amber-100">
-                <RefreshCw className="h-4 w-4 mr-2 text-slate-300" />
+                <RefreshCw className="h-4 w-4 mr-2 text-muted-foreground dark:text-slate-300" />
                 Refresh
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.location.href = '/client-tracker'} className="rounded-xl transition-colors focus:bg-amber-500/10 focus:text-amber-100">
-                <Target className="h-4 w-4 mr-2 text-slate-300" />
+                <Target className="h-4 w-4 mr-2 text-muted-foreground dark:text-slate-300" />
                 Client Tracker
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -726,7 +726,7 @@ export default function ClientManagement() {
         {kpiCards.map(({ label, value, icon: Icon, accent, iconSurface, glow, valueClassName, barClassName }) => (
           <Card
             key={label}
-            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-300/50 hover:shadow-2xl hover:shadow-amber-950/35"
+            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-300/50 hover:shadow-2xl hover:shadow-amber-950/35"
           >
             <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} via-transparent to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-100`} />
             <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -746,9 +746,9 @@ export default function ClientManagement() {
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="clients" className="space-y-5 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-2xl shadow-black/20 backdrop-blur md:p-4">
+      <Tabs defaultValue="clients" className="space-y-5 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-2xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 backdrop-blur md:p-4">
         <div className="-mx-3 overflow-x-auto px-3 pb-1 md:mx-0 md:px-0">
-          <TabsList aria-label="Client management sections" className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+          <TabsList aria-label="Client management sections" className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-amber-500/20 bg-stone-100 p-1.5 shadow-inner shadow-stone-200/70 backdrop-blur dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] dark:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30">
             <TabsTrigger value="clients" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Clients</TabsTrigger>
             <TabsTrigger value="portfolio-reports" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Portfolio</TabsTrigger>
             <TabsTrigger value="analytics" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Analytics</TabsTrigger>
@@ -767,7 +767,7 @@ export default function ClientManagement() {
           />
 
           {/* Search & Filters */}
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(24,24,27,0.76),rgba(3,7,18,0.62))] p-3 shadow-inner shadow-black/25 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/15 bg-stone-100 dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.76),rgba(3,7,18,0.62))] p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25 backdrop-blur">
             <div className="relative min-w-full flex-1 sm:min-w-[240px] md:max-w-md">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
               <Input
@@ -775,7 +775,7 @@ export default function ClientManagement() {
                 aria-label="Search clients"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 rounded-xl border-amber-500/20 bg-background/75 pl-10 pr-4 text-sm shadow-sm shadow-black/20 placeholder:text-muted-foreground/75 transition-all hover:border-amber-400/35 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className="h-11 rounded-xl border-amber-500/20 bg-background/75 pl-10 pr-4 text-sm shadow-sm shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 placeholder:text-muted-foreground/75 transition-all hover:border-amber-400/35 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               />
             </div>
             <Button
@@ -819,9 +819,9 @@ export default function ClientManagement() {
 
           {/* Client List */}
           {isLoading ? (
-            <div className="grid items-stretch gap-5 sm:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid items-stretch gap-5 lg:grid-cols-2 2xl:grid-cols-3">
               {[1, 2, 3].map((i) => (
-                <Card key={i} className="relative min-h-[22rem] overflow-hidden rounded-3xl border-amber-300/15 bg-[linear-gradient(145deg,rgba(24,24,27,0.86),rgba(3,7,18,0.72))] shadow-xl shadow-black/20">
+                <Card key={i} className="relative min-h-[22rem] overflow-hidden rounded-3xl border-amber-300/15 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.86),rgba(3,7,18,0.72))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20">
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
                   <CardContent className="space-y-5 p-5">
                     <div className="flex items-center gap-3">
@@ -832,9 +832,9 @@ export default function ClientManagement() {
                       </div>
                     </div>
                     <div className="grid gap-3">
-                      <div className="h-16 animate-pulse rounded-2xl bg-white/[0.045]" />
-                      <div className="h-16 animate-pulse rounded-2xl bg-white/[0.035]" />
-                      <div className="h-16 animate-pulse rounded-2xl bg-white/[0.03]" />
+                      <div className="h-16 animate-pulse rounded-2xl bg-muted/55 dark:bg-white/[0.045]" />
+                      <div className="h-16 animate-pulse rounded-2xl bg-muted/45 dark:bg-white/[0.035]" />
+                      <div className="h-16 animate-pulse rounded-2xl bg-muted/40 dark:bg-white/[0.03]" />
                     </div>
                     <div className="flex items-center gap-2 text-xs font-semibold text-amber-100/70">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -845,7 +845,7 @@ export default function ClientManagement() {
               ))}
             </div>
           ) : displayClients.length === 0 ? (
-            <Card className="relative overflow-hidden rounded-3xl border-dashed border-amber-300/20 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.1),transparent_35%),linear-gradient(145deg,rgba(24,24,27,0.78),rgba(3,7,18,0.62))] shadow-xl shadow-black/20">
+            <Card className="relative overflow-hidden rounded-3xl border-dashed border-amber-300/20 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.10),transparent_35%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.22))] dark:bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.1),transparent_35%),linear-gradient(145deg,rgba(24,24,27,0.78),rgba(3,7,18,0.62))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20">
               <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
               <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-amber-300/20 bg-amber-300/10 text-amber-100 shadow-lg shadow-amber-950/20">
@@ -855,7 +855,7 @@ export default function ClientManagement() {
                     <Users className="h-7 w-7" />
                   )}
                 </div>
-                <h3 className="text-xl font-bold tracking-tight text-white">
+                <h3 className="text-xl font-bold tracking-tight text-foreground dark:text-white">
                   {showActiveOnly
                     ? 'No active clients found'
                     : searchQuery || filters !== defaultFilters
@@ -863,7 +863,7 @@ export default function ClientManagement() {
                       : 'No clients found'
                   }
                 </h3>
-                <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+                <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground dark:text-slate-400">
                   {searchQuery || filters !== defaultFilters || showActiveOnly
                     ? 'Try adjusting your filters'
                     : 'Import clients using the Import tab'}
@@ -871,7 +871,7 @@ export default function ClientManagement() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid items-stretch gap-5 sm:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid items-stretch gap-5 lg:grid-cols-2 2xl:grid-cols-3">
               {displayClients.map((client) => (
               <ClientCard
                     key={client.id}
@@ -896,16 +896,16 @@ export default function ClientManagement() {
           <ClientComparison clients={clients} />
         </TabsContent>
 
-        <TabsContent value="portfolio-reports" className="space-y-5 rounded-2xl border border-amber-400/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.09),transparent_34%),linear-gradient(180deg,rgba(15,15,18,0.78),rgba(0,0,0,0.48))] p-3 shadow-2xl shadow-black/20 md:p-5">
-          <div className="relative overflow-hidden rounded-3xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-black/25">
+        <TabsContent value="portfolio-reports" className="space-y-5 rounded-2xl border border-amber-400/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.09),transparent_34%),linear-gradient(180deg,rgba(15,15,18,0.78),rgba(0,0,0,0.48))] p-3 shadow-2xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 md:p-5">
+          <div className="relative overflow-hidden rounded-3xl border border-amber-300/20 bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.22))] dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
                   Portfolio Intelligence
                 </div>
-                <h2 className="text-2xl font-bold tracking-tight text-white">Portfolio Performance Reports</h2>
-                <p className="text-sm leading-6 text-slate-400">
+                <h2 className="text-2xl font-bold tracking-tight text-foreground dark:text-white">Portfolio Performance Reports</h2>
+                <p className="text-sm leading-6 text-muted-foreground dark:text-slate-400">
                 Quick view of recent portfolio analysis reports — open the full page for search, stats, and bulk actions
                 </p>
               </div>
@@ -924,16 +924,16 @@ export default function ClientManagement() {
         </TabsContent>
 
         <TabsContent value="import" className="space-y-4 rounded-xl border border-border/60 bg-background/35 p-3 md:p-4">
-          <Card className="relative overflow-hidden rounded-3xl border-amber-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] shadow-2xl shadow-black/25 transition-colors hover:border-amber-400/40">
+          <Card className="relative overflow-hidden rounded-3xl border-amber-500/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.22))] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.86))] shadow-2xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25 transition-colors hover:border-amber-400/40">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-            <CardHeader className="border-b border-white/10 pb-4">
-              <CardTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-white sm:text-2xl">
+            <CardHeader className="border-b border-border/60 dark:border-white/10 pb-4">
+              <CardTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-foreground dark:text-white sm:text-2xl">
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/15 text-amber-100 shadow-lg shadow-amber-950/20">
                   <Upload className="h-5 w-5" />
                 </span>
                 Import Clients from Excel
               </CardTitle>
-              <CardDescription className="max-w-2xl text-sm leading-6 text-slate-400">
+              <CardDescription className="max-w-2xl text-sm leading-6 text-muted-foreground dark:text-slate-400">
                 Drag and drop your client intake form Excel file to import clients and their properties into the dashboard.
               </CardDescription>
             </CardHeader>
