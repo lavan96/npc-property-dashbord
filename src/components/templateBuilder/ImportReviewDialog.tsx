@@ -48,6 +48,7 @@ interface Props {
   repairBusy?: boolean;
   repairSummary?: VisualRepairOrchestrationSummary | null;
   repairAuditPath?: string | null;
+  reviewDebug?: Record<string, unknown> | null;
   onApplyRepair?: () => Promise<void> | void;
   applyRepairAvailable?: boolean;
   applyRepairBusy?: boolean;
@@ -76,7 +77,7 @@ function pct(value: number | null | undefined): string {
   return `${Math.round(value * 100)}%`;
 }
 
-export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, onApplyRepair, applyRepairAvailable, applyRepairBusy }: Props) {
+export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, onRetry, onRecordDecision, recordedDecision, onRunReconciliation, reconciliationAvailable, reconciliationBusy, onRunVisualQa, visualQaAvailable, visualQaBusy, visualQaSummary, visualQualitySignedUrls, visualQualityArtifactPaths, onRunRepair, repairAvailable, repairBusy, repairSummary, repairAuditPath, reviewDebug, onApplyRepair, applyRepairAvailable, applyRepairBusy }: Props) {
   const [savingDecision, setSavingDecision] = useState<ImportReviewDecision | null>(null);
   const [decisionNote, setDecisionNote] = useState('');
   const decision = draft ? decisionCopy(draft.recommendedDecision) : null;
@@ -148,6 +149,29 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
                     </p>
                   </div>
                   <Badge variant="outline">ImportAsset</Badge>
+                </div>
+              </Card>
+            )}
+
+
+            {reviewDebug && (
+              <Card className="p-4 border-warning/30 bg-warning/5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium">Phase 7A debug — import review pipeline</div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Use this panel to confirm whether get_artifacts produced page contexts/source rasters and whether Visual QA/Repair were triggered.
+                    </p>
+                  </div>
+                  <Badge variant="outline">Debug</Badge>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-2 text-xs">
+                  {Object.entries(reviewDebug).map(([key, value]) => (
+                    <div key={key} className="flex justify-between gap-3 rounded border bg-background/70 px-2 py-1">
+                      <span className="text-muted-foreground break-all">{key}</span>
+                      <span className="text-right font-medium break-all max-w-[60%]"><DebugValue value={value} /></span>
+                    </div>
+                  ))}
                 </div>
               </Card>
             )}
@@ -412,6 +436,13 @@ function Metric({ label, value, tone = 'normal' }: { label: string; value: strin
       <div className="mt-1 text-lg font-semibold tabular-nums">{value}</div>
     </Card>
   );
+}
+
+function DebugValue({ value }: { value: unknown }) {
+  if (value === null || value === undefined || value === '') return <span>—</span>;
+  if (typeof value === 'boolean') return <span>{value ? 'true' : 'false'}</span>;
+  if (typeof value === 'number') return <span>{Number.isFinite(value) ? String(value) : '—'}</span>;
+  return <span>{String(value)}</span>;
 }
 
 function Row({ label, value }: { label: string; value: string }) {
