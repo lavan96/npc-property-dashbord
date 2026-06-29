@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, CheckCircle2, ExternalLink, FileSearch, Link2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, FileSearch, Link2, ArrowRight } from 'lucide-react';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 const FINANCE_STATUS_TONE: Record<string, string> = {
@@ -25,10 +25,10 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
   const unlinked = useMemo(() => deals.filter(d => !d.financeFile), [deals]);
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm">
-      <CardHeader className="space-y-4 border-b border-border/70 pb-4">
+    <Card className="overflow-hidden rounded-[1.35rem] border-amber-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.88)_44%,rgba(0,0,0,0.70))] shadow-[0_22px_60px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.07)]">
+      <CardHeader className="space-y-4 border-b border-amber-100/10 px-4 pb-4 pt-4 sm:px-5">
         <div className="flex items-start gap-3">
-          <div className="rounded-xl border border-primary/15 bg-primary/10 p-2 text-primary">
+          <div className="rounded-2xl border border-amber-200/25 bg-amber-300/10 p-2.5 text-amber-100 shadow-[0_0_24px_rgba(245,158,11,0.14)]">
             <Link2 className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -54,8 +54,8 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 p-4">
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-3">
+      <CardContent className="space-y-4 p-4 sm:p-5">
+        <div className="rounded-[1rem] border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(255,255,255,0.035))] p-3 shadow-inner">
           <div className="flex gap-3">
             <div className="mt-0.5 rounded-lg bg-amber-500/15 p-1.5 text-amber-700 dark:text-amber-300">
               <FileSearch className="h-4 w-4" />
@@ -81,7 +81,7 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
               const pf = d.financeFile!;
               const tone = FINANCE_STATUS_TONE[pf.finance_status || ''] || 'border-border/80 bg-background/70';
               return (
-                <div key={d.id} className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-xs shadow-sm transition-colors hover:bg-muted/40 ${tone}`}>
+                <div key={d.id} className={`group flex items-center justify-between gap-3 rounded-[1rem] border p-3 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-white/[0.07] ${tone}`}>
                   <div className="min-w-0">
                     <p className="font-semibold truncate text-foreground">{d.client_name}</p>
                     <p className="mt-1 text-muted-foreground truncate">
@@ -96,7 +96,7 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
                       className="h-7 px-2 text-xs hover:bg-background/80"
                       onClick={() => navigate(`/finance/purchase-files/${pf.id}`)}
                     >
-                      Open <ExternalLink className="h-3 w-3 ml-1" />
+                      Open <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-0.5" /><ExternalLink className="ml-1 h-3 w-3 opacity-70" />
                     </Button>
                   </div>
                 </div>
