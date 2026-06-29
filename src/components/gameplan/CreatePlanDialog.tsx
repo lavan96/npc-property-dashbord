@@ -67,16 +67,16 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
         <div className="space-y-5 px-5 py-5">
           <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label htmlFor="game-plan-name">Name</Label>
-            <Input id="game-plan-name" value={name} onChange={e => setName(e.target.value)} placeholder="Q2 Growth Strategy" className="mt-1.5 h-11 rounded-xl bg-card/80" />
+            <Input id="game-plan-name" value={name} onChange={e => setName(e.target.value)} placeholder="Q2 Growth Strategy" className="mt-1.5 h-11 rounded-xl bg-card/80 focus-visible:ring-primary/35" />
           </div>
           <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label htmlFor="game-plan-description">Description</Label>
-            <Textarea id="game-plan-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Key objectives and strategy..." rows={3} className="mt-1.5 rounded-xl bg-card/80" />
+            <Textarea id="game-plan-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Key objectives and strategy..." rows={3} className="mt-1.5 rounded-xl bg-card/80 focus-visible:ring-primary/35" />
           </div>
           <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label>Initial Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as 'planning' | 'active' | 'completed' | 'archived')}>
-              <SelectTrigger className="mt-1.5 h-11 rounded-xl bg-card/80" aria-label="Select initial game plan status">
+              <SelectTrigger className="mt-1.5 h-11 rounded-xl bg-card/80 focus:ring-primary/35" aria-label="Select initial game plan status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -92,7 +92,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
               <Label>Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !startDate && 'text-muted-foreground')} aria-label="Select game plan start date">
+                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal focus-visible:ring-primary/35', !startDate && 'text-muted-foreground')} aria-label="Select game plan start date">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
                     {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
@@ -106,7 +106,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
               <Label>End Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !endDate && 'text-muted-foreground')} aria-label="Select game plan end date">
+                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal focus-visible:ring-primary/35', !endDate && 'text-muted-foreground')} aria-label="Select game plan end date">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
                     {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
@@ -123,7 +123,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
             <div className="mt-2 flex flex-wrap gap-2">
               {ICONS.map(i => (
                 <button key={i} onClick={() => setIcon(i)}
-                  className={cn('flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-xl transition-all hover:border-primary/20 hover:bg-primary/10',
+                  className={cn('flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-xl transition-all hover:border-primary/20 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none',
                     icon === i ? 'scale-110 border-primary/30 bg-primary/15 ring-2 ring-primary/30' : 'hover:bg-muted')}
                   type="button"
                   aria-label={`Use ${i} icon`}>
@@ -137,7 +137,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
             <div className="mt-2 flex flex-wrap gap-2">
               {COLORS.map(c => (
                 <button key={c} onClick={() => setColor(c)}
-                  className={cn('h-8 w-8 rounded-full border border-white/40 shadow-sm transition-all hover:scale-105',
+                  className={cn('h-8 w-8 rounded-full border border-white/40 shadow-sm transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:scale-100',
                     color === c ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background' : '')}
                   style={{ backgroundColor: c }}
                   type="button"
@@ -147,8 +147,8 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
           </div>
         </div>
         <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 sm:flex-row">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
-          <Button onClick={handleCreate} disabled={!name.trim() || loading} className="rounded-xl shadow-lg shadow-primary/20">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl focus-visible:ring-primary/35">Cancel</Button>
+          <Button onClick={handleCreate} disabled={!name.trim() || loading} className="rounded-xl shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
             {loading ? 'Creating...' : 'Create Plan'}
           </Button>
         </DialogFooter>

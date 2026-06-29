@@ -203,11 +203,11 @@ export function AssignedTasksTab() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search assigned tasks"
-            className="h-10 rounded-xl bg-background/70 pl-9"
+            className="h-10 rounded-xl bg-background/70 pl-9 focus-visible:ring-primary/35"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v: StatusFilter) => setStatusFilter(v)}>
-          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]" aria-label="Filter assigned tasks by status">
+          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 focus:ring-primary/35 sm:w-[150px]" aria-label="Filter assigned tasks by status">
             <Filter className="mr-1.5 h-3.5 w-3.5" />
             <SelectValue />
           </SelectTrigger>
@@ -219,7 +219,7 @@ export function AssignedTasksTab() {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={(v: SourceFilter) => setSourceFilter(v)}>
-          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]" aria-label="Filter assigned tasks by source">
+          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 focus:ring-primary/35 sm:w-[150px]" aria-label="Filter assigned tasks by source">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -262,7 +262,7 @@ export function AssignedTasksTab() {
                 key={task.id}
                 role="listitem"
                 className={cn(
-                  'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20',
+                  'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20',
                   task.status === 'overdue' && 'border-red-500/30 bg-red-500/5',
                   task.status === 'completed' && 'opacity-70'
                 )}
@@ -279,7 +279,7 @@ export function AssignedTasksTab() {
                         checked={task.status === 'completed'}
                         onCheckedChange={() => handleToggleComplete(task)}
                         aria-label={`${task.status === 'completed' ? 'Reopen' : 'Complete'} task ${task.title}`}
-                        className="h-5 w-5 rounded-md border-primary/30"
+                        className="h-5 w-5 rounded-md border-primary/30 focus-visible:ring-primary/35"
                       />
                     )}
                   </div>

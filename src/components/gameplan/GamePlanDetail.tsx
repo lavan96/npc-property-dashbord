@@ -28,7 +28,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   planning: { label: 'Planning', variant: 'outline', emoji: '📋' },
   active: { label: 'Active', variant: 'default', emoji: '🟢' },
   completed: { label: 'Completed', variant: 'secondary', emoji: '✅' },
-  archived: { label: 'Archived', variant: 'destructive', emoji: '📦' },
+  archived: { label: 'Archived', variant: 'outline', emoji: '📦' },
 };
 
 export function GamePlanDetail({ plan, onBack }: Props) {
@@ -222,7 +222,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                       <button key={i} onClick={() => setEditIcon(i)}
                         type="button"
                         aria-label={`Use ${i} icon`}
-                        className={cn('text-lg w-8 h-8 rounded-md flex items-center justify-center transition-all',
+                        className={cn('text-lg w-8 h-8 rounded-md flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none',
                           editIcon === i ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-muted')}>
                         {i}
                       </button>
@@ -237,20 +237,20 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                     <button key={c} onClick={() => setEditColor(c)}
                       type="button"
                       aria-label={`Use accent colour ${c}`}
-                      className={cn('w-6 h-6 rounded-full transition-all',
+                      className={cn('w-6 h-6 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:scale-100',
                         editColor === c ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105')}
                       style={{ backgroundColor: c }} />
                   ))}
                 </div>
               </div>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="text-lg font-bold" placeholder="Plan name" aria-label="Plan name" />
-              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description..." rows={2} aria-label="Plan description" />
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="text-lg font-bold focus-visible:ring-primary/35" placeholder="Plan name" aria-label="Plan name" />
+              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description..." rows={2} aria-label="Plan description" className="focus-visible:ring-primary/35" />
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editStartDate && 'text-muted-foreground')} aria-label="Select plan start date">
+                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs focus-visible:ring-primary/35', !editStartDate && 'text-muted-foreground')} aria-label="Select plan start date">
                         <CalendarIcon className="mr-1.5 h-3 w-3" />
                         {editStartDate ? format(editStartDate, 'MMM d, yyyy') : 'Pick date'}
                       </Button>
@@ -264,7 +264,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">End Date</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editEndDate && 'text-muted-foreground')} aria-label="Select plan end date">
+                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs focus-visible:ring-primary/35', !editEndDate && 'text-muted-foreground')} aria-label="Select plan end date">
                         <CalendarIcon className="mr-1.5 h-3 w-3" />
                         {editEndDate ? format(editEndDate, 'MMM d, yyyy') : 'Pick date'}
                       </Button>
@@ -277,8 +277,8 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={savePlanEdit} disabled={!editName.trim()}>Save</Button>
-                <Button size="sm" variant="ghost" onClick={cancelPlanEdit}>Cancel</Button>
+                <Button size="sm" onClick={savePlanEdit} disabled={!editName.trim()} className="focus-visible:ring-primary/35">Save</Button>
+                <Button size="sm" variant="ghost" onClick={cancelPlanEdit} className="focus-visible:ring-primary/35">Cancel</Button>
               </div>
             </div>
           ) : (
@@ -293,7 +293,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{plan.name}</h1>
                   <Select value={plan.status} onValueChange={(v) => handleStatusChange(v as 'planning' | 'active' | 'completed' | 'archived')}>
-                    <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs" aria-label="Change game plan status">
+                    <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs focus:ring-primary/35" aria-label="Change game plan status">
                       <Badge variant={cfg.variant}>{cfg.emoji} {cfg.label}</Badge>
                     </SelectTrigger>
                     <SelectContent>
@@ -319,7 +319,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
               </div>
             </div>
           )}
-          <Button onClick={() => setShowAddPhase(true)} className="h-11 shrink-0 gap-2 rounded-xl shadow-lg shadow-primary/20" aria-label={`Add a phase to ${plan.name}`}>
+          <Button onClick={() => setShowAddPhase(true)} className="h-11 shrink-0 gap-2 rounded-xl shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0" aria-label={`Add a phase to ${plan.name}`}>
             <Plus className="h-4 w-4" /> Add Phase
           </Button>
         </div>
@@ -365,10 +365,10 @@ export function GamePlanDetail({ plan, onBack }: Props) {
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search phases, milestones, actions, notes..."
             aria-label="Search phases, milestones, actions, notes"
-            className="h-10 rounded-xl bg-background/70 pl-9 pr-8"
+            className="h-10 rounded-xl bg-background/70 pl-9 pr-8 focus-visible:ring-primary/35"
           />
           {searchQuery && (
-            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 focus-visible:ring-primary/35"
               onClick={() => setSearchQuery('')}
               aria-label="Clear phase search">
               <X className="h-3.5 w-3.5 text-muted-foreground" />

@@ -58,7 +58,7 @@ export default function GamePlan() {
           <Button
             onClick={() => setShowCreate(true)}
             aria-label="Create a new game plan"
-            className="h-11 w-full gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/40 sm:w-auto"
+            className="h-11 w-full gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/40 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:w-auto"
           >
             <Plus className="h-4 w-4" /> New Game Plan
           </Button>
@@ -74,21 +74,21 @@ export default function GamePlan() {
           <TabsList className="grid h-auto w-full min-w-max grid-cols-2 gap-1 bg-transparent p-0 sm:min-w-0 md:w-auto">
             <TabsTrigger
               value="plans"
-              className="min-h-10 gap-1.5 rounded-xl border border-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-primary/40 data-[state=active]:border-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
+              className="min-h-10 gap-1.5 rounded-xl border border-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-primary/40 motion-reduce:transition-none data-[state=active]:border-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
             >
               <Map className="h-4 w-4" />
               Game Plans
             </TabsTrigger>
             <TabsTrigger
               value="assigned"
-              className="min-h-10 gap-1.5 rounded-xl border border-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-primary/40 data-[state=active]:border-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
+              className="min-h-10 gap-1.5 rounded-xl border border-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-primary/40 motion-reduce:transition-none data-[state=active]:border-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
             >
               <ListChecks className="h-4 w-4" />
               Assigned Tasks
               {outstandingCount > 0 && (
                 <Badge
-                  variant="destructive"
-                  className="ml-1 h-5 min-w-[20px] rounded-full px-1.5 text-[10px] font-bold shadow-sm"
+                  variant="outline"
+                  className="ml-1 h-5 min-w-[20px] rounded-full border-primary/30 bg-primary/10 px-1.5 text-[10px] font-bold text-primary shadow-sm"
                 >
                   {outstandingCount}
                 </Badge>
