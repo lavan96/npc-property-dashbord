@@ -468,7 +468,7 @@ export function ReportDistributionPanel() {
                               </div>
                             </TableCell>
                             <TableCell className="py-2">
-                              <Badge variant="outline" className={`text-[10px] gap-1 ${statusConfig.color}`}>
+                              <Badge variant="outline" className={`gap-1 rounded-full text-[10px] ${statusConfig.color}`}>
                                 <StatusIcon className="h-3 w-3" />
                                 {statusConfig.label}
                               </Badge>
@@ -624,14 +624,14 @@ export function ReportDistributionPanel() {
                       <Badge
                         key={i}
                         variant="secondary"
-                        className="text-[10px] gap-1 cursor-pointer hover:bg-destructive/20"
+                        className="max-w-full cursor-pointer gap-1 rounded-full text-[10px] hover:bg-destructive/20"
                         onClick={() => {
                           const pipeline = pipelines.find(p => p.id === t.pipeline_id);
                           const stage = t.stage_id ? stages.find(s => s.id === t.stage_id) : undefined;
                           if (pipeline) toggleStageTarget(pipeline, stage);
                         }}
                       >
-                        {t.pipeline_name} → {t.stage_name || 'All stages'}
+                        <span className="truncate">{t.pipeline_name} → {t.stage_name || 'All stages'}</span>
                         <XCircle className="h-2.5 w-2.5" />
                       </Badge>
                     ))}

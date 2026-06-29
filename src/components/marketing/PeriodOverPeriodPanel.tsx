@@ -252,12 +252,12 @@ export function PeriodOverPeriodPanel() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="metric" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <XAxis dataKey="metric" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} className="text-muted-foreground" />
+                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} className="text-muted-foreground" />
                   <RechartsTooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: 12 }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 14, boxShadow: '0 18px 50px hsl(var(--foreground) / 0.12)', color: 'hsl(var(--popover-foreground))', fontSize: 12 }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }} />
                   <Line type="monotone" dataKey={ranges.currentLabel} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 5 }} />
                   <Line type="monotone" dataKey={ranges.previousLabel} stroke="hsl(220, 70%, 55%)" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} />
                 </LineChart>

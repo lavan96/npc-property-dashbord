@@ -114,7 +114,7 @@ export function FullFunnelPanel() {
               <div className="rounded-2xl border border-border/60 bg-background/40 p-3">
                 <p className="text-sm font-medium text-foreground mb-2">By Campaign</p>
                 <div className="overflow-x-auto rounded-2xl border border-border/50 bg-background/45">
-                  <Table>
+                  <Table className="min-w-[760px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="min-w-[180px]">Campaign</TableHead>
@@ -128,7 +128,7 @@ export function FullFunnelPanel() {
                     </TableHeader>
                     <TableBody>
                       {byCampaign.map((row: any) => (
-                        <TableRow key={row.campaign_id} className="hover:bg-primary/5">
+                        <TableRow key={row.campaign_id} className="transition-colors hover:bg-primary/5">
                           <TableCell className="max-w-[240px] truncate text-sm font-medium" title={row.campaign_name}>{row.campaign_name}</TableCell>
                           <TableCell className="text-right font-mono text-sm">{formatNum(row.leads)}</TableCell>
                           <TableCell className="text-right font-mono text-sm">{formatNum(row.deals)}</TableCell>

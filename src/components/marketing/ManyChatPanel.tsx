@@ -497,7 +497,7 @@ export function ManyChatPanel() {
           )}
 
           {loadingSubscriber && (
-            <div className="flex items-center justify-center py-6">
+            <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 py-6">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               <span className="ml-2 text-sm text-muted-foreground">Loading subscriber details...</span>
             </div>
@@ -597,7 +597,7 @@ export function ManyChatPanel() {
                   </div>
                   <div className="flex items-center gap-2 ml-2 shrink-0">
                     {field.type && (
-                      <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
+                      <Badge variant="outline" className="rounded-full text-xs capitalize">{field.type}</Badge>
                     )}
                   </div>
                 </div>
@@ -628,7 +628,7 @@ export function ManyChatPanel() {
                 </div>
                 <div className="flex items-center gap-2 ml-2 shrink-0">
                   {field.type && (
-                    <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
+                    <Badge variant="outline" className="rounded-full text-xs capitalize">{field.type}</Badge>
                   )}
                   {field.value !== undefined && field.value !== null && (
                     <span className="max-w-[180px] truncate text-xs text-muted-foreground font-mono" title={String(field.value)}>{String(field.value)}</span>
@@ -661,7 +661,7 @@ export function ManyChatPanel() {
                     <p className="text-xs text-muted-foreground">{flow.folder_name}</p>
                   )}
                 </div>
-                <Badge variant={flow.status === 'active' ? 'default' : 'secondary'} className="text-xs ml-2 shrink-0">
+                <Badge variant={flow.status === 'active' ? 'default' : 'secondary'} className="ml-2 shrink-0 rounded-full text-xs">
                   {flow.status || 'unknown'}
                 </Badge>
               </div>
@@ -824,8 +824,8 @@ function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: (
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Tags</p>
             <div className="flex flex-wrap gap-1.5">
               {subscriberTags.map((tag: any) => (
-                <Badge key={tag.id} variant="secondary" className="text-xs">
-                  {tag.name}
+                  <Badge key={tag.id} variant="secondary" className="max-w-full rounded-full text-xs" title={tag.name}>
+                  <span className="truncate">{tag.name}</span>
                 </Badge>
               ))}
             </div>

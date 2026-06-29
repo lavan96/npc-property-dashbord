@@ -441,11 +441,11 @@ export default function MarketingAnalytics() {
             </div>
             <div className="min-w-0">
               <div className="mb-1 flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
                   <Sparkles className="mr-1 h-3 w-3" />
                   Marketing Intelligence
                 </Badge>
-                <Badge variant="secondary" className="bg-background/60 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                <Badge variant="secondary" className="max-w-full rounded-full bg-background/60 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                   {dateLabel}
                 </Badge>
               </div>
@@ -519,7 +519,7 @@ export default function MarketingAnalytics() {
             <Target className="h-4 w-4" />
             Meta Ads
             {!isLoading && insights.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-[9px] px-1.5 py-0 h-4">{insights.length}</Badge>
+              <Badge variant="secondary" className="ml-1 h-4 rounded-full px-1.5 py-0 text-[9px]">{insights.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="manychat" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
@@ -558,24 +558,24 @@ export default function MarketingAnalytics() {
       {/* Summary Badges */}
       {!isLoading && insights.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-xs px-2.5 py-1">
+          <Badge variant="outline" className="rounded-full border-border/70 bg-background/60 px-2.5 py-1 text-xs">
             {insights.length} {level === 'campaign' ? 'Campaign' : level === 'adset' ? 'Ad Set' : 'Ad'}{insights.length !== 1 ? 's' : ''}
           </Badge>
           {summary.criticalAnomalies > 0 && (
-            <Badge variant="destructive" className="text-xs px-2.5 py-1">
+            <Badge variant="destructive" className="rounded-full px-2.5 py-1 text-xs">
               {summary.criticalAnomalies} Critical Alert{summary.criticalAnomalies !== 1 ? 's' : ''}
             </Badge>
           )}
           {summary.warningAnomalies > 0 && (
-            <Badge className="text-xs px-2.5 py-1 bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+            <Badge className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs text-amber-600 dark:text-amber-400">
               {summary.warningAnomalies} Warning{summary.warningAnomalies !== 1 ? 's' : ''}
             </Badge>
           )}
           {summary.avgHealthScore > 0 && (
-            <Badge variant="outline" className={`text-xs px-2.5 py-1 font-mono ${
-              summary.avgHealthScore >= 60 ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400' :
-              summary.avgHealthScore >= 35 ? 'border-amber-500/30 text-amber-600 dark:text-amber-400' :
-              'border-red-500/30 text-red-600 dark:text-red-400'
+            <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-xs font-mono ${
+              summary.avgHealthScore >= 60 ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400' :
+              summary.avgHealthScore >= 35 ? 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400' :
+              'border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400'
             }`}>
               Avg Health: {summary.avgHealthScore}/100
             </Badge>
@@ -801,7 +801,7 @@ function KPICard({ icon, label, value, loading, accent }: {
           <span className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider">{label}</span>
         </div>
         {loading ? (
-          <div className="h-7 w-20 bg-muted animate-pulse rounded mt-0.5" />
+          <div className="mt-0.5 h-7 w-20 animate-pulse rounded-xl bg-muted" />
         ) : (
           <p className={`min-w-0 truncate text-2xl font-bold tracking-tight ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</p>
         )}

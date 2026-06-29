@@ -418,7 +418,7 @@ function VersionsDialog({ magnet, onClose, onChanged }: { magnet: LeadMagnet | n
                     <div key={v.id} className={`border rounded-2xl p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ${isActive ? 'border-primary bg-primary/5' : 'border-border/70 bg-background/45'}`}>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={isActive ? 'default' : 'outline'}>v{v.version_number}{isActive && ' · ACTIVE'}</Badge>
+                          <Badge variant={isActive ? 'default' : 'outline'} className="rounded-full">v{v.version_number}{isActive && ' · ACTIVE'}</Badge>
                           <span className="text-sm font-medium truncate" title={v.file_name}>{v.file_name}</span>
                           <span className="text-xs text-muted-foreground">{v.file_size ? `${(v.file_size / 1024 / 1024).toFixed(2)} MB` : ''}</span>
                         </div>
@@ -516,7 +516,7 @@ function DownloadsDialog({ magnet, onClose }: { magnet: LeadMagnet | null; onClo
                     <p className="font-medium truncate" title={`${r.full_name} — ${r.email}`}>{r.full_name} <span className="text-muted-foreground font-normal">— {r.email}</span></p>
                     <p className="text-xs text-muted-foreground">{r.phone || 'no phone'} · {new Date(r.created_at).toLocaleString()}</p>
                   </div>
-                  <Badge variant={r.ghl_synced ? 'default' : 'secondary'}>{r.ghl_synced ? 'GHL synced' : 'Pending'}</Badge>
+                  <Badge variant={r.ghl_synced ? 'default' : 'secondary'} className="shrink-0 rounded-full">{r.ghl_synced ? 'GHL synced' : 'Pending'}</Badge>
                 </div>
               ))}
             </div>
