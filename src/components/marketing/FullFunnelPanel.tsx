@@ -34,29 +34,31 @@ export function FullFunnelPanel() {
   const maxValue = stages.length > 0 ? stages[0].value : 1;
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_60%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Funnel className="h-5 w-5 text-primary" />
-          Full-Funnel Visualization
+        <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+            <Funnel className="h-5 w-5 text-primary" />
+          </span>
+          <span className="truncate">Full-Funnel Visualization</span>
         </CardTitle>
         <CardDescription>Meta Ads → CRM Pipeline conversion funnel</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center rounded-2xl border border-border/60 bg-background/45 py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Building funnel...</span>
           </div>
         ) : stages.length === 0 || maxValue === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            <Funnel className="h-10 w-10 mx-auto mb-2 opacity-30" />
+          <div className="rounded-2xl border border-dashed border-primary/25 bg-background/45 py-12 text-center text-sm text-muted-foreground">
+            <Funnel className="h-10 w-10 mx-auto mb-2 text-primary/35" />
             No attributed leads found. Ensure lead attribution is configured.
           </div>
         ) : (
           <div className="space-y-6">
             {/* Funnel chart */}
-            <div className="space-y-1">
+            <div className="space-y-1 rounded-2xl border border-border/60 bg-background/40 p-3">
               {stages.map((stage: any, idx: number) => {
                 const widthPct = maxValue > 0 ? Math.max((stage.value / maxValue) * 100, 8) : 8;
                 const conversionFromPrev = idx > 0 && stages[idx - 1].value > 0
@@ -69,22 +71,22 @@ export function FullFunnelPanel() {
                       <div className="flex items-center gap-2 py-1">
                         <ArrowDown className="h-3.5 w-3.5 text-muted-foreground" />
                         {conversionFromPrev && (
-                          <span className="text-[10px] font-mono text-muted-foreground">
+                          <span className="rounded-full border border-border/50 bg-background/60 px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
                             {conversionFromPrev}% conversion
                           </span>
                         )}
                       </div>
                     )}
                     <div
-                      className="relative rounded-md overflow-hidden transition-all duration-500 mx-auto"
+                      className="relative mx-auto overflow-hidden rounded-2xl shadow-lg shadow-black/10 transition-all duration-500"
                       style={{
                         width: `${widthPct}%`,
                         minWidth: '120px',
                         backgroundColor: stage.color,
                       }}
                     >
-                      <div className="px-4 py-3 flex items-center justify-between">
-                        <span className="text-sm font-medium text-white truncate">{stage.name}</span>
+                      <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-3">
+                        <span className="truncate text-sm font-medium text-white" title={stage.name}>{stage.name}</span>
                         <span className="text-lg font-bold text-white font-mono">{formatNum(stage.value)}</span>
                       </div>
                     </div>
@@ -95,12 +97,12 @@ export function FullFunnelPanel() {
 
             {/* Overall conversion rate */}
             {stages.length >= 2 && stages[0].value > 0 && (
-              <div className="flex items-center justify-center gap-3">
-                <Badge variant="outline" className="text-xs gap-1">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Badge variant="outline" className="gap-1 rounded-full border-primary/20 bg-background/60 text-xs">
                   Lead → Deal: <span className="font-mono font-semibold">{formatPct(stages[1].value, stages[0].value)}</span>
                 </Badge>
                 {stages[4]?.value > 0 && (
-                  <Badge variant="outline" className="text-xs gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                  <Badge variant="outline" className="gap-1 rounded-full border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-600 dark:text-emerald-400">
                     Lead → Settled: <span className="font-mono font-semibold">{formatPct(stages[4].value, stages[0].value)}</span>
                   </Badge>
                 )}
@@ -109,10 +111,10 @@ export function FullFunnelPanel() {
 
             {/* By Campaign Breakdown */}
             {byCampaign.length > 0 && (
-              <div>
+              <div className="rounded-2xl border border-border/60 bg-background/40 p-3">
                 <p className="text-sm font-medium text-foreground mb-2">By Campaign</p>
-                <div className="overflow-x-auto">
-                  <Table>
+                <div className="overflow-x-auto rounded-2xl border border-border/50 bg-background/45">
+                  <Table className="min-w-[760px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="min-w-[180px]">Campaign</TableHead>
@@ -126,8 +128,8 @@ export function FullFunnelPanel() {
                     </TableHeader>
                     <TableBody>
                       {byCampaign.map((row: any) => (
-                        <TableRow key={row.campaign_id}>
-                          <TableCell className="font-medium text-sm truncate max-w-[200px]">{row.campaign_name}</TableCell>
+                        <TableRow key={row.campaign_id} className="transition-colors hover:bg-primary/5">
+                          <TableCell className="max-w-[240px] truncate text-sm font-medium" title={row.campaign_name}>{row.campaign_name}</TableCell>
                           <TableCell className="text-right font-mono text-sm">{formatNum(row.leads)}</TableCell>
                           <TableCell className="text-right font-mono text-sm">{formatNum(row.deals)}</TableCell>
                           <TableCell className="text-right font-mono text-sm">{formatNum(row.qualified)}</TableCell>

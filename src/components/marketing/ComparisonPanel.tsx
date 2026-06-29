@@ -98,19 +98,21 @@ export function ComparisonPanel({
   });
 
   return (
-    <Card className="border-primary/20 bg-primary/[0.01]">
+    <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_58%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <GitCompareArrows className="h-5 w-5 text-primary" />
-              Side-by-Side Comparison
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <GitCompareArrows className="h-5 w-5 text-primary" />
+              </span>
+              <span className="truncate">Side-by-Side Comparison</span>
             </CardTitle>
             <CardDescription className="mt-1">
               Comparing {enriched.length} {level === 'campaign' ? 'campaigns' : level === 'adset' ? 'ad sets' : 'ads'}
             </CardDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClear} className="text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={onClear} className="shrink-0 rounded-xl text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/45" aria-label="Clear selected comparison items">
             <X className="h-3.5 w-3.5 mr-1" />
             Clear
           </Button>
@@ -120,17 +122,18 @@ export function ComparisonPanel({
             <Badge
               key={item._id}
               variant="outline"
-              className="gap-1.5 pl-2 pr-1 py-1"
+              className="max-w-full gap-1.5 rounded-full py-1 pl-2 pr-1"
               style={{ borderColor: COMPARISON_COLORS[idx % COMPARISON_COLORS.length] }}
             >
               <div
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: COMPARISON_COLORS[idx % COMPARISON_COLORS.length] }}
               />
-              <span className="text-xs font-medium truncate max-w-[150px]">{item._name}</span>
+              <span className="max-w-[150px] truncate text-xs font-medium" title={item._name}>{item._name}</span>
               <button
                 onClick={() => onRemoveItem(item._id)}
-                className="ml-1 p-0.5 rounded hover:bg-muted transition-colors"
+                className="ml-1 rounded p-0.5 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+                aria-label={`Remove ${item._name} from comparison`}
               >
                 <X className="h-3 w-3 text-muted-foreground" />
               </button>
@@ -140,16 +143,16 @@ export function ComparisonPanel({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Bar Chart Comparison */}
-        <div className="h-[280px] w-full">
+        <div className="h-[280px] w-full rounded-2xl border border-border/60 bg-background/40 p-3">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barChartData} layout="vertical" margin={{ left: 80, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis type="number" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-              <YAxis dataKey="metric" type="category" tick={{ fontSize: 11 }} className="text-muted-foreground" width={75} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} className="text-muted-foreground" />
+              <YAxis dataKey="metric" type="category" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} className="text-muted-foreground" width={75} />
               <RechartsTooltip
-                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: 12 }}
+                contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 14, boxShadow: '0 18px 50px hsl(var(--foreground) / 0.12)', color: 'hsl(var(--popover-foreground))', fontSize: 12 }}
               />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Legend wrapperStyle={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }} />
               {enriched.map((item, idx) => (
                 <Bar
                   key={item._id}
@@ -163,8 +166,8 @@ export function ComparisonPanel({
         </div>
 
         {/* Metrics Table */}
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="overflow-x-auto rounded-2xl border border-border/60 bg-background/40">
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[120px]">Metric</TableHead>

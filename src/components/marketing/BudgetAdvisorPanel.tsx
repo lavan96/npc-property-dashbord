@@ -1,11 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowUpCircle, ArrowDownCircle, PauseCircle, Repeat, DollarSign, Loader2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, PauseCircle, Repeat, DollarSign, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { AgentMessageRenderer } from '@/components/agent/AgentMessageRenderer';
+import { cn } from '@/lib/utils';
 
 interface BudgetRecommendation {
   type: 'increase' | 'decrease' | 'pause' | 'reallocate';
@@ -45,17 +44,19 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
 
   if (loading) {
     return (
-      <Card className="border-primary/20">
+      <Card className="overflow-hidden border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.78)_60%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-primary" />
+          <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+              <DollarSign className="h-4 w-4 text-primary" />
+            </span>
             Budget Reallocation Advisor
-            <Badge variant="secondary" className="text-[10px] animate-pulse">Analyzing...</Badge>
+            <Badge variant="secondary" className="animate-pulse border-primary/20 bg-primary/10 text-[10px] text-primary">Analyzing...</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-lg bg-muted animate-pulse" />)}
+            {[1, 2, 3].map(i => <div key={i} className="h-24 animate-pulse rounded-2xl bg-muted" />)}
           </div>
         </CardContent>
       </Card>
@@ -63,13 +64,15 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
   }
 
   return (
-    <Card className="border-primary/20">
+    <Card className="overflow-hidden border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.78)_60%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-primary" />
-              Budget Reallocation Advisor
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <DollarSign className="h-4 w-4 text-primary" />
+              </span>
+              <span className="truncate">Budget Reallocation Advisor</span>
             </CardTitle>
             {summary && (
               <CardDescription className="mt-1">
@@ -79,27 +82,27 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
             )}
           </div>
           {summary && summary.highPriority > 0 && (
-            <Badge variant="destructive" className="text-[10px]">{summary.highPriority} High Priority</Badge>
+            <Badge variant="destructive" className="shrink-0 rounded-full text-[10px]">{summary.highPriority} High Priority</Badge>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* AI Strategic Analysis */}
         {(aiAnalysis || aiError) && (
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-3">
+          <div className="overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.04] p-3">
             <button
               onClick={() => setShowAI(!showAI)}
-              className="flex items-center justify-between w-full text-left"
+              className="flex w-full items-center justify-between gap-3 rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold text-foreground">AI Strategic Analysis</span>
-                <Badge variant="secondary" className="text-[9px]">Gemini 3 Flash</Badge>
+              <div className="flex min-w-0 items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="truncate text-xs font-semibold text-foreground">AI Strategic Analysis</span>
+                <Badge variant="secondary" className="shrink-0 border-primary/20 bg-background/60 text-[9px]">Gemini 3 Flash</Badge>
               </div>
-              {showAI ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              {showAI ? <ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
             </button>
             {showAI && (
-              <div className="mt-2 min-w-0 overflow-hidden">
+              <div className="mt-3 min-w-0 overflow-hidden rounded-2xl border border-border/50 bg-background/50 p-3 [overflow-wrap:anywhere]">
                 {aiError ? (
                   <p className="text-xs text-destructive break-words">{aiError}</p>
                 ) : (
@@ -112,9 +115,9 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
 
         {/* Recommendation Cards */}
         {recommendations.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No budget recommendations available</p>
+          <div className="rounded-2xl border border-dashed border-primary/25 bg-background/45 py-7 text-center text-muted-foreground">
+            <DollarSign className="mx-auto mb-2 h-8 w-8 text-primary/35" />
+            <p className="text-sm font-medium">No budget recommendations available</p>
             <p className="text-xs mt-1">Need at least 2 campaigns with data</p>
           </div>
         ) : (
@@ -124,21 +127,21 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
                 const config = typeConfig[rec.type];
                 const Icon = config.icon;
                 return (
-                  <div key={`${rec.campaign_id}-${i}`} className={`rounded-lg border p-3 ${config.bg} ${config.border}`}>
+                  <div key={`${rec.campaign_id}-${i}`} className={cn('rounded-2xl border p-3 shadow-sm transition-colors hover:bg-background/45', config.bg, config.border)}>
                     <div className="flex items-start gap-2.5">
                       <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${config.color}`} />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-sm font-semibold text-foreground">{rec.campaign_name}</span>
-                          <Badge variant="outline" className={`text-[9px] ${priorityBadge[rec.priority]}`}>
+                        <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="min-w-0 max-w-full truncate text-sm font-semibold text-foreground" title={rec.campaign_name}>{rec.campaign_name}</span>
+                          <Badge variant="outline" className={`shrink-0 rounded-full text-[9px] ${priorityBadge[rec.priority]}`}>
                             {rec.priority}
                           </Badge>
-                          <Badge variant="outline" className={`text-[9px] ${config.color}`}>
+                          <Badge variant="outline" className={`shrink-0 rounded-full text-[9px] ${config.color}`}>
                             {config.label}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{rec.reason}</p>
-                        <div className="flex items-center gap-4 mt-2">
+                        <p className="break-words text-xs leading-relaxed text-muted-foreground">{rec.reason}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                           <div className="text-[11px]">
                             <span className="text-muted-foreground">Current: </span>
                             <span className="font-mono font-medium">${rec.current_spend.toFixed(0)}</span>
@@ -153,7 +156,7 @@ export function BudgetAdvisorPanel({ recommendations, aiAnalysis, aiError, loadi
                             </>
                           )}
                         </div>
-                        <p className="text-[11px] text-primary font-medium mt-1.5">📈 {rec.projected_impact}</p>
+                        <p className="mt-1.5 break-words text-[11px] font-medium text-primary">📈 {rec.projected_impact}</p>
                       </div>
                     </div>
                   </div>
