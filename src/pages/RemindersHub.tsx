@@ -455,7 +455,7 @@ export default function RemindersHub() {
               className={cn(
                 premiumPanel,
                 "relative overflow-hidden rounded-2xl border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(0,0,0,0.45))]",
-                timeFilter === 'overdue' || timeFilter === 'today' || timeFilter === 'week' ? 'border-emerald-300/25' : 'border-amber-300/25'
+                timeFilter === 'overdue' || timeFilter === 'today' || timeFilter === 'week' || timeFilter === 'month' ? 'border-emerald-300/25' : 'border-amber-300/25'
               )}
             >
               <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
@@ -473,6 +473,9 @@ export default function RemindersHub() {
                 {timeFilter === 'week' && (
                   <p className="mt-1 text-xs text-emerald-200/75">Your weekly reminder plan is clear for the selected filters.</p>
                 )}
+                {timeFilter === 'month' && (
+                  <p className="mt-1 text-xs text-emerald-200/75">No monthly planning reminders match the selected filters.</p>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -481,6 +484,7 @@ export default function RemindersHub() {
                 const isOverdueGroup = groupLabel.includes('Overdue');
                 const isTodayGroup = groupLabel.includes('Today');
                 const isWeekPlanningGroup = timeFilter === 'week' && !isOverdueGroup && !isTodayGroup;
+                const isMonthPlanningGroup = timeFilter === 'month' && !isOverdueGroup && !isTodayGroup;
 
                 return (
                 <div key={groupLabel}>
@@ -492,6 +496,8 @@ export default function RemindersHub() {
                         ? 'border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(15,23,42,0.42))]'
                         : isWeekPlanningGroup
                           ? 'border-sky-300/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.42))]'
+                          : isMonthPlanningGroup
+                            ? 'border-teal-300/20 bg-[linear-gradient(135deg,rgba(20,184,166,0.13),rgba(15,23,42,0.42))]'
                       : 'border-amber-400/12 bg-[linear-gradient(135deg,rgba(0,0,0,0.42),rgba(15,23,42,0.42))]'
                   )}>
                     <div className="flex min-w-0 items-center gap-2">
@@ -503,6 +509,8 @@ export default function RemindersHub() {
                             ? 'bg-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.65)]'
                             : isWeekPlanningGroup
                               ? 'bg-sky-300 shadow-[0_0_14px_rgba(56,189,248,0.45)]'
+                              : isMonthPlanningGroup
+                                ? 'bg-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.42)]'
                           : 'bg-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.55)]'
                       )} />
                       <h3 className="truncate text-sm font-semibold text-slate-100">{groupLabel}</h3>
@@ -517,6 +525,8 @@ export default function RemindersHub() {
                             ? 'border-amber-200/40 bg-amber-400/15 text-amber-100'
                             : isWeekPlanningGroup
                               ? 'border-sky-300/30 bg-sky-400/10 text-sky-100'
+                              : isMonthPlanningGroup
+                                ? 'border-teal-300/30 bg-teal-400/10 text-teal-100'
                           : 'border-amber-300/30 bg-amber-400/10 text-amber-100'
                       )}
                     >
@@ -529,6 +539,7 @@ export default function RemindersHub() {
                       const isOverdue = isPast(new Date(reminder.due_date)) && !isToday(new Date(reminder.due_date));
                       const isDueToday = isToday(new Date(reminder.due_date));
                       const isWeekPlanningReminder = timeFilter === 'week' && !isOverdue && !isDueToday;
+                      const isMonthPlanningReminder = timeFilter === 'month' && !isOverdue && !isDueToday;
                       const daysUntil = differenceInDays(new Date(reminder.due_date), now);
                       const priorityCfg = PRIORITY_CONFIG[reminder.priority];
 
@@ -540,6 +551,7 @@ export default function RemindersHub() {
                               isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))] hover:bg-red-500/[0.055]',
                               isDueToday && !isOverdue && 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(2,6,23,0.88))] hover:bg-amber-400/[0.075]',
                               isWeekPlanningReminder && 'border-sky-300/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.10),rgba(2,6,23,0.88))] hover:bg-sky-400/[0.055]',
+                              isMonthPlanningReminder && 'border-teal-300/25 bg-[linear-gradient(135deg,rgba(20,184,166,0.11),rgba(2,6,23,0.88))] hover:bg-teal-400/[0.055]',
                             )}
                             onClick={() => handleReminderClick(reminder)}
                           >
@@ -551,6 +563,8 @@ export default function RemindersHub() {
                                   ? 'bg-amber-300/55 group-hover:bg-amber-300 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.55)]'
                                   : isWeekPlanningReminder
                                     ? 'bg-sky-300/35 group-hover:bg-sky-300/85 group-hover:shadow-[0_0_18px_rgba(56,189,248,0.38)]'
+                                    : isMonthPlanningReminder
+                                      ? 'bg-teal-300/35 group-hover:bg-teal-300/85 group-hover:shadow-[0_0_18px_rgba(45,212,191,0.35)]'
                                 : 'bg-amber-300/0 group-hover:bg-amber-300/80 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.45)]'
                             )} />
                             <CardContent className="p-3 sm:p-4">
@@ -594,6 +608,8 @@ export default function RemindersHub() {
                                       ? 'border-amber-300/25 bg-amber-400/10'
                                       : isWeekPlanningReminder
                                         ? 'border-sky-300/20 bg-sky-400/10'
+                                        : isMonthPlanningReminder
+                                          ? 'border-teal-300/20 bg-teal-400/10'
                                       : 'border-white/10'
                                 )}>
                                   <p className={cn(
