@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,9 +14,9 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, StarOff, Loader2, X, FileSignature, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface PlaceholderMapping {
   placeholder: string;
@@ -171,31 +171,40 @@ export default function GammaTemplateManager() {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileSignature className="h-4 w-4 text-primary" />
-            <CardTitle className="text-base">Gamma Templates</CardTitle>
+    <DashboardThemeFrame
+      as="section"
+      variant="section"
+      className="border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--card)/0.74))] p-0 shadow-[0_22px_70px_rgba(15,23,42,0.09)] ring-1 ring-white/45 dark:border-white/10 dark:bg-slate-950/45 dark:ring-white/10"
+    >
+      <CardHeader className="bg-muted/15 pb-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                <FileSignature className="h-4 w-4" />
+              </span>
+              <CardTitle className="text-base">Gamma Templates</CardTitle>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Manage reusable Gamma agreement templates and placeholder mappings.</p>
           </div>
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" onClick={openCreate} className="shadow-sm shadow-primary/15">
             <Plus className="h-4 w-4 mr-1" /> Add Template
           </Button>
         </div>
       </CardHeader>
-      <Separator />
+      <Separator className="bg-border/60" />
       <CardContent className="p-0">
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : templates.length === 0 ? (
-          <div className="text-center py-8 text-sm text-muted-foreground">
+          <div className="mx-4 my-5 rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-10 text-center text-sm text-muted-foreground">
             No templates configured. Add a Gamma template to get started.
           </div>
         ) : (
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/45 dark:bg-slate-900/70">
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead className="hidden md:table-cell">Gamma ID</TableHead>
@@ -206,11 +215,11 @@ export default function GammaTemplateManager() {
             </TableHeader>
             <TableBody>
               {templates.map((t) => (
-                <TableRow key={t.id}>
+                <TableRow key={t.id} className="border-border/55 transition-colors hover:bg-primary/5">
                   <TableCell className="font-medium">
                     {t.name}
                     {t.is_default && (
-                      <Badge variant="default" className="ml-2 text-xs">Default</Badge>
+                      <Badge variant="default" className="ml-2 gap-1 border-primary/30 bg-primary/90 text-xs shadow-sm"><Sparkles className="h-3 w-3" />Default</Badge>
                     )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-xs font-mono">
@@ -248,7 +257,7 @@ export default function GammaTemplateManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto rounded-2xl border-border/70 bg-card text-card-foreground shadow-2xl">
           <DialogHeader>
             <DialogTitle>{editingTemplate ? 'Edit Template' : 'Add Gamma Template'}</DialogTitle>
           </DialogHeader>
@@ -323,6 +332,6 @@ export default function GammaTemplateManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </DashboardThemeFrame>
   );
 }

@@ -193,7 +193,7 @@ export default function Agreements() {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.generated;
     const Icon = config.icon;
     return (
-      <Badge variant={config.variant} className="gap-1 border-border/40 shadow-sm">
+      <Badge variant={config.variant} className="gap-1 border-border/50 bg-background/60 shadow-sm dark:bg-slate-950/50">
         <Icon className="h-3 w-3" />
         {config.label}
       </Badge>
@@ -204,12 +204,12 @@ export default function Agreements() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="space-y-5 p-3 text-foreground sm:p-6"
+      className="space-y-7 px-3 py-4 text-foreground sm:px-6 sm:py-7 lg:px-8"
     >
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="flex flex-col gap-4 border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.84)_52%,hsl(var(--primary)/0.12))] shadow-lg shadow-primary/5 sm:flex-row sm:items-center sm:justify-between"
+        className="isolate flex flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.9)_52%,hsl(var(--muted)/0.45))] shadow-[0_20px_60px_rgba(15,23,42,0.10)] shadow-primary/5 before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-primary/45 before:to-transparent dark:bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.20),transparent_36%),linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.76)_52%,hsl(var(--muted)/0.18))] sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary shadow-inner shadow-primary/20">
@@ -223,19 +223,19 @@ export default function Agreements() {
             </p>
           </div>
         </div>
-        <div className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
+        <div className="rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary shadow-sm shadow-primary/10">
           {pending} awaiting signature
         </div>
       </DashboardThemeFrame>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Agreement KPI summary">
         {[
           { label: 'Total Agreements', value: agreements.length, tone: 'primary' },
           { label: 'Sent', value: totalSent, tone: 'foreground' },
           { label: 'Awaiting Signature', value: pending, tone: 'warning' },
           { label: 'Signed', value: totalSigned, tone: 'success' },
         ].map((stat) => (
-          <DashboardThemeFrame key={stat.label} variant="premiumCard" className="p-4">
+          <DashboardThemeFrame key={stat.label} variant="premiumCard" className="relative p-4 after:absolute after:inset-x-4 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-primary/30 after:to-transparent sm:p-5">
             <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
             <p
               className={cn(
@@ -250,12 +250,19 @@ export default function Agreements() {
             </p>
           </DashboardThemeFrame>
         ))}
-      </div>
+      </section>
 
-      <DashboardThemeFrame variant="section" className="p-0">
-        <div className="flex flex-col gap-3 border-b border-border/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <DashboardThemeFrame
+        as="section"
+        variant="section"
+        className="border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--card)/0.74))] p-0 shadow-[0_22px_70px_rgba(15,23,42,0.09)] ring-1 ring-white/45 dark:border-white/10 dark:bg-slate-950/45 dark:ring-white/10"
+      >
+        <div className="flex flex-col gap-4 border-b border-border/60 bg-muted/15 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <CardTitle className="text-base">All Agreements</CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.12)]" />
+              <CardTitle className="text-base">All Agreements</CardTitle>
+            </div>
             <p className="mt-1 text-xs text-muted-foreground">Search, review, download, and manage envelope status.</p>
           </div>
           <div className="relative w-full sm:w-72">
@@ -264,7 +271,7 @@ export default function Agreements() {
               placeholder="Search by name, email, status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-10 rounded-xl border-border/70 bg-background/75 pl-9 shadow-sm transition-all focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="h-10 rounded-xl border-border/70 bg-background/85 pl-9 shadow-sm transition-all focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/30 dark:bg-slate-950/55"
             />
           </div>
         </div>
@@ -280,7 +287,7 @@ export default function Agreements() {
           ) : (
             <ScrollArea className="max-h-[560px] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
               <Table>
-                <TableHeader className="bg-muted/40">
+                <TableHeader className="sticky top-0 z-10 bg-muted/55 backdrop-blur dark:bg-slate-900/80">
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Buyer</TableHead>
                     <TableHead className="hidden md:table-cell">Email</TableHead>
@@ -293,7 +300,7 @@ export default function Agreements() {
                 </TableHeader>
                 <TableBody>
                   {filteredAgreements.map((agreement) => (
-                    <TableRow key={agreement.id} className="group hover:bg-primary/5">
+                    <TableRow key={agreement.id} className="group border-border/55 transition-colors hover:bg-primary/5">
                       <TableCell className="font-medium">
                         <button
                           className="text-left text-foreground transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
