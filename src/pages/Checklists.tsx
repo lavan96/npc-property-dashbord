@@ -282,15 +282,15 @@ export default function Checklists() {
         </TabsContent>
 
         {/* Templates */}
-        <TabsContent value="templates" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-500/10 bg-black/30 p-4">
+        <TabsContent value="templates" className="space-y-5 rounded-2xl border border-amber-500/10 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20">
+          <div className="flex flex-col gap-4 rounded-2xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.1),rgba(0,0,0,0.42)_42%,rgba(0,0,0,0.72))] p-4 shadow-inner shadow-amber-950/10 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-zinc-100">Checklist Templates</h2>
-              <p className="text-sm text-muted-foreground">Reusable blueprints for generating checklists</p>
+              <h2 className="text-xl font-semibold tracking-tight text-zinc-50">Checklist Templates</h2>
+              <p className="mt-1 text-sm leading-6 text-zinc-400">Reusable blueprints for generating checklists</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {canEdit && (
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => setUploadDialogOpen(true)}>
+                <Button variant="outline" size="sm" className="gap-1 border-amber-300/25 bg-black/35 text-amber-100 hover:border-amber-300/55 hover:bg-amber-400/10 hover:text-amber-50" onClick={() => setUploadDialogOpen(true)}>
                   <Upload className="h-3 w-3" /> Import
                 </Button>
               )}
@@ -303,7 +303,7 @@ export default function Checklists() {
               {canEdit && (
                 <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" className="gap-1">
+                    <Button size="sm" className="gap-1 bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black shadow-[0_12px_28px_rgba(245,158,11,0.24)] hover:from-amber-400 hover:to-yellow-300">
                       <Plus className="h-3 w-3" /> New Template
                     </Button>
                   </DialogTrigger>
@@ -351,37 +351,49 @@ export default function Checklists() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {templates.map(template => (
                 <Card
                   key={template.id}
-                  className="group relative cursor-pointer border-amber-500/15 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black shadow-lg shadow-black/30 transition-all hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-amber-500/10"
+                  className="group relative cursor-pointer overflow-hidden rounded-2xl border border-amber-500/15 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98)_46%,rgba(0,0,0,0.98))] shadow-lg shadow-black/30 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_24px_58px_rgba(245,158,11,0.16)]"
                   onClick={() => setSelectedTemplate(template)}
                 >
-                  <CardContent className="pt-5 pb-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">{template.icon}</span>
-                        <div>
-                          <h3 className="text-sm font-semibold text-zinc-100">{template.name}</h3>
+                  <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <CardContent className="relative p-5">
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3.5">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-black/35 text-2xl shadow-inner shadow-amber-950/20">{template.icon}</span>
+                        <div className="min-w-0">
+                          <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                            <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-zinc-50 transition-colors group-hover:text-amber-50">{template.name}</h3>
+                            <Badge variant="outline" className="rounded-full border-amber-300/25 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200">
+                              Template
+                            </Badge>
+                          </div>
                           {template.description && (
-                            <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{template.description}</p>
+                            <p className="line-clamp-2 text-xs leading-5 text-zinc-400">{template.description}</p>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center gap-2">
+                    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/30 p-3">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {template.cron_enabled && (
-                          <Badge variant="secondary" className="text-[10px] gap-1">
+                          <Badge variant="secondary" className="gap-1 rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200">
                             <Clock className="h-2.5 w-2.5" />
-                            {template.cron_description || 'Scheduled'}
+                            Scheduled
+                          </Badge>
+                        )}
+                        {template.cron_enabled && template.cron_description && (
+                          <Badge variant="outline" className="rounded-full border-zinc-600/45 bg-zinc-900/70 px-2 py-1 text-[10px] font-medium text-zinc-300">
+                            {template.cron_description}
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/5 bg-black/35 p-1 opacity-80 transition-opacity group-hover:opacity-100" onClick={e => e.stopPropagation()}>
                         <Button
-                          size="icon" variant="ghost" className="h-7 w-7"
+                          size="icon" variant="ghost" className="h-7 w-7 text-amber-100 hover:bg-amber-400/10 hover:text-amber-50"
                           onClick={() => mutations.generateFromTemplate.mutate(template)}
                           title="Generate checklist"
                         >
@@ -389,7 +401,7 @@ export default function Checklists() {
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive">
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </AlertDialogTrigger>
