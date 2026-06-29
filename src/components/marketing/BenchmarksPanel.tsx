@@ -58,15 +58,17 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
 
   if (loading) {
     return (
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Globe className="h-5 w-5 text-primary" />
-            Industry Benchmarks
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+              <Globe className="h-5 w-5 text-primary" />
+            </span>
+            <span className="truncate">Industry Benchmarks</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Researching industry benchmarks...</span>
           </div>
@@ -91,14 +93,16 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
   const overallConfig = VERDICT_CONFIG[overallVerdict];
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Globe className="h-5 w-5 text-primary" />
-              Industry Benchmarks
-              <Badge variant="secondary" className="text-[10px]">Phase 4</Badge>
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <Globe className="h-5 w-5 text-primary" />
+              </span>
+              <span className="truncate">Industry Benchmarks</span>
+              <Badge variant="secondary" className="shrink-0 rounded-full text-[10px]">Phase 4</Badge>
             </CardTitle>
             <CardDescription className="mt-1">
               Your performance vs. Australian property investment ad benchmarks
@@ -108,7 +112,7 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={`${overallConfig.borderColor} ${overallConfig.color} ${overallConfig.bgColor} text-xs px-2.5 py-1 gap-1`}>
+            <Badge variant="outline" className={`${overallConfig.borderColor} ${overallConfig.color} ${overallConfig.bgColor} gap-1 rounded-full px-2.5 py-1 text-xs`}>
               <Award className="h-3 w-3" />
               {avgPercentile}th Percentile · {overallConfig.label}
             </Badge>
@@ -121,10 +125,10 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
           {benchmarks.map((b) => {
             const config = VERDICT_CONFIG[b.verdict];
             return (
-              <div key={b.metric} className={`rounded-lg border ${config.borderColor} ${config.bgColor} p-4`}>
+              <div key={b.metric} className={`min-w-0 rounded-2xl border ${config.borderColor} ${config.bgColor} p-4 shadow-sm`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-semibold text-foreground">{b.metric}</span>
-                  <Badge variant="outline" className={`text-[10px] ${config.borderColor} ${config.color}`}>
+                  <Badge variant="outline" className={`rounded-full text-[10px] ${config.borderColor} ${config.color}`}>
                     {config.label}
                   </Badge>
                 </div>
@@ -143,7 +147,7 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
                   </div>
                 </div>
                 <PercentileBar percentile={b.percentile_rank} />
-                <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">{b.insight}</p>
+                <p className="mt-2 break-words text-[11px] leading-relaxed text-muted-foreground">{b.insight}</p>
               </div>
             );
           })}
@@ -151,7 +155,7 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
 
         {/* AI Strategic Analysis */}
         {aiAnalysis && (
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-4">
+          <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
             <div className="flex items-center gap-2 mb-2">
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Competitive Analysis</span>
@@ -163,7 +167,7 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
         )}
 
         {aiError && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
             <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-600 dark:text-amber-400">{aiError}</p>
           </div>
