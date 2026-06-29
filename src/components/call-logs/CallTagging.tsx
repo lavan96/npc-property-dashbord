@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tag, Plus, X, Settings, Trash2 } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
+import { callLogBadgeBase } from './badgeStyles';
 
 interface CallTag {
   id: string;
@@ -37,7 +38,7 @@ const TAG_COLORS = [
 ];
 
 const getColorClass = (color: string) => {
-  return TAG_COLORS.find(c => c.name === color)?.class || TAG_COLORS[7].class;
+  return `${callLogBadgeBase} ${TAG_COLORS.find(c => c.name === color)?.class || TAG_COLORS[7].class}`;
 };
 
 // Secure API helpers
@@ -328,10 +329,12 @@ export const CallTagging = ({ callId, currentTags, onTagsUpdated, compact = fals
 // Tag filter component for the call list
 export const CallTagFilter = ({ 
   selectedTags, 
-  onTagsChange 
+  onTagsChange,
+  triggerClassName,
 }: { 
   selectedTags: string[]; 
   onTagsChange: (tags: string[]) => void;
+  triggerClassName?: string;
 }) => {
   const [availableTags, setAvailableTags] = useState<CallTag[]>([]);
 
@@ -354,25 +357,25 @@ export const CallTagFilter = ({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Tag className="w-4 h-4" />
+        <Button variant="outline" size="sm" className={`gap-2 ${triggerClassName || ''}`}>
+          <Tag className="h-4 w-4 shrink-0" />
           Tags
           {selectedTags.length > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+            <Badge variant="secondary" className={`${callLogBadgeBase} ml-1 h-5 px-1.5`}>
               {selectedTags.length}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-3" align="start">
-        <div className="space-y-2">
-          <span className="text-sm font-medium">Filter by Tags</span>
+      <PopoverContent className="w-72 border-white/10 bg-zinc-950/95 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl" align="start">
+        <div className="space-y-3">
+          <span className="text-sm font-semibold text-amber-100">Filter by Tags</span>
           <div className="flex flex-wrap gap-1.5">
             {availableTags.map(tag => (
               <Badge
                 key={tag.id}
                 className={`cursor-pointer transition-all ${getColorClass(tag.color)} ${
-                  selectedTags.includes(tag.name) ? 'ring-2 ring-offset-1 ring-offset-background' : 'opacity-60 hover:opacity-100'
+                  selectedTags.includes(tag.name) ? 'ring-2 ring-amber-300/70 ring-offset-1 ring-offset-zinc-950' : 'opacity-65 hover:opacity-100'
                 }`}
                 onClick={() => toggleTag(tag.name)}
               >

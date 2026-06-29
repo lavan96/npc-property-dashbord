@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
+import { callLogBadgeTone } from './badgeStyles';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Bell, 
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { cn } from '@/lib/utils';
 
 interface AlertRule {
   id: string;
@@ -66,6 +68,7 @@ interface CallLog {
 interface CallAlertsProps {
   calls: CallLog[];
   onAlertTriggered?: (alert: AlertHistory) => void;
+  triggerClassName?: string;
 }
 
 const CONDITION_TYPES = [
@@ -96,6 +99,16 @@ const VALUE_OPTIONS = {
   sentiment: ['positive', 'negative', 'neutral', 'mixed'],
   outcome: ['completed', 'failed', 'voicemail', 'no-answer', 'busy', 'cancelled'],
 };
+
+
+const alertDialogShell =
+  'max-h-[80vh] max-w-3xl overflow-y-auto border border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-900/95 to-black/95 p-0 text-zinc-50 shadow-2xl shadow-black/50';
+const alertSectionCard =
+  'relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-xl shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/35 before:to-transparent';
+const alertControl =
+  'rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all placeholder:text-zinc-600 hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+const alertPrimaryButton =
+  'rounded-2xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-semibold text-black shadow-lg shadow-amber-500/20 transition-all hover:-translate-y-0.5 hover:from-amber-200 hover:via-yellow-300 hover:to-amber-400 hover:shadow-amber-500/30 disabled:translate-y-0 disabled:opacity-50';
 
 // Secure API helpers
 async function fetchRulesSecure(): Promise<AlertRule[]> {
@@ -202,7 +215,7 @@ async function markAllReadSecure(): Promise<{ success: boolean; error?: string }
   return { success: true };
 }
 
-export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
+export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAlertsProps) => {
   const { toast } = useToast();
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [history, setHistory] = useState<AlertHistory[]>([]);
@@ -483,37 +496,45 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
       <div className="flex items-center gap-2">
         <Dialog open={showManager} onOpenChange={setShowManager}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 relative">
+            <Button variant="outline" size="sm" className={cn('group relative gap-2 border-amber-300/25 bg-amber-500/10 text-amber-100 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/15 hover:text-amber-50 hover:shadow-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black', triggerClassName)}>
               {unreadCount > 0 ? (
-                <BellRing className="w-4 h-4 text-amber-500" />
+                <BellRing className="h-4 w-4 text-amber-300" />
               ) : (
-                <Bell className="w-4 h-4" />
+                <Bell className="h-4 w-4 shrink-0" />
               )}
               Alerts
               {unreadCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+                <Badge className={callLogBadgeTone('danger', 'absolute -top-2 -right-2 h-5 w-5 justify-center p-0 text-[10px]')}>
                   {unreadCount}
                 </Badge>
               )}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Bell className="w-5 h-5" />
+          <DialogContent className={alertDialogShell}>
+            <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+            <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-500/10 blur-3xl" />
+            <DialogHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.94),rgba(0,0,0,0.78),rgba(120,53,15,0.16))] px-6 py-5">
+              <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                <BellRing className="h-3 w-3" />
+                Operational Monitoring
+              </div>
+              <DialogTitle className="flex items-center gap-3 text-2xl text-zinc-50">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-500/10 text-amber-200 shadow-inner shadow-amber-950/40">
+                  <Bell className="h-5 w-5" />
+                </span>
                 Call Alerts
               </DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-6">
+            <div className="space-y-6 px-6 py-5">
               {/* Email Configuration */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
+              <Card className={alertSectionCard}>
+                <CardHeader className="border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-amber-500/10 pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm text-zinc-50">
                     <Mail className="w-4 h-4" />
                     Email Notifications
                   </CardTitle>
-                  <CardDescription className="text-xs">
+                  <CardDescription className="text-xs text-zinc-500">
                     Configure email address for alert notifications
                   </CardDescription>
                 </CardHeader>
@@ -524,11 +545,12 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                       placeholder="admin@example.com"
                       value={emailRecipient}
                       onChange={(e) => setEmailRecipient(e.target.value)}
-                      className="flex-1"
+                      className={cn("flex-1", alertControl)}
                     />
                     <Button
                       size="sm"
                       variant="outline"
+                      className="rounded-2xl border-blue-300/20 bg-blue-500/10 text-blue-100 hover:bg-blue-500/20"
                       onClick={() => {
                         localStorage.setItem('alertEmailRecipient', emailRecipient);
                         toast({ title: 'Saved', description: 'Email recipient saved' });
@@ -542,15 +564,16 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
               </Card>
 
               {/* Create New Rule */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
+              <Card className={alertSectionCard}>
+                <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-purple-500/10 pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm text-zinc-50">
                     <Plus className="w-4 h-4" />
                     Create Alert Rule
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <Input
+                    className={alertControl}
                     placeholder="Rule name (e.g., 'Negative Sentiment Alert')"
                     value={newRuleName}
                     onChange={(e) => setNewRuleName(e.target.value)}
@@ -561,7 +584,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                       setNewOperator(OPERATORS[v as keyof typeof OPERATORS]?.[0]?.value || 'equals');
                       setNewValue('');
                     }}>
-                      <SelectTrigger>
+                      <SelectTrigger className={alertControl}>
                         <SelectValue placeholder="Condition" />
                       </SelectTrigger>
                       <SelectContent>
@@ -577,7 +600,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                     </Select>
                     
                     <Select value={newOperator} onValueChange={setNewOperator}>
-                      <SelectTrigger>
+                      <SelectTrigger className={alertControl}>
                         <SelectValue placeholder="Operator" />
                       </SelectTrigger>
                       <SelectContent>
@@ -589,7 +612,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                     
                     {VALUE_OPTIONS[newConditionType as keyof typeof VALUE_OPTIONS] ? (
                       <Select value={newValue} onValueChange={setNewValue}>
-                        <SelectTrigger>
+                        <SelectTrigger className={alertControl}>
                           <SelectValue placeholder="Value" />
                         </SelectTrigger>
                         <SelectContent>
@@ -600,6 +623,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                       </Select>
                     ) : (
                       <Input
+                        className={alertControl}
                         type="number"
                         placeholder={newConditionType === 'duration' ? 'Seconds' : 'Amount'}
                         value={newValue}
@@ -610,9 +634,9 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                   
                   {/* Notification Type Selection */}
                   <div className="space-y-2">
-                    <Label className="text-sm">Notification Type</Label>
+                    <Label className="text-xs uppercase tracking-[0.16em] text-zinc-500">Notification Type</Label>
                     <Select value={newNotificationType} onValueChange={setNewNotificationType}>
-                      <SelectTrigger>
+                      <SelectTrigger className={alertControl}>
                         <SelectValue placeholder="Select notification type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -638,22 +662,22 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                     </Select>
                   </div>
                   
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between rounded-3xl border border-white/10 bg-white/[0.03] p-4">
                     <div className="flex items-center gap-2">
                       <Switch checked={newIsPositive} onCheckedChange={setNewIsPositive} />
                       <span className="text-sm">
                         {newIsPositive ? (
-                          <span className="flex items-center gap-1 text-emerald-500">
+                          <span className="flex items-center gap-1 text-emerald-300">
                             <ThumbsUp className="w-4 h-4" /> Positive Alert
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 text-amber-500">
+                          <span className="flex items-center gap-1 text-amber-300">
                             <AlertTriangle className="w-4 h-4" /> Warning Alert
                           </span>
                         )}
                       </span>
                     </div>
-                    <Button onClick={createRule} disabled={loading || !newRuleName.trim() || !newValue} size="sm">
+                    <Button onClick={createRule} disabled={loading || !newRuleName.trim() || !newValue} size="sm" className={alertPrimaryButton}>
                       <Plus className="w-4 h-4 mr-1" />
                       Create Rule
                     </Button>
@@ -662,9 +686,9 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
               </Card>
 
               {/* Active Rules */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
+              <Card className={alertSectionCard}>
+                <CardHeader className="border-b border-white/10 bg-gradient-to-r from-purple-500/10 via-transparent to-blue-500/10 pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm text-zinc-50">
                     <Settings className="w-4 h-4" />
                     Active Rules ({rules.length})
                   </CardTitle>
@@ -675,18 +699,18 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                       {rules.map(rule => {
                         const Icon = getConditionIcon(rule.condition_type);
                         return (
-                          <div key={rule.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                          <div key={rule.id} className="group flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-3 transition-all hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/[0.06] hover:shadow-lg hover:shadow-amber-500/10">
                             <div className="flex items-center gap-3">
-                              <div className={`p-1.5 rounded ${rule.is_positive ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
-                                <Icon className={`w-4 h-4 ${rule.is_positive ? 'text-emerald-500' : 'text-amber-500'}`} />
+                              <div className={`rounded-2xl border p-2 ${rule.is_positive ? 'border-emerald-300/20 bg-emerald-500/10' : 'border-amber-300/20 bg-amber-500/10'}`}>
+                                <Icon className={`h-4 w-4 ${rule.is_positive ? 'text-emerald-300' : 'text-amber-300'}`} />
                               </div>
                               <div>
-                                <p className="text-sm font-medium">{rule.name}</p>
+                                <p className="text-sm font-semibold text-zinc-100">{rule.name}</p>
                                 <div className="flex items-center gap-2">
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-zinc-500">
                                     {rule.condition_type} {rule.condition_operator.replace('_', ' ')} {rule.condition_value}
                                   </p>
-                                  <Badge variant="outline" className="text-[10px] h-4">
+                                  <Badge variant="outline" className={callLogBadgeTone('neutral', 'h-4 text-[10px]')}>
                                     {rule.notification_type === 'email' && <Mail className="w-3 h-3 mr-1" />}
                                     {rule.notification_type === 'both' && <Send className="w-3 h-3 mr-1" />}
                                     {getNotificationTypeLabel(rule.notification_type)}
@@ -702,7 +726,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                className="h-8 w-8 rounded-xl p-0 text-zinc-500 hover:bg-red-500/10 hover:text-red-300"
                                 onClick={() => deleteRule(rule.id)}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -712,7 +736,7 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                         );
                       })}
                       {rules.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">No alert rules configured</p>
+                        <p className="rounded-2xl border border-white/10 bg-white/[0.03] py-5 text-center text-sm text-zinc-500">No alert rules configured</p>
                       )}
                     </div>
                   </ScrollArea>
@@ -720,15 +744,15 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
               </Card>
 
               {/* Alert History */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm flex items-center gap-2">
+              <Card className={alertSectionCard}>
+                <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-emerald-500/10 pb-3">
+                  <div className="flex items-center justify-between rounded-3xl border border-white/10 bg-white/[0.03] p-4">
+                    <CardTitle className="flex items-center gap-2 text-sm text-zinc-50">
                       <Zap className="w-4 h-4" />
                       Recent Alerts
                     </CardTitle>
                     {unreadCount > 0 && (
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllRead}>
+                      <Button variant="ghost" size="sm" className="h-8 rounded-2xl text-xs text-amber-100 hover:bg-amber-300/10" onClick={markAllRead}>
                         Mark all read
                       </Button>
                     )}
@@ -740,33 +764,33 @@ export const CallAlerts = ({ calls, onAlertTriggered }: CallAlertsProps) => {
                       {history.map(alert => (
                         <div
                           key={alert.id}
-                          className={`flex items-start gap-3 p-2 rounded-lg transition-colors ${
-                            !alert.is_read ? 'bg-primary/5' : 'bg-muted/30'
+                          className={`group flex items-start gap-3 rounded-2xl border p-3 transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+                            !alert.is_read ? 'border-amber-300/25 bg-amber-300/[0.06] hover:shadow-amber-500/10' : 'border-white/10 bg-white/[0.03] hover:border-white/20'
                           }`}
                         >
-                          <div className={`p-1.5 rounded ${alert.is_positive ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
+                          <div className={`rounded-2xl border p-2 ${alert.is_positive ? 'border-emerald-300/20 bg-emerald-500/10' : 'border-amber-300/20 bg-amber-500/10'}`}>
                             {alert.is_positive ? (
-                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                              <CheckCircle className="h-4 w-4 text-emerald-300" />
                             ) : (
-                              <AlertTriangle className="w-4 h-4 text-amber-500" />
+                              <AlertTriangle className="h-4 w-4 text-amber-300" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium truncate">{alert.rule_name}</p>
+                              <p className="truncate text-sm font-semibold text-zinc-100">{alert.rule_name}</p>
                               {!alert.is_read && (
-                                <Badge variant="secondary" className="h-4 text-[10px]">New</Badge>
+                                <Badge variant="secondary" className={callLogBadgeTone('warning', 'h-4 text-[10px]')}>New</Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground">{alert.message}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
+                            <p className="text-xs text-zinc-500">{alert.message}</p>
+                            <p className="mt-0.5 text-xs text-zinc-500">
                               {format(new Date(alert.triggered_at), 'MMM dd, HH:mm')}
                             </p>
                           </div>
                         </div>
                       ))}
                       {history.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">No alerts yet</p>
+                        <p className="rounded-2xl border border-white/10 bg-white/[0.03] py-5 text-center text-sm text-zinc-500">No alerts yet</p>
                       )}
                     </div>
                   </ScrollArea>

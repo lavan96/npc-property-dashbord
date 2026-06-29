@@ -19,7 +19,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Trash2, Loader2, Plus, X, Settings2 } from 'lucide-react';
+import { Trash2, Loader2, Plus, X, Settings2, ShieldAlert, FlaskConical } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Default test phone numbers
 const DEFAULT_TEST_NUMBERS = [
@@ -27,11 +28,21 @@ const DEFAULT_TEST_NUMBERS = [
   '+61489084599',
 ];
 
+
+const utilityControl =
+  'rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all placeholder:text-zinc-600 hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+const utilityPopoverShell =
+  'w-80 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-900/95 to-black/95 p-0 text-zinc-50 shadow-2xl shadow-black/50';
+const destructiveDialogShell =
+  'overflow-hidden border border-red-400/20 bg-gradient-to-br from-zinc-950/98 via-zinc-900/95 to-black/95 p-0 text-zinc-50 shadow-2xl shadow-red-950/30 sm:max-w-lg';
+
 interface CleanupTestCallsProps {
   onComplete?: () => void;
+  testNumbersButtonClassName?: string;
+  flushButtonClassName?: string;
 }
 
-export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
+export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flushButtonClassName }: CleanupTestCallsProps) => {
   const { toast } = useToast();
   const { cleanupTestCalls } = useSecureCallLogs();
   const [isLoading, setIsLoading] = useState(false);
@@ -116,20 +127,21 @@ export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
       {/* Manage Numbers Popover */}
       <Popover open={isManageOpen} onOpenChange={setIsManageOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Settings2 className="w-4 h-4" />
+          <Button variant="outline" size="sm" className={cn('group gap-2 border-blue-300/20 bg-blue-500/10 text-blue-100 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-blue-300/40 hover:bg-blue-500/15 hover:text-blue-50 hover:shadow-blue-500/10 focus-visible:ring-2 focus-visible:ring-blue-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black', testNumbersButtonClassName)}>
+            <Settings2 className="h-4 w-4 shrink-0 transition-transform group-hover:rotate-45" />
             <span className="hidden sm:inline">Test Numbers ({testNumbers.length})</span>
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80" align="end">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Test Phone Numbers</h4>
-              <p className="text-xs text-muted-foreground">
-                Calls from these numbers will be removed when flushing test calls.
-              </p>
+        <PopoverContent className={utilityPopoverShell} align="end">
+          <div className="border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-amber-500/10 px-4 py-3">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">
+              <FlaskConical className="h-3 w-3" />
+              Controlled Testing
             </div>
-            
+            <h4 className="text-sm font-semibold text-zinc-50">Test Phone Numbers</h4>
+            <p className="mt-1 text-xs text-zinc-500">Calls from these numbers will be removed when flushing test calls.</p>
+          </div>
+          <div className="space-y-4 p-4">
             {/* Add new number */}
             <div className="flex gap-2">
               <Input
@@ -137,30 +149,30 @@ export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
                 value={newNumber}
                 onChange={(e) => setNewNumber(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddNumber()}
-                className="flex-1"
+                className={cn("flex-1", utilityControl)}
               />
-              <Button size="sm" onClick={handleAddNumber} disabled={!newNumber.trim()}>
+              <Button size="sm" onClick={handleAddNumber} disabled={!newNumber.trim()} className="rounded-2xl bg-blue-500/15 text-blue-100 hover:bg-blue-500/25">
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
 
             {/* Number list */}
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="max-h-48 space-y-2 overflow-y-auto pr-1 scrollbar-thin scrollbar-track-black/20 scrollbar-thumb-amber-300/30">
               {testNumbers.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-2">
+                <p className="rounded-2xl border border-white/10 bg-white/[0.03] py-3 text-center text-sm text-zinc-500">
                   No test numbers configured
                 </p>
               ) : (
                 testNumbers.map((number) => (
                   <div
                     key={number}
-                    className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2"
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 transition-colors hover:border-blue-300/25 hover:bg-blue-500/10"
                   >
-                    <span className="font-mono text-sm">{number}</span>
+                    <span className="font-mono text-sm text-zinc-100">{number}</span>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                      className="h-7 w-7 rounded-xl p-0 text-zinc-500 hover:bg-red-500/10 hover:text-red-300"
                       onClick={() => handleRemoveNumber(number)}
                     >
                       <X className="w-3 h-3" />
@@ -175,7 +187,7 @@ export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-xs"
+                className="w-full rounded-2xl text-xs text-zinc-400 hover:bg-amber-300/10 hover:text-amber-100"
                 onClick={() => setTestNumbers(DEFAULT_TEST_NUMBERS)}
               >
                 Reset to defaults
@@ -191,36 +203,43 @@ export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
           <Button 
             variant="outline" 
             size="sm" 
-            className="gap-2 text-destructive hover:text-destructive"
+            className={cn('group gap-2 border-red-400/25 bg-red-500/10 text-red-200 shadow-lg shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-red-300/45 hover:bg-red-500/15 hover:text-red-100 hover:shadow-red-500/10 focus-visible:ring-2 focus-visible:ring-red-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black', flushButtonClassName)}
             disabled={testNumbers.length === 0}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Flush Test Calls</span>
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Flush Test Calls</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
+        <AlertDialogContent className={destructiveDialogShell}>
+          <div className="border-b border-red-400/20 bg-gradient-to-r from-red-500/15 via-black/40 to-amber-500/10 px-6 py-5">
+            <AlertDialogHeader>
+              <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-red-300/25 bg-red-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-100">
+                <ShieldAlert className="h-3 w-3" />
+                Destructive Action
+              </div>
+              <AlertDialogTitle className="flex items-center gap-3 text-2xl text-zinc-50">Flush Test Calls</AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3 text-zinc-400">
               <p>
                 This will permanently delete all call logs from the following test phone numbers:
               </p>
-              <ul className="list-disc list-inside space-y-1 text-foreground/80 font-mono text-sm max-h-32 overflow-y-auto">
+              <ul className="max-h-32 space-y-1 overflow-y-auto rounded-2xl border border-white/10 bg-black/30 p-3 font-mono text-sm text-zinc-100">
                 {testNumbers.map((number) => (
                   <li key={number}>{number}</li>
                 ))}
               </ul>
-              <p className="text-destructive font-medium">
+              <p className="rounded-2xl border border-red-300/25 bg-red-500/10 px-3 py-2 font-semibold text-red-100">
                 This action cannot be undone.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          </div>
+          <div className="px-6 py-5">
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isLoading} className="rounded-2xl border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/10 hover:text-zinc-50">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCleanup}
               disabled={isLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="rounded-2xl bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-950/30 hover:from-red-500 hover:to-red-400"
             >
               {isLoading ? (
                 <>
@@ -235,6 +254,7 @@ export const CleanupTestCalls = ({ onComplete }: CleanupTestCallsProps) => {
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
     </div>
