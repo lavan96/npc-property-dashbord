@@ -148,8 +148,8 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-h-[min(85vh,760px)] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40 sm:w-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-50">
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="text-xl font-bold sm:text-2xl tracking-tight text-zinc-50">
             {step === 'input' && 'Import Checklist Template'}
             {step === 'preview' && 'Preview Template'}
             {step === 'importing' && 'Importing...'}
@@ -182,9 +182,9 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
             </div>
 
             <Tabs defaultValue="upload" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 rounded-2xl border border-white/5 bg-black/60 p-1">
-                <TabsTrigger value="upload" className="rounded-xl transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black motion-reduce:transition-none">Upload File</TabsTrigger>
-                <TabsTrigger value="paste" className="rounded-xl transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black motion-reduce:transition-none">Paste Content</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 rounded-2xl border border-white/5 bg-black/60 p-1">
+                <TabsTrigger value="upload" className="min-h-11 rounded-xl transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black motion-reduce:transition-none">Upload File</TabsTrigger>
+                <TabsTrigger value="paste" className="min-h-11 rounded-xl transition-all duration-200 hover:bg-white/5 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black motion-reduce:transition-none">Paste Content</TabsTrigger>
               </TabsList>
 
               <TabsContent value="upload" className="mt-3">
@@ -241,7 +241,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   onChange={e => setPasteContent(e.target.value)}
                   className="max-h-[42vh] min-h-72 overflow-y-auto [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-black/35 font-mono text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 />
-                <Button onClick={handleParsePaste} disabled={!pasteContent.trim()} className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none">
+                <Button onClick={handleParsePaste} disabled={!pasteContent.trim()} className="min-h-11 w-full bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none">
                   Parse Content
                 </Button>
               </TabsContent>
@@ -346,16 +346,16 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
           {step === 'input' && (
-            <Button variant="ghost" className="text-zinc-300 transition-all duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none" onClick={() => handleClose(false)}>Cancel</Button>
+            <Button variant="ghost" className="min-h-10 w-full text-zinc-300 transition-all sm:w-auto duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none" onClick={() => handleClose(false)}>Cancel</Button>
           )}
           {step === 'preview' && (
             <>
-              <Button variant="ghost" className="text-zinc-300 transition-all duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none" onClick={() => { setStep('input'); setParsedTemplate(null); }}>
+              <Button variant="ghost" className="min-h-10 w-full text-zinc-300 transition-all sm:w-auto duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none" onClick={() => { setStep('input'); setParsedTemplate(null); }}>
                 ← Back
               </Button>
-              <Button onClick={handleImport} className="bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none">
+              <Button onClick={handleImport} className="min-h-10 w-full bg-gradient-to-r from-amber-500 sm:w-auto to-yellow-400 font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none">
                 Import {totalItems} Items
               </Button>
             </>

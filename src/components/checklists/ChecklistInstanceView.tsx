@@ -109,7 +109,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
       <div className="rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
-            <Button variant="ghost" size="sm" onClick={onBack} className="w-fit gap-1 border border-white/5 bg-black/30 text-zinc-300 transition-all duration-200 hover:-translate-x-0.5 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none">
+            <Button variant="ghost" size="sm" onClick={onBack} className="min-h-10 w-fit gap-1 border border-white/5 bg-black/30 text-zinc-300 transition-all duration-200 hover:-translate-x-0.5 hover:border-amber-300/35 hover:bg-amber-400/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none">
               <ArrowLeft className="h-4 w-4 mr-1" /> Back
             </Button>
             <div className="min-w-0">
@@ -127,30 +127,30 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center lg:justify-end">
             <Button
               variant="outline"
               size="sm"
               onClick={handleArchive}
-              className="gap-1 border-zinc-600/50 bg-black/30 text-zinc-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-400/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none"
+              className="min-h-10 justify-center gap-1 border-zinc-600/50 bg-black/30 text-zinc-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-400/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none"
               disabled={mutations.updateInstance.isPending}
             >
               <Archive className="h-3 w-3" /> Archive
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1 border-destructive/35 bg-destructive/5 text-destructive transition-all duration-200 hover:-translate-y-0.5 hover:border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_10px_24px_rgba(239,68,68,0.12)] focus-visible:ring-2 focus-visible:ring-destructive/45 motion-reduce:transition-none">
+                <Button variant="outline" size="sm" className="min-h-10 justify-center gap-1 border-destructive/35 bg-destructive/5 text-destructive transition-all duration-200 hover:-translate-y-0.5 hover:border-destructive/70 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_10px_24px_rgba(239,68,68,0.12)] focus-visible:ring-2 focus-visible:ring-destructive/45 motion-reduce:transition-none">
                   <Trash2 className="h-3 w-3" /> Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Checklist Instance</AlertDialogTitle>
                   <AlertDialogDescription>
                     This will permanently delete this generated checklist instance and all its items. The parent template remains available in Templates.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
+                <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleDelete} disabled={mutations.deleteInstance.isPending}>Delete Instance</AlertDialogAction>
                 </AlertDialogFooter>
@@ -235,7 +235,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                 {section.items.map(item => (
                   <div
                     key={item.id}
-                    className={`group/task flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-500/10 hover:shadow-[0_10px_24px_rgba(245,158,11,0.08)] motion-reduce:transition-none focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
+                    className={`group/task flex min-h-12 min-w-0 cursor-pointer flex-wrap items-start gap-3 sm:flex-nowrap rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-500/10 hover:shadow-[0_10px_24px_rgba(245,158,11,0.08)] motion-reduce:transition-none focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
                     onClick={() => handleToggleItem(item.id, item.is_checked)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
@@ -252,11 +252,11 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                       onCheckedChange={() => handleToggleItem(item.id, item.is_checked)}
                       className="pointer-events-none mt-0.5 h-5 w-5 rounded-full border-amber-300/55 bg-black/40 shadow-inner shadow-black/30 transition-all duration-200 data-[state=checked]:border-emerald-300 data-[state=checked]:bg-emerald-400 data-[state=checked]:text-black group-hover/task:border-amber-200"
                     />
-                    <span className={`min-w-0 flex-1 whitespace-normal break-words text-sm leading-6 ${item.is_checked ? 'text-zinc-300 line-through decoration-emerald-300/70 decoration-2 underline-offset-4' : 'text-zinc-100'}`}>
+                    <span className={`min-w-0 flex-1 basis-[calc(100%-2rem)] whitespace-normal break-words sm:basis-auto text-sm leading-6 ${item.is_checked ? 'text-zinc-300 line-through decoration-emerald-300/70 decoration-2 underline-offset-4' : 'text-zinc-100'}`}>
                       {item.label}
                     </span>
                     {item.checked_at && (
-                      <span className="rounded-full border border-emerald-300/15 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                      <span className="ml-8 rounded-full border border-emerald-300/15 sm:ml-0 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-200">
                         {new Date(item.checked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}

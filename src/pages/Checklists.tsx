@@ -54,12 +54,12 @@ export default function Checklists() {
     return (
       <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
         <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
               <ClipboardList className="h-6 w-6" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
+            <div className="min-w-0">
+              <h1 className="break-words text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
               <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
@@ -76,12 +76,12 @@ export default function Checklists() {
     return (
       <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
         <div className="rounded-2xl border border-white/5 bg-black/30 p-5 shadow-inner shadow-amber-950/10">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200">
               <ClipboardList className="h-6 w-6" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
+            <div className="min-w-0">
+              <h1 className="break-words text-3xl font-bold tracking-tight text-zinc-50">Checklists</h1>
               <p className="text-zinc-400">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
@@ -164,11 +164,12 @@ export default function Checklists() {
         }}
         role="button"
         tabIndex={0}
+        aria-label={`Open checklist ${instance.name}`}
       >
         <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" />
         <CardContent className="relative p-5">
-          <div className="mb-5 flex items-start justify-between gap-3">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-3.5">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-black/35 text-xl shadow-inner shadow-amber-950/20">{instance.icon}</span>
               <div className="min-w-0">
@@ -179,7 +180,7 @@ export default function Checklists() {
                 </p>
               </div>
             </div>
-            <Badge variant="outline" className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shadow-sm ${statusClass}`}>
+            <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] shadow-sm ${statusClass}`}>
               {instance.status === 'completed' && <CheckCircle2 className="mr-1 h-3 w-3" />}
               {instance.status}
             </Badge>
@@ -202,13 +203,13 @@ export default function Checklists() {
   return (
     <div className="mx-auto flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
       <div className="rounded-2xl border border-white/5 bg-black/35 p-5 shadow-inner shadow-amber-950/10">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200 shadow-[0_18px_42px_rgba(245,158,11,0.16)]">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-amber-300/20 via-zinc-950 to-black text-amber-200 shadow-[0_18px_42px_rgba(245,158,11,0.16)]">
               <ClipboardList className="h-7 w-7" />
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl">Checklists</h1>
+            <div className="min-w-0">
+              <h1 className="break-words text-3xl font-bold tracking-tight text-zinc-50 md:text-4xl">Checklists</h1>
               <p className="mt-1 text-sm leading-6 text-zinc-400 md:text-base">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
@@ -218,22 +219,22 @@ export default function Checklists() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-h-0 flex-1 space-y-5">
         <div className="overflow-x-auto overscroll-x-contain rounded-3xl [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border border-amber-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(9,9,11,0.92)_32%,rgba(3,3,3,0.96))] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
           <TabsList className="inline-flex h-auto w-auto min-w-full gap-1 rounded-2xl border border-white/5 bg-black/70 p-1.5 md:grid md:w-full md:grid-cols-4">
-            <TabsTrigger value="active" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+            <TabsTrigger value="active" className="group flex min-h-12 min-w-[8rem] items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
               <ClipboardList className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
               <span>Active</span>
               <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{activeInstances.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="completed" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+            <TabsTrigger value="completed" className="group flex min-h-12 min-w-[8rem] items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
               <span>Completed</span>
               <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{completedInstances.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="archived" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+            <TabsTrigger value="archived" className="group flex min-h-12 min-w-[8rem] items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
               <span className="shrink-0 text-sm leading-none transition-transform duration-200 group-data-[state=active]:scale-110">📦</span>
               <span>Archived</span>
               <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{archivedInstances.length}</span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="group flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
+            <TabsTrigger value="templates" className="group flex min-h-12 min-w-[8rem] items-center justify-center gap-2 rounded-xl px-4 text-xs font-semibold text-zinc-400 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/5 hover:text-amber-100 hover:shadow-[0_10px_26px_rgba(245,158,11,0.12)] focus-visible:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_12px_30px_rgba(245,158,11,0.26)] md:text-sm">
               <LayoutTemplate className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-110 md:h-4 md:w-4" />
               <span>Templates</span>
               <span className="rounded-full border border-current/20 bg-black/20 px-2 py-0.5 text-[10px] font-bold tabular-nums group-data-[state=active]:bg-black/10 md:text-xs">{templates.length}</span>
@@ -338,23 +339,23 @@ export default function Checklists() {
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <div className="w-20">
                         <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Icon</Label>
-                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} className="mt-1 border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-amber-300/45" />
+                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} aria-label="Template icon" className="mt-1 border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-amber-300/45" />
                       </div>
                       <div className="flex-1">
                         <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Name</Label>
-                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" aria-label="Template name" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
                         <p className="mt-1.5 text-[11px] text-zinc-500">Give this blueprint a clear operational name.</p>
                       </div>
                     </div>
                     <div>
                       <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Description (optional)</Label>
-                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} aria-label="Template description" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
                       <p className="mt-1.5 text-[11px] text-zinc-500">Use this to clarify when the template should be generated or followed.</p>
                     </div>
                   </div>
-                  <DialogFooter className="gap-2">
-                    <Button variant="ghost" className="text-zinc-300 transition-all duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-                    <Button className="bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black shadow-[0_12px_28px_rgba(245,158,11,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_16px_34px_rgba(245,158,11,0.3)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none" onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
+                  <DialogFooter className="flex-col gap-2 sm:flex-row">
+                    <Button variant="ghost" className="w-full text-zinc-300 transition-all duration-200 sm:w-auto hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-amber-300/55 motion-reduce:transition-none" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                    <Button className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black shadow-[0_12px_28px_rgba(245,158,11,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:from-amber-400 hover:to-yellow-300 hover:shadow-[0_16px_34px_rgba(245,158,11,0.3)] focus-visible:ring-2 focus-visible:ring-amber-300/70 motion-reduce:transition-none sm:w-auto" onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
                   </DialogFooter>
                 </DialogContent>
                 </Dialog>
@@ -389,6 +390,7 @@ export default function Checklists() {
                   }}
                   role="button"
                   tabIndex={0}
+                  aria-label={`Open template ${template.name}`}
                 >
                   <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                   <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -409,7 +411,7 @@ export default function Checklists() {
                         </div>
                       </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-black/30 p-3">
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-white/5 bg-black/30 p-3">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {template.cron_enabled && (
                           <Badge variant="secondary" className="gap-1 rounded-full border border-amber-300/20 bg-amber-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200">
@@ -423,17 +425,18 @@ export default function Checklists() {
                           </Badge>
                         )}
                       </div>
-                      <div className="flex shrink-0 items-center gap-1 rounded-full border border-white/5 bg-black/35 p-1 opacity-80 transition-opacity group-hover:opacity-100" onClick={e => e.stopPropagation()}>
+                      <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto rounded-full border border-white/5 bg-black/35 p-1 opacity-80 transition-opacity group-hover:opacity-100" onClick={e => e.stopPropagation()}>
                         <Button
                           size="icon" variant="ghost" className="h-7 w-7 text-amber-100 hover:bg-amber-400/10 hover:text-amber-50"
                           onClick={() => mutations.generateFromTemplate.mutate(template)}
                           title="Generate checklist"
+                          aria-label={`Generate checklist from ${template.name}`}
                         >
                           <PlayCircle className="h-3.5 w-3.5" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive">
+                            <Button size="icon" variant="ghost" aria-label={`Delete template ${template.name}`} className="h-7 w-7 text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive">
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </AlertDialogTrigger>
