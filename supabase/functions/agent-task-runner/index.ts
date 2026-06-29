@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
             .from('checklist_instances')
             .select('id,status')
             .in('recurrence_key', [recurrenceKey, legacyRecurrenceKey])
+            .limit(1)
             .maybeSingle();
 
           if (existingErr) {

@@ -303,40 +303,50 @@ export function useChecklistMutations() {
       const recurrenceKey = buildChecklistRecurrenceKey(template.id, dueDate, ownerContext);
       const legacyRecurrenceKey = buildLegacyChecklistRecurrenceKey(template.id, dueDate);
 
-      const existingResult = await invoke({
-        operation: 'list',
-        table: 'checklist_instances',
-        listOptions: { filters: { recurrence_key: recurrenceKey }, limit: 1 },
-      });
-      let existing = existingResult?.records?.[0];
+      const findExistingOccurrence = async () => {
+        const existingResult = await invoke({
+          operation: 'list',
+          table: 'checklist_instances',
+          listOptions: { filters: { recurrence_key: recurrenceKey }, limit: 1 },
+        });
+        const existing = existingResult?.records?.[0];
+        if (existing) return existing;
 
-      if (!existing) {
         const legacyExistingResult = await invoke({
           operation: 'list',
           table: 'checklist_instances',
           listOptions: { filters: { recurrence_key: legacyRecurrenceKey }, limit: 1 },
         });
-        existing = legacyExistingResult?.records?.[0];
-      }
+        return legacyExistingResult?.records?.[0];
+      };
+
+      const existing = await findExistingOccurrence();
 
       if (existing) return existing;
 
       // 1. Create instance
-      const instanceResult = await invoke({
-        operation: 'insert',
-        table: 'checklist_instances',
-        data: {
-          template_id: template.id,
-          name: template.name,
-          description: template.description,
-          icon: template.icon,
-          generated_by: 'manual',
-          status: 'in_progress',
-          progress_percent: 0,
-          due_date: dueDate,
-          recurrence_key: recurrenceKey,
-        },
-      });
+      let instanceResult;
+      try {
+        instanceResult = await invoke({
+          operation: 'insert',
+          table: 'checklist_instances',
+          data: {
+            template_id: template.id,
+            name: template.name,
+            description: template.description,
+            icon: template.icon,
+            generated_by: 'manual',
+            status: 'in_progress',
+            progress_percent: 0,
+            due_date: dueDate,
+            recurrence_key: recurrenceKey,
+          },
+        });
+      } catch (error) {
+        const concurrentExisting = await findExistingOccurrence();
+        if (concurrentExisting) return concurrentExisting;
+        throw error;
+      }
       const instance = instanceResult?.record;
       if (!instance) throw new Error('Failed to create instance');
 
