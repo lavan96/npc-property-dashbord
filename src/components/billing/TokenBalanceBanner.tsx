@@ -24,6 +24,7 @@ export function TokenBalanceBanner() {
   const isClientTrackerPage = pathname === "/client-tracker";
   const isMessagesPage = pathname === "/messages";
   const isCallLogsPage = pathname === "/call-logs";
+  const isRemindersPage = pathname === "/reminders";
   const isChecklistsPage = pathname === "/checklists";
 
   if (!lowBalance || !balance) return null;
