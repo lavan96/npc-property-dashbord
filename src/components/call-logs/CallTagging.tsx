@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tag, Plus, X, Settings, Trash2 } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
+import { callLogBadgeBase } from './badgeStyles';
 
 interface CallTag {
   id: string;
@@ -37,7 +38,7 @@ const TAG_COLORS = [
 ];
 
 const getColorClass = (color: string) => {
-  return TAG_COLORS.find(c => c.name === color)?.class || TAG_COLORS[7].class;
+  return `${callLogBadgeBase} ${TAG_COLORS.find(c => c.name === color)?.class || TAG_COLORS[7].class}`;
 };
 
 // Secure API helpers
@@ -360,7 +361,7 @@ export const CallTagFilter = ({
           <Tag className="h-4 w-4 shrink-0" />
           Tags
           {selectedTags.length > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+            <Badge variant="secondary" className={`${callLogBadgeBase} ml-1 h-5 px-1.5`}>
               {selectedTags.length}
             </Badge>
           )}
