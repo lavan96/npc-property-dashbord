@@ -36,9 +36,9 @@ interface Props {
 export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading game plans">
         {[1, 2, 3].map(i => (
-          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20">
+          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20" aria-hidden="true">
             <CardContent className="space-y-5 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
 
   if (!plans.length) {
     return (
-      <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20">
+      <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20" role="status">
         <CardContent className="flex flex-col items-center justify-center py-16 text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-4xl shadow-inner shadow-primary/10">🎯</div>
           <h3 className="text-lg font-semibold text-foreground">No game plans yet</h3>
@@ -75,16 +75,22 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3" role="list" aria-label="Game plans">
       {plans.map((plan, i) => {
         const cfg = statusConfig[plan.status] || statusConfig.planning;
         return (
           <Card
             key={plan.id}
-            className="group relative overflow-hidden cursor-pointer border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-lg shadow-black/5 ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/65 dark:ring-white/10 dark:shadow-black/25 dark:hover:shadow-primary/10"
+            role="listitem"
+            className="group relative overflow-hidden cursor-pointer border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-lg shadow-black/5 ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10 focus-within:border-primary/30 focus-within:shadow-2xl focus-within:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/65 dark:ring-white/10 dark:shadow-black/25 dark:hover:shadow-primary/10"
             style={{ animationDelay: `${i * 80}ms` }}
-            onClick={() => onSelect(plan.id)}
           >
+            <button
+              type="button"
+              className="absolute inset-0 z-10 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              onClick={() => onSelect(plan.id)}
+              aria-label={`Open game plan ${plan.name}`}
+            />
             {/* Top gradient accent */}
             <div
               className="absolute inset-x-0 top-0 h-1.5 rounded-t-xl"
@@ -137,7 +143,7 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 rounded-full text-muted-foreground opacity-0 transition-all duration-200 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                      className="relative z-20 h-8 w-8 rounded-full text-muted-foreground opacity-0 transition-all duration-200 hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
                       onClick={(e) => { e.stopPropagation(); onDelete(plan.id); }}
                       aria-label={`Delete ${plan.name}`}
                     >

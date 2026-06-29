@@ -34,7 +34,7 @@ export default function GamePlan() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="relative space-y-6 rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.18)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
+      className="relative min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.18)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
     >
       {/* Header */}
       <DashboardThemeFrame
@@ -57,6 +57,7 @@ export default function GamePlan() {
         {canEdit && activeTab === 'plans' && (
           <Button
             onClick={() => setShowCreate(true)}
+            aria-label="Create a new game plan"
             className="h-11 w-full gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/40 sm:w-auto"
           >
             <Plus className="h-4 w-4" /> New Game Plan
@@ -65,7 +66,7 @@ export default function GamePlan() {
       </DashboardThemeFrame>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 space-y-4">
         <DashboardThemeFrame
           variant="toolbar"
           className="overflow-x-auto rounded-2xl border-primary/15 bg-card/65 p-1.5 shadow-inner shadow-black/5 dark:bg-slate-950/45 dark:shadow-black/20"
@@ -96,7 +97,7 @@ export default function GamePlan() {
           </TabsList>
         </DashboardThemeFrame>
 
-        <TabsContent value="plans" className="mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <TabsContent value="plans" className="mt-0 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
           <DashboardThemeFrame
             as="section"
             variant="section"
@@ -111,7 +112,7 @@ export default function GamePlan() {
           </DashboardThemeFrame>
         </TabsContent>
 
-        <TabsContent value="assigned" className="mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <TabsContent value="assigned" className="mt-0 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
           <DashboardThemeFrame
             as="section"
             variant="section"

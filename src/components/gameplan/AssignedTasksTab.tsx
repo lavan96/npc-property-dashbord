@@ -151,9 +151,9 @@ export function AssignedTasksTab() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" aria-busy="true" aria-label="Loading assigned tasks">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20">
+          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20" aria-hidden="true">
             <CardContent className="flex items-start gap-3 p-4">
               <div className="h-5 w-5 rounded-md bg-muted" />
               <div className="flex-1 space-y-3">
@@ -171,7 +171,7 @@ export function AssignedTasksTab() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {/* Summary Stats */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
@@ -202,11 +202,12 @@ export function AssignedTasksTab() {
             placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search assigned tasks"
             className="h-10 rounded-xl bg-background/70 pl-9"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v: StatusFilter) => setStatusFilter(v)}>
-          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]">
+          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]" aria-label="Filter assigned tasks by status">
             <Filter className="mr-1.5 h-3.5 w-3.5" />
             <SelectValue />
           </SelectTrigger>
@@ -218,7 +219,7 @@ export function AssignedTasksTab() {
           </SelectContent>
         </Select>
         <Select value={sourceFilter} onValueChange={(v: SourceFilter) => setSourceFilter(v)}>
-          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]">
+          <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 sm:w-[150px]" aria-label="Filter assigned tasks by source">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -231,7 +232,7 @@ export function AssignedTasksTab() {
 
       {/* Task List */}
       {filtered.length === 0 ? (
-        <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20">
+        <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20" role="status">
           <CardContent className="flex flex-col items-center justify-center space-y-3 py-12">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
               <ListChecks className="h-7 w-7 text-primary" />
@@ -247,7 +248,7 @@ export function AssignedTasksTab() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2.5" role="list" aria-label="Assigned tasks">
           {filtered.map((task) => {
             const statusCfg = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
             const sourceCfg = SOURCE_CONFIG[task.source];
@@ -259,6 +260,7 @@ export function AssignedTasksTab() {
             return (
               <Card
                 key={task.id}
+                role="listitem"
                 className={cn(
                   'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20',
                   task.status === 'overdue' && 'border-red-500/30 bg-red-500/5',
@@ -276,6 +278,7 @@ export function AssignedTasksTab() {
                       <Checkbox
                         checked={task.status === 'completed'}
                         onCheckedChange={() => handleToggleComplete(task)}
+                        aria-label={`${task.status === 'completed' ? 'Reopen' : 'Complete'} task ${task.title}`}
                         className="h-5 w-5 rounded-md border-primary/30"
                       />
                     )}
@@ -309,7 +312,7 @@ export function AssignedTasksTab() {
                         </Badge>
                       )}
                       {task.sourceContext && (
-                        <span className="max-w-full truncate rounded-full bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground sm:max-w-[320px]">
+                        <span className="max-w-full truncate break-words rounded-full bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground sm:max-w-[320px]">
                           {task.sourceContext}
                         </span>
                       )}

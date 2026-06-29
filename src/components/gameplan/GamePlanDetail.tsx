@@ -199,7 +199,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="space-y-6 rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.16)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
+      className="min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.16)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
     >
       {/* Header */}
       <DashboardThemeFrame
@@ -220,6 +220,8 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {PLAN_ICONS.map(i => (
                       <button key={i} onClick={() => setEditIcon(i)}
+                        type="button"
+                        aria-label={`Use ${i} icon`}
                         className={cn('text-lg w-8 h-8 rounded-md flex items-center justify-center transition-all',
                           editIcon === i ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-muted')}>
                         {i}
@@ -233,20 +235,22 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {PLAN_COLORS.map(c => (
                     <button key={c} onClick={() => setEditColor(c)}
+                      type="button"
+                      aria-label={`Use accent colour ${c}`}
                       className={cn('w-6 h-6 rounded-full transition-all',
                         editColor === c ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105')}
                       style={{ backgroundColor: c }} />
                   ))}
                 </div>
               </div>
-              <Input value={editName} onChange={e => setEditName(e.target.value)} className="text-lg font-bold" placeholder="Plan name" />
-              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description..." rows={2} />
+              <Input value={editName} onChange={e => setEditName(e.target.value)} className="text-lg font-bold" placeholder="Plan name" aria-label="Plan name" />
+              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description..." rows={2} aria-label="Plan description" />
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editStartDate && 'text-muted-foreground')}>
+                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editStartDate && 'text-muted-foreground')} aria-label="Select plan start date">
                         <CalendarIcon className="mr-1.5 h-3 w-3" />
                         {editStartDate ? format(editStartDate, 'MMM d, yyyy') : 'Pick date'}
                       </Button>
@@ -260,7 +264,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">End Date</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editEndDate && 'text-muted-foreground')}>
+                      <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editEndDate && 'text-muted-foreground')} aria-label="Select plan end date">
                         <CalendarIcon className="mr-1.5 h-3 w-3" />
                         {editEndDate ? format(editEndDate, 'MMM d, yyyy') : 'Pick date'}
                       </Button>
@@ -289,7 +293,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{plan.name}</h1>
                   <Select value={plan.status} onValueChange={(v) => handleStatusChange(v as 'planning' | 'active' | 'completed' | 'archived')}>
-                    <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs">
+                    <SelectTrigger className="h-7 w-auto gap-1 border-none px-2 text-xs" aria-label="Change game plan status">
                       <Badge variant={cfg.variant}>{cfg.emoji} {cfg.label}</Badge>
                     </SelectTrigger>
                     <SelectContent>
@@ -300,7 +304,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingPlan(true)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingPlan(true)} aria-label={`Edit ${plan.name}`}>
                     <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                 </div>
@@ -315,7 +319,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
               </div>
             </div>
           )}
-          <Button onClick={() => setShowAddPhase(true)} className="h-11 shrink-0 gap-2 rounded-xl shadow-lg shadow-primary/20">
+          <Button onClick={() => setShowAddPhase(true)} className="h-11 shrink-0 gap-2 rounded-xl shadow-lg shadow-primary/20" aria-label={`Add a phase to ${plan.name}`}>
             <Plus className="h-4 w-4" /> Add Phase
           </Button>
         </div>
@@ -360,11 +364,13 @@ export function GamePlanDetail({ plan, onBack }: Props) {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search phases, milestones, actions, notes..."
+            aria-label="Search phases, milestones, actions, notes"
             className="h-10 rounded-xl bg-background/70 pl-9 pr-8"
           />
           {searchQuery && (
             <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-              onClick={() => setSearchQuery('')}>
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear phase search">
               <X className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           )}
@@ -373,17 +379,17 @@ export function GamePlanDetail({ plan, onBack }: Props) {
 
       {/* Phase Cards */}
       {phases.length === 0 ? (
-        <DashboardThemeFrame variant="section" className="py-12 text-center text-muted-foreground">
+        <DashboardThemeFrame variant="section" className="py-12 text-center text-muted-foreground" role="status">
           <div className="mb-2 text-3xl">📌</div>
           <p className="font-medium text-foreground">No phases yet</p>
           <p className="text-sm">Add your first phase to start building your roadmap.</p>
         </DashboardThemeFrame>
       ) : visiblePhases.length === 0 ? (
-        <DashboardThemeFrame variant="section" className="py-8 text-center text-muted-foreground">
+        <DashboardThemeFrame variant="section" className="py-8 text-center text-muted-foreground" role="status">
           <p className="text-sm">No phases match "{searchQuery}"</p>
         </DashboardThemeFrame>
       ) : (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {visiblePhases.map((phase, i) => (
             <PhaseCard
               key={phase.id}

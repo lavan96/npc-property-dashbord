@@ -52,7 +52,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-black/20 sm:max-w-xl dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
+      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-black/20 sm:max-w-xl dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
         <DialogHeader className="border-b border-border/60 px-5 py-4 dark:border-white/10">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-2xl shadow-inner shadow-primary/10">
@@ -66,17 +66,17 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
         </DialogHeader>
         <div className="space-y-5 px-5 py-5">
           <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
-            <Label>Name</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Q2 Growth Strategy" className="mt-1.5 h-11 rounded-xl bg-card/80" />
+            <Label htmlFor="game-plan-name">Name</Label>
+            <Input id="game-plan-name" value={name} onChange={e => setName(e.target.value)} placeholder="Q2 Growth Strategy" className="mt-1.5 h-11 rounded-xl bg-card/80" />
           </div>
           <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
-            <Label>Description</Label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Key objectives and strategy..." rows={3} className="mt-1.5 rounded-xl bg-card/80" />
+            <Label htmlFor="game-plan-description">Description</Label>
+            <Textarea id="game-plan-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Key objectives and strategy..." rows={3} className="mt-1.5 rounded-xl bg-card/80" />
           </div>
           <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
             <Label>Initial Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as 'planning' | 'active' | 'completed' | 'archived')}>
-              <SelectTrigger className="mt-1.5 h-11 rounded-xl bg-card/80">
+              <SelectTrigger className="mt-1.5 h-11 rounded-xl bg-card/80" aria-label="Select initial game plan status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -92,7 +92,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
               <Label>Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !startDate && 'text-muted-foreground')}>
+                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !startDate && 'text-muted-foreground')} aria-label="Select game plan start date">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
                     {startDate ? format(startDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
@@ -106,7 +106,7 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
               <Label>End Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !endDate && 'text-muted-foreground')}>
+                  <Button variant="outline" className={cn('mt-1.5 h-10 w-full justify-start rounded-xl bg-card/80 text-left text-sm font-normal', !endDate && 'text-muted-foreground')} aria-label="Select game plan end date">
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
                     {endDate ? format(endDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
@@ -125,7 +125,8 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
                 <button key={i} onClick={() => setIcon(i)}
                   className={cn('flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-xl transition-all hover:border-primary/20 hover:bg-primary/10',
                     icon === i ? 'scale-110 border-primary/30 bg-primary/15 ring-2 ring-primary/30' : 'hover:bg-muted')}
-                  type="button">
+                  type="button"
+                  aria-label={`Use ${i} icon`}>
                   {i}
                 </button>
               ))}
@@ -139,12 +140,13 @@ export function CreatePlanDialog({ open, onOpenChange, onCreate }: Props) {
                   className={cn('h-8 w-8 rounded-full border border-white/40 shadow-sm transition-all hover:scale-105',
                     color === c ? 'scale-110 ring-2 ring-primary ring-offset-2 ring-offset-background' : '')}
                   style={{ backgroundColor: c }}
-                  type="button" />
+                  type="button"
+                  aria-label={`Use accent colour ${c}`} />
               ))}
             </div>
           </div>
         </div>
-        <DialogFooter className="border-t border-border/60 bg-background/60 px-5 py-4 dark:border-white/10 dark:bg-slate-950/45">
+        <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
           <Button onClick={handleCreate} disabled={!name.trim() || loading} className="rounded-xl shadow-lg shadow-primary/20">
             {loading ? 'Creating...' : 'Create Plan'}
