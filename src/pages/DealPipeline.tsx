@@ -36,6 +36,7 @@ import { LinkedFinanceFilesPanel } from "@/components/deals/LinkedFinanceFilesPa
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { DealErrorState } from "@/components/deals/DealStatePresentation";
+import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { useModulePermissions } from "@/hooks/useModulePermissions";
 import type { DealWithClient } from "@/hooks/useAllDeals";
 
@@ -113,7 +114,7 @@ export default function DealPipeline() {
 
   if (error) {
     return (
-      <div className="mx-auto w-full max-w-[1800px] space-y-4 p-3 sm:p-6">
+      <DashboardThemeFrame as="main" variant="page" className="max-w-[1800px] space-y-4 p-3 sm:p-6">
         <div className="flex items-center gap-2 sm:gap-3">
           <TrendingUp className="h-5 w-5 shrink-0 text-amber-300 sm:h-6 sm:w-6" />
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
@@ -126,17 +127,17 @@ export default function DealPipeline() {
             : "Please try refreshing the page or logging in again."}
           onRetry={() => window.location.reload()}
         />
-      </div>
+      </DashboardThemeFrame>
     );
   }
 
   return (
-    <div className={cn("deal-pipeline-polish relative mx-auto flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1800px] flex-col space-y-5 overflow-y-auto overflow-x-hidden rounded-[2rem] border border-amber-300/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.92)_42%,rgba(10,10,10,0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
+    <DashboardThemeFrame as="main" variant="page" className={cn("deal-pipeline-polish relative flex max-h-[calc(100dvh-1rem)] min-h-0 max-w-[1800px] flex-col space-y-5 overflow-y-auto rounded-[2rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
 
-      <section aria-labelledby="deal-pipeline-title" className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.085)_34%,rgba(0,0,0,0.34))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.28)] backdrop-blur sm:p-6">
+      <DashboardThemeFrame as="header" variant="hero" aria-labelledby="deal-pipeline-title" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--primary)/0.085)_34%,hsl(var(--background)/0.84))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.28)] sm:p-6">
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/75 to-transparent" />
         <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
         <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-amber-100 via-amber-400 to-amber-700 shadow-[0_0_24px_rgba(245,158,11,0.35)]" />
@@ -160,32 +161,32 @@ export default function DealPipeline() {
             </p>
           </div>
         </div>
-      </section>
+      </DashboardThemeFrame>
 
       {/* Pipeline Value Summary Bar */}
       <PipelineValueSummaryBar deals={deals} />
 
       {/* Settlement Countdown & At-Risk Panel */}
-      <section className="relative grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-2">
+      <DashboardThemeFrame as="section" variant="section" className="grid min-h-0 grid-cols-1 gap-4 p-3 lg:grid-cols-2">
         <SettlementCountdownCards
           deals={filteredDeals}
           onDealClick={handleDealClick}
         />
         <AtRiskDealsPanel deals={filteredDeals} onDealClick={handleDealClick} />
-      </section>
+      </DashboardThemeFrame>
 
       {/* Commission Forecast */}
-      <section className="relative">
+      <DashboardThemeFrame as="section" variant="section" className="p-3">
         <CommissionForecastWidget deals={deals} />
-      </section>
+      </DashboardThemeFrame>
 
       {/* Linked Finance Files */}
-      <section className="relative">
+      <DashboardThemeFrame as="section" variant="section" className="p-3">
         <LinkedFinanceFilesPanel deals={filteredDeals} />
-      </section>
+      </DashboardThemeFrame>
 
       {/* Global Pipeline Toolbar */}
-      <section className="relative overflow-hidden rounded-[1.35rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(24,24,27,0.82)_48%,rgba(0,0,0,0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur">
+      <DashboardThemeFrame as="section" variant="toolbar" className="overflow-hidden rounded-[1.35rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.75),hsl(var(--background)/0.82)_48%,hsl(var(--background)/0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)]">
         <PipelineToolbar
           deals={deals}
           filters={filters}
@@ -194,7 +195,7 @@ export default function DealPipeline() {
           isExpanded={filtersExpanded}
           onExpandedChange={setFiltersExpanded}
         />
-      </section>
+      </DashboardThemeFrame>
 
       <Tabs
         value={activeTab}
@@ -323,6 +324,6 @@ export default function DealPipeline() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
