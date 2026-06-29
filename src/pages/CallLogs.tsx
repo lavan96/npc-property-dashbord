@@ -592,7 +592,7 @@ const CallLogs = () => {
           <SquadAnalyticsDashboard calls={filteredCalls} />
         </TabsContent>
 
-        <TabsContent value="logs" className="mt-4 md:mt-6 space-y-0">
+        <TabsContent value="logs" className="mt-4 min-h-0 space-y-0 overflow-hidden md:mt-6">
 
       {/* Sticky header: Stats + Filters */}
       <div className="sticky top-0 z-20 rounded-b-3xl border-x border-b border-white/10 bg-black/70 pb-4 pt-2 space-y-4 md:space-y-6 backdrop-blur-xl shadow-2xl shadow-black/30">
@@ -727,7 +727,7 @@ const CallLogs = () => {
                     Call Filters
                   </SheetTitle>
                 </SheetHeader>
-                <ScrollArea className="flex-1 p-4">
+                <ScrollArea className={cn("min-h-0 flex-1 p-4", premiumScrollbar)}>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Agent</label>
@@ -1028,7 +1028,7 @@ const CallLogs = () => {
       </div>
       {/* End sticky header */}
 
-      <div className="mt-4 md:mt-6">
+      <div className="mt-4 min-h-0 md:mt-6">
       {/* Call List */}
       <Card className={cn(premiumPanel, "rounded-3xl overflow-hidden")}>
         <CardHeader className="pb-4 border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-purple-500/10">
@@ -1038,16 +1038,18 @@ const CallLogs = () => {
                 <BarChart3 className="h-5 w-5 text-amber-300" />
                 Call History
               </CardTitle>
-              <CardDescription className="mt-1">
-                {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
+              <CardDescription className="mt-3 flex flex-wrap items-center gap-2 text-sm text-zinc-400">
+                <span className="rounded-full border border-amber-300/25 bg-black/35 px-3 py-1 font-medium text-amber-100 shadow-inner shadow-black/30">
+                  {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
+                </span>
                 {calls.length !== filteredCalls.length && (
-                  <span className="text-muted-foreground"> (filtered from {calls.length})</span>
+                  <span className="text-zinc-500">filtered from {calls.length}</span>
                 )}
               </CardDescription>
             </div>
             {/* Active filters summary */}
             {(selectedAgent !== 'all' || selectedOutcome !== 'all' || selectedSquadType !== 'all' || selectedSquad !== 'all' || selectedIntent !== 'all' || searchQuery || dateRange) && (
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-2 shadow-inner shadow-black/30 lg:justify-end">
                 {searchQuery && (
                   <Badge variant="secondary" className={premiumActiveFilterBadge}>
                     Search: "{searchQuery}"
@@ -1129,7 +1131,7 @@ const CallLogs = () => {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className={cn("max-h-[min(64rem,calc(100vh-18rem))] min-h-[18rem] space-y-3 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6", premiumScrollbar)}>
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
@@ -1156,18 +1158,21 @@ const CallLogs = () => {
                           ? 'border-emerald-300/20 bg-emerald-500/10 text-emerald-300'
                           : 'border-blue-300/20 bg-blue-500/10 text-blue-300'
                       }`}>
+                        <span className={`absolute right-2 top-2 h-2 w-2 rounded-full ${
+                          call.call_direction === 'inbound' ? 'bg-emerald-300' : 'bg-sky-300'
+                        } shadow-[0_0_10px_currentColor]`} />
                         {call.call_direction === 'inbound' ? (
-                          <PhoneIncoming className="w-5 h-5" />
+                          <PhoneIncoming className="h-5 w-5" />
                         ) : (
-                          <PhoneOutgoing className="w-5 h-5" />
+                          <PhoneOutgoing className="h-5 w-5" />
                         )}
                       </div>
 
                       {/* Main content */}
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         {/* Header row */}
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="font-semibold text-foreground">
+                        <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="min-w-0 max-w-full truncate text-base font-semibold tracking-tight text-zinc-50 sm:text-lg">
                             {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
 
@@ -1195,7 +1200,7 @@ const CallLogs = () => {
 
                         {/* Handoff flow visualization for squad calls */}
                         {call.is_squad_call && call.assistants_involved && call.assistants_involved.length > 0 && (
-                          <div className="flex items-center gap-1 mb-2 flex-wrap">
+                          <div className="mb-3 flex flex-wrap items-center gap-1.5">
                             {call.assistants_involved.map((assistant, i) => (
                               <div key={assistant.id} className="flex items-center">
                                 <span className="inline-flex items-center gap-1 rounded-md border border-purple-300/20 bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-100">
@@ -1203,7 +1208,7 @@ const CallLogs = () => {
                                   {assistant.name || `Agent ${i + 1}`}
                                 </span>
                                 {i < call.assistants_involved!.length - 1 && (
-                                  <ArrowRight className="w-3 h-3 text-muted-foreground mx-1" />
+                                  <ArrowRight className="mx-1 h-3 w-3 text-zinc-500" />
                                 )}
                               </div>
                             ))}
@@ -1240,6 +1245,16 @@ const CallLogs = () => {
                             </span>
                           )}
                         </div>
+                        {call.tags && call.tags.length > 0 && (
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                            {call.tags.map(tag => (
+                              <Badge key={tag} className={callLogBadgeTone('tag', cn('max-w-[180px]', premiumInteractiveBadge))}>
+                                <Tag className="mr-1 h-3 w-3 shrink-0" />
+                                <span className="truncate">{tag}</span>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1277,6 +1292,15 @@ const CallLogs = () => {
               <Phone className="h-5 w-5 text-amber-300" />
               Call Details
             </DialogTitle>
+            {selectedCall && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {selectedCall.phone_number && (
+                  <Badge className={callLogBadgeTone('neutral', premiumInteractiveBadge)}>{selectedCall.phone_number}</Badge>
+                )}
+                {getOutcomeBadge(selectedCall.call_outcome)}
+                {getSentimentBadge(selectedCall.sentiment)}
+              </div>
+            )}
           </DialogHeader>
           {selectedCall && (
             <Tabs defaultValue="overview" className="w-full flex flex-col flex-1 min-h-0 overflow-hidden max-w-full">
@@ -1284,15 +1308,15 @@ const CallLogs = () => {
                 <TabsList className={cn("h-auto min-w-max gap-1 rounded-2xl border border-white/10 bg-black/45 p-1", isMobile ? "inline-flex w-auto" : `grid w-full ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`)}>
                   <TabsTrigger value="overview" className={isMobile ? "text-xs" : ""}>Overview</TabsTrigger>
                   {selectedCall.is_squad_call && (
-                    <TabsTrigger value="squad" className={cn("flex items-center gap-1", isMobile && "text-xs")}>
+                    <TabsTrigger value="squad" className={cn(detailTabTrigger, "flex items-center gap-1 data-[state=active]:bg-purple-400/15 data-[state=active]:text-purple-100", isMobile && "text-xs")}>
                       <Users className="w-3 h-3" />
                       Squad
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="transcript" className={isMobile ? "text-xs" : ""}>Transcript</TabsTrigger>
-                  <TabsTrigger value="tool-calls" className={isMobile ? "text-xs" : ""}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
-                  <TabsTrigger value="analysis" className={isMobile ? "text-xs" : ""}>Analysis</TabsTrigger>
-                  <TabsTrigger value="metadata" className={isMobile ? "text-xs" : ""}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
+                  <TabsTrigger value="transcript" className={cn(detailTabTrigger, "data-[state=active]:bg-amber-300/15 data-[state=active]:text-amber-100", isMobile ? "text-xs" : "")}>Transcript</TabsTrigger>
+                  <TabsTrigger value="tool-calls" className={cn(detailTabTrigger, "data-[state=active]:bg-blue-400/15 data-[state=active]:text-blue-100", isMobile ? "text-xs" : "")}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
+                  <TabsTrigger value="analysis" className={cn(detailTabTrigger, "data-[state=active]:bg-emerald-400/15 data-[state=active]:text-emerald-100", isMobile ? "text-xs" : "")}>Analysis</TabsTrigger>
+                  <TabsTrigger value="metadata" className={cn(detailTabTrigger, "data-[state=active]:bg-zinc-700/70 data-[state=active]:text-zinc-100", isMobile ? "text-xs" : "")}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -1301,15 +1325,15 @@ const CallLogs = () => {
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
-                      <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/40">
+                      <Badge className={callLogBadgeTone('squad', premiumInteractiveBadge)}>
                         <Users className="w-3 h-3 mr-1" />
                         Squad Call
                       </Badge>
                       {selectedCall.squad_name && (
-                        <Badge className="bg-secondary text-secondary-foreground border border-border">{selectedCall.squad_name}</Badge>
+                        <Badge className={callLogBadgeTone('neutral', premiumInteractiveBadge)}>{selectedCall.squad_name}</Badge>
                       )}
                       {selectedCall.call_intent && (
-                        <Badge className="bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                        <Badge className={callLogBadgeTone('success', premiumInteractiveBadge)}>
                           <Target className="w-3 h-3 mr-1" />
                           {selectedCall.call_intent.replace(/_/g, ' ')}
                         </Badge>
@@ -1376,8 +1400,8 @@ const CallLogs = () => {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       <Card className={premiumModalCard}>
                         <CardContent className="p-4">
-                          <p className="text-sm text-muted-foreground">Customer</p>
-                          <p className="font-medium">{selectedCall.customer_name || 'Unknown'}</p>
+                          <p className={detailLabel}>Customer</p>
+                          <p className={detailValue}>{selectedCall.customer_name || 'Unknown'}</p>
                           <p className="text-sm text-muted-foreground">{selectedCall.phone_number || '-'}</p>
                         </CardContent>
                       </Card>
@@ -1482,7 +1506,7 @@ const CallLogs = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <Badge variant="secondary" className="text-sm capitalize">
+                          <Badge variant="secondary" className={callLogBadgeTone('neutral', 'text-sm capitalize')}>
                             {selectedCall.call_intent.replace(/_/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                           </Badge>
                         </CardContent>
@@ -1541,11 +1565,11 @@ const CallLogs = () => {
                               const toAssistant = selectedCall.assistants_involved?.find(a => a.id === handoff.toAssistant);
                               return (
                                 <div key={i} className="flex items-center gap-2 text-sm">
-                                  <Badge variant="outline" className="font-normal">
+                                  <Badge variant="outline" className={callLogBadgeTone('neutral', 'font-normal')}>
                                     {fromAssistant?.name || handoff.fromAssistant.slice(0, 8)}
                                   </Badge>
                                   <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                                  <Badge variant="outline" className="font-normal">
+                                  <Badge variant="outline" className={callLogBadgeTone('neutral', 'font-normal')}>
                                     {toAssistant?.name || handoff.toAssistant.slice(0, 8)}
                                   </Badge>
                                   <span className="text-xs text-muted-foreground ml-auto">
@@ -1577,7 +1601,7 @@ const CallLogs = () => {
                               return (
                                 <div key={i} className="space-y-2">
                                   <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge variant="outline" className={callLogBadgeTone('neutral')}>
                                       {assistant?.name || item.assistant.slice(0, 8)}
                                     </Badge>
                                   </div>
@@ -1643,7 +1667,7 @@ const CallLogs = () => {
                       {selectedCall.key_topics?.length ? (
                         <div className="flex flex-wrap gap-2">
                           {selectedCall.key_topics.map((topic, i) => (
-                            <Badge key={i} variant="secondary">{topic}</Badge>
+                            <Badge key={i} variant="secondary" className={callLogBadgeTone('tag')}>{topic}</Badge>
                           ))}
                         </div>
                       ) : (
