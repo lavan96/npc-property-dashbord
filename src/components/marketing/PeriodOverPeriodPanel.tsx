@@ -158,18 +158,20 @@ export function PeriodOverPeriodPanel() {
   });
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CalendarRange className="h-5 w-5 text-primary" />
-              Period-over-Period
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <CalendarRange className="h-5 w-5 text-primary" />
+              </span>
+              <span className="truncate">Period-over-Period</span>
             </CardTitle>
             <CardDescription className="mt-1">Compare performance across time periods</CardDescription>
           </div>
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[260px]">
+            <SelectTrigger className="w-[260px] rounded-2xl border-primary/20 bg-background/60">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -180,12 +182,12 @@ export function PeriodOverPeriodPanel() {
           </Select>
         </div>
         {!isLoading && (
-          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-            <Badge variant="outline" className="text-[10px] gap-1">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <Badge variant="outline" className="gap-1 rounded-full bg-background/60 text-[10px]">
               <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
               {ranges.currentLabel}: {ranges.current.since} → {ranges.current.until}
             </Badge>
-            <Badge variant="outline" className="text-[10px] gap-1">
+            <Badge variant="outline" className="gap-1 rounded-full bg-background/60 text-[10px]">
               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: 'hsl(220, 70%, 55%)' }} />
               {ranges.previousLabel}: {ranges.previous.since} → {ranges.previous.until}
             </Badge>
@@ -194,18 +196,18 @@ export function PeriodOverPeriodPanel() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center rounded-2xl border border-border/60 bg-background/45 py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Comparing periods...</span>
           </div>
         ) : !currentTotals || !previousTotals ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
+          <div className="rounded-2xl border border-dashed border-border/60 bg-background/45 py-12 text-center text-sm text-muted-foreground">
             No data available for comparison
           </div>
         ) : (
           <div className="space-y-6">
             {/* Delta Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
               {metrics.map(m => {
                 const delta = getDelta(m.key);
                 const curr = (currentTotals as any)[m.key];
@@ -214,10 +216,10 @@ export function PeriodOverPeriodPanel() {
                 const isNegative = delta !== null && ((m.lowerIsBetter && delta > 0) || (!m.lowerIsBetter && delta < 0));
 
                 return (
-                  <div key={m.key} className="rounded-lg border border-border p-3 space-y-1.5">
+                  <div key={m.key} className="min-w-0 space-y-1.5 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm">
                     <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{m.label}</p>
-                    <p className="text-lg font-bold text-foreground">{m.format(curr)}</p>
-                    <div className="flex items-center gap-1.5">
+                    <p className="truncate text-lg font-bold text-foreground">{m.format(curr)}</p>
+                    <div className="flex min-w-0 items-center gap-1.5">
                       {delta !== null && Math.abs(delta) > 0.1 ? (
                         <>
                           {isPositive ? (
@@ -238,7 +240,7 @@ export function PeriodOverPeriodPanel() {
                       ) : (
                         <span className="text-xs text-muted-foreground">No change</span>
                       )}
-                      <span className="text-[10px] text-muted-foreground ml-auto">was {m.format(prev)}</span>
+                      <span className="ml-auto truncate text-[10px] text-muted-foreground">was {m.format(prev)}</span>
                     </div>
                   </div>
                 );
@@ -246,16 +248,16 @@ export function PeriodOverPeriodPanel() {
             </div>
 
             {/* Visual Comparison Chart */}
-            <div className="h-[220px] w-full">
+            <div className="h-[220px] w-full rounded-2xl border border-border/60 bg-background/40 p-3">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="metric" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <XAxis dataKey="metric" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} className="text-muted-foreground" />
+                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} className="text-muted-foreground" />
                   <RechartsTooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: 12 }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 14, boxShadow: '0 18px 50px hsl(var(--foreground) / 0.12)', color: 'hsl(var(--popover-foreground))', fontSize: 12 }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }} />
                   <Line type="monotone" dataKey={ranges.currentLabel} stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 5 }} />
                   <Line type="monotone" dataKey={ranges.previousLabel} stroke="hsl(220, 70%, 55%)" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} />
                 </LineChart>

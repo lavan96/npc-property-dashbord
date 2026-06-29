@@ -1,9 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, TrendingUp, TrendingDown, Minus, Brain, AlertTriangle, DollarSign, Target, BarChart3 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface ForecastPoint {
   date: string;
@@ -49,12 +48,23 @@ function TrendBadge({ label, trend }: { label: string; trend: string }) {
       : 'border-muted-foreground/30 text-muted-foreground bg-muted/30';
 
   return (
-    <Badge variant="outline" className={`text-[10px] px-2 py-0.5 gap-1 ${colorClass}`}>
+    <Badge variant="outline" className={`gap-1 rounded-full px-2 py-0.5 text-[10px] ${colorClass}`}>
       <TrendIcon trend={trend} />
       {label}: {trend}
     </Badge>
   );
 }
+
+const chartTooltipStyle = {
+  backgroundColor: 'hsl(var(--popover))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: 14,
+  boxShadow: '0 18px 50px hsl(var(--foreground) / 0.12)',
+  color: 'hsl(var(--popover-foreground))',
+  fontSize: 12,
+};
+
+const chartTick = { fontSize: 11, fill: 'hsl(var(--muted-foreground))' };
 
 function formatCurrency(val: number) {
   return `$${val.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -68,15 +78,17 @@ function formatShortDate(dateStr: string) {
 export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiError, loading, horizonDays }: ForecastPanelProps) {
   if (loading) {
     return (
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            Performance Forecast
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+              <TrendingUp className="h-5 w-5 text-primary" />
+            </span>
+            <span className="truncate">Performance Forecast</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Building forecast model...</span>
           </div>
@@ -102,14 +114,16 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
   }));
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Performance Forecast
-              <Badge variant="secondary" className="text-[10px] font-mono">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </span>
+              <span className="truncate">Performance Forecast</span>
+              <Badge variant="secondary" className="shrink-0 rounded-full text-[10px] font-mono">
                 {horizonDays}d horizon
               </Badge>
             </CardTitle>
@@ -118,7 +132,7 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
             </CardDescription>
           </div>
           {trends && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex max-w-full flex-wrap gap-1.5">
               <TrendBadge label="Spend" trend={trends.spend_trend} />
               <TrendBadge label="Leads" trend={trends.lead_trend} />
               <TrendBadge label="CPL" trend={trends.cpl_trend} />
@@ -130,18 +144,18 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
       <CardContent className="space-y-4">
         {/* Projection Cards */}
         {projections && (
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-center">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="min-w-0 rounded-2xl border border-border/60 bg-background/45 p-3 text-center shadow-sm">
               <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                 <DollarSign className="h-3.5 w-3.5" />
                 <span className="text-[10px] font-medium uppercase tracking-wider">Projected Spend</span>
               </div>
-              <p className="text-lg font-bold text-foreground font-mono">{formatCurrency(projections.projected_spend)}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
+              <p className="truncate text-lg font-bold text-foreground font-mono">{formatCurrency(projections.projected_spend)}</p>
+              <p className="truncate text-[10px] text-muted-foreground mt-0.5">
                 {formatCurrency(projections.spend_range[0])} – {formatCurrency(projections.spend_range[1])}
               </p>
             </div>
-            <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3 text-center">
+            <div className="min-w-0 rounded-2xl border border-primary/20 bg-primary/[0.05] p-3 text-center shadow-sm">
               <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                 <Target className="h-3.5 w-3.5" />
                 <span className="text-[10px] font-medium uppercase tracking-wider">Projected Leads</span>
@@ -151,7 +165,7 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
                 {projections.leads_range[0].toFixed(1)} – {projections.leads_range[1].toFixed(1)}
               </p>
             </div>
-            <div className="rounded-lg border border-border/50 bg-muted/30 p-3 text-center">
+            <div className="min-w-0 rounded-2xl border border-border/60 bg-background/45 p-3 text-center shadow-sm">
               <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
                 <BarChart3 className="h-3.5 w-3.5" />
                 <span className="text-[10px] font-medium uppercase tracking-wider">Projected CPL</span>
@@ -165,22 +179,22 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
         )}
 
         {/* Charts */}
-        <Tabs defaultValue="spend" className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
+        <Tabs defaultValue="spend" className="w-full min-w-0">
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-1 rounded-2xl bg-muted/40 p-1 sm:grid-cols-3">
             <TabsTrigger value="spend" className="text-xs">Spend Forecast</TabsTrigger>
             <TabsTrigger value="leads" className="text-xs">Leads Forecast</TabsTrigger>
             <TabsTrigger value="cpl" className="text-xs">CPL Forecast</TabsTrigger>
           </TabsList>
 
           <TabsContent value="spend" className="mt-3">
-            <div className="h-[250px]">
+            <div className="h-[250px] min-w-0 rounded-2xl border border-border/60 bg-background/40 p-2">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" tickFormatter={(v) => `$${v}`} />
+                  <XAxis dataKey="date" tick={chartTick} className="text-muted-foreground" />
+                  <YAxis tick={chartTick} className="text-muted-foreground" tickFormatter={(v) => `$${v}`} width={48} />
                   <RechartsTooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    contentStyle={chartTooltipStyle}
                     formatter={(value: number, name: string) => {
                       if (name === 'spend') return [`$${value.toFixed(2)}`, 'Projected Spend'];
                       if (name === 'spendUpper') return [`$${value.toFixed(2)}`, 'Upper Range'];
@@ -197,14 +211,14 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
           </TabsContent>
 
           <TabsContent value="leads" className="mt-3">
-            <div className="h-[250px]">
+            <div className="h-[250px] min-w-0 rounded-2xl border border-border/60 bg-background/40 p-2">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" />
+                  <XAxis dataKey="date" tick={chartTick} className="text-muted-foreground" />
+                  <YAxis tick={chartTick} className="text-muted-foreground" width={42} />
                   <RechartsTooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    contentStyle={chartTooltipStyle}
                     formatter={(value: number, name: string) => {
                       if (name === 'leads') return [value.toFixed(1), 'Projected Leads'];
                       if (name === 'leadsUpper') return [value.toFixed(1), 'Upper Range'];
@@ -221,14 +235,14 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
           </TabsContent>
 
           <TabsContent value="cpl" className="mt-3">
-            <div className="h-[250px]">
+            <div className="h-[250px] min-w-0 rounded-2xl border border-border/60 bg-background/40 p-2">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} className="text-muted-foreground" />
-                  <YAxis tick={{ fontSize: 11 }} className="text-muted-foreground" tickFormatter={(v) => `$${v}`} />
+                  <XAxis dataKey="date" tick={chartTick} className="text-muted-foreground" />
+                  <YAxis tick={chartTick} className="text-muted-foreground" tickFormatter={(v) => `$${v}`} width={48} />
                   <RechartsTooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    contentStyle={chartTooltipStyle}
                     formatter={(value: number) => [`$${value.toFixed(2)}`, 'Projected CPL']}
                   />
                   <Area type="monotone" dataKey="cpl" stroke="hsl(38 92% 50%)" fill="hsl(38 92% 50% / 0.15)" strokeWidth={2} dot={false} />
@@ -240,17 +254,17 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
 
         {/* AI Analysis */}
         {aiAnalysis && (
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-4">
+          <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
             <div className="flex items-center gap-2 mb-2">
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Forecast Analysis</span>
             </div>
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{aiAnalysis}</p>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">{aiAnalysis}</p>
           </div>
         )}
 
         {aiError && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-600 dark:text-amber-400">{aiError}</p>
           </div>
