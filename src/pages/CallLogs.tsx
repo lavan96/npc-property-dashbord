@@ -69,13 +69,13 @@ import { callLogBadgeTone } from '@/components/call-logs/badgeStyles';
 
 
 const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen max-w-none overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),radial-gradient(circle_at_80%_8%,hsl(var(--accent)/0.10),transparent_28%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--card))_46%,hsl(var(--background)))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
-const premiumPanel = "border-border dark:border-white/10 bg-gradient-to-br from-zinc-950/80 via-black/60 to-zinc-950/85 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl";
-const premiumCard = "border-border dark:border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
-const premiumModalCard = "border-border dark:border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-sm dark:shadow-black/25";
+const premiumPanel = "border-border dark:border-white/10 bg-gradient-to-br from-card/80 dark:from-zinc-950/80 via-background/60 dark:via-black/60 to-card/85 dark:to-zinc-950/85 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl";
+const premiumCard = "border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/80 dark:via-zinc-900/80 to-background/90 dark:to-black/90 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
+const premiumModalCard = "border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/85 dark:via-zinc-900/85 to-background/95 dark:to-black/95 shadow-lg shadow-sm dark:shadow-black/25";
 const premiumMutedSurface = "rounded-2xl border border-border dark:border-white/10 bg-background/35 dark:bg-black/35 shadow-inner shadow-sm dark:shadow-black/20";
 const premiumSelectContent = "border-border dark:border-white/10 bg-background/95 dark:bg-zinc-950/95 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/40 backdrop-blur-xl";
 const premiumScrollbar = "[scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)]";
-const premiumMetricCard = "group relative overflow-hidden border-border dark:border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10";
+const premiumMetricCard = "group relative overflow-hidden border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/85 dark:via-zinc-900/85 to-background/95 dark:to-black/95 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10";
 const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105";
 const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-zinc-400";
 const premiumMetricValue = "text-2xl font-bold leading-none tracking-tight md:text-[1.65rem]";
@@ -93,7 +93,7 @@ const premiumDangerAction = `${premiumActionBase} border-red-400/35 bg-red-500/1
 const premiumSecondaryAction = `${premiumActionBase} border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-foreground dark:text-zinc-100 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-amber-300`;
 const premiumTabList = "inline-flex h-auto min-w-max items-center gap-1.5 rounded-[1.35rem] border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-1.5 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl";
 const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-muted-foreground dark:text-zinc-400 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-400/25 data-[state=active]:via-yellow-300/15 data-[state=active]:to-amber-500/10 data-[state=active]:text-amber-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] md:text-sm";
-const premiumWorkspaceFrame = "relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-zinc-950/85 via-black/70 to-zinc-950/90 p-3 shadow-2xl shadow-sm dark:shadow-black/25 backdrop-blur-xl md:p-4 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent";
+const premiumWorkspaceFrame = "relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card/85 dark:from-zinc-950/85 via-background/70 dark:via-black/70 to-card/90 dark:to-zinc-950/90 p-3 shadow-2xl shadow-sm dark:shadow-black/25 backdrop-blur-xl md:p-4 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent";
 const premiumInteractiveBadge = "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md";
 const detailTabTrigger = "rounded-2xl border border-transparent px-3 py-2 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:border-amber-300/35";
 const detailLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500";
@@ -530,7 +530,7 @@ const CallLogs = () => {
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-amber-100 via-foreground to-amber-300 bg-clip-text text-transparent md:text-5xl">
             Call Logs
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-300/85">Track and analyze voice agent call outcomes</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-zinc-300/85">Track and analyze voice agent call outcomes</p>
         </div>
         <DashboardThemeFrame variant="toolbar" className="w-full border-primary/10 bg-background/45 shadow-inner shadow-sm dark:shadow-black/10 lg:w-auto lg:justify-end">
           <div className="flex flex-1 flex-wrap items-center gap-2 lg:flex-none lg:justify-end">
@@ -615,7 +615,7 @@ const CallLogs = () => {
 
       {/* Stats Cards - Responsive grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
-        <Card className={cn(premiumMetricCard, "from-zinc-900/95 via-zinc-950/85")}>
+        <Card className={cn(premiumMetricCard, "from-card/95 dark:from-zinc-900/95 via-card/85 dark:via-zinc-950/85")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Total</span>
@@ -626,7 +626,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-foreground dark:text-zinc-50")}>{stats.totalCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-emerald-500/15 via-zinc-950/85 hover:border-emerald-300/40 hover:shadow-emerald-500/10")}>
+        <Card className={cn(premiumMetricCard, "from-emerald-500/15 via-card/85 dark:via-zinc-950/85 hover:border-emerald-300/40 hover:shadow-emerald-500/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Done</span>
@@ -637,7 +637,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-emerald-300")}>{stats.completedCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-blue-500/15 via-zinc-950/85 hover:border-blue-300/35 hover:shadow-blue-500/10")}>
+        <Card className={cn(premiumMetricCard, "from-blue-500/15 via-card/85 dark:via-zinc-950/85 hover:border-blue-300/35 hover:shadow-blue-500/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Rate</span>
@@ -648,7 +648,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-blue-300")}>{stats.successRate}%</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-zinc-800/80 via-zinc-950/85")}>
+        <Card className={cn(premiumMetricCard, "from-zinc-800/80 via-card/85 dark:via-zinc-950/85")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Avg</span>
@@ -659,7 +659,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "font-mono text-foreground dark:text-zinc-50")}>{formatDuration(stats.avgDuration)}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-amber-500/15 via-zinc-950/85")}>
+        <Card className={cn(premiumMetricCard, "from-amber-500/15 via-card/85 dark:via-zinc-950/85")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Cost</span>
@@ -670,7 +670,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-amber-300")}>${stats.totalCost.toFixed(2)}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-teal-500/15 via-zinc-950/85 hover:border-teal-300/35 hover:shadow-teal-500/10")}>
+        <Card className={cn(premiumMetricCard, "from-teal-500/15 via-card/85 dark:via-zinc-950/85 hover:border-teal-300/35 hover:shadow-teal-500/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Inbound</span>
@@ -681,7 +681,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-teal-300")}>{stats.inboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-sky-500/15 via-zinc-950/85 hover:border-sky-300/35 hover:shadow-sky-500/10")}>
+        <Card className={cn(premiumMetricCard, "from-sky-500/15 via-card/85 dark:via-zinc-950/85 hover:border-sky-300/35 hover:shadow-sky-500/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Outbound</span>
@@ -692,7 +692,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-sky-300")}>{stats.outboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-orange-500/15 via-zinc-950/85 hover:border-orange-300/40 hover:shadow-orange-500/10")}>
+        <Card className={cn(premiumMetricCard, "from-orange-500/15 via-card/85 dark:via-zinc-950/85 hover:border-orange-300/40 hover:shadow-orange-500/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Voicemail</span>
@@ -703,7 +703,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-orange-300")}>{stats.voicemails}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-purple-500/15 via-zinc-950/85 hover:border-purple-300/35 hover:shadow-purple-500/10")}>
+        <Card className={cn(premiumMetricCard, "from-purple-500/15 via-card/85 dark:via-zinc-950/85 hover:border-purple-300/35 hover:shadow-purple-500/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Squad</span>
@@ -1154,7 +1154,7 @@ const CallLogs = () => {
                   role="button"
                   tabIndex={0}
                   aria-label={`Open details for ${call.customer_name || call.phone_number || 'Unknown Caller'}`}
-                  className={`group relative overflow-hidden rounded-2xl border border-border dark:border-white/10 bg-gradient-to-r from-zinc-950/95 via-zinc-900/80 to-black/90 p-3 cursor-pointer shadow-lg shadow-sm dark:shadow-black/20 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-gradient-to-b before:from-transparent before:via-amber-300/35 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/5 hover:shadow-xl hover:shadow-amber-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-4 ${
+                  className={`group relative overflow-hidden rounded-2xl border border-border dark:border-white/10 bg-gradient-to-r from-card/95 dark:from-zinc-950/95 via-card/80 dark:via-zinc-900/80 to-background/90 dark:to-black/90 p-3 cursor-pointer shadow-lg shadow-sm dark:shadow-black/20 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-gradient-to-b before:from-transparent before:via-amber-300/35 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/5 hover:shadow-xl hover:shadow-amber-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-4 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
                   onClick={() => openCallDetail(call)}
@@ -1300,7 +1300,7 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "flex flex-col overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-950/95 to-black/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl",
+          "flex flex-col overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-card/98 dark:from-zinc-950/98 via-card/95 dark:via-zinc-950/95 to-background/95 dark:to-black/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl",
           isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "w-[calc(100vw-32px)] max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>

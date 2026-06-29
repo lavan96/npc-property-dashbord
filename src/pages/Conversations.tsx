@@ -119,12 +119,12 @@ const channelColors: Record<string, string> = {
 };
 
 const avatarBackgrounds: Record<string, string> = {
-  sms: "from-blue-400/24 via-sky-400/13 to-zinc-950/72",
-  email: "from-violet-400/24 via-purple-400/13 to-zinc-950/72",
-  whatsapp: "from-emerald-400/26 via-teal-400/14 to-zinc-950/72",
-  instagram: "from-pink-400/24 via-fuchsia-400/13 to-zinc-950/72",
-  facebook: "from-indigo-400/24 via-blue-400/13 to-zinc-950/72",
-  live_chat: "from-purple-400/24 via-cyan-400/12 to-zinc-950/72",
+  sms: "from-blue-400/24 via-sky-400/13 to-card/72 dark:to-zinc-950/72",
+  email: "from-violet-400/24 via-purple-400/13 to-card/72 dark:to-zinc-950/72",
+  whatsapp: "from-emerald-400/26 via-teal-400/14 to-card/72 dark:to-zinc-950/72",
+  instagram: "from-pink-400/24 via-fuchsia-400/13 to-card/72 dark:to-zinc-950/72",
+  facebook: "from-indigo-400/24 via-blue-400/13 to-card/72 dark:to-zinc-950/72",
+  live_chat: "from-purple-400/24 via-cyan-400/12 to-card/72 dark:to-zinc-950/72",
 };
 
 const getContactInitials = (name?: string | null) => {
@@ -1223,7 +1223,7 @@ export default function Conversations() {
                       "min-h-8 flex-1 basis-[calc(50%-0.375rem)] rounded-xl px-3 text-xs font-semibold tracking-wide transition-all duration-200 sm:basis-auto sm:flex-none focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
                       channelFilter === ch
                         ? "border border-amber-200/60 bg-gradient-to-b from-amber-300 to-amber-500 text-black shadow-[0_0_24px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.45)] hover:from-amber-200 hover:to-amber-400"
-                        : "border border-transparent bg-card/45 dark:bg-zinc-900/45 text-zinc-300/85 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-100",
+                        : "border border-transparent bg-card/45 dark:bg-zinc-900/45 text-muted-foreground/85 dark:text-zinc-300/85 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-100",
                     )}
                     onClick={() => setChannelFilter(ch)}
                     aria-pressed={channelFilter === ch}
@@ -1255,7 +1255,7 @@ export default function Conversations() {
                   {[...Array(6)].map((_, i) => (
                     <div
                       key={i}
-                      className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                      className="relative overflow-hidden rounded-2xl border border-border dark:border-white/[0.07] bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
                     >
                       <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/[0.055] to-transparent" />
                       <div className="relative flex items-center gap-3">
@@ -1341,7 +1341,7 @@ export default function Conversations() {
                       <button
                         key={conv.id}
                         className={cn(
-                          "group relative flex min-h-[5.6rem] w-full cursor-pointer items-center gap-4 text-left overflow-hidden rounded-[1.55rem] border border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,255,255,0.052),rgba(255,255,255,0.018)_55%,rgba(245,158,11,0.026))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_14px_30px_rgba(0,0,0,0.14)] outline-none transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-300 before:opacity-0 before:shadow-[0_0_18px_rgba(251,191,36,0.65)] before:transition-opacity after:absolute after:inset-x-6 after:-bottom-[6px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/[0.08] after:to-transparent last:after:hidden focus-visible:border-amber-200/55 focus-visible:bg-amber-300/[0.08] focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.075)_62%,rgba(255,255,255,0.028))] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_38px_rgba(0,0,0,0.28)] hover:before:opacity-100",
+                          "group relative flex min-h-[5.6rem] w-full cursor-pointer items-center gap-4 text-left overflow-hidden rounded-[1.55rem] border border-border dark:border-white/[0.08] bg-[linear-gradient(135deg,rgba(255,255,255,0.052),rgba(255,255,255,0.018)_55%,rgba(245,158,11,0.026))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_14px_30px_rgba(0,0,0,0.14)] outline-none transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-300 before:opacity-0 before:shadow-[0_0_18px_rgba(251,191,36,0.65)] before:transition-opacity after:absolute after:inset-x-6 after:-bottom-[6px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/[0.08] after:to-transparent last:after:hidden focus-visible:border-amber-200/55 focus-visible:bg-amber-300/[0.08] focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.075)_62%,rgba(255,255,255,0.028))] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_38px_rgba(0,0,0,0.28)] hover:before:opacity-100",
                           isActive
                             ? "border-amber-200/65 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(255,255,255,0.045)_56%,rgba(245,158,11,0.10))] shadow-[inset_4px_0_0_rgba(251,191,36,0.95),0_0_0_1px_rgba(251,191,36,0.12),0_20px_42px_rgba(245,158,11,0.13)] before:opacity-100"
                             : "",
@@ -1364,9 +1364,9 @@ export default function Conversations() {
                         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                         <div
                           className={cn(
-                            "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]",
+                            "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-border dark:ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]",
                             avatarBackgrounds[normalized] ||
-                              "from-zinc-500/18 via-zinc-600/12 to-zinc-950/72",
+                              "from-zinc-500/18 via-zinc-600/12 to-card/72 dark:to-zinc-950/72",
                           )}
                         >
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">
@@ -1395,7 +1395,7 @@ export default function Conversations() {
                             >
                               {conv.client_name}
                             </span>
-                            <span className="shrink-0 rounded-full border border-white/[0.07] bg-background/20 dark:bg-black/20 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-zinc-400 transition-colors group-hover:border-amber-200/20 group-hover:text-amber-100/80">
+                            <span className="shrink-0 rounded-full border border-border dark:border-white/[0.07] bg-background/20 dark:bg-black/20 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-zinc-400 transition-colors group-hover:border-amber-200/20 group-hover:text-amber-100/80">
                               {formatConversationDate(conv.last_message_date)}
                             </span>
                           </div>
@@ -1405,7 +1405,7 @@ export default function Conversations() {
                                 "min-w-0 truncate text-[0.8rem] leading-5 transition-colors",
                                 conv.unread_count > 0
                                   ? "font-medium text-foreground dark:text-zinc-100"
-                                  : "text-zinc-400/85 group-hover:text-zinc-200/90",
+                                  : "text-muted-foreground/85 dark:text-zinc-400/85 group-hover:text-zinc-200/90",
                               )}
                               title={
                                 conv.last_message_body || "No messages yet"
@@ -1417,7 +1417,7 @@ export default function Conversations() {
                               <span
                                 className={cn(
                                   !conv.last_message_body &&
-                                    "rounded-full border border-dashed border-border dark:border-white/10 bg-white/[0.035] px-2 py-0.5 italic text-zinc-400/90",
+                                    "rounded-full border border-dashed border-border dark:border-white/10 bg-white/[0.035] px-2 py-0.5 italic text-muted-foreground/90 dark:text-zinc-400/90",
                                 )}
                               >
                                 {conv.last_message_body || "No messages yet"}
@@ -1477,8 +1477,8 @@ export default function Conversations() {
                   <Sparkles className="h-3 w-3" />
                   CRM workspace
                 </div>
-                <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-100/22 bg-[radial-gradient(circle_at_35%_25%,rgba(254,243,199,0.18),rgba(245,158,11,0.09)_45%,rgba(24,24,27,0.66))] shadow-[0_0_55px_rgba(234,179,8,0.16),inset_0_1px_0_rgba(255,255,255,0.16)] ring-1 ring-white/[0.055]">
-                  <div className="absolute inset-2 rounded-[1.3rem] border border-white/[0.055] bg-background/10 dark:bg-black/10" />
+                <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-100/22 bg-[radial-gradient(circle_at_35%_25%,rgba(254,243,199,0.18),rgba(245,158,11,0.09)_45%,rgba(24,24,27,0.66))] shadow-[0_0_55px_rgba(234,179,8,0.16),inset_0_1px_0_rgba(255,255,255,0.16)] ring-1 ring-border dark:ring-white/[0.055]">
+                  <div className="absolute inset-2 rounded-[1.3rem] border border-border dark:border-white/[0.055] bg-background/10 dark:bg-black/10" />
                   <MessageSquare
                     className="relative h-9 w-9 text-amber-100/78 drop-shadow-[0_0_18px_rgba(251,191,36,0.22)]"
                     strokeWidth={1.7}
@@ -1487,7 +1487,7 @@ export default function Conversations() {
                 <p className="text-lg font-semibold tracking-[-0.02em] text-foreground dark:text-zinc-50 sm:text-xl">
                   Select a conversation
                 </p>
-                <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-zinc-400/90">
+                <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground/90 dark:text-zinc-400/90">
                   Choose from the list to view messages
                 </p>
                 <div className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-full border border-border dark:border-white/10 bg-white/[0.035] px-3 py-2 text-xs font-medium text-amber-100/55 shadow-inner shadow-sm dark:shadow-black/20">
@@ -1506,7 +1506,7 @@ export default function Conversations() {
                   <div className="relative flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex min-w-0 flex-1 items-start gap-3.5">
                       {!isMobile && (
-                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-zinc-500/18 via-zinc-600/12 to-zinc-950/72')}>
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-zinc-500/18 via-zinc-600/12 to-card/72 dark:to-zinc-950/72')}>
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
                           <span className={cn('absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-950/90 bg-background dark:bg-zinc-950 shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-foreground dark:text-zinc-100')}>
                             {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3.5 w-3.5" />; })()}
@@ -1590,7 +1590,7 @@ export default function Conversations() {
                             i % 2 ? "justify-end" : "justify-start",
                           )}
                         >
-                          <div className="w-[min(30rem,78%)] rounded-3xl border border-white/[0.07] bg-white/[0.035] p-3.5 shadow-lg">
+                          <div className="w-[min(30rem,78%)] rounded-3xl border border-border dark:border-white/[0.07] bg-white/[0.035] p-3.5 shadow-lg">
                             <Skeleton className="mb-2 h-3 w-24 bg-card/10 dark:bg-white/10" />
                             <Skeleton className="h-3 w-full bg-card/10 dark:bg-white/10" />
                             <Skeleton className="mt-2 h-3 w-2/3 bg-card/10 dark:bg-white/10" />
@@ -1621,7 +1621,7 @@ export default function Conversations() {
                       </Button>
                     </div>
                   ) : messages.length === 0 ? (
-                    <div className="mx-auto mt-8 flex max-w-md flex-col items-center justify-center rounded-3xl border border-white/[0.09] bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.10),transparent_34%),rgba(255,255,255,0.025)] px-6 py-12 text-center text-muted-foreground dark:text-zinc-400 shadow-inner shadow-sm dark:shadow-black/20">
+                    <div className="mx-auto mt-8 flex max-w-md flex-col items-center justify-center rounded-3xl border border-border dark:border-white/[0.09] bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.10),transparent_34%),rgba(255,255,255,0.025)] px-6 py-12 text-center text-muted-foreground dark:text-zinc-400 shadow-inner shadow-sm dark:shadow-black/20">
                       <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-100/20 bg-amber-300/10 text-amber-100/80">
                         <MessageSquare className="h-5 w-5" />
                       </span>

@@ -117,13 +117,13 @@ const getSeverityLabel = (severity: number | null) => {
 };
 
 const issuePanel =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/80 dark:via-zinc-900/80 to-background/90 dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
 const issueStatCard =
   'group relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-amber-500/10';
 const issueControl =
   'rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black';
 const issueRow =
-  'group relative cursor-pointer overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-zinc-950/90 via-zinc-900/75 to-black/85 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-amber-300/0 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 hover:before:via-amber-300/90';
+  'group relative cursor-pointer overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card/90 dark:from-zinc-950/90 via-card/75 dark:via-zinc-900/75 to-background/85 dark:to-black/85 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-amber-300/0 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 hover:before:via-amber-300/90';
 
 export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisProps) => {
   const { toast } = useToast();
@@ -272,7 +272,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className={cn(issueStatCard, 'from-zinc-900/95 via-zinc-950/85 to-black/95')}>
+        <Card className={cn(issueStatCard, 'from-card/95 dark:from-zinc-900/95 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-zinc-400/20 bg-zinc-400/10 p-2">
@@ -283,7 +283,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <p className="text-2xl font-bold text-foreground dark:text-zinc-50">{stats.total}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-amber-500/15 via-zinc-950/85 to-black/95')}>
+        <Card className={cn(issueStatCard, 'from-amber-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2">
@@ -294,7 +294,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <p className="text-2xl font-bold text-amber-300">{stats.needsReview}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-red-500/15 via-zinc-950/85 to-black/95 hover:border-red-300/40 hover:shadow-red-500/10')}>
+        <Card className={cn(issueStatCard, 'from-red-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-red-300/40 hover:shadow-red-500/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-2">
@@ -305,7 +305,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <p className="text-2xl font-bold text-red-300">{stats.escalated}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-emerald-500/15 via-zinc-950/85 to-black/95 hover:border-emerald-300/40 hover:shadow-emerald-500/10')}>
+        <Card className={cn(issueStatCard, 'from-emerald-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-emerald-300/40 hover:shadow-emerald-500/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2">
@@ -316,7 +316,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <p className="text-2xl font-bold text-emerald-300">{stats.resolved}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-purple-500/15 via-zinc-950/85 to-black/95 hover:border-purple-300/40 hover:shadow-purple-500/10')}>
+        <Card className={cn(issueStatCard, 'from-purple-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-purple-300/40 hover:shadow-purple-500/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-purple-300/25 bg-purple-500/10 p-2">

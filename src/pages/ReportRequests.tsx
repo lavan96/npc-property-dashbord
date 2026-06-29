@@ -262,7 +262,7 @@ export default function ReportRequests() {
                 Portal Operations
               </div>
               <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground dark:text-white sm:text-5xl">Client Report Requests</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300/85 sm:text-base">Manage incoming report requests from portal clients</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-zinc-300/85 sm:text-base">Manage incoming report requests from portal clients</p>
             </div>
             <div className="rounded-2xl border border-amber-300/15 bg-background/25 dark:bg-black/25 px-4 py-3 text-sm text-muted-foreground dark:text-zinc-400 shadow-inner shadow-sm dark:shadow-black/30">
               <span className="text-2xl font-semibold tabular-nums text-amber-200">{requests.length}</span>
@@ -384,7 +384,7 @@ export default function ReportRequests() {
             </CardContent>
           </Card>
         ) : (
-          <DashboardThemeFrame variant="section" className="relative p-3 shadow-xl shadow-sm dark:shadow-black/10 ring-1 ring-white/[0.03] sm:p-4 dark:shadow-black/25">
+          <DashboardThemeFrame variant="section" className="relative p-3 shadow-xl shadow-sm dark:shadow-black/10 ring-1 ring-border dark:ring-white/[0.03] sm:p-4 dark:shadow-black/25">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
             <div className="space-y-3 sm:space-y-4">
               {filtered.map((req: ReportRequest) => {
@@ -462,7 +462,7 @@ export default function ReportRequests() {
             const TypeIcon = typeConf.icon;
             return (
               <div className="space-y-4">
-                <div className="space-y-4 rounded-3xl border border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.62),rgba(9,9,11,0.46))] p-4 shadow-inner shadow-sm dark:shadow-black/30 ring-1 ring-white/[0.03]">
+                <div className="space-y-4 rounded-3xl border border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.62),rgba(9,9,11,0.46))] p-4 shadow-inner shadow-sm dark:shadow-black/30 ring-1 ring-border dark:ring-white/[0.03]">
                   <div className="rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-center gap-3">
