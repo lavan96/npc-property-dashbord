@@ -15,6 +15,7 @@ import {
   Pie,
   Cell,
   Tooltip,
+  Legend,
 } from 'recharts';
 import {
   TrendingUp,
@@ -42,6 +43,17 @@ const analyticsPanelHeaderClass = 'border-b border-border/60 bg-gradient-to-br f
 const analyticsPanelContentClass = 'px-5 pb-5 pt-4';
 const analyticsTitleClass = 'text-sm font-bold tracking-tight text-foreground flex items-center gap-2';
 const analyticsDescriptionClass = 'text-[11px] leading-relaxed text-muted-foreground/90';
+const chartTooltipContentStyle = {
+  borderRadius: 14,
+  border: '1px solid hsl(var(--border))',
+  background: 'hsl(var(--popover) / 0.96)',
+  boxShadow: '0 18px 45px hsl(var(--foreground) / 0.12)',
+  color: 'hsl(var(--popover-foreground))',
+  fontSize: 12,
+} as const;
+const chartTooltipLabelStyle = { fontWeight: 700, fontSize: 12, marginBottom: 4, color: 'hsl(var(--foreground))' } as const;
+const chartAxisTick = { fontSize: 11, fill: 'hsl(var(--muted-foreground))', fontWeight: 600 } as const;
+const chartGridStroke = 'hsl(var(--border) / 0.28)';
 const emptyStateClass = 'flex h-40 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/20 px-6 text-center text-xs font-medium text-muted-foreground';
 
 const CHART_COLORS = [
@@ -176,26 +188,26 @@ function ConversionFunnel({ deals }: { deals: DealWithClient[] }) {
         <CardDescription className={analyticsDescriptionClass}>Deals reaching each pipeline stage</CardDescription>
       </CardHeader>
       <CardContent className={analyticsPanelContentClass}>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {funnelData.map((item, i) => {
             const maxVal = funnelData[0]?.value || 1;
             const pct = maxVal > 0 ? Math.round((item.value / maxVal) * 100) : 0;
             return (
-              <div key={item.name} className="flex items-center gap-3">
-                <span className="text-xs font-medium text-muted-foreground w-24 shrink-0 text-right">{item.name}</span>
+              <div key={item.name} className="group flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-muted/35">
+                <span className="w-24 shrink-0 text-right text-xs font-semibold text-muted-foreground">{item.name}</span>
                 <div className="flex-1 relative">
                   <div
-                    className="h-8 rounded-lg flex items-center px-3 shadow-sm ring-1 ring-white/15 transition-all duration-500"
+                    className="flex h-9 items-center justify-between rounded-xl px-3 shadow-md shadow-black/10 ring-1 ring-white/25 transition-all duration-500 group-hover:brightness-110"
                     style={{
                       width: `${Math.max(pct, 8)}%`,
                       backgroundColor: item.fill,
-                      opacity: 0.85,
+                      opacity: 0.92,
                     }}
                   >
-                    <span className="text-[10px] font-bold text-white drop-shadow-sm">{item.value}</span>
+                    <span className="text-[11px] font-black text-white drop-shadow-sm">{item.value}</span>
                   </div>
                 </div>
-                <span className="text-[10px] text-muted-foreground w-10 shrink-0">{pct}%</span>
+                <span className="w-11 shrink-0 rounded-full bg-muted/60 px-2 py-1 text-center text-[10px] font-bold text-muted-foreground">{pct}%</span>
               </div>
             );
           })}
@@ -261,7 +273,7 @@ function RevenueForecast({ deals }: { deals: DealWithClient[] }) {
       <CardContent className={analyticsPanelContentClass}>
         <div className="h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 8 }}>
               <defs>
                 <linearGradient id="settledGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
@@ -272,17 +284,18 @@ function RevenueForecast({ deals }: { deals: DealWithClient[] }) {
                   <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={formatCurrencyShort} className="text-muted-foreground" width={50} />
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 6" vertical={false} />
+              <XAxis dataKey="month" tick={chartAxisTick} tickLine={false} axisLine={{ stroke: chartGridStroke }} minTickGap={10} />
+              <YAxis tick={chartAxisTick} tickLine={false} axisLine={false} tickFormatter={formatCurrencyShort} width={56} domain={[0, 'auto']} allowDataOverflow={false} />
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
+                cursor={{ stroke: 'hsl(var(--primary) / 0.28)', strokeWidth: 1 }}
                 formatter={(value: number, name: string) => [formatCurrency(value), name === 'settled' ? 'Settled' : name === 'projected' ? 'Projected' : 'Commission']}
-                labelStyle={{ fontWeight: 600, fontSize: 11 }}
+                labelStyle={chartTooltipLabelStyle}
               />
               <Area type="monotone" dataKey="settled" stroke="hsl(var(--chart-4))" fill="url(#settledGrad)" strokeWidth={2} connectNulls={false} />
               <Area type="monotone" dataKey="projected" stroke="hsl(var(--chart-1))" fill="url(#projectedGrad)" strokeWidth={2} strokeDasharray="5 3" connectNulls={false} />
-              <Line type="monotone" dataKey="commission" stroke="hsl(var(--success))" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="commission" stroke="hsl(var(--success))" strokeWidth={1.5} dot={{ r: 2.5, strokeWidth: 1 }} activeDot={{ r: 5, strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -366,12 +379,13 @@ function StageVelocity({ deals }: { deals: DealWithClient[] }) {
       <CardContent className={analyticsPanelContentClass}>
         <div className="h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={velocityData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} width={110} className="text-muted-foreground" />
+            <BarChart data={velocityData} layout="vertical" margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 6" horizontal={false} />
+              <XAxis type="number" tick={chartAxisTick} tickLine={false} axisLine={{ stroke: chartGridStroke }} allowDecimals={false} />
+              <YAxis dataKey="name" type="category" tick={chartAxisTick} tickLine={false} axisLine={false} width={118} interval={0} />
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
+                cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
                 formatter={(value: number) => [`${value} days avg`, 'Duration']}
               />
               <Bar dataKey="avgDays" fill="hsl(var(--chart-6))" radius={[0, 4, 4, 0]} />
@@ -410,24 +424,25 @@ function DealTypeBreakdown({ deals }: { deals: DealWithClient[] }) {
         </CardTitle>
       </CardHeader>
       <CardContent className={analyticsPanelContentClass}>
-        <div className="h-[180px]">
+        <div className="h-[205px]">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
                 innerRadius={45}
-                outerRadius={70}
-                paddingAngle={3}
+                outerRadius={78}
+                paddingAngle={4}
+                cornerRadius={6}
                 dataKey="count"
               >
                 {data.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
+                  <Cell key={i} fill={entry.fill} stroke="hsl(var(--background))" strokeWidth={2} />
                 ))}
               </Pie>
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
                 formatter={(value: number, name: string, props: any) => [
                   `${value} deals · ${formatCurrency(props.payload.value)}`,
                   props.payload.name,
@@ -473,9 +488,9 @@ function RiskDistribution({ deals }: { deals: DealWithClient[] }) {
           Risk Distribution
         </CardTitle>
       </CardHeader>
-      <CardContent className={cn(analyticsPanelContentClass, 'space-y-4')}>
+      <CardContent className={cn(analyticsPanelContentClass, 'space-y-3')}>
         {data.map(item => (
-          <div key={item.name} className="space-y-1">
+          <div key={item.name} className="rounded-xl border border-border/55 bg-muted/20 p-3 shadow-sm">
             <div className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5">
                 <span>{item.emoji}</span>
@@ -483,7 +498,7 @@ function RiskDistribution({ deals }: { deals: DealWithClient[] }) {
               </span>
               <span className="font-semibold">{item.value} <span className="text-muted-foreground font-normal">({Math.round((item.value / total) * 100)}%)</span></span>
             </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-muted/70 shadow-inner">
+            <div className="mt-2 h-3 overflow-hidden rounded-full bg-muted/70 shadow-inner">
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${(item.value / total) * 100}%`, backgroundColor: item.fill }}
@@ -535,15 +550,18 @@ function MonthlyDealFlow({ deals }: { deals: DealWithClient[] }) {
       <CardContent className={analyticsPanelContentClass}>
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} className="text-muted-foreground" />
-              <YAxis tick={{ fontSize: 10 }} className="text-muted-foreground" allowDecimals={false} width={30} />
+            <BarChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 8 }}>
+              <CartesianGrid stroke={chartGridStroke} strokeDasharray="4 6" vertical={false} />
+              <XAxis dataKey="month" tick={chartAxisTick} tickLine={false} axisLine={{ stroke: chartGridStroke }} minTickGap={8} />
+              <YAxis tick={chartAxisTick} tickLine={false} axisLine={false} allowDecimals={false} width={36} />
               <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                contentStyle={chartTooltipContentStyle}
+                cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
+                labelStyle={chartTooltipLabelStyle}
               />
-              <Bar dataKey="created" name="Created" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="settled" name="Settled" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 700, paddingBottom: 8 }} />
+              <Bar dataKey="created" name="Created" fill="hsl(var(--chart-1))" radius={[6, 6, 0, 0]} maxBarSize={32} />
+              <Bar dataKey="settled" name="Settled" fill="hsl(var(--chart-4))" radius={[6, 6, 0, 0]} maxBarSize={32} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -591,11 +609,11 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
       </CardHeader>
       <CardContent className={cn(analyticsPanelContentClass, 'space-y-3')}>
         {leaders.map((person, i) => (
-          <div key={person.name} className="flex items-center gap-2">
+          <div key={person.name} className="flex items-start gap-2 rounded-xl border border-border/50 bg-muted/15 p-2.5">
             <span className="text-[10px] font-bold text-muted-foreground w-4 text-right">{i + 1}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
-                <span className="text-xs font-medium truncate">{person.name}</span>
+                <span className="min-w-0 break-all pr-2 text-xs font-semibold leading-snug" title={person.name}>{person.name}</span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-[10px] text-muted-foreground">{person.count} deals</span>
                   {person.urgent > 0 && (
@@ -605,7 +623,7 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
                   )}
                 </div>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted/70 shadow-inner">
+              <div className="h-2.5 overflow-hidden rounded-full bg-muted/70 shadow-inner">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-amber-400 to-primary transition-all duration-500"
                   style={{ width: `${(person.value / maxValue) * 100}%` }}
