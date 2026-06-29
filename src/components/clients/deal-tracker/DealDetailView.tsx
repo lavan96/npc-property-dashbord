@@ -66,7 +66,7 @@ const detailShellClass = cn(
 );
 
 const sectionCardClass =
-  'overflow-hidden rounded-2xl border border-amber-200/15 bg-black/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
+  'overflow-hidden rounded-2xl border border-amber-200/15 bg-background/25 dark:bg-black/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]';
 
 function DetailSection({
   title,
@@ -101,7 +101,7 @@ function DetailSection({
 
 function FieldTile({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-zinc-950/45 p-3">
+    <div className="rounded-xl border border-border dark:border-white/10 bg-background/45 dark:bg-zinc-950/45 p-3">
       <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <div className="min-w-0 break-words text-sm font-medium leading-5 text-foreground">{value || '—'}</div>
     </div>
@@ -192,7 +192,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
         <div className="overflow-hidden rounded-[1.5rem] border border-amber-200/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(245,158,11,0.08)_38%,rgba(0,0,0,0.28))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-3">
-              <Button variant="ghost" size="sm" onClick={onBack} className="h-8 rounded-full border border-amber-200/15 bg-black/20 px-3 text-xs hover:border-amber-200/35 hover:bg-amber-400/10">
+              <Button variant="ghost" size="sm" onClick={onBack} className="h-8 rounded-full border border-amber-200/15 bg-background/20 dark:bg-black/20 px-3 text-xs hover:border-amber-200/35 hover:bg-amber-400/10">
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back to deals
               </Button>
@@ -224,7 +224,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
                 value={deal.risk_status}
                 onValueChange={(v) => handleDealUpdate({ risk_status: v as RiskStatus })}
               >
-                <SelectTrigger className={cn('h-9 w-full rounded-full border bg-zinc-950/60 text-xs shadow-inner sm:w-[190px]', riskConfig.color)}>
+                <SelectTrigger className={cn('h-9 w-full rounded-full border bg-background/60 dark:bg-zinc-950/60 text-xs shadow-inner sm:w-[190px]', riskConfig.color)}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,7 +279,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
                   }
                 }}
                 placeholder="Enter property address..."
-                className="h-10 rounded-xl border-amber-200/15 bg-zinc-950/55 text-sm shadow-inner"
+                className="h-10 rounded-xl border-amber-200/15 bg-background/55 dark:bg-zinc-950/55 text-sm shadow-inner"
               />
             </div>
             <div className="space-y-2">
@@ -304,7 +304,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
         <DetailSection title="Stage and next action" description="Milestones and action buttons preserve the existing stage update workflow." icon={<CalendarClock className="h-4 w-4" />}>
           <Collapsible open={openSections.stages} onOpenChange={() => toggleSection('stages')}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="mb-3 h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium hover:bg-amber-400/10">
+              <Button variant="ghost" className="mb-3 h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium hover:bg-amber-400/10">
                 {getStagesLabel()}
                 <ChevronDown className={cn('h-4 w-4 transition-transform', openSections.stages && 'rotate-180')} />
               </Button>
@@ -333,15 +333,15 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
           <DetailSection title="Finance / settlement" description="Critical dates, financial controls and linked lender artefacts." icon={<DollarSign className="h-4 w-4" />}>
             <div className="space-y-3">
               <Collapsible open={openSections.dates} onOpenChange={() => toggleSection('dates')}>
-                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium">Critical Dates<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.dates && 'rotate-180')} /></Button></CollapsibleTrigger>
+                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium">Critical Dates<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.dates && 'rotate-180')} /></Button></CollapsibleTrigger>
                 <CollapsibleContent className="pt-3"><DealCriticalDates deal={deal} onUpdate={handleDealUpdate} /></CollapsibleContent>
               </Collapsible>
               <Collapsible open={openSections.financial} onOpenChange={() => toggleSection('financial')}>
-                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium">Financial Controls<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.financial && 'rotate-180')} /></Button></CollapsibleTrigger>
+                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium">Financial Controls<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.financial && 'rotate-180')} /></Button></CollapsibleTrigger>
                 <CollapsibleContent className="pt-3"><DealFinancialControls deal={deal} onUpdate={handleDealUpdate} /></CollapsibleContent>
               </Collapsible>
               <Collapsible open={openSections.lenders} onOpenChange={() => toggleSection('lenders')}>
-                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium">Lender Submissions & Comparison<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.lenders && 'rotate-180')} /></Button></CollapsibleTrigger>
+                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium">Lender Submissions & Comparison<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.lenders && 'rotate-180')} /></Button></CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 pt-3"><LenderSubmissionsPanel clientId={clientId} dealId={deal.id} /><LenderComparisonSheets clientId={clientId} dealId={deal.id} /></CollapsibleContent>
               </Collapsible>
             </div>
@@ -351,15 +351,15 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
             <div className="space-y-3">
               {isHnL && (
                 <Collapsible open={openSections.build} onOpenChange={() => toggleSection('build')}>
-                  <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium">Build Progress Payments<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.build && 'rotate-180')} /></Button></CollapsibleTrigger>
+                  <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium">Build Progress Payments<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.build && 'rotate-180')} /></Button></CollapsibleTrigger>
                   <CollapsibleContent className="pt-3"><BuildPaymentTracker payments={deal.buildPayments || []} buildPrice={deal.build_price} onUpdatePayment={(paymentId, data) => updateBuildPayment.mutate({ paymentId, data })} /></CollapsibleContent>
                 </Collapsible>
               )}
               <Collapsible open={openSections.documents} onOpenChange={() => toggleSection('documents')}>
-                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium">Generated Documents<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.documents && 'rotate-180')} /></Button></CollapsibleTrigger>
+                <CollapsibleTrigger asChild><Button variant="ghost" className="h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium">Generated Documents<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.documents && 'rotate-180')} /></Button></CollapsibleTrigger>
                 <CollapsibleContent className="pt-3"><DocumentsTab clientId={clientId} dealId={deal.id} /></CollapsibleContent>
               </Collapsible>
-              {!isHnL && <p className="rounded-xl border border-white/10 bg-zinc-950/35 p-3 text-xs leading-5 text-muted-foreground">No build progress payment schedule applies to this deal type.</p>}
+              {!isHnL && <p className="rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 p-3 text-xs leading-5 text-muted-foreground">No build progress payment schedule applies to this deal type.</p>}
             </div>
           </DetailSection>
         </div>
@@ -371,7 +371,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
               <FieldTile label="Compliance" value="Records attached below" />
             </div>
             <Collapsible open={openSections.compliance} onOpenChange={() => toggleSection('compliance')}>
-              <CollapsibleTrigger asChild><Button variant="ghost" className="mt-3 h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium">Compliance Records<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.compliance && 'rotate-180')} /></Button></CollapsibleTrigger>
+              <CollapsibleTrigger asChild><Button variant="ghost" className="mt-3 h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium">Compliance Records<ChevronDown className={cn('h-4 w-4 transition-transform', openSections.compliance && 'rotate-180')} /></Button></CollapsibleTrigger>
               <CollapsibleContent className="pt-3"><ComplianceTab clientId={clientId} dealId={deal.id} /></CollapsibleContent>
             </Collapsible>
           </DetailSection>
@@ -387,7 +387,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
         <DetailSection title="Notes / actions" description="Internal notes keep the existing save-on-blur update behaviour." icon={<MessageSquareText className="h-4 w-4" />}>
           <Collapsible open={openSections.notes} onOpenChange={() => toggleSection('notes')}>
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="mb-3 h-10 w-full justify-between rounded-xl border border-white/10 bg-zinc-950/35 text-sm font-medium">
+              <Button variant="ghost" className="mb-3 h-10 w-full justify-between rounded-xl border border-border dark:border-white/10 bg-background/35 dark:bg-zinc-950/35 text-sm font-medium">
                 Notes
                 <ChevronDown className={cn('h-4 w-4 transition-transform', openSections.notes && 'rotate-180')} />
               </Button>
@@ -403,7 +403,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
                 }}
                 placeholder="Add deal notes..."
                 rows={4}
-                className="min-h-[112px] rounded-xl border-amber-200/15 bg-zinc-950/55 text-sm leading-6 shadow-inner"
+                className="min-h-[112px] rounded-xl border-amber-200/15 bg-background/55 dark:bg-zinc-950/55 text-sm leading-6 shadow-inner"
               />
             </CollapsibleContent>
           </Collapsible>

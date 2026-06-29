@@ -247,7 +247,7 @@ export default function ReportRequests() {
   };
 
   return (
-    <DashboardThemeFrame variant="page" className="relative min-h-[calc(100vh-6rem)] rounded-[1.5rem] border border-border/60 bg-background/80 p-3 shadow-2xl shadow-black/10 selection:bg-primary/20 selection:text-foreground dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/40 sm:rounded-[2rem] sm:p-6 lg:p-8">
+    <DashboardThemeFrame variant="page" className="relative min-h-[calc(100vh-6rem)] rounded-[1.5rem] border border-border/60 bg-background/80 p-3 shadow-2xl shadow-sm dark:shadow-black/10 selection:bg-primary/20 selection:text-foreground dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/40 sm:rounded-[2rem] sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.18),transparent_32%),radial-gradient(circle_at_85%_12%,rgba(59,130,246,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%)]" />
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
 
@@ -261,10 +261,10 @@ export default function ReportRequests() {
                 <Send className="h-3.5 w-3.5" />
                 Portal Operations
               </div>
-              <h1 className="text-3xl font-semibold tracking-[-0.035em] text-white sm:text-5xl">Client Report Requests</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300/85 sm:text-base">Manage incoming report requests from portal clients</p>
+              <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground dark:text-white sm:text-5xl">Client Report Requests</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-zinc-300/85 sm:text-base">Manage incoming report requests from portal clients</p>
             </div>
-            <div className="rounded-2xl border border-amber-300/15 bg-black/25 px-4 py-3 text-sm text-zinc-400 shadow-inner shadow-black/30">
+            <div className="rounded-2xl border border-amber-300/15 bg-background/25 dark:bg-black/25 px-4 py-3 text-sm text-muted-foreground dark:text-zinc-400 shadow-inner shadow-sm dark:shadow-black/30">
               <span className="text-2xl font-semibold tabular-nums text-amber-200">{requests.length}</span>
               <span className="ml-2">total requests</span>
             </div>
@@ -281,7 +281,7 @@ export default function ReportRequests() {
               <Card
                 key={status}
                 className={cn(
-                  'group relative cursor-pointer overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/25 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20',
+                  'group relative cursor-pointer overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-sm dark:shadow-black/25 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20',
                   tile.glow,
                   statusFilter === status && tile.active
                 )}
@@ -294,9 +294,9 @@ export default function ReportRequests() {
               >
                 <CardContent className="relative flex min-h-[132px] flex-col justify-between p-4 sm:p-5">
                   <div className={cn('absolute inset-x-0 top-0 h-px bg-gradient-to-r opacity-70 transition-opacity group-hover:opacity-100', tile.edge)} />
-                  <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full bg-white/5 blur-2xl transition-opacity group-hover:opacity-80" />
+                  <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full bg-card/5 dark:bg-white/5 blur-2xl transition-opacity group-hover:opacity-80" />
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-zinc-500">{conf.label}</p>
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:text-zinc-500">{conf.label}</p>
                     <div className={cn('rounded-2xl border p-2.5 shadow-inner transition-all duration-300 group-hover:scale-105', tile.iconWrap)}>
                       <Icon className={cn('h-5 w-5', conf.color)} />
                     </div>
@@ -314,31 +314,31 @@ export default function ReportRequests() {
         </div>
 
         {/* Filters */}
-        <DashboardThemeFrame variant="toolbar" className="relative overflow-hidden p-3 shadow-xl shadow-black/10 sm:p-4 dark:shadow-black/25">
+        <DashboardThemeFrame variant="toolbar" className="relative overflow-hidden p-3 shadow-xl shadow-sm dark:shadow-black/10 sm:p-4 dark:shadow-black/25">
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent" />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="group/search relative flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 transition-colors group-focus-within/search:text-amber-200" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-zinc-500 transition-colors group-focus-within/search:text-amber-200" />
               <Input
                 aria-label="Search report requests"
                 placeholder="Search by client, property, or notes..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-12 rounded-2xl border-white/10 bg-black/45 pl-11 pr-4 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                className="h-12 rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 pl-11 pr-4 text-sm text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-zinc-500 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger
                 aria-label="Filter report requests by type"
                 className={cn(
-                  'h-12 w-full rounded-2xl border-white/10 bg-black/45 px-4 text-sm font-medium text-zinc-100 shadow-inner shadow-black/30 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/55 focus:border-amber-300/55 focus:ring-2 focus:ring-amber-300/20 focus:ring-offset-2 focus:ring-offset-zinc-950 data-[state=open]:border-amber-300/45 data-[state=open]:bg-amber-300/10 lg:w-60',
+                  'h-12 w-full rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 px-4 text-sm font-medium text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/55 focus:border-amber-300/55 focus:ring-2 focus:ring-amber-300/20 focus:ring-offset-2 focus:ring-offset-zinc-950 data-[state=open]:border-amber-300/45 data-[state=open]:bg-amber-300/10 lg:w-60',
                   typeFilter !== 'all' && 'border-amber-300/35 bg-amber-300/10 text-amber-100'
                 )}
               >
                 <Filter className="mr-2 h-3.5 w-3.5 text-amber-200" />
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
-              <SelectContent className="overflow-hidden rounded-2xl border-white/10 bg-zinc-950/95 p-1 text-zinc-100 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              <SelectContent className="overflow-hidden rounded-2xl border-border dark:border-white/10 bg-background/95 dark:bg-zinc-950/95 p-1 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/50 backdrop-blur-xl">
                 <SelectItem className="rounded-xl font-medium focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="all">All Types</SelectItem>
                 <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="portfolio_review">Portfolio Review</SelectItem>
                 <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="borrowing_capacity">Borrowing Capacity</SelectItem>
@@ -350,17 +350,17 @@ export default function ReportRequests() {
 
         {/* Request List */}
         {isLoading ? (
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] p-4 shadow-xl shadow-black/25">
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/25 py-16 text-center">
+          <div className="relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] p-4 shadow-xl shadow-sm dark:shadow-black/25">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 py-16 text-center">
               <div className="mb-4 rounded-full border border-amber-300/20 bg-amber-300/10 p-3 shadow-[0_0_32px_rgba(245,158,11,0.16)]">
                 <Loader2 className="h-7 w-7 animate-spin text-amber-200" />
               </div>
-              <p className="text-sm font-medium text-zinc-200">Loading report requests</p>
-              <p className="mt-1 text-xs text-zinc-500">Fetching the latest client portal requests…</p>
+              <p className="text-sm font-medium text-foreground dark:text-zinc-200">Loading report requests</p>
+              <p className="mt-1 text-xs text-muted-foreground dark:text-zinc-500">Fetching the latest client portal requests…</p>
             </div>
           </div>
         ) : error ? (
-          <Card className="overflow-hidden rounded-3xl border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.2),rgba(9,9,11,0.86))] shadow-xl shadow-black/25">
+          <Card className="overflow-hidden rounded-3xl border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.2),rgba(9,9,11,0.86))] shadow-xl shadow-sm dark:shadow-black/25">
             <CardContent className="py-12 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-red-300/20 bg-red-400/10">
                 <XCircle className="h-7 w-7 text-red-200/80" />
@@ -370,21 +370,21 @@ export default function ReportRequests() {
             </CardContent>
           </Card>
         ) : filtered.length === 0 ? (
-          <Card className="overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] shadow-xl shadow-black/25">
+          <Card className="overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] shadow-xl shadow-sm dark:shadow-black/25">
             <CardContent className="py-14 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10">
                 <Inbox className="h-7 w-7 text-amber-200/50" />
               </div>
-              <p className="font-medium text-zinc-300">
+              <p className="font-medium text-muted-foreground dark:text-zinc-300">
                 {requests.length === 0 ? 'No report requests yet.' : 'No requests match your filters.'}
               </p>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground dark:text-zinc-500">
                 {requests.length === 0 ? 'New portal requests will appear here as soon as clients submit them.' : 'Try adjusting the search term or selected request type/status filters.'}
               </p>
             </CardContent>
           </Card>
         ) : (
-          <DashboardThemeFrame variant="section" className="relative p-3 shadow-xl shadow-black/10 ring-1 ring-white/[0.03] sm:p-4 dark:shadow-black/25">
+          <DashboardThemeFrame variant="section" className="relative p-3 shadow-xl shadow-sm dark:shadow-black/10 ring-1 ring-border dark:ring-white/[0.03] sm:p-4 dark:shadow-black/25">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
             <div className="space-y-3 sm:space-y-4">
               {filtered.map((req: ReportRequest) => {
@@ -394,7 +394,7 @@ export default function ReportRequests() {
                 return (
                   <Card
                     key={req.id}
-                    className="group cursor-pointer overflow-hidden rounded-3xl border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-black/20 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)] active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20"
+                    className="group cursor-pointer overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-sm dark:shadow-black/20 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)] active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20"
                     onClick={() => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); }}
                     onKeyDown={(event) => handleKeyboardActivate(event, () => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); })}
                     role="button"
@@ -405,29 +405,29 @@ export default function ReportRequests() {
                       <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-300/0 transition-colors duration-300 group-hover:bg-amber-300/80" />
                       <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                       <div className="flex items-start gap-4">
-                        <div className={cn('shrink-0 rounded-2xl p-3.5 shadow-inner shadow-black/20 transition-transform duration-300 group-hover:scale-105', typeConf.color)}>
+                        <div className={cn('shrink-0 rounded-2xl p-3.5 shadow-inner shadow-sm dark:shadow-black/20 transition-transform duration-300 group-hover:scale-105', typeConf.color)}>
                           <TypeIcon className="h-6 w-6" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold tracking-tight text-white sm:text-base">{typeConf.label}</p>
+                                <p className="text-sm font-semibold tracking-tight text-foreground dark:text-white sm:text-base">{typeConf.label}</p>
                                 <Badge variant="outline" className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur transition-colors duration-200 group-hover:border-amber-300/35', statConf.badgeVariant)}>
                                   {statConf.label}
                                 </Badge>
                               </div>
-                              <div className="grid gap-1.5 text-xs leading-5 text-zinc-400">
-                                <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-amber-200/75" /><span className="capitalize font-medium text-zinc-100">{req.client_name}</span></div>
-                                {req.client_email && <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-zinc-500" /><span className="break-all">{req.client_email}</span></div>}
-                                {req.client_phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-zinc-500" /><span>{req.client_phone}</span></div>}
-                                {req.property_address && <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 text-zinc-500" /><span>{req.property_address}</span></div>}
-                                {req.notes && <div className="flex items-start gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-zinc-300"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/60" /><span className="line-clamp-2">{req.notes}</span></div>}
+                              <div className="grid gap-1.5 text-xs leading-5 text-muted-foreground dark:text-zinc-400">
+                                <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-amber-200/75" /><span className="capitalize font-medium text-foreground dark:text-zinc-100">{req.client_name}</span></div>
+                                {req.client_email && <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500" /><span className="break-all">{req.client_email}</span></div>}
+                                {req.client_phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500" /><span>{req.client_phone}</span></div>}
+                                {req.property_address && <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500" /><span>{req.property_address}</span></div>}
+                                {req.notes && <div className="flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 px-3 py-2 text-muted-foreground dark:text-zinc-300"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/60" /><span className="line-clamp-2">{req.notes}</span></div>}
                               </div>
                             </div>
-                            <div className="shrink-0 self-start rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-left shadow-inner shadow-black/25 sm:text-right">
-                              <p className="text-xs font-medium tabular-nums text-zinc-200">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
-                              <p className="mt-0.5 text-[10px] text-zinc-500">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
+                            <div className="shrink-0 self-start rounded-2xl border border-border dark:border-white/10 bg-background/30 dark:bg-black/30 px-3 py-2 text-left shadow-inner shadow-sm dark:shadow-black/25 sm:text-right">
+                              <p className="text-xs font-medium tabular-nums text-foreground dark:text-zinc-200">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
+                              <p className="mt-0.5 text-[10px] text-muted-foreground dark:text-zinc-500">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
                             </div>
                           </div>
                         </div>
@@ -443,16 +443,16 @@ export default function ReportRequests() {
 
       {/* Detail / Action Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-amber-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-amber-300/40 [&>button:hover]:bg-amber-300/10 [&>button:hover]:text-amber-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-amber-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
+        <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-amber-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-foreground dark:text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-amber-300/40 [&>button:hover]:bg-amber-300/10 [&>button:hover]:text-amber-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-amber-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
-          <DialogHeader className="border-b border-white/10 bg-white/[0.02] px-4 pb-5 pt-6 text-left sm:px-6">
-            <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-white">
-              <span className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-2 text-amber-200 shadow-inner shadow-black/20">
+          <DialogHeader className="border-b border-border dark:border-white/10 bg-white/[0.02] px-4 pb-5 pt-6 text-left sm:px-6">
+            <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-foreground dark:text-white">
+              <span className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-2 text-amber-200 shadow-inner shadow-sm dark:shadow-black/20">
                 <Send className="h-4 w-4" />
               </span>
               Report Request Details
             </DialogTitle>
-            <DialogDescription className="pt-1 text-sm leading-6 text-zinc-400">Review and manage this client report request.</DialogDescription>
+            <DialogDescription className="pt-1 text-sm leading-6 text-muted-foreground dark:text-zinc-400">Review and manage this client report request.</DialogDescription>
           </DialogHeader>
           <div className="px-4 py-5 sm:px-6">
 
@@ -462,12 +462,12 @@ export default function ReportRequests() {
             const TypeIcon = typeConf.icon;
             return (
               <div className="space-y-4">
-                <div className="space-y-4 rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.62),rgba(9,9,11,0.46))] p-4 shadow-inner shadow-black/30 ring-1 ring-white/[0.03]">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                <div className="space-y-4 rounded-3xl border border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(39,39,42,0.62),rgba(9,9,11,0.46))] p-4 shadow-inner shadow-sm dark:shadow-black/30 ring-1 ring-border dark:ring-white/[0.03]">
+                  <div className="rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
-                        <p className="min-w-0 truncate text-base font-semibold tracking-tight text-white">{typeConf.label}</p>
+                        <div className={cn('shrink-0 rounded-2xl p-3 shadow-inner shadow-sm dark:shadow-black/20', typeConf.color)}><TypeIcon className="h-5 w-5" /></div>
+                        <p className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground dark:text-white">{typeConf.label}</p>
                       </div>
                       <Badge variant="outline" className={cn('w-fit shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur', statConf.badgeVariant)}>{statConf.label}</Badge>
                     </div>
@@ -475,19 +475,19 @@ export default function ReportRequests() {
                   </div>
 
                   <div className="grid gap-2.5 text-sm">
-                    <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-zinc-500">Client:</span><span className="min-w-0 font-semibold capitalize text-white">{selectedRequest.client_name}</span></div>
-                    {selectedRequest.client_email && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Email:</span><span className="min-w-0 break-all font-medium text-white">{selectedRequest.client_email}</span></div>}
-                    {selectedRequest.client_phone && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Phone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Phone:</span><span className="min-w-0 font-medium text-white">{selectedRequest.client_phone}</span></div>}
-                    {selectedRequest.client_address && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Address:</span><span className="min-w-0 break-words font-medium text-white">{selectedRequest.client_address}</span></div>}
-                    <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Requested:</span><span className="min-w-0 font-medium text-white">{format(new Date(selectedRequest.created_at), 'dd MMM yyyy, HH:mm')}</span></div>
-                    {selectedRequest.property_address && <div className="flex items-start gap-3 rounded-2xl border border-white/5 bg-black/15 px-3 py-2"><Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" /><span className="w-20 shrink-0 text-zinc-500">Property:</span><span className="min-w-0 break-words font-medium text-white">{selectedRequest.property_address}</span></div>}
-                    {selectedRequest.notes && <div className="flex items-start gap-3 rounded-2xl border border-amber-300/10 bg-amber-300/5 px-3 py-3"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-zinc-500">Client notes:</span><span className="min-w-0 whitespace-pre-wrap break-words leading-5 text-white">{selectedRequest.notes}</span></div>}
+                    <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Client:</span><span className="min-w-0 font-semibold capitalize text-foreground dark:text-white">{selectedRequest.client_name}</span></div>
+                    {selectedRequest.client_email && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Email:</span><span className="min-w-0 break-all font-medium text-foreground dark:text-white">{selectedRequest.client_email}</span></div>}
+                    {selectedRequest.client_phone && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Phone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Phone:</span><span className="min-w-0 font-medium text-foreground dark:text-white">{selectedRequest.client_phone}</span></div>}
+                    {selectedRequest.client_address && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Address:</span><span className="min-w-0 break-words font-medium text-foreground dark:text-white">{selectedRequest.client_address}</span></div>}
+                    <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Requested:</span><span className="min-w-0 font-medium text-foreground dark:text-white">{format(new Date(selectedRequest.created_at), 'dd MMM yyyy, HH:mm')}</span></div>
+                    {selectedRequest.property_address && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Property:</span><span className="min-w-0 break-words font-medium text-foreground dark:text-white">{selectedRequest.property_address}</span></div>}
+                    {selectedRequest.notes && <div className="flex items-start gap-3 rounded-2xl border border-amber-300/10 bg-amber-300/5 px-3 py-3"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Client notes:</span><span className="min-w-0 whitespace-pre-wrap break-words leading-5 text-foreground dark:text-white">{selectedRequest.notes}</span></div>}
                   </div>
                 </div>
 
                 {/* Admin Notes */}
-                <div className="space-y-2 rounded-3xl border border-white/10 bg-black/20 p-4 shadow-inner shadow-black/25">
-                  <Label className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+                <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
+                  <Label className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-zinc-100">
                     <MessageSquare className="h-3.5 w-3.5 text-amber-200/75" />
                     Admin Notes
                   </Label>
@@ -497,13 +497,13 @@ export default function ReportRequests() {
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
                     rows={4}
-                    className="max-h-44 min-h-28 resize-y rounded-2xl border-white/10 bg-zinc-950/70 text-sm leading-6 text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                    className="max-h-44 min-h-28 resize-y rounded-2xl border-border dark:border-white/10 bg-background/70 dark:bg-zinc-950/70 text-sm leading-6 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-zinc-500 transition-all duration-200 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                   />
                 </div>
 
                 {/* Status Selector */}
-                <div className="space-y-2 rounded-3xl border border-white/10 bg-black/20 p-4 shadow-inner shadow-black/25">
-                  <Label className="text-sm font-semibold text-zinc-100">Update Status</Label>
+                <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
+                  <Label className="text-sm font-semibold text-foreground dark:text-zinc-100">Update Status</Label>
                   <div className="flex flex-wrap gap-2.5">
                     {(['pending', 'in_progress', 'completed', 'declined'] as const).map((status) => {
                       const conf = statusConfig[status];
@@ -520,7 +520,7 @@ export default function ReportRequests() {
                           aria-label={`Set request status to ${conf.label}`}
                           onClick={() => handleStatusUpdate(selectedRequest.id, status)}
                           className={cn(
-                            'min-h-10 rounded-full border-white/10 bg-zinc-950/60 px-3.5 text-xs font-semibold text-zinc-300 shadow-inner shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
+                            'min-h-10 rounded-full border-border dark:border-white/10 bg-background/60 dark:bg-zinc-950/60 px-3.5 text-xs font-semibold text-muted-foreground dark:text-zinc-300 shadow-inner shadow-sm dark:shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
                             buttonTone.idle,
                             isActive && buttonTone.active,
                             isActive && 'pointer-events-none',

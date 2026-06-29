@@ -5087,18 +5087,18 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   )}
                   
                   {aiAnalysis && (
-                    <div className="max-h-[min(70vh,900px)] space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-amber-300/25 bg-slate-950/95 p-3 shadow-2xl shadow-slate-950/20 ring-1 ring-amber-400/15 sm:p-4 [scrollbar-gutter:stable]">
+                    <div className="max-h-[min(70vh,900px)] space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-amber-300/25 bg-background/95 dark:bg-slate-950/95 p-3 shadow-2xl shadow-slate-950/20 ring-1 ring-amber-400/15 sm:p-4 [scrollbar-gutter:stable]">
                       {/* Executive Summary */}
                       {aiAnalysis.executiveSummary && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/30 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                        <div className="min-w-0 rounded-2xl border border-amber-300/30 bg-gradient-to-br from-card dark:from-slate-900 via-card dark:via-slate-950 to-card dark:to-slate-900 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
                           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Executive Summary</span></h4>
-                          <p className="whitespace-normal text-sm leading-7 text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.executiveSummary}</p>
+                          <p className="whitespace-normal text-sm leading-7 text-foreground dark:text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.executiveSummary}</p>
                         </div>
                       )}
                       
                       {/* Final Rankings */}
                       {aiAnalysis.finalRankings && aiAnalysis.finalRankings.length > 0 && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950/40 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-card dark:from-slate-900 via-card dark:via-slate-950 to-blue-950/40 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
                           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Property Rankings</span></h4>
                           <div className="space-y-2">
                             {aiAnalysis.finalRankings.map((ranking: any, idx: number) => (
@@ -5107,7 +5107,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                   <Badge variant={idx === 0 ? 'default' : 'outline'} className="text-xs">
                                     #{ranking.rank}
                                   </Badge>
-                                  <span className="min-w-0 text-sm font-medium text-slate-100 [overflow-wrap:anywhere]">{ranking.address}</span>
+                                  <span className="min-w-0 text-sm font-medium text-foreground dark:text-slate-100 [overflow-wrap:anywhere]">{ranking.address}</span>
                                   {ranking.score && (
                                     <Badge variant="secondary" className="text-xs ml-auto">
                                       Score: {typeof ranking.score === 'number' ? ranking.score.toFixed(1) : ranking.score}
@@ -5115,12 +5115,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                   )}
                                 </div>
                                 {ranking.verdict && (
-                                  <p className="mt-1 whitespace-normal text-xs leading-6 text-slate-300 [overflow-wrap:anywhere]">{ranking.verdict}</p>
+                                  <p className="mt-1 whitespace-normal text-xs leading-6 text-muted-foreground dark:text-slate-300 [overflow-wrap:anywhere]">{ranking.verdict}</p>
                                 )}
                                 {ranking.strengths && ranking.strengths.length > 0 && (
                                   <div className="mt-2">
                                     <span className="text-[10px] text-green-600 font-medium">Strengths: </span>
-                                    <span className="whitespace-normal text-[10px] leading-5 text-slate-300 [overflow-wrap:anywhere]">{ranking.strengths.join(', ')}</span>
+                                    <span className="whitespace-normal text-[10px] leading-5 text-muted-foreground dark:text-slate-300 [overflow-wrap:anywhere]">{ranking.strengths.join(', ')}</span>
                                   </div>
                                 )}
                               </div>
@@ -5131,31 +5131,31 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Investor Recommendations */}
                       {aiAnalysis.investorRecommendations && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-card dark:from-slate-900 via-card dark:via-slate-950 to-card dark:to-slate-900 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
                           <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Investor Profile Recommendations</span></h4>
                           <div className="grid min-w-0 gap-3 text-xs md:grid-cols-2">
                             {aiAnalysis.investorRecommendations.growthFocused && (
                               <div className="min-w-0 rounded-xl border border-blue-400/20 bg-blue-500/10 p-3">
                                 <span className="font-medium text-blue-600">Growth Focused:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.growthFocused.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.growthFocused.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.incomeFocused && (
                               <div className="min-w-0 rounded-xl border border-green-400/20 bg-green-500/10 p-3">
                                 <span className="font-medium text-green-600">Income Focused:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.incomeFocused.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.incomeFocused.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.balanced && (
                               <div className="min-w-0 rounded-xl border border-purple-400/20 bg-purple-500/10 p-3">
                                 <span className="font-medium text-purple-600">Balanced:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.balanced.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.balanced.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.riskAverse && (
                               <div className="min-w-0 rounded-xl border border-amber-400/20 bg-amber-500/10 p-3">
                                 <span className="font-medium text-amber-600">Risk Averse:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.riskAverse.reason}</p>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.riskAverse.reason}</p>
                               </div>
                             )}
                           </div>
@@ -5164,9 +5164,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Overall Recommendation */}
                       {aiAnalysis.overallRecommendation?.bestProperty && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/35 bg-gradient-to-br from-green-950/50 via-slate-950 to-slate-900 p-4 shadow-lg shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
+                        <div className="min-w-0 rounded-2xl border border-amber-300/35 bg-gradient-to-br from-green-950/50 via-card dark:via-slate-950 to-card dark:to-slate-900 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
                           <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Best Overall Property</span></h4>
-                          <p className="whitespace-normal text-sm leading-7 text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
+                          <p className="whitespace-normal text-sm leading-7 text-foreground dark:text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
                         </div>
                       )}
                     </div>
@@ -5576,15 +5576,15 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <div className="max-w-full overflow-x-auto rounded-2xl border bg-background [-webkit-overflow-scrolling:touch]">
                       <Table className="min-w-[980px]">
                         <TableHeader>
-                          <TableRow className="bg-slate-900 hover:bg-slate-900">
-                            <TableHead className="font-semibold text-white">Stage</TableHead>
-                            <TableHead className="font-semibold text-white">Description</TableHead>
-                            <TableHead className="text-center font-semibold text-white">Total Build Contract</TableHead>
-                            <TableHead className="text-right font-semibold text-white">Stage Pricing</TableHead>
-                            <TableHead className="text-right font-semibold text-white">Land Interest Charge (Monthly)</TableHead>
-                            <TableHead className="text-right font-semibold text-white">Build Interest Charge (Monthly)</TableHead>
-                            <TableHead className="text-right font-semibold text-white">Combined Repayment Breakdown</TableHead>
-                            <TableHead className="text-center font-semibold text-white">Month</TableHead>
+                          <TableRow className="bg-card dark:bg-slate-900 hover:bg-slate-900">
+                            <TableHead className="font-semibold text-foreground dark:text-white">Stage</TableHead>
+                            <TableHead className="font-semibold text-foreground dark:text-white">Description</TableHead>
+                            <TableHead className="text-center font-semibold text-foreground dark:text-white">Total Build Contract</TableHead>
+                            <TableHead className="text-right font-semibold text-foreground dark:text-white">Stage Pricing</TableHead>
+                            <TableHead className="text-right font-semibold text-foreground dark:text-white">Land Interest Charge (Monthly)</TableHead>
+                            <TableHead className="text-right font-semibold text-foreground dark:text-white">Build Interest Charge (Monthly)</TableHead>
+                            <TableHead className="text-right font-semibold text-foreground dark:text-white">Combined Repayment Breakdown</TableHead>
+                            <TableHead className="text-center font-semibold text-foreground dark:text-white">Month</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -5644,12 +5644,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <div className="max-w-full overflow-x-auto rounded-b-2xl overscroll-x-contain border-t bg-background [-webkit-overflow-scrolling:touch]">
                   <Table className="min-w-[1280px] border-separate border-spacing-0 text-sm">
                     <TableHeader className="sticky top-0 z-30 shadow-sm">
-                      <TableRow className="bg-slate-900 hover:bg-slate-900">
-                        <TableHead className="sticky left-0 z-30 min-w-[220px] bg-slate-900 text-white shadow-[6px_0_12px_-12px_rgba(15,23,42,0.7)]">Overview</TableHead>
+                      <TableRow className="bg-card dark:bg-slate-900 hover:bg-slate-900">
+                        <TableHead className="sticky left-0 z-30 min-w-[220px] bg-card dark:bg-slate-900 text-foreground dark:text-white shadow-[6px_0_12px_-12px_rgba(15,23,42,0.7)]">Overview</TableHead>
                         {projections.map(p => (
-                          <TableHead key={p.year} className="min-w-[105px] bg-slate-900 text-center text-white">
+                          <TableHead key={p.year} className="min-w-[105px] bg-card dark:bg-slate-900 text-center text-foreground dark:text-white">
                             {p.year === 0 ? 'Today' : `Year ${p.year}`}
-                            {p.year >= 1 && <span className="block text-[10px] font-normal text-slate-300">editable</span>}
+                            {p.year >= 1 && <span className="block text-[10px] font-normal text-muted-foreground dark:text-slate-300">editable</span>}
                           </TableHead>
                         ))}
                       </TableRow>

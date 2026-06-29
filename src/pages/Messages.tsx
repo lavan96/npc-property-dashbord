@@ -230,7 +230,7 @@ export default function Messages() {
                 All Client Portal and Finance Portal threads, consolidated for Command Centre oversight.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary shadow-inner shadow-black/10">Portal command hub</span>
+                <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary shadow-inner shadow-sm dark:shadow-black/10">Portal command hub</span>
                 <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-emerald-600 dark:text-emerald-200">{clientThreads.length} client threads</span>
                 <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-blue-600 dark:text-blue-200">{financeGrouped.length} finance clients</span>
               </div>
@@ -252,7 +252,7 @@ export default function Messages() {
                 size="sm"
                 aria-busy={refreshing}
                 className={cn(
-                  'h-10 justify-center rounded-full border-border/70 bg-card/80 px-5 text-foreground shadow-sm shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.12),0_14px_34px_hsl(var(--primary)/0.10)] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 dark:bg-slate-950/55',
+                  'h-10 justify-center rounded-full border-border/70 bg-card/80 px-5 text-foreground shadow-sm shadow-sm dark:shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_0_1px_hsl(var(--primary)/0.12),0_14px_34px_hsl(var(--primary)/0.10)] focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 dark:bg-slate-950/55',
                   refreshing && 'border-primary/45 bg-primary/10 text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.16),0_14px_34px_hsl(var(--primary)/0.10)]',
                 )}
                 onClick={() => {
@@ -268,7 +268,7 @@ export default function Messages() {
         </DashboardThemeFrame>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'client' | 'finance')} className="space-y-4">
-          <DashboardThemeFrame variant="toolbar" className="relative overflow-hidden border-primary/15 bg-card/70 shadow-xl shadow-black/10 dark:bg-slate-950/45 dark:shadow-black/25">
+          <DashboardThemeFrame variant="toolbar" className="relative overflow-hidden border-primary/15 bg-card/70 shadow-xl shadow-sm dark:shadow-black/10 dark:bg-slate-950/45 dark:shadow-black/25">
             <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
             <div className="relative flex w-full flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="relative min-w-0 flex-1 xl:max-w-2xl">
@@ -284,7 +284,7 @@ export default function Messages() {
                 />
               </div>
 
-              <TabsList aria-label="Portal message type" className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-border/70 bg-background/70 dark:border-white/10 dark:bg-slate-950/55 p-1.5 shadow-lg shadow-black/20 xl:w-auto xl:min-w-[420px]">
+              <TabsList aria-label="Portal message type" className="grid h-auto w-full grid-cols-2 gap-1.5 rounded-2xl border border-border/70 bg-background/70 dark:border-white/10 dark:bg-slate-950/55 p-1.5 shadow-lg shadow-sm dark:shadow-black/20 xl:w-auto xl:min-w-[420px]">
                 <TabsTrigger value="client" className="min-h-11 gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20">
                   <MessageSquare className="h-4 w-4 shrink-0" />
                   Client Portal
@@ -304,8 +304,8 @@ export default function Messages() {
           </DashboardThemeFrame>
 
           <TabsContent value="client" className="mt-0 min-h-0">
-            <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
-              <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
+            <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-2 shadow-2xl shadow-sm dark:shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
+              <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-primary/10 bg-gradient-to-r from-amber-300/12 via-emerald-300/[0.04] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -317,13 +317,13 @@ export default function Messages() {
               </CardHeader>
               <CardContent className="min-h-0 flex-1 p-0">
                 {loadingClient ? (
-                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-primary/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
+                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-primary/15 bg-background/25 dark:bg-black/25 px-5 py-12 text-center shadow-inner shadow-sm dark:shadow-black/20">
                     <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
                     <p className="mt-3 text-sm font-medium text-foreground">Loading client portal threads…</p>
                     <p className="mt-1 text-xs text-muted-foreground">Syncing the latest client conversations.</p>
                   </div>
                 ) : filteredClientThreads.length === 0 ? (
-                  <div className="m-4 rounded-3xl border border-dashed border-primary/15 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
+                  <div className="m-4 rounded-3xl border border-dashed border-primary/15 bg-background/30 dark:bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-sm dark:shadow-black/20">
                     <MessageSquare className="mx-auto mb-3 h-8 w-8 text-amber-200/60" />
                     <p className="font-medium text-foreground">{search.trim() ? 'No client portal matches found.' : 'No client portal messages yet.'}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -340,7 +340,7 @@ export default function Messages() {
                           aria-pressed={selectedClientId === t.client_id}
                           aria-label={`Open Client Portal messages for ${t.client_name}`}
                           className={cn(
-                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-border dark:border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-sm dark:shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
                             selectedClientId === t.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
@@ -354,7 +354,7 @@ export default function Messages() {
                             {t.last_message_preview || '—'}
                           </div>
                           {t.last_message_at && (
-                            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
+                            <div className="mt-3 inline-flex rounded-full border border-border dark:border-white/10 bg-background/30 dark:bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
                               {formatDistanceToNow(new Date(t.last_message_at), { addSuffix: true })}
                             </div>
                           )}
@@ -366,7 +366,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
                 <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain">
@@ -379,7 +379,7 @@ export default function Messages() {
                     <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-300/25 bg-gradient-to-br from-amber-300/15 to-white/[0.03] text-amber-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
                       <MessageSquare className="h-9 w-9 opacity-90" />
                     </div>
-                    <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
+                    <div className="relative max-w-sm rounded-3xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-6 py-5 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur">
                       <p className="text-base font-semibold text-foreground">Select a client to view portal messages.</p>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a thread from the left pane to open the portal conversation workspace.</p>
                       <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-primary/90">
@@ -397,8 +397,8 @@ export default function Messages() {
         </TabsContent>
 
         <TabsContent value="finance" className="mt-0 min-h-0">
-          <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-white/10 bg-black/25 p-2 shadow-2xl shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0">
+          <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-2 shadow-2xl shadow-sm dark:shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-primary/10 bg-gradient-to-r from-amber-300/10 via-blue-300/[0.05] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -410,13 +410,13 @@ export default function Messages() {
               </CardHeader>
               <CardContent className="min-h-0 flex-1 p-0">
                 {loadingFinance ? (
-                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-primary/15 bg-black/25 px-5 py-12 text-center shadow-inner shadow-black/20">
+                  <div className="m-4 flex flex-col items-center justify-center rounded-3xl border border-primary/15 bg-background/25 dark:bg-black/25 px-5 py-12 text-center shadow-inner shadow-sm dark:shadow-black/20">
                     <Loader2 className="h-5 w-5 animate-spin text-amber-200/80" />
                     <p className="mt-3 text-sm font-medium text-foreground">Loading finance portal threads…</p>
                     <p className="mt-1 text-xs text-muted-foreground">Checking partner-visible finance activity.</p>
                   </div>
                 ) : filteredFinanceGroups.length === 0 ? (
-                  <div className="m-4 rounded-3xl border border-dashed border-primary/15 bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-black/20">
+                  <div className="m-4 rounded-3xl border border-dashed border-primary/15 bg-background/30 dark:bg-black/30 px-5 py-10 text-center text-sm text-muted-foreground shadow-inner shadow-sm dark:shadow-black/20">
                     <ShieldCheck className="mx-auto mb-3 h-8 w-8 text-amber-200/65" />
                     <p className="font-medium text-foreground">{search.trim() ? 'No finance portal matches found.' : 'No finance portal threads yet.'}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -433,7 +433,7 @@ export default function Messages() {
                           aria-pressed={selectedFinanceClientId === g.client_id}
                           aria-label={`Open Finance Portal messages for ${g.client_name}`}
                           className={cn(
-                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
+                            'group relative min-h-[112px] w-full overflow-hidden rounded-2xl border border-border dark:border-white/5 bg-white/[0.025] px-4 py-3.5 text-left shadow-sm shadow-sm dark:shadow-black/10 transition-all duration-200 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full before:bg-amber-300 before:opacity-0 before:transition-opacity hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:shadow-[0_16px_36px_rgba(0,0,0,0.24),0_0_0_1px_rgba(251,191,36,0.12)] hover:before:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/50',
                             selectedFinanceClientId === g.client_id && 'border-amber-300/45 bg-amber-300/12 shadow-[inset_4px_0_0_rgba(251,191,36,0.98),0_16px_38px_rgba(0,0,0,0.28)] before:opacity-100',
                           )}
                         >
@@ -455,7 +455,7 @@ export default function Messages() {
                             </Badge>
                           </div>
                           {g.last_message_at && (
-                            <div className="mt-3 inline-flex rounded-full border border-primary/15 bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
+                            <div className="mt-3 inline-flex rounded-full border border-primary/15 bg-background/30 dark:bg-black/30 px-2 py-0.5 text-[10px] font-medium text-muted-foreground/85">
                               {formatDistanceToNow(new Date(g.last_message_at), { addSuffix: true })}
                             </div>
                           )}
@@ -467,7 +467,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
               <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedFinanceClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain p-4">
@@ -480,7 +480,7 @@ export default function Messages() {
                     <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-amber-300/25 bg-gradient-to-br from-amber-300/15 to-white/[0.03] text-amber-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
                       <ShieldCheck className="h-9 w-9 opacity-90" />
                     </div>
-                    <div className="relative max-w-sm rounded-3xl border border-white/10 bg-black/25 px-6 py-5 shadow-xl shadow-black/20 backdrop-blur">
+                    <div className="relative max-w-sm rounded-3xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-6 py-5 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur">
                       <p className="text-base font-semibold text-foreground">Select a client to view finance portal threads.</p>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground">Choose a finance-linked client to review partner-visible thread activity.</p>
                       <div className="mt-4 flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-primary/90">
@@ -498,7 +498,7 @@ export default function Messages() {
       </Tabs>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] border-amber-300/20 sm:rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-black/50">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] border-amber-300/20 sm:rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-sm dark:shadow-black/50">
           <DialogHeader className="border-b border-primary/10 bg-gradient-to-r from-amber-300/10 via-white/[0.03] to-transparent px-6 py-5">
             <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">New portal message</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -510,8 +510,8 @@ export default function Messages() {
             <div className="space-y-2.5">
               <Label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Scope</Label>
               <Select value={newScope} onValueChange={(v) => setNewScope(v as NewMessageScope)}>
-                <SelectTrigger className="h-12 rounded-2xl border-white/10 bg-black/35 px-4 text-sm shadow-inner shadow-black/20 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/45 focus:ring-2 focus:ring-amber-300/30"><SelectValue /></SelectTrigger>
-                <SelectContent className="border-white/10 bg-zinc-950">
+                <SelectTrigger className="h-12 rounded-2xl border-border dark:border-white/10 bg-background/35 dark:bg-black/35 px-4 text-sm shadow-inner shadow-sm dark:shadow-black/20 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/45 focus:ring-2 focus:ring-amber-300/30"><SelectValue /></SelectTrigger>
+                <SelectContent className="border-border dark:border-white/10 bg-background dark:bg-zinc-950">
                   {SCOPE_OPTIONS.map((s) => (
                     <SelectItem key={s.value} value={s.value}>
                       <div className="flex flex-col py-1">
@@ -535,10 +535,10 @@ export default function Messages() {
                   placeholder="Search clients…"
                   value={newClientSearch}
                   onChange={(e) => setNewClientSearch(e.target.value)}
-                  className="h-12 rounded-2xl border-white/10 bg-black/35 pl-11 text-sm shadow-inner shadow-black/20 transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-amber-300/30 hover:bg-black/45 focus-visible:border-amber-300/50 focus-visible:ring-2 focus-visible:ring-amber-300/30"
+                  className="h-12 rounded-2xl border-border dark:border-white/10 bg-background/35 dark:bg-black/35 pl-11 text-sm shadow-inner shadow-sm dark:shadow-black/20 transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-amber-300/30 hover:bg-black/45 focus-visible:border-amber-300/50 focus-visible:ring-2 focus-visible:ring-amber-300/30"
                 />
               </div>
-              <ScrollArea className="h-64 rounded-2xl border border-white/10 bg-black/25 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
+              <ScrollArea className="h-64 rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 [scrollbar-color:rgba(245,158,11,0.38)_rgba(24,24,27,0.9)]">
                 {loadingAllClients ? (
                   <div className="flex items-center justify-center py-6">
                     <Loader2 className="h-4 w-4 animate-spin text-amber-200/80" />
@@ -576,8 +576,8 @@ export default function Messages() {
             </div>
           </div>
 
-          <DialogFooter className="flex-col-reverse gap-2 border-t border-white/10 bg-black/25 px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
-            <Button variant="outline" onClick={() => setNewOpen(false)} className="w-full rounded-full border-white/10 bg-black/30 px-5 text-muted-foreground sm:w-auto transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-primary hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
+          <DialogFooter className="flex-col-reverse gap-2 border-t border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-4 py-4 sm:flex-row sm:justify-between sm:px-6">
+            <Button variant="outline" onClick={() => setNewOpen(false)} className="w-full rounded-full border-border dark:border-white/10 bg-background/30 dark:bg-black/30 px-5 text-muted-foreground sm:w-auto transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-primary hover:shadow-[0_10px_24px_rgba(0,0,0,0.22)] focus-visible:ring-amber-300/40">Cancel</Button>
             <Button
               disabled={!newClientId}
               className="w-full rounded-full bg-amber-300 px-6 font-semibold sm:w-auto text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0"
