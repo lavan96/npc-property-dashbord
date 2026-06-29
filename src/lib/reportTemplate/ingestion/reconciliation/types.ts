@@ -31,7 +31,7 @@ export interface ImportAsset {
   createdAt: string;
 }
 
-export type RawImportBlockType = 'text' | 'image' | 'shape' | 'table' | 'formula' | 'code' | 'unknown';
+export type RawImportBlockType = 'text' | 'image' | 'shape' | 'table' | 'formula' | 'code' | 'vector' | 'unknown';
 export type RawImportBlockSource = 'pdf-text' | 'ocr' | 'vision' | 'detected' | 'dom';
 
 export interface ImportBBox {
@@ -54,6 +54,9 @@ export interface RawImportBlock {
     color?: string;
     backgroundColor?: string;
     textAlign?: 'left' | 'center' | 'right' | 'justify';
+    /** Phase 2: real typography from the PyMuPDF span pass. */
+    lineHeight?: number;     // multiplier
+    letterSpacing?: number;  // pt
   };
   confidence: number;
   source: RawImportBlockSource;
@@ -108,6 +111,18 @@ export interface RawImportBlock {
     language?: string;
     /** Phase D: cross-reference target ($ref form). */
     xref?: string;
+    /** Phase 2: vector geometry for `vector` blocks (SVG paths + viewBox). */
+    vector?: {
+      viewBox: string;
+      paths: Array<{
+        d: string;
+        fill?: string;
+        stroke?: string;
+        strokeWidth?: number;
+        fillRule?: 'nonzero' | 'evenodd';
+        opacity?: number;
+      }>;
+    };
   };
 }
 

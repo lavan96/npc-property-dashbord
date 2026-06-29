@@ -276,4 +276,55 @@ describe('docling adapter', () => {
       meta: { latex: '\\\\mathrm{Yield}=\\\\frac{NOI}{Value}' },
     });
   });
+
+  it('Phase 2: maps doc.vectors into editable VectorOverlays', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      vectors: [
+        {
+          viewBox: '60 700 120 4',
+          paths: [{ d: 'M60,702 L180,702', stroke: '#bf9b50', strokeWidth: 1.5 }],
+          prov: [{ page_no: 1, bbox: { l: 60, t: 700, r: 180, b: 704, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    const vectorBlock = mapped.byPage[1].find((b) => b.type === 'vector');
+    expect(vectorBlock).toBeTruthy();
+    expect(vectorBlock?.meta?.vector?.paths?.[0]?.d).toBe('M60,702 L180,702');
+
+    const plan = mapDoclingToPagePlan(doc, { importId: 'imp-vec', mode: 'hybrid' });
+    const overlay = plan.pages[0].overlays.find((o) => o.type === 'vector') as any;
+    expect(overlay).toBeTruthy();
+    expect(overlay.viewBox).toBe('60 700 120 4');
+    expect(overlay.paths[0]).toMatchObject({ stroke: '#bf9b50', strokeWidth: 1.5 });
+    // Geometry is exact (confidence 0.9 ≥ 0.7 lock threshold) → editable.
+    expect(overlay.locked).toBe(false);
+  });
+
+  it('Phase 2: carries real typography (line-height, letter-spacing, alignment) into text overlays', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      texts: [
+        {
+          label: 'paragraph',
+          text: 'Centered body copy with real leading.',
+          font: { family: 'Georgia', size: 11, line_height: 1.55, letter_spacing: 0.4 },
+          text_align: 'center',
+          prov: [{ page_no: 1, bbox: { l: 60, t: 120, r: 535, b: 200, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    expect(mapped.byPage[1][0].style).toMatchObject({
+      lineHeight: 1.55,
+      letterSpacing: 0.4,
+      textAlign: 'center',
+    });
+    const plan = mapDoclingToPagePlan(doc, { importId: 'imp-typo', mode: 'semantic' });
+    const overlay = plan.pages[0].overlays[0] as any;
+    expect(overlay).toMatchObject({ lineHeight: 1.55, letterSpacing: 0.4, align: 'center' });
+  });
 });

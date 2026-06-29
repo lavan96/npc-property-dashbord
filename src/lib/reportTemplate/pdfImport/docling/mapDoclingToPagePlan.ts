@@ -13,6 +13,7 @@ import type { Overlay } from '@/lib/reportTemplate/templateSchema';
 type TextOverlay = Extract<Overlay, { type: 'text' }>;
 type ImageOverlay = Extract<Overlay, { type: 'image' }>;
 type TableOverlay = Extract<Overlay, { type: 'table' }>;
+type VectorOverlay = Extract<Overlay, { type: 'vector' }>;
 import type {
   ImportWarning,
   RawImportBlock,
@@ -79,9 +80,19 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
       fontStyle: isFormula ? 'italic' : (block.style?.fontStyle ?? 'normal'),
       color: block.style?.color ?? '#111111',
       align: (block.style?.textAlign ?? 'left') as TextOverlay['align'],
-      lineHeight: isCode ? 1.4 : 1.3,
-      letterSpacing: 0,
+      // Phase 2: prefer real leading/tracking from the PyMuPDF span pass.
+      lineHeight: block.style?.lineHeight ?? (isCode ? 1.4 : 1.3),
+      letterSpacing: block.style?.letterSpacing ?? 0,
     } as TextOverlay;
+    return overlay;
+  }
+  if (block.type === 'vector' && block.meta?.vector) {
+    const overlay: VectorOverlay = {
+      ...base,
+      type: 'vector',
+      viewBox: block.meta.vector.viewBox,
+      paths: block.meta.vector.paths,
+    } as VectorOverlay;
     return overlay;
   }
   if (block.type === 'image') {
