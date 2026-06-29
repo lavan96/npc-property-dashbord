@@ -14,6 +14,8 @@ import {
   XCircle,
   DollarSign
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { callLogBadgeBase } from './badgeStyles';
 
 interface CallQualityScoreProps {
   sentiment: string | null;
@@ -163,11 +165,11 @@ export const calculateCallQualityScore = (
 };
 
 const getGradeColor = (grade: string): string => {
-  if (grade.startsWith('A')) return 'bg-emerald-500';
-  if (grade.startsWith('B')) return 'bg-blue-500';
-  if (grade.startsWith('C')) return 'bg-amber-500';
-  if (grade.startsWith('D')) return 'bg-orange-500';
-  return 'bg-red-500';
+  if (grade.startsWith('A')) return 'border-emerald-300/40 bg-emerald-500/20 text-emerald-100 shadow-emerald-500/10';
+  if (grade.startsWith('B')) return 'border-blue-300/40 bg-blue-500/20 text-blue-100 shadow-blue-500/10';
+  if (grade.startsWith('C')) return 'border-amber-300/40 bg-amber-500/20 text-amber-100 shadow-amber-500/10';
+  if (grade.startsWith('D')) return 'border-orange-300/40 bg-orange-500/20 text-orange-100 shadow-orange-500/10';
+  return 'border-red-400/40 bg-red-500/20 text-red-100 shadow-red-500/10';
 };
 
 const getGradeTextColor = (grade: string): string => {
@@ -206,7 +208,7 @@ export const CallQualityScore = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge 
-              className={`${getGradeColor(grade)} text-white font-bold cursor-help`}
+              className={cn(callLogBadgeBase, getGradeColor(grade), 'cursor-help px-3 font-bold tracking-wide')}
             >
               {grade}
             </Badge>
@@ -240,7 +242,7 @@ export const CallQualityScore = ({
       {/* Header with Grade */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-full ${getGradeColor(grade)} flex items-center justify-center`}>
+          <div className={`w-12 h-12 rounded-full border shadow-sm ${getGradeColor(grade)} flex items-center justify-center`}>
             <span className="text-white font-bold text-lg">{grade}</span>
           </div>
           <div>
