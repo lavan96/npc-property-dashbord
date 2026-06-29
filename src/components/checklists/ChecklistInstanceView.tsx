@@ -45,7 +45,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   const statusClass = instance.status === 'completed'
     ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-200'
     : instance.status === 'archived'
-      ? 'border-zinc-500/35 bg-zinc-500/10 text-zinc-300'
+      ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
       : 'border-amber-300/40 bg-amber-400/10 text-amber-200';
   const progressFillClass = instance.status === 'completed'
     ? '[&>div]:from-emerald-500 [&>div]:via-teal-300 [&>div]:to-emerald-200'
@@ -197,14 +197,24 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
             : sectionStarted
               ? 'border-amber-300/25 bg-amber-400/10 text-amber-200'
               : 'border-zinc-600/45 bg-zinc-900/70 text-zinc-300';
+          const sectionCardClass = sectionComplete
+            ? 'border-emerald-400/15 bg-[linear-gradient(145deg,rgba(6,78,59,0.16),rgba(9,9,11,0.96)_42%,rgba(0,0,0,0.98))] hover:border-emerald-300/35'
+            : sectionStarted
+              ? 'border-amber-400/20 bg-[linear-gradient(145deg,rgba(120,53,15,0.18),rgba(9,9,11,0.96)_42%,rgba(0,0,0,0.98))] hover:border-amber-300/45'
+              : 'border-zinc-700/45 bg-[linear-gradient(145deg,rgba(39,39,42,0.5),rgba(9,9,11,0.96)_42%,rgba(0,0,0,0.98))] hover:border-zinc-500/60';
+          const sectionIconClass = sectionComplete
+            ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100'
+            : sectionStarted
+              ? 'border-amber-300/20 bg-amber-400/10 text-amber-100'
+              : 'border-zinc-600/40 bg-black/30 text-zinc-300';
 
           return (
-            <Card key={idx} className="overflow-hidden rounded-2xl border-amber-500/15 bg-zinc-950/90 shadow-lg shadow-black/30">
-              <CardHeader className="pb-3">
+            <Card key={idx} className={`group overflow-hidden rounded-2xl border shadow-lg shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(0,0,0,0.36)] ${sectionCardClass}`}>
+              <CardHeader className="p-5 pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <CardTitle className="flex items-center gap-3 text-base text-zinc-100">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-300/15 bg-black/30">{section.icon}</span>
-                    <span>{section.title}</span>
+                  <CardTitle className="flex min-w-0 items-center gap-3 text-base text-zinc-100">
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-inner shadow-black/20 ${sectionIconClass}`}>{section.icon}</span>
+                    <span className="min-w-0 break-words leading-snug">{section.title}</span>
                   </CardTitle>
                   <Badge variant="secondary" className={`gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${sectionBadgeClass}`}>
                     {sectionComplete && <CheckCircle2 className="h-3 w-3" />}
@@ -212,19 +222,28 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-1.5">
+              <CardContent className="space-y-1.5 px-5 pb-5">
                 {section.items.map(item => (
                   <div
                     key={item.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-all hover:border-amber-300/15 hover:bg-amber-500/10 ${item.is_checked ? 'bg-emerald-400/5 opacity-70' : 'bg-black/20'}`}
+                    className={`group/task flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all hover:border-amber-300/25 hover:bg-amber-500/10 focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
                     onClick={() => handleToggleItem(item.id, item.is_checked)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleToggleItem(item.id, item.is_checked);
+                      }
+                    }}
+                    role="checkbox"
+                    aria-checked={item.is_checked}
+                    tabIndex={0}
                   >
                     <Checkbox
                       checked={item.is_checked}
                       onCheckedChange={() => handleToggleItem(item.id, item.is_checked)}
-                      className="pointer-events-none"
+                      className="pointer-events-none mt-0.5 h-5 w-5 rounded-full border-amber-300/55 bg-black/40 shadow-inner shadow-black/30 transition-colors data-[state=checked]:border-emerald-300 data-[state=checked]:bg-emerald-400 data-[state=checked]:text-black group-hover/task:border-amber-200"
                     />
-                    <span className={`flex-1 text-sm ${item.is_checked ? 'text-zinc-500 line-through' : 'text-zinc-200'}`}>
+                    <span className={`min-w-0 flex-1 whitespace-normal break-words text-sm leading-6 ${item.is_checked ? 'text-zinc-300 line-through decoration-emerald-300/70 decoration-2 underline-offset-4' : 'text-zinc-100'}`}>
                       {item.label}
                     </span>
                     {item.checked_at && (
