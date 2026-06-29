@@ -11,7 +11,7 @@ import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
-export const WeeklyReportConfig: React.FC = () => {
+export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ triggerClassName }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [reportPeriod, setReportPeriod] = useState('7');
@@ -64,8 +64,8 @@ export const WeeklyReportConfig: React.FC = () => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <FileText className="h-4 w-4" />
+        <Button variant="outline" size="sm" className={`gap-2 ${triggerClassName || ''}`}>
+          <FileText className="h-4 w-4 shrink-0" />
           Weekly Report
         </Button>
       </DialogTrigger>
