@@ -119,33 +119,51 @@ export default function Checklists() {
     }
   };
 
-  const renderInstanceCard = (instance: ChecklistInstance) => (
-    <Card
-      key={instance.id}
-      className="group cursor-pointer border-amber-500/15 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black shadow-lg shadow-black/30 transition-all hover:-translate-y-0.5 hover:border-amber-400/60 hover:shadow-amber-500/10"
-      onClick={() => setSelectedInstance(instance)}
-    >
-      <CardContent className="pt-5 pb-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{instance.icon}</span>
-            <div>
-              <h3 className="text-sm font-semibold leading-tight text-zinc-100">{instance.name}</h3>
-              <p className="mt-0.5 text-[11px] text-zinc-400">
-                {new Date(instance.created_at).toLocaleDateString()}
-              </p>
+  const renderInstanceCard = (instance: ChecklistInstance) => {
+    const statusClass = instance.status === 'completed'
+      ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-200'
+      : instance.status === 'archived'
+        ? 'border-zinc-500/35 bg-zinc-500/10 text-zinc-300'
+        : 'border-amber-300/40 bg-amber-400/10 text-amber-200';
+
+    return (
+      <Card
+        key={instance.id}
+        className="group relative cursor-pointer overflow-hidden rounded-2xl border-amber-500/15 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98)_46%,rgba(0,0,0,0.98))] shadow-lg shadow-black/30 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_24px_58px_rgba(245,158,11,0.16)]"
+        onClick={() => setSelectedInstance(instance)}
+      >
+        <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <CardContent className="relative pt-5 pb-4">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-black/35 text-xl shadow-inner shadow-amber-950/20">{instance.icon}</span>
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-semibold leading-tight text-zinc-100 transition-colors group-hover:text-amber-50">{instance.name}</h3>
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+                  {new Date(instance.created_at).toLocaleDateString()}
+                </p>
+              </div>
             </div>
+            <Badge variant="outline" className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusClass}`}>
+              {instance.status === 'completed' && <CheckCircle2 className="mr-1 h-3 w-3" />}
+              {instance.status}
+            </Badge>
           </div>
-          <Badge variant={instance.status === 'completed' ? 'default' : 'outline'} className="text-[10px]">
-            {instance.status === 'completed' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-            {instance.status}
-          </Badge>
-        </div>
-        <Progress value={instance.progress_percent} className="h-2 bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-yellow-300" />
-        <p className="mt-1.5 text-right text-[11px] font-semibold text-amber-300">{instance.progress_percent}%</p>
-      </CardContent>
-    </Card>
-  );
+          <div className="rounded-xl border border-white/5 bg-black/30 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Progress</span>
+              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-amber-200">{instance.progress_percent}%</span>
+            </div>
+            <Progress value={instance.progress_percent} className="h-2.5 bg-zinc-800/90 [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:via-yellow-300 [&>div]:to-amber-200" />
+            {instance.progress_percent === 0 && (
+              <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">Ready to start</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.16),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 shadow-2xl shadow-black/30 md:p-6">
@@ -207,7 +225,7 @@ export default function Checklists() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {activeInstances.map(renderInstanceCard)}
             </div>
           )}
