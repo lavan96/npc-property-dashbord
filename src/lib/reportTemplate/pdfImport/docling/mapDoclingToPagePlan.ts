@@ -240,7 +240,11 @@ function pagePlanForPage(
     background: {
       color: '#FFFFFF',
       imageUrl: opts.mode === 'semantic' ? '' : (raster?.dataUrl ?? page.image_uri ?? ''),
-      opacity: opts.mode === 'pixel-perfect' ? 1 : opts.mode === 'hybrid' ? 0.85 : 0,
+      // Phase 6B — hybrid demotes the raster to a faint reference underlay (was
+      // 0.85, which let the flat raster dominate and ghost the overlays); the
+      // reconstruction now leads, with the raster as a dim alignment backdrop.
+      // pixel-perfect keeps the full raster; semantic has none.
+      opacity: opts.mode === 'pixel-perfect' ? 1 : opts.mode === 'hybrid' ? 0.5 : 0,
       // Full-page source raster must fill the exact page box, never crop/stretch.
       ...(opts.mode === 'semantic' ? {} : { imageFit: 'fill' as const }),
     },

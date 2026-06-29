@@ -27,7 +27,7 @@ import type { Overlay, Page, ReportTemplate } from '@/lib/reportTemplate/templat
 import { templateEditorActions, useEditorTemplate, useTemplateEditorStore } from '@/stores/templateEditorStore';
 import { Button } from '@/components/ui/button';
 import { FloatingTextToolbar } from '@/components/templateBuilder/FloatingTextToolbar';
-import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, MousePointer2, Move, Image as ImageIcon, ImageOff } from 'lucide-react';
 
 type HandleKind =
   | 'move'
@@ -92,6 +92,11 @@ function EditorialCanvasImpl({
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);
+  // Phase 6B — reference-underlay opacity override (canvas view only; does NOT
+  // mutate the template, so the export is unaffected). null = use the page's own
+  // stored background opacity. A faint raster aids alignment; 0 hides it so the
+  // pure reconstruction leads.
+  const [underlayOpacity, setUnderlayOpacity] = useState<number | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
@@ -148,13 +153,25 @@ function EditorialCanvasImpl({
   // handles, so the rendered background doesn't depend on overlay geometry — key
   // the render on a signature that excludes overlays so dragging/resizing an
   // overlay never rebuilds the iframe srcDoc (the dominant drag-jank source).
+  // The raster underlay (page.background.imageUrl) and its effective opacity for
+  // the canvas view. The slider/toggle overrides the stored opacity without
+  // mutating the template; viewPage carries the override into the iframe render.
+  const hasUnderlay = Boolean((page.background as any)?.imageUrl);
+  const storedUnderlayOpacity = typeof page.background?.opacity === 'number' ? page.background.opacity : 1;
+  const effectiveUnderlay = underlayOpacity ?? storedUnderlayOpacity;
+  const viewPage = useMemo(
+    () => (underlayOpacity == null
+      ? page
+      : { ...page, background: { ...(page.background ?? { color: '#FFFFFF' }), opacity: underlayOpacity } }),
+    [page, underlayOpacity],
+  );
   const renderKey = useMemo(
-    () => makeCanvasRenderKey(template, page, sampleData, customCss),
-    [template, page, sampleData, customCss],
+    () => makeCanvasRenderKey(template, viewPage, sampleData, customCss),
+    [template, viewPage, sampleData, customCss],
   );
   const html = useMemo(() => {
     try {
-      const visible: ReportTemplate = { ...template, pages: [page] };
+      const visible: ReportTemplate = { ...template, pages: [viewPage] };
       const r = renderTemplateToHtml(visible, {
         data: sampleData,
         customCss,
@@ -489,6 +506,30 @@ function EditorialCanvasImpl({
           Click to select · Shift-click multi · Dbl-click text to edit
         </span>
         <div className="ml-auto flex items-center gap-1">
+          {hasUnderlay && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setUnderlayOpacity(effectiveUnderlay > 0 ? 0 : (storedUnderlayOpacity > 0 ? storedUnderlayOpacity : 0.5))}
+                title={effectiveUnderlay > 0 ? 'Hide source reference (raster underlay)' : 'Show source reference (raster underlay)'}
+              >
+                {effectiveUnderlay > 0 ? <ImageIcon className="h-3.5 w-3.5" /> : <ImageOff className="h-3.5 w-3.5" />}
+              </Button>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(effectiveUnderlay * 100)}
+                onChange={(e) => setUnderlayOpacity(Number(e.target.value) / 100)}
+                className="w-16 accent-primary cursor-pointer"
+                title={`Reference underlay opacity ${Math.round(effectiveUnderlay * 100)}%`}
+                aria-label="Reference underlay opacity"
+              />
+              <span className="text-muted-foreground/60 hidden lg:inline">·</span>
+            </>
+          )}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setZoom((z) => Math.max(MIN_ZOOM, z - 0.1))} title="Zoom out (⌘/Ctrl-wheel)">
             <ZoomOut className="h-3.5 w-3.5" />
           </Button>
