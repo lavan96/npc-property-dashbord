@@ -200,14 +200,42 @@ export default function RemindersHub() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,#050505_0%,#0f1117_46%,#09090b_100%)] p-3 sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-16 rounded-lg" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
-        </div>
-        <Skeleton className="h-64 rounded-lg" />
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 sm:p-6">
+        <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(0,0,0,0.62)_34%,rgba(15,23,42,0.50))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.40)] sm:p-6">
+            <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
+            <div className="pointer-events-none absolute -right-16 -top-24 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-12 w-12 rounded-2xl bg-amber-300/10 sm:h-14 sm:w-14" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <Skeleton className="h-5 w-36 rounded-full bg-amber-300/10" />
+                <Skeleton className="h-8 w-56 rounded-lg bg-white/10 sm:h-10" />
+                <Skeleton className="h-4 w-full max-w-lg rounded-lg bg-white/10" />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-amber-300/15 bg-slate-950/80 p-4 shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-400/10">
+                <Loader2 className="h-5 w-5 animate-spin text-amber-200" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-slate-100">Loading Reminders Hub</p>
+                <p className="text-xs text-slate-500">Preparing client follow-ups, team reminders, and milestone timelines.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:gap-3">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Skeleton key={i} className="h-24 rounded-2xl border border-amber-400/10 bg-slate-950/70 shadow-[0_18px_45px_rgba(0,0,0,0.25)]" />
+            ))}
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-14 rounded-2xl border border-amber-300/10 bg-slate-950/70" />
+            <Skeleton className="h-72 rounded-[1.5rem] border border-amber-300/10 bg-slate-950/70" />
+          </div>
         </div>
       </div>
     );
@@ -454,27 +482,36 @@ export default function RemindersHub() {
             <Card
               className={cn(
                 premiumPanel,
-                "relative overflow-hidden rounded-2xl border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(0,0,0,0.45))]",
+                "relative overflow-hidden rounded-[1.5rem] border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.34)]",
                 timeFilter === 'overdue' || timeFilter === 'today' || timeFilter === 'week' || timeFilter === 'month' ? 'border-emerald-300/25' : 'border-amber-300/25'
               )}
             >
               <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-400/10 text-emerald-200 shadow-[0_0_28px_rgba(16,185,129,0.12)]">
-                  <CheckCircle2 className="h-6 w-6" />
+              <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-300/6 blur-3xl" />
+              <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-amber-300/8 blur-3xl" />
+              <CardContent className="relative flex flex-col items-center justify-center px-5 py-14 text-center sm:px-8 sm:py-16">
+                <div className="mb-4 rounded-[1.4rem] border border-white/10 bg-black/20 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.16),rgba(245,158,11,0.08))] text-emerald-200 shadow-[0_0_32px_rgba(16,185,129,0.14)]">
+                    <CheckCircle2 className="h-7 w-7" />
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-slate-300">No reminders match your filters</p>
+                <div className="max-w-md space-y-2">
+                  <p className="text-base font-semibold tracking-tight text-slate-100 sm:text-lg">No reminders match your filters</p>
+                  <p className="text-xs leading-5 text-slate-500 sm:text-sm">
+                    Your selected reminder view is clear. Adjust the timeframe, source, or priority filters to widen the command hub view.
+                  </p>
+                </div>
                 {timeFilter === 'overdue' && (
-                  <p className="mt-1 text-xs text-emerald-200/75">No overdue items are waiting for action.</p>
+                  <p className="mt-4 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200/85">No overdue items are waiting for action.</p>
                 )}
                 {timeFilter === 'today' && (
-                  <p className="mt-1 text-xs text-emerald-200/75">No due-today reminders are waiting for action.</p>
+                  <p className="mt-4 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200/85">No due-today reminders are waiting for action.</p>
                 )}
                 {timeFilter === 'week' && (
-                  <p className="mt-1 text-xs text-emerald-200/75">Your weekly reminder plan is clear for the selected filters.</p>
+                  <p className="mt-4 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200/85">Your weekly reminder plan is clear for the selected filters.</p>
                 )}
                 {timeFilter === 'month' && (
-                  <p className="mt-1 text-xs text-emerald-200/75">No monthly planning reminders match the selected filters.</p>
+                  <p className="mt-4 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200/85">No monthly planning reminders match the selected filters.</p>
                 )}
               </CardContent>
             </Card>
@@ -547,7 +584,9 @@ export default function RemindersHub() {
                           <Card
                             key={reminder.id}
                             className={cn(
-                              premiumPanel, interactivePanel, 'group relative cursor-pointer overflow-hidden rounded-2xl hover:bg-amber-400/[0.035]',
+                              premiumPanel,
+                              interactivePanel,
+                              'group relative cursor-pointer overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(15,23,42,0.86),rgba(2,6,23,0.94))] hover:bg-amber-400/[0.035] focus-within:border-amber-300/40 focus-within:shadow-[0_0_34px_rgba(245,158,11,0.14)]',
                               isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))] hover:bg-red-500/[0.055]',
                               isDueToday && !isOverdue && 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(2,6,23,0.88))] hover:bg-amber-400/[0.075]',
                               isWeekPlanningReminder && 'border-sky-300/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.10),rgba(2,6,23,0.88))] hover:bg-sky-400/[0.055]',
@@ -567,33 +606,41 @@ export default function RemindersHub() {
                                       ? 'bg-teal-300/35 group-hover:bg-teal-300/85 group-hover:shadow-[0_0_18px_rgba(45,212,191,0.35)]'
                                 : 'bg-amber-300/0 group-hover:bg-amber-300/80 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.45)]'
                             )} />
-                            <CardContent className="p-3 sm:p-4">
-                              <div className="flex items-start gap-3">
+                            <CardContent className="p-3.5 sm:p-4">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
                                 {/* Source Icon */}
                                 <div className={cn(
-                                  'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 shadow-inner transition-all duration-200 group-hover:border-amber-300/25 group-hover:bg-amber-400/10',
-                                  isOverdue ? 'bg-red-500/15 text-red-200' : 'bg-white/5',
+                                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 shadow-inner ring-1 ring-white/5 transition-all duration-200 group-hover:scale-105 group-hover:border-amber-300/35 group-hover:bg-amber-400/10 group-hover:shadow-[0_0_22px_rgba(245,158,11,0.16)] sm:mt-0.5',
+                                  isOverdue ? 'bg-red-500/15 text-red-200' : reminder.status === 'completed' ? 'bg-emerald-500/12 text-emerald-200' : 'bg-white/5',
                                   !isOverdue && SOURCE_COLORS[reminder.source]
                                 )}>
                                   {TYPE_ICONS[reminder.reminder_type] || SOURCE_ICONS[reminder.source]}
                                 </div>
 
                                 {/* Content */}
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0 flex-1 space-y-2">
                                   <div className="flex flex-wrap items-start gap-2">
-                                    <span className="min-w-0 max-w-full break-words text-sm font-semibold leading-5 text-slate-50 sm:text-base">{reminder.title}</span>
-                                    <Badge className={cn('h-5 shrink-0 border px-2 py-0 text-[10px] font-semibold', priorityCfg.color)}>
+                                    <span className={cn(
+                                      'min-w-0 max-w-full break-words text-[15px] font-semibold leading-5 tracking-[-0.01em] text-slate-50 transition-colors duration-200 group-hover:text-white sm:text-base sm:leading-6',
+                                      reminder.status === 'completed' && 'text-emerald-100'
+                                    )}>
+                                      {reminder.title}
+                                    </span>
+                                    <Badge className={cn('h-6 shrink-0 rounded-full border px-2.5 py-0 text-[10px] font-semibold uppercase tracking-[0.12em]', priorityCfg.color)}>
                                       {priorityCfg.label}
                                     </Badge>
                                   </div>
-                                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                                    <span className="max-w-[180px] truncate font-medium text-slate-300">{reminder.client_name}</span>
+                                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                                    <span className="max-w-full truncate rounded-full border border-white/10 bg-black/20 px-2 py-0.5 font-medium text-slate-200 sm:max-w-[220px]">{reminder.client_name}</span>
                                     <span className="text-amber-300/35">•</span>
-                                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-300">{reminder.source_label}</span>
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+                                      {SOURCE_ICONS[reminder.source]}
+                                      {reminder.source_label}
+                                    </span>
                                     {reminder.description && (
                                       <>
                                         <span className="text-amber-300/35">•</span>
-                                        <span className="max-w-[240px] truncate text-slate-500">{reminder.description}</span>
+                                        <span className="max-w-full truncate rounded-full border border-amber-300/10 bg-amber-400/[0.04] px-2 py-0.5 text-slate-400 sm:max-w-[320px]">{reminder.description}</span>
                                       </>
                                     )}
                                   </div>
@@ -601,7 +648,7 @@ export default function RemindersHub() {
 
                                 {/* Date */}
                                 <div className={cn(
-                                  'ml-auto min-w-[72px] shrink-0 rounded-xl border bg-black/25 px-2.5 py-2 text-right shadow-inner sm:min-w-[88px]',
+                                  'flex min-w-[112px] shrink-0 items-center justify-between gap-3 rounded-2xl border bg-black/25 px-3 py-2 text-left shadow-inner sm:ml-auto sm:block sm:min-w-[96px] sm:text-right',
                                   isOverdue
                                     ? 'border-red-300/20 bg-red-500/10'
                                     : isDueToday
@@ -612,9 +659,10 @@ export default function RemindersHub() {
                                           ? 'border-teal-300/20 bg-teal-400/10'
                                       : 'border-white/10'
                                 )}>
+                                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:mb-1">Due</p>
                                   <p className={cn(
                                     'text-[11px] font-semibold sm:text-xs',
-                                    isOverdue ? 'text-destructive' : isDueToday ? 'text-amber-300' : 'text-slate-400'
+                                    isOverdue ? 'text-red-200' : isDueToday ? 'text-amber-200' : reminder.status === 'completed' ? 'text-emerald-200' : 'text-slate-300'
                                   )}>
                                     {isOverdue
                                       ? `${Math.abs(daysUntil)}d overdue`

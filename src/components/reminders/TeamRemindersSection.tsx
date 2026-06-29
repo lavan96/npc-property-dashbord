@@ -287,15 +287,33 @@ export function TeamRemindersSection() {
 
       {/* List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        </div>
+        <Card className="relative overflow-hidden rounded-[1.5rem] border border-amber-300/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <CardContent className="relative flex items-center justify-center gap-3 px-5 py-10 text-center sm:py-12">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-100 shadow-[0_0_28px_rgba(245,158,11,0.14)]">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-slate-100">Loading team reminders</p>
+              <p className="text-xs text-slate-500">Checking internal tasks and team coordination items.</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : reminders.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-8 text-center text-muted-foreground">
-            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No team reminders yet</p>
-            <p className="text-xs mt-1">Create reminders for internal tasks and team coordination</p>
+        <Card className="relative overflow-hidden rounded-[1.5rem] border-dashed border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-amber-300/8 blur-3xl" />
+          <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-emerald-300/6 blur-3xl" />
+          <CardContent className="relative flex flex-col items-center justify-center px-5 py-12 text-center sm:px-8 sm:py-14">
+            <div className="mb-4 rounded-[1.4rem] border border-white/10 bg-black/20 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(16,185,129,0.08))] text-amber-100 shadow-[0_0_32px_rgba(245,158,11,0.14)]">
+                <Users className="h-7 w-7" />
+              </div>
+            </div>
+            <div className="max-w-md space-y-2">
+              <p className="text-base font-semibold tracking-tight text-slate-100 sm:text-lg">No team reminders yet</p>
+              <p className="text-xs leading-5 text-slate-500 sm:text-sm">Create reminders for internal tasks and team coordination</p>
+            </div>
           </CardContent>
         </Card>
       ) : (
