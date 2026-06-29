@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Types ───
 export interface ChecklistTemplate {
@@ -46,7 +47,10 @@ export interface ChecklistInstance {
   generated_by: string | null;
   status: 'in_progress' | 'completed' | 'archived';
   completed_at: string | null;
+  archived_at: string | null;
   progress_percent: number;
+  due_date: string | null;
+  recurrence_key: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +69,70 @@ export interface ChecklistInstanceItem {
 }
 
 // ─── Helpers ───
+// Recurrence audit note: checklist_templates are blueprints, while checklist_instances are generated occurrences.
+// The previous Daily Operations flow inserted a fresh in_progress instance on every cron/manual generation
+// without an occurrence date or idempotency key, so the same template/date could clutter Active repeatedly.
+function getChecklistOccurrenceDate(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildChecklistRecurrenceKey(templateId: string, dueDate = getChecklistOccurrenceDate(), ownerContext = 'global') {
+  return `${templateId}:${dueDate}:${ownerContext}`;
+}
+
+function buildLegacyChecklistRecurrenceKey(templateId: string, dueDate = getChecklistOccurrenceDate()) {
+  return `${templateId}:${dueDate}`;
+}
+
+
+function getChecklistOccurrenceIdentity(instance: ChecklistInstance) {
+  if (instance.recurrence_key) {
+    const parts = instance.recurrence_key.split(':');
+    if (parts.length >= 3) return parts.slice(0, 3).join(':');
+    return instance.recurrence_key;
+  }
+
+  if (instance.template_id && instance.due_date) {
+    return `${instance.template_id}:${instance.due_date}:${instance.generated_by || 'global'}`;
+  }
+
+  return null;
+}
+
+function compareActiveChecklistCandidates(current: ChecklistInstance, candidate: ChecklistInstance) {
+  const currentProgress = current.progress_percent || 0;
+  const candidateProgress = candidate.progress_percent || 0;
+  if (candidateProgress !== currentProgress) return candidateProgress > currentProgress ? candidate : current;
+
+  const currentUpdated = new Date(current.updated_at || current.created_at).getTime();
+  const candidateUpdated = new Date(candidate.updated_at || candidate.created_at).getTime();
+  return candidateUpdated > currentUpdated ? candidate : current;
+}
+
+function filterActiveChecklistInstances(records: ChecklistInstance[]) {
+  const activeOnly = records.filter(instance => instance.status === 'in_progress');
+  const instancesByOccurrence = new Map<string, ChecklistInstance>();
+  const unkeyedInstances: ChecklistInstance[] = [];
+
+  for (const instance of activeOnly) {
+    const occurrenceIdentity = getChecklistOccurrenceIdentity(instance);
+    if (!occurrenceIdentity) {
+      unkeyedInstances.push(instance);
+      continue;
+    }
+
+    const current = instancesByOccurrence.get(occurrenceIdentity);
+    instancesByOccurrence.set(
+      occurrenceIdentity,
+      current ? compareActiveChecklistCandidates(current, instance) : instance,
+    );
+  }
+
+  return [...instancesByOccurrence.values(), ...unkeyedInstances].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+}
+
 async function invoke(body: Record<string, any>) {
   const { data, error } = await invokeSecureFunction('manage-templates', body);
   if (error) throw new Error(error.message);
@@ -115,7 +183,8 @@ export function useChecklistInstances(status?: string) {
       const filters: Record<string, any> = {};
       if (status) filters.status = status;
       const data = await invoke({ operation: 'list', table: 'checklist_instances', listOptions: { orderBy: 'created_at', orderAsc: false, filters } });
-      return (data?.records || []) as ChecklistInstance[];
+      const records = (data?.records || []) as ChecklistInstance[];
+      return status === 'in_progress' ? filterActiveChecklistInstances(records) : records;
     },
   });
 }
@@ -134,6 +203,7 @@ export function useChecklistInstanceItems(instanceId: string | null) {
 // ─── Mutations ───
 export function useChecklistMutations() {
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const createTemplate = useMutation({
     mutationFn: async (data: Partial<ChecklistTemplate>) => {
@@ -228,6 +298,29 @@ export function useChecklistMutations() {
 
   const generateFromTemplate = useMutation({
     mutationFn: async (template: ChecklistTemplate) => {
+      const dueDate = getChecklistOccurrenceDate();
+      const ownerContext = template.created_by || user?.id || 'global';
+      const recurrenceKey = buildChecklistRecurrenceKey(template.id, dueDate, ownerContext);
+      const legacyRecurrenceKey = buildLegacyChecklistRecurrenceKey(template.id, dueDate);
+
+      const existingResult = await invoke({
+        operation: 'list',
+        table: 'checklist_instances',
+        listOptions: { filters: { recurrence_key: recurrenceKey }, limit: 1 },
+      });
+      let existing = existingResult?.records?.[0];
+
+      if (!existing) {
+        const legacyExistingResult = await invoke({
+          operation: 'list',
+          table: 'checklist_instances',
+          listOptions: { filters: { recurrence_key: legacyRecurrenceKey }, limit: 1 },
+        });
+        existing = legacyExistingResult?.records?.[0];
+      }
+
+      if (existing) return existing;
+
       // 1. Create instance
       const instanceResult = await invoke({
         operation: 'insert',
@@ -240,6 +333,8 @@ export function useChecklistMutations() {
           generated_by: 'manual',
           status: 'in_progress',
           progress_percent: 0,
+          due_date: dueDate,
+          recurrence_key: recurrenceKey,
         },
       });
       const instance = instanceResult?.record;

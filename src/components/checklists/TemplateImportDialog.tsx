@@ -147,14 +147,14 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto w-[calc(100vw-2rem)] sm:w-auto">
+      <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40 sm:w-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-50">
             {step === 'input' && 'Import Checklist Template'}
             {step === 'preview' && 'Preview Template'}
             {step === 'importing' && 'Importing...'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-zinc-400">
             {step === 'input' && 'Upload a file or paste content in any supported format'}
             {step === 'preview' && 'Review the parsed template before importing'}
           </DialogDescription>
@@ -174,7 +174,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                 { label: 'Excel', icon: FileSpreadsheet },
                 { label: 'Plain Text', icon: FileText },
               ].map(f => (
-                <Badge key={f.label} variant="outline" className="text-[10px] gap-1 font-normal">
+                <Badge key={f.label} variant="outline" className="gap-1 rounded-full border-amber-300/20 bg-amber-300/10 px-2 py-1 text-[10px] font-normal text-amber-100">
                   <f.icon className="h-2.5 w-2.5" />
                   {f.label}
                 </Badge>
@@ -182,16 +182,16 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
             </div>
 
             <Tabs defaultValue="upload" className="w-full">
-              <TabsList className="w-full grid grid-cols-2">
-                <TabsTrigger value="upload">Upload File</TabsTrigger>
-                <TabsTrigger value="paste">Paste Content</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 rounded-2xl border border-white/5 bg-black/60 p-1">
+                <TabsTrigger value="upload" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black">Upload File</TabsTrigger>
+                <TabsTrigger value="paste" className="rounded-xl data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-yellow-400 data-[state=active]:text-black">Paste Content</TabsTrigger>
               </TabsList>
 
               <TabsContent value="upload" className="mt-3">
                 <div
                   {...getRootProps()}
-                  className={`relative border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-colors
-                    ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
+                  className={`relative cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center shadow-inner shadow-black/30 transition-all sm:p-8
+                    ${isDragActive ? 'border-amber-300/70 bg-amber-400/10 shadow-amber-500/10' : 'border-amber-500/25 bg-black/30 hover:border-amber-300/55 hover:bg-amber-400/10'}
                     ${isProcessing ? 'pointer-events-none opacity-60' : ''}`}
                 >
                   <input {...getInputProps()} />
@@ -209,16 +209,23 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                     />
                   )}
                   {isProcessing ? (
-                    <div className="space-y-3">
-                      <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
-                      <p className="text-sm text-muted-foreground">{progressLabel}</p>
-                      <Progress value={progress} className="h-2 max-w-xs mx-auto" />
+                    <div className="mx-auto max-w-sm space-y-4 rounded-2xl border border-amber-300/15 bg-black/35 p-5 shadow-inner shadow-amber-950/20">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200">
+                        <Loader2 className="h-7 w-7 animate-spin" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-zinc-100">{progressLabel}</p>
+                        <p className="mt-1 text-xs text-zinc-500">Reading and validating the template file</p>
+                      </div>
+                      <Progress value={progress} className="mx-auto h-2.5 max-w-xs bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-yellow-300" />
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
-                      <p className="text-sm font-medium">Drop a file here or tap to browse</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-400/10 text-amber-200 shadow-[0_18px_40px_rgba(245,158,11,0.14)]">
+                        <Upload className="h-7 w-7" />
+                      </div>
+                      <p className="text-sm font-semibold text-zinc-100">Drop a file here or tap to browse</p>
+                      <p className="mt-1 text-xs text-zinc-400">
                         .md, .json, .html, .pdf, .docx, .xlsx, .txt
                       </p>
                     </>
@@ -232,18 +239,23 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   placeholder={`Paste your checklist in any format:\n\n## Daily Operations\n\n### Start of the Day\n- [ ] Check emails\n- [ ] Review pipeline\n- [x] Update tracker\n\nOr JSON: { "name": "...", "sections": [...] }\nOr HTML: <h2>Section</h2><ul><li>Item</li></ul>`}
                   value={pasteContent}
                   onChange={e => setPasteContent(e.target.value)}
-                  className="font-mono text-xs"
+                  className="min-h-72 border-amber-500/15 bg-black/35 font-mono text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/40"
                 />
-                <Button onClick={handleParsePaste} disabled={!pasteContent.trim()} className="w-full">
+                <Button onClick={handleParsePaste} disabled={!pasteContent.trim()} className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black hover:from-amber-400 hover:to-yellow-300">
                   Parse Content
                 </Button>
               </TabsContent>
             </Tabs>
 
             {parseError && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <p>{parseError}</p>
+              <div className="flex items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive shadow-inner shadow-red-950/10">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-destructive/25 bg-destructive/10">
+                  <AlertCircle className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-semibold">Import needs attention</p>
+                  <p className="mt-1 text-destructive/90">{parseError}</p>
+                </div>
               </div>
             )}
           </div>
@@ -253,38 +265,40 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
         {step === 'preview' && parsedTemplate && (
           <div className="space-y-4">
             {/* Editable name & icon */}
-            <div className="space-y-3 p-3 rounded-lg bg-muted/50">
+            <div className="space-y-3 rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
               <div className="flex gap-3">
                 <div className="w-20">
-                  <Label className="text-xs text-muted-foreground">Icon</Label>
+                  <Label className="text-xs text-zinc-400">Icon</Label>
                   <Input
                     value={parsedTemplate.icon}
                     onChange={e => setParsedTemplate({ ...parsedTemplate, icon: e.target.value })}
-                    className="text-center text-xl"
+                    className="border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100"
                   />
                 </div>
                 <div className="flex-1">
-                  <Label className="text-xs text-muted-foreground">Template Name</Label>
+                  <Label className="text-xs text-zinc-400">Template Name</Label>
                   <Input
                     value={parsedTemplate.name}
                     onChange={e => setParsedTemplate({ ...parsedTemplate, name: e.target.value })}
                     placeholder="e.g. Daily Operations Checklist"
+                    className="border-amber-500/15 bg-black/35 text-zinc-100"
                   />
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Description (optional)</Label>
+                <Label className="text-xs text-zinc-400">Description (optional)</Label>
                 <Input
                   value={parsedTemplate.description || ''}
                   onChange={e => setParsedTemplate({ ...parsedTemplate, description: e.target.value || undefined })}
                   placeholder="What is this checklist for?"
+                  className="border-amber-500/15 bg-black/35 text-zinc-100"
                 />
               </div>
               <div className="flex gap-2">
-                <Badge variant="secondary" className="text-[10px]">{parsedTemplate.sections.length} sections</Badge>
-                <Badge variant="secondary" className="text-[10px]">{totalItems} items</Badge>
+                <Badge variant="secondary" className="rounded-full border border-amber-300/20 bg-amber-400/10 text-[10px] text-amber-200">{parsedTemplate.sections.length} sections</Badge>
+                <Badge variant="secondary" className="rounded-full border border-amber-300/20 bg-amber-400/10 text-[10px] text-amber-200">{totalItems} items</Badge>
                 {preCheckedItems > 0 && (
-                  <Badge variant="outline" className="text-[10px]">{preCheckedItems} pre-checked</Badge>
+                  <Badge variant="outline" className="rounded-full border-emerald-300/20 bg-emerald-400/10 text-[10px] text-emerald-200">{preCheckedItems} pre-checked</Badge>
                 )}
               </div>
             </div>
@@ -292,21 +306,21 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
             {/* Sections preview */}
             <div className="max-h-[40vh] overflow-y-auto space-y-2">
               {parsedTemplate.sections.map((section, si) => (
-                <Card key={si}>
-                  <CardContent className="py-3 px-4">
+                <Card key={si} className="rounded-2xl border-amber-500/10 bg-zinc-950/80 shadow-lg shadow-black/20">
+                  <CardContent className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-2">
                       <span>{section.icon}</span>
-                      <h4 className="font-medium text-sm">{section.title}</h4>
-                      <Badge variant="outline" className="text-[10px] ml-auto">{section.items.length} items</Badge>
+                      <h4 className="text-sm font-semibold text-zinc-100">{section.title}</h4>
+                      <Badge variant="outline" className="ml-auto rounded-full border-amber-300/20 bg-amber-300/10 text-[10px] text-amber-200">{section.items.length} items</Badge>
                     </div>
                     <div className="space-y-1">
                       {section.items.map((item, ii) => (
-                        <div key={ii} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div key={ii} className="flex items-center gap-2 text-xs text-zinc-400">
                           <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0
-                            ${item.is_pre_checked ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40'}`}>
+                            ${item.is_pre_checked ? 'border-emerald-300 bg-emerald-400 text-black' : 'border-amber-300/40'}`}>
                             {item.is_pre_checked && <CheckCircle2 className="h-2.5 w-2.5" />}
                           </div>
-                          <span className={item.is_pre_checked ? 'text-foreground' : ''}>{item.label}</span>
+                          <span className={item.is_pre_checked ? 'text-zinc-100' : ''}>{item.label}</span>
                         </div>
                       ))}
                     </div>
@@ -319,22 +333,29 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
         {/* ── Step 3: Importing ── */}
         {step === 'importing' && (
-          <div className="py-8 text-center space-y-3">
-            <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Creating template and items...</p>
+          <div className="py-8 text-center">
+            <div className="mx-auto max-w-sm space-y-4 rounded-2xl border border-amber-300/15 bg-black/35 p-5 shadow-inner shadow-amber-950/20">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200">
+                <Loader2 className="h-7 w-7 animate-spin" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">Creating template and items...</p>
+                <p className="mt-1 text-xs text-zinc-500">Saving the imported blueprint to Templates</p>
+              </div>
+            </div>
           </div>
         )}
 
         <DialogFooter>
           {step === 'input' && (
-            <Button variant="ghost" onClick={() => handleClose(false)}>Cancel</Button>
+            <Button variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-zinc-50" onClick={() => handleClose(false)}>Cancel</Button>
           )}
           {step === 'preview' && (
             <>
-              <Button variant="ghost" onClick={() => { setStep('input'); setParsedTemplate(null); }}>
+              <Button variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-zinc-50" onClick={() => { setStep('input'); setParsedTemplate(null); }}>
                 ← Back
               </Button>
-              <Button onClick={handleImport}>
+              <Button onClick={handleImport} className="bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black hover:from-amber-400 hover:to-yellow-300">
                 Import {totalItems} Items
               </Button>
             </>
