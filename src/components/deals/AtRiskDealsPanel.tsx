@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
+import { DealStatePanel } from '@/components/deals/DealStatePresentation';
 
 interface Props {
   deals: DealWithClient[];
@@ -83,11 +84,7 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
 
   if (riskItems.length === 0) {
     return (
-      <Card className="border-green-500/20 bg-green-500/5 shadow-sm">
-        <CardContent className="p-4 text-center">
-          <p className="text-sm text-green-600 font-medium">✅ All deals on track — no immediate risks detected</p>
-        </CardContent>
-      </Card>
+      <DealStatePanel compact tone="success" eyebrow="Risk clear" title="All deals on track" description="No immediate risk signals were detected in this view. This is a valid zero-risk state, not a missing data condition." />
     );
   }
 

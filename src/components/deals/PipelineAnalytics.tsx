@@ -33,6 +33,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
+import { DealLoadingState, DealStatePanel } from '@/components/deals/DealStatePresentation';
 
 interface Props {
   deals: DealWithClient[];
@@ -643,26 +644,13 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
 export function PipelineAnalytics({ deals, isLoading }: Props) {
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-64 rounded-lg" />)}
-        </div>
-      </div>
+      <DealLoadingState title="Loading pipeline analytics" description="Calculating funnel, velocity, revenue and team performance from current deal data." />
     );
   }
 
   if (deals.length === 0) {
     return (
-      <Card className={analyticsPanelClass}>
-        <CardContent className="px-6 py-16 text-center">
-          <BarChart3 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm font-medium">No deals to analyse</p>
-          <p className="text-xs text-muted-foreground mt-1">Create some deals to see pipeline analytics</p>
-        </CardContent>
-      </Card>
+      <DealStatePanel tone="gold" icon={<BarChart3 className="h-7 w-7 text-amber-200" />} eyebrow="Analytics ready" title="No deals to analyse yet" description="Analytics will populate as real deals move through the pipeline. No placeholder revenue or conversion data is shown." />
     );
   }
 

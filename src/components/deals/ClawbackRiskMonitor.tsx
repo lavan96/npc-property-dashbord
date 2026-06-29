@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/collapsible';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
 import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
+import { DealLoadingState, DealStatePanel } from '@/components/deals/DealStatePresentation';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -542,12 +543,7 @@ export function ClawbackRiskMonitor({ deals, isLoading, onDealClick }: Props) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
-        </div>
-        <Skeleton className="h-64 rounded-lg" />
-      </div>
+      <DealLoadingState title="Loading clawback monitor" description="Calculating expiry windows and commission exposure from recorded settlement dates." />
     );
   }
 
@@ -664,11 +660,7 @@ export function ClawbackRiskMonitor({ deals, isLoading, onDealClick }: Props) {
                 {filteredItems.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-12">
-                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20">
-                        <Shield className="h-6 w-6" />
-                      </div>
-                      <p className="text-sm font-medium">No deals match this filter</p>
-                      <p className="text-xs text-muted-foreground mt-1">Try adjusting the filter above</p>
+                      <DealStatePanel compact tone="success" icon={<Shield className="h-7 w-7 text-emerald-200" />} eyebrow="Clawback clear" title="No deals match this filter" description="This clawback view has no matching exposure. Try another filter to review different expiry windows." />
                     </TableCell>
                   </TableRow>
                 ) : (
