@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
+import { callLogBadgeTone } from '@/components/call-logs/badgeStyles';
 
 import { CallAnalyticsDashboard } from '@/components/call-logs/CallAnalyticsDashboard';
 import { SquadAnalyticsDashboard } from '@/components/call-logs/SquadAnalyticsDashboard';
@@ -90,6 +91,11 @@ const premiumDangerAction = `${premiumActionBase} border-red-400/35 bg-red-500/1
 const premiumSecondaryAction = `${premiumActionBase} border-white/10 bg-white/5 text-zinc-100 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-amber-300`;
 const premiumTabList = "inline-flex h-auto min-w-max items-center gap-1.5 rounded-[1.35rem] border border-white/10 bg-black/45 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl";
 const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-zinc-400 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-400/25 data-[state=active]:via-yellow-300/15 data-[state=active]:to-amber-500/10 data-[state=active]:text-amber-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] md:text-sm";
+const premiumInteractiveBadge = "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md";
+const premiumScrollbar = "[scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)]";
+const detailTabTrigger = "rounded-xl px-3 py-2 text-xs text-zinc-400 transition-all hover:bg-white/5 hover:text-zinc-100 data-[state=active]:border data-[state=active]:border-white/10";
+const detailLabel = "text-sm text-muted-foreground";
+const detailValue = "font-medium break-words";
 
 interface SquadAssistant {
   id: string;
