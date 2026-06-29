@@ -387,7 +387,7 @@ export default function Agreements() {
       <Badge
         variant={config.variant}
         className={cn(
-          "max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm backdrop-blur ring-1 ring-white/45 transition-all duration-200 group-hover:shadow-[0_8px_20px_hsl(43_84%_52%/0.12)] group-hover:ring-amber-300/25 dark:ring-white/10 dark:group-hover:ring-amber-200/15",
+          "max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm backdrop-blur ring-1 ring-border dark:ring-white/45 transition-all duration-200 group-hover:shadow-[0_8px_20px_hsl(43_84%_52%/0.12)] group-hover:ring-amber-300/25 dark:ring-white/10 dark:group-hover:ring-amber-200/15",
           config.toneClassName,
         )}
       >
@@ -435,7 +435,7 @@ export default function Agreements() {
     if (["declined", "voided", "expired", "failed"].includes(key || "")) {
       return "border-red-300/55 bg-red-500/[0.07] shadow-red-900/5 dark:border-red-300/30 dark:bg-red-400/[0.08]";
     }
-    return "border-border/70 bg-card/90 shadow-slate-900/5 ring-1 ring-white/60 dark:bg-slate-950/30 dark:ring-white/5";
+    return "border-border/70 bg-card/90 shadow-slate-900/5 ring-1 ring-border dark:ring-white/60 dark:bg-slate-950/30 dark:ring-white/5";
   };
 
   const renderDocuSignTracking = (agreement: AgencyAgreement) => {
@@ -538,7 +538,7 @@ export default function Agreements() {
       >
         <div className="flex min-w-0 flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center">
           <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.35rem] border border-amber-300/40 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.20),hsl(var(--primary)/0.14))] text-primary shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35),0_16px_36px_hsl(43_74%_28%/0.16)] dark:border-amber-200/25 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(var(--primary)/0.16))]">
-            <span className="absolute inset-2 rounded-2xl border border-white/30 dark:border-white/10" />
+            <span className="absolute inset-2 rounded-2xl border border-border dark:border-white/30 dark:border-white/10" />
             <FileSignature className="relative h-7 w-7 drop-shadow-sm" />
           </div>
           <div className="min-w-0">
@@ -623,7 +623,7 @@ export default function Agreements() {
               variant="premiumCard"
               tabIndex={0}
               className={cn(
-                "group relative min-h-[9.5rem] overflow-hidden p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-white/50 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/60 hover:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.20),0_0_34px_hsl(43_84%_52%/0.18)] focus-visible:-translate-y-1 focus-visible:border-amber-400/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.24),0_0_34px_hsl(43_84%_52%/0.20)] dark:ring-white/10 dark:hover:border-amber-200/35 dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.16),0_0_38px_hsl(43_84%_52%/0.14)] dark:focus-visible:border-amber-200/50 dark:focus-visible:ring-amber-300/30 dark:focus-visible:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.18),0_0_38px_hsl(43_84%_52%/0.16)] sm:p-6",
+                "group relative min-h-[9.5rem] overflow-hidden p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-border dark:ring-white/50 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/60 hover:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.20),0_0_34px_hsl(43_84%_52%/0.18)] focus-visible:-translate-y-1 focus-visible:border-amber-400/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:shadow-[0_24px_70px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.24),0_0_34px_hsl(43_84%_52%/0.20)] dark:ring-white/10 dark:hover:border-amber-200/35 dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.16),0_0_38px_hsl(43_84%_52%/0.14)] dark:focus-visible:border-amber-200/50 dark:focus-visible:ring-amber-300/30 dark:focus-visible:shadow-[0_24px_70px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.18),0_0_38px_hsl(43_84%_52%/0.16)] sm:p-6",
                 stat.className,
               )}
             >
@@ -669,7 +669,7 @@ export default function Agreements() {
       <DashboardThemeFrame
         as="section"
         variant="section"
-        className="flex min-h-0 flex-col overflow-visible border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/50 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.72))] dark:ring-white/10"
+        className="flex min-h-0 flex-col overflow-visible border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-border dark:ring-white/50 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.72))] dark:ring-white/10"
       >
         <div className="relative flex flex-col gap-5 border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--muted)/0.45),hsl(var(--card)/0.55))] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="min-w-0">
@@ -836,7 +836,7 @@ export default function Agreements() {
                               sideOffset={10}
                               collisionPadding={{ top: 16, right: 16, bottom: 24, left: 16 }}
                               aria-label={`Actions for ${agreement.buyer_names}`}
-                              className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border-border/80 bg-popover p-2 ring-1 ring-white/70 text-popover-foreground shadow-2xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-slate-700/70 dark:shadow-black/35"
+                              className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border-border/80 bg-popover p-2 ring-1 ring-border dark:ring-white/70 text-popover-foreground shadow-2xl shadow-sm dark:shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-slate-700/70 dark:shadow-black/35"
                             >
                               <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Agreement actions
@@ -973,7 +973,7 @@ export default function Agreements() {
           }
         }}
       >
-        <DialogContent aria-describedby={undefined} className="flex max-h-[min(90dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.28)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92))] dark:ring-white/10">
+        <DialogContent aria-describedby={undefined} className="flex max-h-[min(90dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.28)] ring-1 ring-border dark:ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92))] dark:ring-white/10">
           <DialogHeader>
             <DialogTitle>{previewTitle}</DialogTitle>
           </DialogHeader>

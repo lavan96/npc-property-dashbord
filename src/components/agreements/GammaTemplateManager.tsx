@@ -178,7 +178,7 @@ export default function GammaTemplateManager() {
     <DashboardThemeFrame
       as="section"
       variant="section"
-      className="flex min-h-0 flex-col overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.14),transparent_30%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
+      className="flex min-h-0 flex-col overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.14),transparent_30%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-border dark:ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
     >
       <CardHeader className="border-b border-border/70 bg-muted/35 pb-5 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -305,7 +305,7 @@ export default function GammaTemplateManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-        <DialogContent aria-describedby={undefined} className="max-h-[min(92dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-300/50 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.97))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
+        <DialogContent aria-describedby={undefined} className="max-h-[min(92dvh,900px)] w-[calc(100vw-2rem)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-300/50 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.97))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-border dark:ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
           <div className="flex max-h-[min(92dvh,900px)] min-h-0 flex-col">
             <DialogHeader className="border-b border-border/70 bg-muted/45 px-6 py-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
               <div className="flex items-start gap-4">
@@ -446,7 +446,7 @@ export default function GammaTemplateManager() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] p-5 shadow-[0_28px_90px_rgba(15,23,42,0.26)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:ring-white/10 sm:p-6">
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] p-5 shadow-[0_28px_90px_rgba(15,23,42,0.26)] ring-1 ring-border dark:ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:ring-white/10 sm:p-6">
           <AlertDialogHeader>
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
               <Trash2 className="h-5 w-5" />
