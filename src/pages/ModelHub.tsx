@@ -97,12 +97,14 @@ function MetricTile({
   icon: Icon,
   tone,
   helper,
+  loading = false,
 }: {
   label: string;
   value: number;
   icon: typeof Sparkles;
   tone: 'primary' | 'info' | 'warning' | 'success';
   helper: string;
+  loading?: boolean;
 }) {
   const toneClasses = {
     primary: 'border-primary/30 bg-primary/[0.08] text-primary shadow-primary/10',
@@ -120,8 +122,8 @@ function MetricTile({
       <div className="flex h-full items-start justify-between gap-4">
         <div className="min-w-0 space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-          <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{value}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">{helper}</p>
+          {loading ? <Skeleton className="h-10 w-20 rounded-xl" /> : <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{value}</p>}
+          <p className="text-xs leading-relaxed text-muted-foreground">{loading ? 'Refreshing live catalogue state…' : helper}</p>
         </div>
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-current/20 bg-current/10 shadow-inner">
           <Icon className="h-5 w-5" />
@@ -133,10 +135,10 @@ function MetricTile({
 
 function statusBadge(status: Status) {
   switch (status) {
-    case 'available':   return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
-    case 'preview':     return 'bg-sky-500/15 text-sky-300 border-sky-500/30';
-    case 'deprecated':  return 'bg-amber-500/15 text-amber-300 border-amber-500/30';
-    case 'unavailable': return 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+    case 'available':   return 'border-success/30 bg-success/10 text-success dark:text-emerald-300';
+    case 'preview':     return 'border-info/30 bg-info/10 text-info dark:text-sky-300';
+    case 'deprecated':  return 'border-warning/35 bg-warning/10 text-warning dark:text-amber-300';
+    case 'unavailable': return 'border-destructive/30 bg-destructive/10 text-destructive dark:text-rose-300';
   }
 }
 
@@ -506,9 +508,23 @@ function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
         </Select>
         <span className="ml-auto rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">{filtered.length} shown</span>
       </DashboardThemeFrame>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {filtered.slice(0, 60).map((m) => <ModelCard key={m.model_id} model={m} />)}
-      </div>
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 p-6 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+              <Search className="h-4 w-4" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium text-foreground">No OpenRouter models match this filter</p>
+              <p className="text-xs leading-5">Clear the search term or choose a different family to show the existing OpenRouter catalogue data.</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.slice(0, 60).map((m) => <ModelCard key={m.model_id} model={m} />)}
+        </div>
+      )}
       {filtered.length > 60 && <p className="text-center text-xs text-muted-foreground">Showing first 60 of {filtered.length} — refine search to see more.</p>}
     </div>
   );
@@ -597,10 +613,10 @@ export default function ModelHub() {
         </DashboardThemeFrame>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Model availability summary">
-          <MetricTile label="Live models" value={stats.total} icon={Sparkles} tone="primary" helper="Available catalogue entries across active routes." />
-          <MetricTile label="Preview" value={stats.preview} icon={Zap} tone="info" helper="Models marked preview by the current catalogue." />
-          <MetricTile label="Deprecated" value={stats.deprecated} icon={AlertTriangle} tone="warning" helper="Models flagged for migration or replacement." />
-          <MetricTile label="Providers" value={stats.providers} icon={ShieldCheck} tone="success" helper="Distinct providers represented in live data." />
+          <MetricTile label="Live models" value={stats.total} icon={Sparkles} tone="primary" helper="Available catalogue entries across active routes." loading={loading} />
+          <MetricTile label="Preview" value={stats.preview} icon={Zap} tone="info" helper="Models marked preview by the current catalogue." loading={loading} />
+          <MetricTile label="Deprecated" value={stats.deprecated} icon={AlertTriangle} tone="warning" helper="Models flagged for migration or replacement." loading={loading} />
+          <MetricTile label="Providers" value={stats.providers} icon={ShieldCheck} tone="success" helper="Distinct providers represented in live data." loading={loading} />
         </section>
 
         <Tabs defaultValue="bindings" className="space-y-6">
@@ -669,7 +685,14 @@ export default function ModelHub() {
         </TabsContent>
 
         <TabsContent value="openrouter" className="min-w-0">
-          {loading ? <Skeleton className="h-96 w-full" /> : <OpenRouterCatalog models={data?.models ?? []} />}
+          {loading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-28 w-full rounded-2xl" />
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}
+              </div>
+            </div>
+          ) : <OpenRouterCatalog models={data?.models ?? []} />}
         </TabsContent>
       </Tabs>
 
