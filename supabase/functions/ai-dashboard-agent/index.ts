@@ -3503,8 +3503,9 @@ async function executeGetChecklistTemplates(sb: any) {
 
 async function executeGetActiveChecklists(sb: any, args: any) {
   let query = sb.from('checklist_instances').select('*');
-  if (args.status) query = query.eq('status', args.status);
-  else query = query.eq('status', 'active');
+  const requestedStatus = args.status === 'active' ? 'in_progress' : args.status;
+  if (requestedStatus) query = query.eq('status', requestedStatus);
+  else query = query.eq('status', 'in_progress');
   const { data } = await query.order('updated_at', { ascending: false }).limit(30);
   return { checklists: data || [] };
 }
@@ -3526,7 +3527,40 @@ async function executeToggleChecklistItem(sb: any, args: any, userId: string) {
 async function executeCreateChecklistInstance(sb: any, args: any, userId: string) {
   const { data: template } = await sb.from('checklist_templates').select('*, checklist_template_sections(*, checklist_template_items(*))').eq('id', args.template_id).single();
   if (!template) return { error: 'Template not found.' };
-  const { data: instance, error } = await sb.from('checklist_instances').insert({ template_id: args.template_id, name: template.name, description: template.description, icon: template.icon, status: 'active', generated_by: userId }).select().single();
+  const dueDate = new Date().toISOString().slice(0, 10);
+  const ownerContext = template.created_by || userId || 'global';
+  const recurrenceKey = `${args.template_id}:${dueDate}:${ownerContext}`;
+  const legacyRecurrenceKey = `${args.template_id}:${dueDate}`;
+
+  const { data: existing, error: existingErr } = await sb
+    .from('checklist_instances')
+    .select('id')
+    .in('recurrence_key', [recurrenceKey, legacyRecurrenceKey])
+    .limit(1)
+    .maybeSingle();
+  if (existingErr) return { error: `Failed to check existing checklist occurrence: ${existingErr.message}` };
+  if (existing) return { success: true, message: `Checklist "${template.name}" already exists for ${dueDate}.`, instance_id: existing.id };
+
+  const { data: instance, error } = await sb.from('checklist_instances').insert({
+    template_id: args.template_id,
+    name: template.name,
+    description: template.description,
+    icon: template.icon,
+    status: 'in_progress',
+    generated_by: userId,
+    due_date: dueDate,
+    recurrence_key: recurrenceKey,
+  }).select().single();
+  if (error?.code === '23505') {
+    const { data: concurrentExisting, error: concurrentErr } = await sb
+      .from('checklist_instances')
+      .select('id')
+      .in('recurrence_key', [recurrenceKey, legacyRecurrenceKey])
+      .limit(1)
+      .maybeSingle();
+    if (concurrentErr) return { error: `Failed to resolve concurrent checklist occurrence: ${concurrentErr.message}` };
+    if (concurrentExisting) return { success: true, message: `Checklist "${template.name}" already exists for ${dueDate}.`, instance_id: concurrentExisting.id };
+  }
   if (error) return { error: error.message };
   const items: any[] = [];
   for (const sec of (template.checklist_template_sections || [])) {

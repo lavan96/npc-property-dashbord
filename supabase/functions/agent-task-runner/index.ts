@@ -136,7 +136,37 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          console.log(`[agent-task-runner] Generating checklist from template: ${tmpl.name} (${tmpl.id})`);
+          const occurrenceDate = now.slice(0, 10);
+          const ownerContext = tmpl.created_by || 'global';
+          const recurrenceKey = `${tmpl.id}:${occurrenceDate}:${ownerContext}`;
+          const legacyRecurrenceKey = `${tmpl.id}:${occurrenceDate}`;
+
+          // Recurrence audit note: Daily Operations and other cron templates must generate instances, not templates.
+          // Idempotency is enforced per template/date so completed or archived occurrences are not regenerated
+          // for the same day and only future valid occurrences can appear in Active.
+          const { data: existingInstance, error: existingErr } = await sb
+            .from('checklist_instances')
+            .select('id,status')
+            .in('recurrence_key', [recurrenceKey, legacyRecurrenceKey])
+            .limit(1)
+            .maybeSingle();
+
+          if (existingErr) {
+            console.error(`[agent-task-runner] Failed to check existing checklist occurrence for "${tmpl.name}":`, existingErr.message);
+            failed++;
+            continue;
+          }
+
+          if (existingInstance) {
+            await sb.from('checklist_templates').update({
+              last_generated_at: now,
+              updated_at: now,
+            }).eq('id', tmpl.id);
+            console.log(`[agent-task-runner] Checklist occurrence already exists for ${tmpl.name} on ${occurrenceDate} (${existingInstance.status}), skipping`);
+            continue;
+          }
+
+          console.log(`[agent-task-runner] Generating checklist from template: ${tmpl.name} (${tmpl.id}) for ${occurrenceDate}`);
 
           // Fetch template sections and items
           const { data: sections } = await sb
@@ -154,9 +184,15 @@ Deno.serve(async (req) => {
             generated_by: 'cron',
             status: 'in_progress',
             progress_percent: 0,
+            due_date: occurrenceDate,
+            recurrence_key: recurrenceKey,
           }).select().single();
 
           if (instErr || !instance) {
+            if (instErr?.code === '23505') {
+              console.log(`[agent-task-runner] Checklist occurrence was created concurrently for ${tmpl.name} on ${occurrenceDate}, skipping duplicate`);
+              continue;
+            }
             console.error(`[agent-task-runner] Failed to create instance for "${tmpl.name}":`, instErr?.message);
             failed++;
             continue;
