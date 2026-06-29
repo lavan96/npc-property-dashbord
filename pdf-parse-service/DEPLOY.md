@@ -255,6 +255,10 @@ gcloud run services update-traffic "$SERVICE" \
 | `DOCLING_IMAGES_SCALE` | `2.0` | Picture crop DPI multiplier (1.0 = 72 dpi). |
 | `DOCLING_LAYOUT_MODEL` | _(unset)_ | Override layout model id, e.g. `docling-models/layout-heron`. |
 | `DOCLING_TABLE_MODE` | `ACCURATE` | `FAST` or `ACCURATE` TableFormer mode. |
+| `DOCLING_ENABLE_FITZ_LAYERS` | `true` | Phase 2: PyMuPDF vector-graphics + span-typography pass. Set `false` to fall back to Docling-only output. |
+| `DOCLING_RASTER_DPI` | `300` | Phase 2: reference-raster DPI (was 200). Lower to 200/240 if cold-starts or memory regress. |
+| `DOCLING_MAX_VECTORS_PER_PAGE` | `400` | Phase 2: cap on extracted vector items per page (prevents overlay explosion). |
+| `DOCLING_MIN_VECTOR_SIZE_PT` | `1.0` | Phase 2: drop vector drawings smaller than this (pt) in both width and height. |
 
 Override per deploy with `--update-env-vars KEY=VALUE` on `gcloud run deploy`.
 
@@ -278,3 +282,100 @@ Override per deploy with `--update-env-vars KEY=VALUE` on `gcloud run deploy`.
 5. Redeploy Cloud Run with the replacement as `PDF_PARSE_SERVICE_TOKEN` and remove `PDF_PARSE_SERVICE_TOKEN_NEXT`.
 
 During the grace window, the sidecar accepts either bearer token. Do not leave `PDF_PARSE_SERVICE_TOKEN_NEXT` set after rotation is complete.
+
+---
+
+## 11. Phase 2 deploy delta — vector graphics + typography (PyMuPDF)
+
+This release adds a **PyMuPDF (`fitz`)** pass that extracts vector graphics
+(logos, rule lines, fills) and real span typography (line-height, letter
+spacing, alignment, embedded font names) on top of Docling. PyMuPDF is
+**AGPL-3.0** — see `pdf-parse-service/NOTICE.md`.
+
+Three components changed and each must be deployed:
+
+### 11.1 Rebuild + redeploy the Cloud Run sidecar (required)
+
+`requirements.txt` now pins `PyMuPDF==1.24.14`, so the image **must** be
+rebuilt — a config-only revision will not pick it up.
+
+```bash
+cd pdf-parse-service
+export GCP_PROJECT=<YOUR_GCP_PROJECT_ID>
+export REGION=us-central1            # whatever you deployed to originally
+export SERVICE=pdf-parse-service
+export IMAGE=gcr.io/$GCP_PROJECT/$SERVICE:phase2-fitz-$(date +%Y%m%d-%H%M)
+
+gcloud builds submit --tag "$IMAGE" .
+
+gcloud run deploy "$SERVICE" \
+  --image "$IMAGE" \
+  --region "$REGION" \
+  --memory 4Gi \
+  --concurrency 2 \
+  --timeout 300 \
+  --min-instances 0 \
+  --max-instances 10 \
+  --startup-probe-http-path /healthz \
+  --update-env-vars "DOCLING_ENABLE_FITZ_LAYERS=true,DOCLING_RASTER_DPI=300,DOCLING_MAX_VECTORS_PER_PAGE=400,DOCLING_MIN_VECTOR_SIZE_PT=1.0"
+```
+
+Notes:
+- `--update-env-vars` preserves the existing env (token, Docling toggles) and
+  only adds/overrides the Phase 2 keys. Do **not** use `--set-env-vars` here or
+  you will wipe `PDF_PARSE_SERVICE_TOKEN`.
+- The default raster DPI rose 200 → 300. If you observe Cloud Run OOM/cold-start
+  regressions, set `DOCLING_RASTER_DPI=240` (or bump `--memory 6Gi`).
+- No secret/token change; the Supabase secrets from section 6 still apply.
+
+### 11.2 Redeploy the `pdf-parse-chunk-callback` edge function (required)
+
+The chunk-merge for large PDFs now carries `vectors` through the merged
+document. Without this, PDFs large enough to be chunked (>20 pages) would lose
+vectors.
+
+```bash
+# Supabase CLI (from repo root). Project ref: dduzbchuswwbefdunfct
+supabase functions deploy pdf-parse-chunk-callback --project-ref dduzbchuswwbefdunfct
+```
+
+(or deploy it from the Lovable/Supabase functions UI). No other edge function
+changed; `pdf-parse-dispatch` / `pdf-parse-callback` are untouched.
+
+### 11.3 Frontend (standard deploy, no migration)
+
+The frontend changes are additive — a new optional `Page.background.imageFit`
+schema field and new vector/typography mapping. There is **no database
+migration**. Deploy the app the usual way (Vite build / Lovable publish).
+
+### 11.4 Smoke-test the new extraction
+
+```bash
+curl -s -X POST "$PDF_PARSE_SERVICE_URL/parse" \
+  -H "Authorization: Bearer $PDF_PARSE_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://arxiv.org/pdf/2206.01062.pdf"}' \
+  | jq '{engine: .engine_version, vectors: (.docling_document.vectors|length), vector_count: .summary.vector_count, fitz: .parse_options.fitz_layers, sample_font: (.docling_document.texts[0].font)}'
+```
+
+Expect `engine` to end with `+phase2-fitz-vectors-typography`, `fitz: true`,
+`vectors` > 0 on a design-rich PDF, and `sample_font` to include
+`line_height`/`letter_spacing` when the source had detectable leading.
+
+### 11.5 End-to-end verification in the app
+
+1. Import a brand-heavy template (e.g. one of `public/templates/*.pdf`).
+2. On the builder canvas you should now see **vector logos/rule lines** and
+   text laid out with the source's real leading/alignment — not just the flat
+   raster. (Tables and vectors render via `OverlayPreview` from Phase 1.)
+3. Open `PdfFidelityDiffDialog` and confirm reduced drift / higher SSIM vs. a
+   pre-Phase-2 import of the same file.
+
+### 11.6 Rollback
+
+- **Fastest:** set `DOCLING_ENABLE_FITZ_LAYERS=false` via
+  `gcloud run services update "$SERVICE" --region "$REGION" --update-env-vars DOCLING_ENABLE_FITZ_LAYERS=false`
+  — the sidecar reverts to Docling-only output with no rebuild. The frontend
+  simply receives no `vectors` and unchanged typography (graceful).
+- **Full:** roll Cloud Run traffic back to the previous revision (section 8) and
+  redeploy the prior `pdf-parse-chunk-callback`.
