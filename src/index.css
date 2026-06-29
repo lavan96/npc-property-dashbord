@@ -4337,3 +4337,72 @@ html {
     }
   }
 }
+
+@layer components {
+  .deal-pipeline-polish {
+    color-scheme: dark;
+  }
+
+  .deal-pipeline-polish :is([role="dialog"], [data-radix-popper-content-wrapper] [role="listbox"], [data-radix-select-content]) {
+    border-color: rgb(251 191 36 / 0.24);
+    background: linear-gradient(145deg, rgb(24 24 27 / 0.98), rgb(9 9 11 / 0.96));
+    box-shadow: 0 24px 70px rgb(0 0 0 / 0.42), inset 0 1px 0 rgb(255 255 255 / 0.08);
+  }
+
+  .deal-pipeline-polish :is(table) {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .deal-pipeline-polish :is(thead tr) {
+    background: linear-gradient(90deg, rgb(251 191 36 / 0.10), rgb(39 39 42 / 0.72));
+  }
+
+  .deal-pipeline-polish :is(th) {
+    border-color: rgb(251 191 36 / 0.16);
+    color: rgb(254 243 199 / 0.78);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .deal-pipeline-polish :is(td) {
+    border-color: rgb(255 255 255 / 0.08);
+  }
+
+  .deal-pipeline-polish :is(tbody tr) {
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .deal-pipeline-polish :is(tbody tr:hover) {
+    background-color: rgb(251 191 36 / 0.045);
+    box-shadow: inset 3px 0 0 rgb(251 191 36 / 0.36);
+  }
+
+  .deal-pipeline-polish :is(button, a, input, [role="button"], [role="tab"], [role="combobox"]):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(252 211 77 / 0.42), 0 0 0 5px rgb(9 9 11 / 0.92);
+  }
+
+  .deal-pipeline-polish :is(input, textarea, [role="combobox"]) {
+    border-color: rgb(255 255 255 / 0.11);
+    background-color: rgb(0 0 0 / 0.36);
+  }
+
+  .deal-pipeline-polish :is(input, textarea, [role="combobox"]):hover {
+    border-color: rgb(251 191 36 / 0.28);
+  }
+
+  .deal-pipeline-polish :is(input, textarea, [role="combobox"]):focus-visible {
+    border-color: rgb(252 211 77 / 0.54);
+  }
+
+  .deal-pipeline-polish :is(.recharts-wrapper text) {
+    fill: rgb(212 212 216 / 0.78);
+  }
+
+  .deal-pipeline-polish :is(.recharts-cartesian-grid line) {
+    stroke: rgb(255 255 255 / 0.08);
+  }
+}
