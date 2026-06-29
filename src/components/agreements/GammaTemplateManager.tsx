@@ -173,9 +173,9 @@ export default function GammaTemplateManager() {
     <DashboardThemeFrame
       as="section"
       variant="section"
-      className="overflow-hidden border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.12),transparent_30%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--card)/0.82))] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
+      className="overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.14),transparent_30%),linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
     >
-      <CardHeader className="border-b border-border/55 bg-background/35 pb-5 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03]">
+      <CardHeader className="border-b border-border/70 bg-muted/35 pb-5 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -200,13 +200,13 @@ export default function GammaTemplateManager() {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : templates.length === 0 ? (
-          <div className="mx-4 my-5 rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-10 text-center text-sm text-muted-foreground">
+          <div className="mx-4 my-5 rounded-2xl border border-dashed border-amber-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.12),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.28))] px-4 py-10 text-center text-sm text-muted-foreground">
             No templates configured. Add a Gamma template to get started.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-border/65 bg-background/80 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.58),0_18px_46px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_52px_rgba(0,0,0,0.28)]">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.58),0_18px_46px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_22px_52px_rgba(0,0,0,0.28)]">
             <Table>
-            <TableHeader className="bg-muted/55 dark:bg-white/[0.04]">
+            <TableHeader className="bg-muted/85 shadow-[0_1px_0_hsl(var(--border)/0.85)] dark:bg-white/[0.04]">
               <TableRow>
                 <TableHead className="h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground">Name</TableHead>
                 <TableHead className="hidden h-12 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-muted-foreground md:table-cell">Gamma ID</TableHead>
@@ -217,7 +217,7 @@ export default function GammaTemplateManager() {
             </TableHeader>
             <TableBody>
               {templates.map((t) => (
-                <TableRow key={t.id} className="group border-border/40 transition-all duration-200 hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.08),hsl(var(--background)/0.55))] hover:shadow-[inset_3px_0_0_hsl(43_84%_52%/0.75)] dark:border-white/10 dark:hover:bg-[linear-gradient(90deg,rgba(251,191,36,0.09),rgba(15,23,42,0.28))] dark:hover:shadow-[inset_3px_0_0_rgba(251,191,36,0.72)]">
+                <TableRow key={t.id} className="group border-border/60 bg-card/40 transition-all duration-200 hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.14),hsl(var(--card)/0.88))] hover:shadow-[inset_3px_0_0_hsl(43_84%_52%/0.75)] dark:border-white/10 dark:hover:bg-[linear-gradient(90deg,rgba(251,191,36,0.09),rgba(15,23,42,0.28))] dark:hover:shadow-[inset_3px_0_0_rgba(251,191,36,0.72)]">
                   <TableCell className="py-4">
                     <div className="flex flex-wrap items-center gap-2.5">
                       <span className="text-sm font-bold tracking-[-0.01em] text-foreground transition-colors group-hover:text-amber-700 sm:text-base dark:group-hover:text-amber-100">{t.name}</span>
@@ -233,13 +233,13 @@ export default function GammaTemplateManager() {
                     </code>
                   </TableCell>
                   <TableCell className="hidden py-4 sm:table-cell">
-                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-indigo-300/35 bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-indigo-200/20 dark:bg-indigo-300/10 dark:text-indigo-100">
+                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-indigo-300/50 bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-indigo-200/20 dark:bg-indigo-300/10 dark:text-indigo-100">
                       <Layers3 className="h-3 w-3" />
                       {t.placeholder_mappings.length} mappings
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4">
-                    <Badge variant={t.is_active ? 'outline' : 'secondary'} className={t.is_active ? 'rounded-full border-teal-400/45 bg-[linear-gradient(135deg,rgba(20,184,166,0.14),rgba(16,185,129,0.10))] px-2.5 py-1 text-xs font-bold text-teal-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_8px_18px_rgba(20,184,166,0.10)] dark:border-teal-200/25 dark:bg-teal-300/10 dark:text-teal-200' : 'rounded-full border border-slate-300/50 bg-slate-500/10 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:text-slate-300'}>
+                    <Badge variant={t.is_active ? 'outline' : 'secondary'} className={t.is_active ? 'rounded-full border-teal-400/45 bg-[linear-gradient(135deg,rgba(20,184,166,0.14),rgba(16,185,129,0.10))] px-2.5 py-1 text-xs font-bold text-teal-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_8px_18px_rgba(20,184,166,0.10)] dark:border-teal-200/25 dark:bg-teal-300/10 dark:text-teal-200' : 'rounded-full border border-slate-300/70 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:border-white/10 dark:text-slate-300'}>
                       <span className={t.is_active ? 'mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.14)]' : 'mr-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
                       {t.is_active ? 'Active' : 'Inactive'}
                     </Badge>
@@ -269,9 +269,9 @@ export default function GammaTemplateManager() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } }}>
-        <DialogContent className="max-h-[min(92vh,900px)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-200/45 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--card)/0.96))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
+        <DialogContent className="max-h-[min(92vh,900px)] max-w-4xl overflow-hidden rounded-[2rem] border border-amber-300/50 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(221_83%_53%/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.97))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-white/70 dark:border-amber-200/15 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.18),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.99),rgba(2,6,23,0.97))] dark:ring-white/10">
           <div className="flex max-h-[min(92vh,900px)] flex-col">
-            <DialogHeader className="border-b border-border/60 bg-background/45 px-6 py-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
+            <DialogHeader className="border-b border-border/70 bg-muted/45 px-6 py-5 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:px-7">
               <div className="flex items-start gap-4">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.24),hsl(38_92%_50%/0.12))] text-amber-600 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.68),0_16px_34px_hsl(43_84%_52%/0.18)] dark:border-amber-200/20 dark:text-amber-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_18px_42px_rgba(0,0,0,0.34)]">
                   <Sparkles className="h-5 w-5" />
@@ -304,7 +304,7 @@ export default function GammaTemplateManager() {
                     </div>
                   </div>
                 )}
-                <section className="rounded-3xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+                <section className="rounded-3xl border border-border/75 bg-card/88 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground">Template details</h3>
@@ -330,7 +330,7 @@ export default function GammaTemplateManager() {
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-border/65 bg-background/72 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+                <section className="rounded-3xl border border-border/75 bg-card/88 p-4 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.56),0_16px_42px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                   <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <h3 className="text-sm font-bold uppercase tracking-[0.16em] text-foreground">Placeholder Mappings</h3>
@@ -342,7 +342,7 @@ export default function GammaTemplateManager() {
                   </div>
                   <div className="space-y-3">
                     {mappings.map((m, idx) => (
-                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/60 bg-muted/25 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_12px_30px_rgba(15,23,42,0.05)] transition-all hover:border-amber-300/40 hover:bg-amber-500/[0.06] dark:border-white/10 dark:bg-slate-950/35 dark:hover:border-amber-200/20 dark:hover:bg-amber-200/[0.07] sm:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1fr)_minmax(0,10rem)_auto] sm:items-end">
+                      <div key={idx} className="grid gap-3 rounded-2xl border border-border/70 bg-card/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_12px_30px_rgba(15,23,42,0.05)] transition-all hover:border-amber-300/40 hover:bg-amber-500/[0.06] dark:border-white/10 dark:bg-slate-950/35 dark:hover:border-amber-200/20 dark:hover:bg-amber-200/[0.07] sm:grid-cols-[minmax(0,1.1fr)_auto_minmax(0,1fr)_minmax(0,10rem)_auto] sm:items-end">
                         <div className="space-y-1.5">
                           <Label className="text-[0.66rem] font-bold uppercase tracking-[0.13em] text-muted-foreground">Gamma placeholder</Label>
                           <Input
@@ -378,7 +378,7 @@ export default function GammaTemplateManager() {
                         <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground transition-all hover:border hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive" onClick={() => removeMapping(idx)} aria-label="Remove placeholder mapping">
                           <X className="h-4 w-4" />
                         </Button>
-                        <div className="min-w-0 rounded-xl border border-border/50 bg-background/65 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] sm:col-span-5">
+                        <div className="min-w-0 rounded-xl border border-border/65 bg-background/85 px-3 py-2 text-[0.72rem] leading-5 text-muted-foreground dark:border-white/10 dark:bg-white/[0.035] sm:col-span-5">
                           <span className="font-semibold text-foreground">Preview:</span>{' '}
                           <code className="font-mono text-foreground/80 [overflow-wrap:anywhere]">{m.placeholder || '[Placeholder]'}</code>
                           <span className="mx-2 text-amber-500">→</span>
@@ -392,7 +392,7 @@ export default function GammaTemplateManager() {
               </div>
             </div>
 
-            <DialogFooter className="flex-col gap-3 border-t border-border/60 bg-background/55 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <DialogFooter className="flex-col gap-3 border-t border-border/70 bg-muted/45 px-6 py-4 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.04] sm:flex-row sm:items-center sm:justify-between sm:px-7">
               <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                 {(!name || !gammaId) ? <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-200" /> : <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />}
                 <span>{(!name || !gammaId) ? 'Template name and Gamma template ID are required before saving.' : 'Ready to save with the existing update workflow.'}</span>

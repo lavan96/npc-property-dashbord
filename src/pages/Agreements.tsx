@@ -90,91 +90,91 @@ const STATUS_CONFIG: Record<
     variant: "warning",
     icon: Clock,
     toneClassName:
-      "border-amber-300/45 bg-amber-500/12 text-amber-800 dark:border-amber-200/30 dark:bg-amber-300/12 dark:text-amber-100",
+      "border-amber-400/60 bg-amber-100/85 text-amber-900 shadow-amber-900/5 dark:border-amber-200/30 dark:bg-amber-300/12 dark:text-amber-100",
   },
   generating: {
     label: "Generating",
     variant: "warning",
     icon: Loader2,
     toneClassName:
-      "border-amber-300/45 bg-amber-500/12 text-amber-800 dark:border-amber-200/30 dark:bg-amber-300/12 dark:text-amber-100",
+      "border-amber-400/60 bg-amber-100/85 text-amber-900 shadow-amber-900/5 dark:border-amber-200/30 dark:bg-amber-300/12 dark:text-amber-100",
   },
   generated: {
     label: "Generated",
     variant: "outline",
     icon: FileSignature,
     toneClassName:
-      "border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+      "border-slate-300 bg-slate-50 text-slate-700 shadow-slate-900/5 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
   },
   draft: {
     label: "Draft",
     variant: "outline",
     icon: FileText,
     toneClassName:
-      "border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+      "border-slate-300 bg-slate-50 text-slate-700 shadow-slate-900/5 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
   },
   sent: {
     label: "Sent",
     variant: "default",
     icon: Send,
     toneClassName:
-      "border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
+      "border-amber-400/65 bg-amber-100/90 text-amber-950 shadow-amber-900/5 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
   },
   delivered: {
     label: "Delivered",
     variant: "default",
     icon: CheckCircle2,
     toneClassName:
-      "border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
+      "border-amber-400/65 bg-amber-100/90 text-amber-950 shadow-amber-900/5 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
   },
   viewed: {
     label: "Viewed",
     variant: "default",
     icon: Eye,
     toneClassName:
-      "border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
+      "border-amber-400/65 bg-amber-100/90 text-amber-950 shadow-amber-900/5 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
   },
   signed: {
     label: "Signed",
     variant: "success",
     icon: CheckCircle2,
     toneClassName:
-      "border-emerald-300/55 bg-emerald-500/12 text-emerald-800 dark:border-emerald-200/35 dark:bg-emerald-300/12 dark:text-emerald-100",
+      "border-emerald-400/60 bg-emerald-50 text-emerald-800 shadow-emerald-900/5 dark:border-emerald-200/35 dark:bg-emerald-300/12 dark:text-emerald-100",
   },
   completed: {
     label: "Completed",
     variant: "success",
     icon: CheckCircle2,
     toneClassName:
-      "border-teal-300/55 bg-teal-500/12 text-teal-800 dark:border-teal-200/35 dark:bg-teal-300/12 dark:text-teal-100",
+      "border-teal-400/60 bg-teal-50 text-teal-800 shadow-teal-900/5 dark:border-teal-200/35 dark:bg-teal-300/12 dark:text-teal-100",
   },
   declined: {
     label: "Declined",
     variant: "destructive",
     icon: AlertTriangle,
     toneClassName:
-      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+      "border-red-300/70 bg-red-50 text-red-800 shadow-red-900/5 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
   },
   voided: {
     label: "Voided",
     variant: "destructive",
     icon: Ban,
     toneClassName:
-      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+      "border-red-300/70 bg-red-50 text-red-800 shadow-red-900/5 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
   },
   expired: {
     label: "Expired",
     variant: "secondary",
     icon: Clock,
     toneClassName:
-      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+      "border-red-300/70 bg-red-50 text-red-800 shadow-red-900/5 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
   },
   failed: {
     label: "Failed",
     variant: "destructive",
     icon: AlertTriangle,
     toneClassName:
-      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+      "border-red-300/70 bg-red-50 text-red-800 shadow-red-900/5 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
   },
 };
 
@@ -403,7 +403,7 @@ export default function Agreements() {
     emptyLabel: string,
     Icon: React.ComponentType<any>,
   ) => (
-    <div className="flex min-w-[8.75rem] items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-2.5 py-2 shadow-sm dark:bg-slate-950/35">
+    <div className="flex min-w-[8.75rem] items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-2.5 py-2 shadow-[0_8px_22px_rgba(15,23,42,0.06),inset_0_1px_0_hsl(0_0%_100%/0.62)] dark:bg-slate-950/35 dark:shadow-sm">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
         <Icon className="h-3.5 w-3.5" />
       </span>
@@ -434,7 +434,7 @@ export default function Agreements() {
     if (["declined", "voided", "expired", "failed"].includes(key || "")) {
       return "border-red-300/55 bg-red-500/[0.07] shadow-red-900/5 dark:border-red-300/30 dark:bg-red-400/[0.08]";
     }
-    return "border-border/60 bg-background/60 dark:bg-slate-950/30";
+    return "border-border/70 bg-card/90 shadow-slate-900/5 ring-1 ring-white/60 dark:bg-slate-950/30 dark:ring-white/5";
   };
 
   const renderDocuSignTracking = (agreement: AgencyAgreement) => {
@@ -446,7 +446,7 @@ export default function Agreements() {
           <div className="flex flex-wrap items-center gap-1.5">
             {renderStatusBadge(agreement.status)}
           </div>
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-dashed border-border/70 bg-muted/35 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.075em] text-muted-foreground/75 dark:bg-slate-900/35">
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-dashed border-border/80 bg-card/80 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.075em] text-muted-foreground shadow-sm dark:bg-slate-900/35">
             <Mail className="h-3 w-3" />
             Not sent
           </span>
@@ -466,7 +466,7 @@ export default function Agreements() {
             {renderStatusBadge(agreement.status)}
             <DocuSignStatusBadge status={agreement.docusign_status} />
           </div>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background/80 text-primary ring-1 ring-border/60 dark:bg-slate-950/55">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-card/95 text-primary ring-1 ring-border/70 shadow-sm dark:bg-slate-950/55">
             <FileSignature className="h-4 w-4" />
           </span>
         </div>
@@ -479,7 +479,7 @@ export default function Agreements() {
   };
 
   const renderAgreementDate = (date: string) => (
-    <span className="inline-flex min-w-[7.25rem] items-center justify-center rounded-xl border border-border/55 bg-background/65 px-2.5 py-1.5 text-sm font-semibold text-foreground shadow-sm dark:bg-slate-950/35">
+    <span className="inline-flex min-w-[7.25rem] items-center justify-center rounded-xl border border-border/70 bg-card/95 px-2.5 py-1.5 shadow-[0_8px_20px_rgba(15,23,42,0.06),inset_0_1px_0_hsl(0_0%_100%/0.65)] text-sm font-semibold text-foreground shadow-sm dark:bg-slate-950/35">
       {format(new Date(date), "dd MMM yyyy")}
     </span>
   );
@@ -620,9 +620,9 @@ export default function Agreements() {
       <DashboardThemeFrame
         as="section"
         variant="section"
-        className="overflow-hidden border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)/0.97),hsl(var(--card)/0.82))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/50 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.72))] dark:ring-white/10"
+        className="overflow-hidden border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/50 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.84),rgba(2,6,23,0.72))] dark:ring-white/10"
       >
-        <div className="relative flex flex-col gap-5 border-b border-border/60 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--muted)/0.28),transparent)] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="relative flex flex-col gap-5 border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--muted)/0.45),hsl(var(--card)/0.55))] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <span className="h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_5px_hsl(var(--primary)/0.13),0_0_22px_hsl(var(--primary)/0.32)]" />
@@ -647,7 +647,7 @@ export default function Agreements() {
             />
           </div>
         </div>
-        <div className="bg-background/20 p-3 sm:p-4">
+        <div className="bg-muted/18 p-3 sm:p-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -673,10 +673,10 @@ export default function Agreements() {
               )}
             </div>
           ) : (
-            <ScrollArea className="max-h-[600px] rounded-2xl border border-border/70 bg-card/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_18px_44px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+            <ScrollArea className="max-h-[600px] rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_18px_44px_rgba(15,23,42,0.10)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
               <div className="overflow-x-auto">
                 <Table className="min-w-[880px]">
-                  <TableHeader className="sticky top-0 z-10 border-b border-border/70 bg-muted/75 shadow-[0_1px_0_hsl(var(--border)/0.75)] backdrop-blur-xl dark:bg-slate-900/90">
+                  <TableHeader className="sticky top-0 z-10 border-b border-border/70 bg-muted/90 shadow-[0_1px_0_hsl(var(--border)/0.95),0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-slate-900/90">
                     <TableRow className="border-border/70 hover:bg-transparent">
                       <TableHead className="h-12 text-[0.69rem] font-bold uppercase tracking-[0.18em] text-muted-foreground/90">
                         Buyer
@@ -703,7 +703,7 @@ export default function Agreements() {
                     {filteredAgreements.map((agreement) => (
                       <TableRow
                         key={agreement.id}
-                        className="group border-border/55 transition-all duration-300 hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.14),hsl(var(--primary)/0.06)_34%,hsl(var(--card)/0.32))] hover:shadow-[inset_4px_0_0_hsl(43_84%_52%/0.9),0_14px_34px_hsl(43_84%_52%/0.10)] dark:hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.16),hsl(var(--primary)/0.08)_36%,hsl(var(--card)/0.18))]"
+                        className="group border-border/65 bg-card/45 transition-all duration-300 hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.18),hsl(var(--primary)/0.08)_34%,hsl(var(--card)/0.86))] hover:shadow-[inset_4px_0_0_hsl(43_84%_52%/0.9),0_14px_34px_hsl(43_84%_52%/0.10)] dark:hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.16),hsl(var(--primary)/0.08)_36%,hsl(var(--card)/0.18))]"
                       >
                         <TableCell className="max-w-[18rem] py-4 pr-5 font-medium">
                           <button
@@ -767,7 +767,7 @@ export default function Agreements() {
                                 variant="outline"
                                 size="icon"
                                 aria-label={`Open actions for agreement with ${agreement.buyer_names}`}
-                                className="ml-auto h-10 w-10 rounded-2xl border-border/70 bg-background/85 text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 data-[state=open]:border-primary/50 data-[state=open]:bg-primary/12 data-[state=open]:text-primary dark:bg-slate-950/55 dark:hover:bg-primary/15"
+                                className="ml-auto h-10 w-10 rounded-2xl border-border/80 bg-card/95 text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 data-[state=open]:border-primary/50 data-[state=open]:bg-primary/12 data-[state=open]:text-primary dark:bg-slate-950/55 dark:hover:bg-primary/15"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
@@ -776,7 +776,7 @@ export default function Agreements() {
                               align="end"
                               sideOffset={10}
                               collisionPadding={16}
-                              className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border-border/70 bg-popover/95 p-2 text-popover-foreground shadow-2xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-slate-700/70 dark:shadow-black/35"
+                              className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border-border/80 bg-popover p-2 ring-1 ring-white/70 text-popover-foreground shadow-2xl shadow-black/15 backdrop-blur supports-[backdrop-filter]:bg-popover/90 dark:border-slate-700/70 dark:shadow-black/35"
                             >
                               <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Agreement actions
@@ -906,7 +906,7 @@ export default function Agreements() {
           }
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col rounded-2xl border-border/70 bg-card text-card-foreground shadow-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] text-card-foreground shadow-[0_28px_90px_rgba(15,23,42,0.28)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92))] dark:ring-white/10">
           <DialogHeader>
             <DialogTitle>{previewTitle}</DialogTitle>
           </DialogHeader>
