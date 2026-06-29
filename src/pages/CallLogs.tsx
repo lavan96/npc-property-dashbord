@@ -1126,7 +1126,7 @@ const CallLogs = () => {
                   Clear all filters
                 </Button>
               )}
-            />
+            </div>
           ) : (
             <div className={cn("max-h-[min(64rem,calc(100vh-18rem))] min-h-[18rem] space-y-3 overflow-y-auto overflow-x-hidden px-4 py-5 sm:px-6", premiumScrollbar)}>
               {filteredCalls.map(call => (
@@ -1138,7 +1138,6 @@ const CallLogs = () => {
                   className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-zinc-950/95 via-zinc-900/80 to-black/90 p-3 cursor-pointer shadow-lg shadow-black/20 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-gradient-to-b before:from-transparent before:via-amber-300/35 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/5 hover:shadow-xl hover:shadow-amber-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-4 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
-                  tabIndex={0}
                   onClick={() => openCallDetail(call)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
