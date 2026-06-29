@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getRecommendedUpgrade, isModelDeprecated } from '@/lib/agentUpgradeRecommendations';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 type Route = 'gateway' | 'native' | 'openrouter';
 type Status = 'available' | 'preview' | 'deprecated' | 'unavailable';
@@ -90,6 +91,47 @@ const capabilityIcon: Record<string, React.ReactNode> = {
   citations: <Search className="h-3 w-3" />,
   audio: <Zap className="h-3 w-3" />,
 };
+
+
+function MetricTile({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  helper,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Sparkles;
+  tone: 'primary' | 'info' | 'warning' | 'success';
+  helper: string;
+}) {
+  const toneClasses = {
+    primary: 'border-primary/30 bg-primary/[0.08] text-primary shadow-primary/10',
+    info: 'border-info/25 bg-info/[0.08] text-info shadow-sky-500/10 dark:text-sky-300',
+    warning: 'border-warning/30 bg-warning/10 text-warning shadow-amber-500/10 dark:text-amber-300',
+    success: 'border-success/30 bg-success/10 text-success shadow-emerald-500/10 dark:text-emerald-300',
+  }[tone];
+
+  return (
+    <DashboardThemeFrame
+      variant="premiumCard"
+      className={`relative min-h-[132px] p-4 shadow-lg ${toneClasses}`}
+    >
+      <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-current/35 to-transparent" />
+      <div className="flex h-full items-start justify-between gap-4">
+        <div className="min-w-0 space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+          <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{value}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{helper}</p>
+        </div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-current/20 bg-current/10 shadow-inner">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </DashboardThemeFrame>
+  );
+}
 
 function statusBadge(status: Status) {
   switch (status) {
@@ -455,72 +497,69 @@ export default function ModelHub() {
   const providersByRoute = (route: Route) => (data?.providers ?? []).filter((p) => p.route === route);
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Model Hub</h1>
-          <p className="mt-1 text-muted-foreground">
-            Live LLM availability across Gateway, Native, and OpenRouter routes — with dynamic agent binding.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => fetchAll(false)} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Reload
-          </Button>
-          <Button onClick={() => fetchAll(true)} disabled={loading}>
-            <Network className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Live re-probe
-          </Button>
-        </div>
-      </div>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_10%_0%,hsl(var(--primary)/0.14),transparent_30rem),radial-gradient(circle_at_92%_8%,hsl(var(--info)/0.08),transparent_24rem)] p-3 text-foreground sm:p-5 lg:p-6">
+      <DashboardThemeFrame variant="page" className="space-y-6 pb-8">
+        <DashboardThemeFrame
+          as="header"
+          variant="hero"
+          className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.10))] shadow-2xl shadow-black/10 dark:shadow-black/35"
+        >
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-sm shadow-primary/10">
+                <Network className="h-3.5 w-3.5" />
+                LLM operations control centre
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">Model Hub</h1>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Live LLM availability across Gateway, Native, and OpenRouter routes — with dynamic agent binding.
+                </p>
+              </div>
+            </div>
+            <div className="flex w-full flex-col gap-3 rounded-2xl border border-border/60 bg-background/55 p-3 shadow-sm backdrop-blur sm:w-auto sm:min-w-[320px] dark:border-white/10 dark:bg-slate-950/40">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => fetchAll(false)}
+                  disabled={loading}
+                  className="justify-center border-border/70 bg-card/80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/5 focus-visible:ring-ring"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  Reload
+                </Button>
+                <Button
+                  onClick={() => fetchAll(true)}
+                  disabled={loading}
+                  className="justify-center bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 focus-visible:ring-ring"
+                >
+                  <Network className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  Live re-probe
+                </Button>
+              </div>
+              <p className="text-center text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:text-right">
+                {data?.checkedAt ? `${data.cached ? 'Cached' : 'Live'} probe • ${new Date(data.checkedAt).toLocaleString()}` : 'Awaiting latest probe metadata'}
+              </p>
+            </div>
+          </div>
+        </DashboardThemeFrame>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Live models</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-            <Sparkles className="h-8 w-8 text-primary/60" />
-          </CardContent>
-        </Card>
-        <Card className="border-sky-500/30 bg-sky-500/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Preview</p>
-              <p className="text-2xl font-bold text-sky-300">{stats.preview}</p>
-            </div>
-            <Zap className="h-8 w-8 text-sky-400/60" />
-          </CardContent>
-        </Card>
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Deprecated</p>
-              <p className="text-2xl font-bold text-amber-300">{stats.deprecated}</p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-amber-400/60" />
-          </CardContent>
-        </Card>
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Providers</p>
-              <p className="text-2xl font-bold text-emerald-300">{stats.providers}</p>
-            </div>
-            <ShieldCheck className="h-8 w-8 text-emerald-400/60" />
-          </CardContent>
-        </Card>
-      </div>
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Model availability summary">
+          <MetricTile label="Live models" value={stats.total} icon={Sparkles} tone="primary" helper="Available catalogue entries across active routes." />
+          <MetricTile label="Preview" value={stats.preview} icon={Zap} tone="info" helper="Models marked preview by the current catalogue." />
+          <MetricTile label="Deprecated" value={stats.deprecated} icon={AlertTriangle} tone="warning" helper="Models flagged for migration or replacement." />
+          <MetricTile label="Providers" value={stats.providers} icon={ShieldCheck} tone="success" helper="Distinct providers represented in live data." />
+        </section>
 
-      <Tabs defaultValue="bindings" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
-          <TabsTrigger value="bindings" className="gap-2"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
-          <TabsTrigger value="gateway" className="gap-2"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
-          <TabsTrigger value="native" className="gap-2"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
-          <TabsTrigger value="openrouter" className="gap-2"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] border-pink-500/30 text-pink-300">on</Badge>}</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="bindings" className="space-y-6">
+          <DashboardThemeFrame variant="toolbar" className="overflow-x-auto p-1.5">
+            <TabsList className="grid h-auto min-w-[620px] flex-1 grid-cols-4 gap-1 rounded-xl bg-muted/40 p-1 sm:min-w-0">
+              <TabsTrigger value="bindings" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
+              <TabsTrigger value="gateway" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
+              <TabsTrigger value="native" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
+              <TabsTrigger value="openrouter" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] border-pink-500/30 text-pink-300">on</Badge>}</TabsTrigger>
+            </TabsList>
+          </DashboardThemeFrame>
 
         <TabsContent value="bindings">
           {loading ? <Skeleton className="h-96 w-full" /> : <AgentBindings catalog={data?.models ?? []} onRefresh={() => fetchAll(false)} />}
@@ -585,6 +624,7 @@ export default function ModelHub() {
           {data.cached ? 'Cached' : 'Live'} • Last probe: {new Date(data.checkedAt).toLocaleString()}
         </p>
       )}
-    </div>
+      </DashboardThemeFrame>
+    </main>
   );
 }
