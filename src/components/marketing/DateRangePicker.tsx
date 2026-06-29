@@ -79,21 +79,23 @@ export function DateRangePicker({
   const activePresetLabel = DATE_PRESETS.find(p => p.value === datePreset)?.label;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label="Marketing analytics date range controls">
       {/* Preset chips */}
-      <div className="flex items-center gap-1 flex-wrap">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         {DATE_PRESETS.map(p => (
           <Button
             key={p.value}
             variant={!isCustom && datePreset === p.value ? 'default' : 'outline'}
             size="sm"
             className={cn(
-              'h-7 px-2.5 text-xs font-medium transition-all',
+              'min-h-9 rounded-2xl px-3 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               !isCustom && datePreset === p.value
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/15'
+                : 'border-border/70 bg-background/60 text-muted-foreground hover:border-primary/35 hover:bg-primary/10 hover:text-primary'
             )}
             onClick={() => handlePresetClick(p.value)}
+            aria-pressed={!isCustom && datePreset === p.value}
+            aria-label={`Use ${p.label} date range`}
           >
             {p.label}
           </Button>
@@ -107,15 +109,16 @@ export function DateRangePicker({
             variant={isCustom ? 'default' : 'outline'}
             size="sm"
             className={cn(
-              'h-7 gap-1.5 text-xs font-medium',
+              'min-h-9 max-w-full gap-1.5 rounded-2xl px-3 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               isCustom
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/15'
+                : 'border-border/70 bg-background/60 text-muted-foreground hover:border-primary/35 hover:bg-primary/10 hover:text-primary'
             )}
+            aria-label={isCustom && customRange ? `Custom range ${customRange.since} to ${customRange.until}` : 'Open custom date range picker'}
           >
             <CalendarIcon className="h-3.5 w-3.5" />
             {isCustom && customRange ? (
-              <span>
+              <span className="truncate">
                 {format(new Date(customRange.since), 'MMM d')} – {format(new Date(customRange.until), 'MMM d, yyyy')}
               </span>
             ) : (
@@ -124,24 +127,24 @@ export function DateRangePicker({
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end" sideOffset={8}>
+        <PopoverContent className="w-[calc(100vw-2rem)] max-w-[42rem] overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-2xl shadow-black/20 backdrop-blur dark:bg-slate-950/95" align="end" sideOffset={8}>
           <div className="p-3 border-b border-border">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-foreground">
                 {selectingEnd ? 'Select End Date' : 'Select Start Date'}
               </p>
               {isCustom && (
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={clearCustom}>
+                <Button variant="ghost" size="sm" className="h-7 rounded-xl px-2 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/45" onClick={clearCustom} aria-label="Clear custom date range">
                   Clear
                 </Button>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className={cn('text-xs px-2 py-0.5', startDate ? 'border-primary/40 text-primary' : '')}>
+              <Badge variant="outline" className={cn('rounded-full px-2 py-0.5 text-xs', startDate ? 'border-primary/40 text-primary' : '')}>
                 {startDate ? format(startDate, 'MMM d, yyyy') : 'Start'}
               </Badge>
               <span className="text-xs text-muted-foreground">→</span>
-              <Badge variant="outline" className={cn('text-xs px-2 py-0.5', endDate ? 'border-primary/40 text-primary' : '')}>
+              <Badge variant="outline" className={cn('rounded-full px-2 py-0.5 text-xs', endDate ? 'border-primary/40 text-primary' : '')}>
                 {endDate ? format(endDate, 'MMM d, yyyy') : 'End'}
               </Badge>
             </div>
@@ -156,7 +159,7 @@ export function DateRangePicker({
               return false;
             }}
             initialFocus
-            className={cn("p-3 pointer-events-auto")}
+            className={cn("pointer-events-auto max-w-full overflow-x-auto p-3")}
             numberOfMonths={2}
           />
         </PopoverContent>

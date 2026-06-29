@@ -67,15 +67,17 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
 
   if (loading) {
     return (
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Market Correlation
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+              <Activity className="h-5 w-5 text-primary" />
+            </span>
+            <span className="truncate">Market Correlation</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Analyzing market conditions...</span>
           </div>
@@ -90,23 +92,25 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
   const upcomingEvents = marketEvents.filter(e => isUpcoming(e.date)).slice(0, 5);
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
-              Market Correlation & Intelligence
-              <Badge variant="secondary" className="text-[10px]">Phase 4</Badge>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                <Activity className="h-5 w-5 text-primary" />
+              </span>
+              <span className="truncate">Market Correlation & Intelligence</span>
+              <Badge variant="secondary" className="shrink-0 rounded-full text-[10px]">Phase 4</Badge>
             </CardTitle>
             <CardDescription className="mt-1">
               How macro events impact your ad performance
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-[180px]">
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+            <div className="w-full sm:w-[180px]">
               <Select value={selectedReportType} onValueChange={(value) => setSelectedReportType(value as MarketCorrelationReportType)}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-9 rounded-xl text-xs">
                   <SelectValue placeholder="Select report type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -133,7 +137,7 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
       <CardContent className="space-y-5">
         {/* AI Correlation Analysis */}
         {aiAnalysis && (
-          <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-4">
+          <div className="rounded-2xl border border-primary/20 bg-primary/[0.04] p-4">
             <div className="flex items-center gap-2 mb-2">
               <Brain className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Market Correlation</span>
@@ -145,7 +149,7 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
         )}
 
         {aiError && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
+          <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
             <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-600 dark:text-amber-400">{aiError}</p>
           </div>
@@ -164,14 +168,14 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
                 {recentEvents.map((event, i) => {
                   const catConfig = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.economic;
                   return (
-                    <div key={i} className="flex items-start gap-3 rounded-lg border border-border/50 bg-card p-3 hover:bg-muted/30 transition-colors">
+                    <div key={i} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/45 p-3 transition-colors hover:border-primary/25 hover:bg-primary/[0.04]">
                       <div className="mt-0.5">
                         <ImpactIcon impact={event.impact} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                           <span className="text-xs font-semibold text-foreground">{event.event}</span>
-                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${catConfig.color}`}>
+                          <Badge variant="outline" className={`rounded-full px-1.5 py-0 text-[9px] ${catConfig.color}`}>
                             {catConfig.emoji} {catConfig.label}
                           </Badge>
                         </div>
@@ -179,7 +183,7 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] text-muted-foreground/70">{formatDate(event.date)}</span>
                           {event.relevance_score >= 70 && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/30 text-primary">
+                            <Badge variant="outline" className="rounded-full border-primary/30 px-1 py-0 text-[9px] text-primary">
                               High Relevance
                             </Badge>
                           )}
@@ -203,21 +207,21 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
                 {upcomingEvents.map((event, i) => {
                   const catConfig = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.economic;
                   return (
-                    <div key={i} className="flex items-start gap-3 rounded-lg border border-dashed border-primary/30 bg-primary/[0.02] p-3">
+                    <div key={i} className="flex items-start gap-3 rounded-2xl border border-dashed border-primary/30 bg-primary/[0.04] p-3">
                       <div className="mt-0.5">
                         <ImpactIcon impact={event.impact} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                           <span className="text-xs font-semibold text-foreground">{event.event}</span>
-                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${catConfig.color}`}>
+                          <Badge variant="outline" className={`rounded-full px-1.5 py-0 text-[9px] ${catConfig.color}`}>
                             {catConfig.emoji} {catConfig.label}
                           </Badge>
                         </div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">{event.description}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] font-medium text-primary">{formatDate(event.date)}</span>
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/40 text-primary bg-primary/5">
+                          <Badge variant="outline" className="rounded-full border-primary/40 bg-primary/5 px-1 py-0 text-[9px] text-primary">
                             Upcoming
                           </Badge>
                         </div>

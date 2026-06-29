@@ -54,29 +54,31 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
   }));
 
   return (
-    <Card className="border-primary/20 bg-primary/[0.01]">
+    <Card className="overflow-hidden border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_58%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <CircleDollarSign className="h-5 w-5 text-primary" />
-          True ROI — Cost Per Acquisition
+        <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+            <CircleDollarSign className="h-5 w-5 text-primary" />
+          </span>
+          <span className="truncate">True ROI — Cost Per Acquisition</span>
         </CardTitle>
         <CardDescription>Meta Ads spend cross-referenced with CRM pipeline outcomes</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center rounded-2xl border border-border/60 bg-background/45 py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <span className="ml-2 text-sm text-muted-foreground">Calculating true ROI...</span>
           </div>
         ) : !totals ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            <CircleDollarSign className="h-10 w-10 mx-auto mb-2 opacity-30" />
+          <div className="rounded-2xl border border-dashed border-primary/25 bg-background/45 py-12 text-center text-sm text-muted-foreground">
+            <CircleDollarSign className="h-10 w-10 mx-auto mb-2 text-primary/35" />
             No data available to calculate ROI
           </div>
         ) : (
           <div className="space-y-6">
             {/* Summary KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <ROIKPICard label="Total Spend" value={formatCurrency(totals.meta_spend)} icon={<CircleDollarSign className="h-3.5 w-3.5" />} />
               <ROIKPICard label="Meta CPL" value={totals.meta_cpl > 0 ? formatCurrency(totals.meta_cpl) : '—'} icon={<Target className="h-3.5 w-3.5" />} subtitle="Meta-reported" />
               <ROIKPICard label="True CPL" value={totals.true_cpl > 0 ? formatCurrency(totals.true_cpl) : '—'} icon={<Target className="h-3.5 w-3.5" />} subtitle="CRM-verified" accent />
@@ -93,7 +95,7 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
 
             {/* CPL Gap Alert */}
             {totals.meta_cpl > 0 && totals.true_cpl > 0 && totals.true_cpl > totals.meta_cpl * 1.3 && (
-              <div className="flex items-start gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+              <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3">
                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-foreground">CPL Gap Detected</p>
@@ -106,7 +108,7 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
 
             {/* Chart */}
             {chartData.length > 0 && (
-              <div className="h-[260px] w-full">
+              <div className="h-[260px] w-full rounded-2xl border border-border/60 bg-background/40 p-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ left: 10, right: 10, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
@@ -127,7 +129,7 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
 
             {/* Campaign Breakdown Table */}
             {campaigns.length > 0 && (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-2xl border border-border/60 bg-background/40">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -146,8 +148,8 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
                   </TableHeader>
                   <TableBody>
                     {campaigns.map((c: any) => (
-                      <TableRow key={c.campaign_id}>
-                        <TableCell className="font-medium text-sm truncate max-w-[200px]">{c.campaign_name}</TableCell>
+                      <TableRow key={c.campaign_id} className="hover:bg-primary/5">
+                        <TableCell className="max-w-[240px] truncate text-sm font-medium" title={c.campaign_name}>{c.campaign_name}</TableCell>
                         <TableCell className="text-right font-mono text-sm">{formatCurrency(c.meta_spend)}</TableCell>
                         <TableCell className="text-right font-mono text-sm">{formatNum(c.meta_leads)}</TableCell>
                         <TableCell className="text-right font-mono text-sm">{c.meta_cpl > 0 ? formatCurrency(c.meta_cpl) : '—'}</TableCell>
@@ -179,12 +181,12 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
 
 function ROIKPICard({ label, value, icon, subtitle, accent }: { label: string; value: string; icon: React.ReactNode; subtitle?: string; accent?: boolean }) {
   return (
-    <div className={`rounded-lg border p-3 space-y-1 ${accent ? 'border-primary/20 bg-primary/[0.03]' : 'border-border'}`}>
-      <div className="flex items-center gap-1.5 text-muted-foreground">
-        {icon}
-        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+    <div className={`min-w-0 space-y-1 rounded-2xl border p-3 shadow-sm ${accent ? 'border-primary/20 bg-primary/[0.05]' : 'border-border/60 bg-background/45'}`}>
+      <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground">
+        <span className={accent ? 'text-primary' : ''}>{icon}</span>
+        <span className="truncate text-[10px] font-medium uppercase tracking-wider">{label}</span>
       </div>
-      <p className={`text-lg font-bold font-mono ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</p>
+      <p className={`truncate text-lg font-bold font-mono ${accent ? 'text-primary' : 'text-foreground'}`}>{value}</p>
       {subtitle && <p className="text-[9px] text-muted-foreground">{subtitle}</p>}
     </div>
   );
