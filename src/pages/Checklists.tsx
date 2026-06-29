@@ -263,17 +263,19 @@ export default function Checklists() {
         </TabsContent>
 
         {/* Archived */}
-        <TabsContent value="archived" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
+        <TabsContent value="archived" className="space-y-4 rounded-2xl border border-amber-700/15 bg-[linear-gradient(180deg,rgba(120,53,15,0.12),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-black/20">
           {archivedInstances.length === 0 ? (
-            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
-              <CardContent className="py-12 text-center">
-                <span className="text-5xl mb-4 block">📦</span>
-                <h3 className="font-semibold mb-1">No archived checklists</h3>
-                <p className="text-sm text-muted-foreground">Archived checklists are stored here for reference</p>
+            <Card className="overflow-hidden border-dashed border-amber-700/30 bg-[radial-gradient(circle_at_top,rgba(180,83,9,0.13),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(12,10,9,0.96))] shadow-inner shadow-amber-950/20">
+              <CardContent className="relative py-14 text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-600/25 bg-amber-900/20 text-4xl shadow-[0_18px_45px_rgba(120,53,15,0.18)]">
+                  <span aria-hidden="true">📦</span>
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-50">No archived checklists</h3>
+                <p className="text-sm text-zinc-400">Archived checklists are stored here for reference</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {archivedInstances.map(renderInstanceCard)}
             </div>
           )}
