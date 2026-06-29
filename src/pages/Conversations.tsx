@@ -48,7 +48,12 @@ import {
   ShieldCheck,
   Clock3,
   UserRound,
+  AlertTriangle,
+  Inbox,
+  FilterX,
+  Sparkles,
 } from 'lucide-react';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1618,7 +1623,7 @@ export default function Conversations() {
                   ) : messages.length === 0 ? (
                     <div className="mx-auto mt-8 flex max-w-md flex-col items-center justify-center rounded-3xl border border-white/[0.09] bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.10),transparent_34%),rgba(255,255,255,0.025)] px-6 py-12 text-center text-zinc-400 shadow-inner shadow-black/20">
                       <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-100/20 bg-amber-300/10 text-amber-100/80">
-                        <MessagesSquare className="h-5 w-5" />
+                        <MessageSquare className="h-5 w-5" />
                       </span>
                       <p className="text-sm font-semibold text-zinc-100">
                         No messages in this conversation
