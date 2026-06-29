@@ -200,8 +200,8 @@ export default function RemindersHub() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+      <div className="h-full min-h-0 overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 sm:p-6">
+        <div className="mx-auto min-w-0 max-w-7xl space-y-5 sm:space-y-6">
           <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(0,0,0,0.62)_34%,rgba(15,23,42,0.50))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.40)] sm:p-6">
             <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/70 to-transparent" />
             <div className="pointer-events-none absolute -right-16 -top-24 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
@@ -242,8 +242,8 @@ export default function RemindersHub() {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 text-slate-100 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+    <div className="h-full min-h-0 overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0f1117_48%,#09090b_100%)] p-3 text-slate-100 sm:p-6">
+      <div className="mx-auto min-w-0 max-w-7xl space-y-5 sm:space-y-6">
         {/* Page Header */}
         <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(0,0,0,0.62)_34%,rgba(15,23,42,0.50))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.40)] backdrop-blur sm:p-6">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent" />
@@ -373,7 +373,7 @@ export default function RemindersHub() {
       </div>
 
       {/* Main Tabs: Client vs Team */}
-      <Tabs value={reminderTab} onValueChange={(v) => setReminderTab(v as ReminderTab)} className="space-y-4">
+      <Tabs value={reminderTab} onValueChange={(v) => setReminderTab(v as ReminderTab)} className="min-w-0 space-y-4">
         <TabsList className="relative grid h-auto w-full grid-cols-2 gap-1.5 overflow-hidden rounded-2xl border border-amber-300/15 bg-[linear-gradient(135deg,rgba(0,0,0,0.72),rgba(15,23,42,0.78))] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_45px_rgba(0,0,0,0.32)] backdrop-blur sm:inline-grid sm:w-auto sm:min-w-[430px]">
           <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
           <TabsTrigger
@@ -396,7 +396,7 @@ export default function RemindersHub() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="client" className="space-y-4">
+        <TabsContent value="client" className="min-w-0 space-y-4">
           {/* Create Reminder Button / Form */}
           {canEditReminders && (
             showCreateForm ? (
@@ -516,7 +516,7 @@ export default function RemindersHub() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-5">
+            <div className="min-w-0 space-y-5">
               {groupOrder.filter(g => grouped[g]).map(groupLabel => {
                 const isOverdueGroup = groupLabel.includes('Overdue');
                 const isTodayGroup = groupLabel.includes('Today');
@@ -571,7 +571,7 @@ export default function RemindersHub() {
                     </Badge>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="min-w-0 space-y-2">
                     {grouped[groupLabel].map(reminder => {
                       const isOverdue = isPast(new Date(reminder.due_date)) && !isToday(new Date(reminder.due_date));
                       const isDueToday = isToday(new Date(reminder.due_date));

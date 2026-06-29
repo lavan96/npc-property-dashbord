@@ -173,7 +173,7 @@ export function TeamRemindersSection() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
       {/* Add Button / Form */}
       {showAdd ? (
         <Card>
@@ -214,7 +214,7 @@ export function TeamRemindersSection() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Due Date</label>
                 <Input
@@ -259,7 +259,7 @@ export function TeamRemindersSection() {
                 placeholder="Select team members..."
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <Button
                 onClick={handleCreate}
                 disabled={!title.trim() || !dueDate || createMutation.isPending}
@@ -274,7 +274,7 @@ export function TeamRemindersSection() {
                   </>
                 )}
               </Button>
-              <Button variant="outline" onClick={resetForm}>Cancel</Button>
+              <Button variant="outline" onClick={resetForm} className="sm:w-auto">Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -317,7 +317,7 @@ export function TeamRemindersSection() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           {reminders.map(reminder => {
             const dueStatus = getDueStatus(reminder.due_date);
             const isOverdue = isPast(new Date(reminder.due_date)) && !isToday(new Date(reminder.due_date));

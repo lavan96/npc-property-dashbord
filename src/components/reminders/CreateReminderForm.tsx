@@ -76,7 +76,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Card className="relative max-h-[min(86vh,760px)] overflow-hidden rounded-[1.5rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(2,6,23,0.98)_30%,rgba(0,0,0,0.90))] text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.46),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur">
+    <Card className="relative max-h-[min(86vh,760px)] max-w-full overflow-hidden rounded-[1.5rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(2,6,23,0.98)_30%,rgba(0,0,0,0.90))] text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.46),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur">
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-16 bottom-0 h-36 w-36 rounded-full bg-teal-300/5 blur-3xl" />
@@ -93,7 +93,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="relative max-h-[calc(min(86vh,760px)-96px)] space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-5">
+      <CardContent className="relative max-h-[calc(min(86vh,760px)-96px)] min-w-0 space-y-4 overflow-y-auto overflow-x-hidden p-4 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-5">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Reminder Title</label>
           <Input

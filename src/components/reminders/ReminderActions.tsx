@@ -169,7 +169,7 @@ export function ReminderActions({
   const editDialog = isEditable && canEdit ? (
     <Dialog open={showEdit} onOpenChange={(o) => { if (!o) requestCloseEdit(); else setShowEdit(true); }}>
       <DialogContent
-        className="max-h-[90vh] max-w-md overflow-y-auto rounded-2xl border-amber-300/20 bg-slate-950/95 text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30"
+        className="max-h-[90vh] max-w-md overflow-y-auto overflow-x-hidden rounded-2xl border-amber-300/20 bg-slate-950/95 text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30"
         onClick={(e) => e.stopPropagation()}
       >
         <DialogHeader>
