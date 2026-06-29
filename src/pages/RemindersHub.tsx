@@ -455,7 +455,7 @@ export default function RemindersHub() {
               className={cn(
                 premiumPanel,
                 "relative overflow-hidden rounded-2xl border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(0,0,0,0.45))]",
-                timeFilter === 'overdue' ? 'border-emerald-300/25' : 'border-amber-300/25'
+                timeFilter === 'overdue' || timeFilter === 'today' ? 'border-emerald-300/25' : 'border-amber-300/25'
               )}
             >
               <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
@@ -467,12 +467,16 @@ export default function RemindersHub() {
                 {timeFilter === 'overdue' && (
                   <p className="mt-1 text-xs text-emerald-200/75">No overdue items are waiting for action.</p>
                 )}
+                {timeFilter === 'today' && (
+                  <p className="mt-1 text-xs text-emerald-200/75">No due-today reminders are waiting for action.</p>
+                )}
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-5">
               {groupOrder.filter(g => grouped[g]).map(groupLabel => {
                 const isOverdueGroup = groupLabel.includes('Overdue');
+                const isTodayGroup = groupLabel.includes('Today');
 
                 return (
                 <div key={groupLabel}>
@@ -480,6 +484,8 @@ export default function RemindersHub() {
                     'mb-3 flex items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
                     isOverdueGroup
                       ? 'border-red-300/25 bg-[linear-gradient(135deg,rgba(127,29,29,0.22),rgba(15,23,42,0.42))]'
+                      : isTodayGroup
+                        ? 'border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(15,23,42,0.42))]'
                       : 'border-amber-400/12 bg-[linear-gradient(135deg,rgba(0,0,0,0.42),rgba(15,23,42,0.42))]'
                   )}>
                     <div className="flex min-w-0 items-center gap-2">
@@ -487,6 +493,8 @@ export default function RemindersHub() {
                         'h-2 w-2 rounded-full',
                         isOverdueGroup
                           ? 'bg-red-300 shadow-[0_0_12px_rgba(248,113,113,0.45)]'
+                          : isTodayGroup
+                            ? 'bg-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.65)]'
                           : 'bg-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.55)]'
                       )} />
                       <h3 className="truncate text-sm font-semibold text-slate-100">{groupLabel}</h3>
@@ -497,6 +505,8 @@ export default function RemindersHub() {
                         'shrink-0 text-[10px] font-semibold shadow-[0_0_16px_rgba(245,158,11,0.10)]',
                         isOverdueGroup
                           ? 'border-red-300/30 bg-red-400/10 text-red-100'
+                          : isTodayGroup
+                            ? 'border-amber-200/40 bg-amber-400/15 text-amber-100'
                           : 'border-amber-300/30 bg-amber-400/10 text-amber-100'
                       )}
                     >
@@ -507,6 +517,7 @@ export default function RemindersHub() {
                   <div className="space-y-2">
                     {grouped[groupLabel].map(reminder => {
                       const isOverdue = isPast(new Date(reminder.due_date)) && !isToday(new Date(reminder.due_date));
+                      const isDueToday = isToday(new Date(reminder.due_date));
                       const daysUntil = differenceInDays(new Date(reminder.due_date), now);
                       const priorityCfg = PRIORITY_CONFIG[reminder.priority];
 
@@ -516,7 +527,7 @@ export default function RemindersHub() {
                             className={cn(
                               premiumPanel, interactivePanel, 'group relative cursor-pointer overflow-hidden rounded-2xl hover:bg-amber-400/[0.035]',
                               isOverdue && 'border-red-300/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.20),rgba(2,6,23,0.88))] hover:bg-red-500/[0.055]',
-                              isToday(new Date(reminder.due_date)) && !isOverdue && 'border-amber-300/30 bg-amber-950/15',
+                              isDueToday && !isOverdue && 'border-amber-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(2,6,23,0.88))] hover:bg-amber-400/[0.075]',
                             )}
                             onClick={() => handleReminderClick(reminder)}
                           >
@@ -524,6 +535,8 @@ export default function RemindersHub() {
                               'pointer-events-none absolute inset-y-0 left-0 w-1 transition-all duration-200',
                               isOverdue
                                 ? 'bg-red-300/45 group-hover:bg-red-300/90 group-hover:shadow-[0_0_18px_rgba(248,113,113,0.45)]'
+                                : isDueToday
+                                  ? 'bg-amber-300/55 group-hover:bg-amber-300 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.55)]'
                                 : 'bg-amber-300/0 group-hover:bg-amber-300/80 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.45)]'
                             )} />
                             <CardContent className="p-3 sm:p-4">
@@ -561,11 +574,15 @@ export default function RemindersHub() {
                                 {/* Date */}
                                 <div className={cn(
                                   'ml-auto min-w-[72px] shrink-0 rounded-xl border bg-black/25 px-2.5 py-2 text-right shadow-inner sm:min-w-[88px]',
-                                  isOverdue ? 'border-red-300/20 bg-red-500/10' : 'border-white/10'
+                                  isOverdue
+                                    ? 'border-red-300/20 bg-red-500/10'
+                                    : isDueToday
+                                      ? 'border-amber-300/25 bg-amber-400/10'
+                                      : 'border-white/10'
                                 )}>
                                   <p className={cn(
                                     'text-[11px] font-semibold sm:text-xs',
-                                    isOverdue ? 'text-destructive' : isToday(new Date(reminder.due_date)) ? 'text-amber-300' : 'text-slate-400'
+                                    isOverdue ? 'text-destructive' : isDueToday ? 'text-amber-300' : 'text-slate-400'
                                   )}>
                                     {isOverdue
                                       ? `${Math.abs(daysUntil)}d overdue`
