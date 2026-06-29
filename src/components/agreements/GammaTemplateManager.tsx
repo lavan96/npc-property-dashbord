@@ -178,7 +178,7 @@ export default function GammaTemplateManager() {
     <DashboardThemeFrame
       as="section"
       variant="section"
-      className="flex min-h-0 flex-col overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.14),transparent_30%),linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
+      className="flex min-h-0 flex-col overflow-hidden border-border/80 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.14),transparent_30%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.08),transparent_28%),linear-gradient(180deg,hsl(var(--card)/0.99),hsl(var(--background)/0.94))] p-0 shadow-[0_26px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/55 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.14),transparent_32%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.72))] dark:ring-white/10"
     >
       <CardHeader className="border-b border-border/70 bg-muted/35 pb-5 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -194,8 +194,8 @@ export default function GammaTemplateManager() {
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Manage reusable Gamma agreement templates, safe placeholder mapping, and the default agreement blueprint used for client sends.</p>
           </div>
-          <Button size="sm" onClick={openCreate} className="h-11 w-full rounded-xl bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_48%,hsl(38_92%_50%))] px-4 font-semibold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:translate-y-[-1px] hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.38),0_0_0_1px_hsl(43_84%_52%/0.22),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-slate-950">
-            <Plus className="h-4 w-4 mr-1" /> Add Template
+          <Button size="sm" onClick={openCreate} className="h-12 w-full rounded-2xl sm:w-auto bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_48%,hsl(38_92%_50%))] px-4 font-semibold text-slate-950 shadow-[0_14px_34px_hsl(43_84%_52%/0.28),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all hover:translate-y-[-1px] hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.38),0_0_0_1px_hsl(43_84%_52%/0.22),inset_0_1px_0_rgba(255,255,255,0.65)] focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-slate-950">
+            <Plus className="mr-2 h-4 w-4" /> Add Template
           </Button>
         </div>
       </CardHeader>
@@ -266,14 +266,14 @@ export default function GammaTemplateManager() {
                     {t.description && <p className="mt-1 max-w-md truncate text-xs text-muted-foreground">{t.description}</p>}
                   </TableCell>
                   <TableCell className="py-4">
-                    <code className="inline-flex max-w-[15rem] items-center rounded-xl border border-border/70 bg-muted/55 px-3 py-1.5 font-mono text-[0.72rem] font-semibold text-foreground/75 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45)] transition-colors group-hover:border-amber-300/45 group-hover:bg-amber-50/60 group-hover:text-amber-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:group-hover:border-amber-200/25 dark:group-hover:bg-amber-200/10 dark:group-hover:text-amber-50" title={t.gamma_template_id}>
+                    <code className="inline-flex max-w-[15rem] items-center rounded-xl border border-border/70 bg-muted/45 px-3 py-1.5 font-mono text-[0.70rem] font-medium text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45)] transition-colors group-hover:border-amber-300/45 group-hover:bg-amber-50/60 group-hover:text-amber-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:group-hover:border-amber-200/25 dark:group-hover:bg-amber-200/10 dark:group-hover:text-amber-50" title={t.gamma_template_id}>
                       <span className="truncate">{t.gamma_template_id}</span>
                     </code>
                   </TableCell>
                   <TableCell className="py-4">
                     <Badge variant="secondary" className="gap-1.5 rounded-full border border-slate-300/70 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-white/10 dark:bg-slate-800/70 dark:text-slate-200">
                       <Layers3 className="h-3 w-3" />
-                      {t.placeholder_mappings.length} mappings
+                      {t.placeholder_mappings.length} {t.placeholder_mappings.length === 1 ? 'mapping' : 'mappings'}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4">
@@ -448,6 +448,9 @@ export default function GammaTemplateManager() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-2xl border-border/80 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] p-5 shadow-[0_28px_90px_rgba(15,23,42,0.26)] ring-1 ring-white/70 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:ring-white/10 sm:p-6">
           <AlertDialogHeader>
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
+              <Trash2 className="h-5 w-5" />
+            </div>
             <AlertDialogTitle className="text-xl font-semibold tracking-[-0.02em] text-foreground">Delete template?</AlertDialogTitle>
             <AlertDialogDescription className="leading-6">
               This will delete {deleteTarget?.name ? `"${deleteTarget.name}"` : 'this template'}. Existing agreement data and rows are not changed.

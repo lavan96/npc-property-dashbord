@@ -100,11 +100,11 @@ const STATUS_CONFIG: Record<
       "border-amber-400/60 bg-amber-100/85 text-amber-900 shadow-amber-900/5 dark:border-amber-200/30 dark:bg-amber-300/12 dark:text-amber-100",
   },
   generated: {
-    label: "Generated",
+    label: "Generated · Ready",
     variant: "outline",
-    icon: FileSignature,
+    icon: FileCheck2,
     toneClassName:
-      "border-slate-300 bg-slate-50 text-slate-700 shadow-slate-900/5 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+      "border-sky-300/70 bg-sky-50 text-sky-800 shadow-sky-900/5 dark:border-sky-200/30 dark:bg-sky-300/10 dark:text-sky-100",
   },
   draft: {
     label: "Draft",
@@ -115,21 +115,21 @@ const STATUS_CONFIG: Record<
   },
   sent: {
     label: "Sent",
-    variant: "default",
+    variant: "outline",
     icon: Send,
     toneClassName:
-      "border-amber-400/65 bg-amber-100/90 text-amber-950 shadow-amber-900/5 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
+      "border-amber-300/55 bg-amber-50/80 text-amber-800 shadow-amber-900/5 dark:border-amber-200/25 dark:bg-amber-300/10 dark:text-amber-100",
   },
   delivered: {
     label: "Delivered",
-    variant: "default",
+    variant: "outline",
     icon: CheckCircle2,
     toneClassName:
       "border-amber-400/65 bg-amber-100/90 text-amber-950 shadow-amber-900/5 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
   },
   viewed: {
     label: "Viewed",
-    variant: "default",
+    variant: "outline",
     icon: Eye,
     toneClassName:
       "border-amber-400/65 bg-amber-100/90 text-amber-950 shadow-amber-900/5 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
@@ -404,7 +404,7 @@ export default function Agreements() {
     emptyLabel: string,
     Icon: React.ComponentType<any>,
   ) => (
-    <div className="flex min-w-[8.75rem] items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-2.5 py-2 shadow-[0_8px_22px_rgba(15,23,42,0.06),inset_0_1px_0_hsl(0_0%_100%/0.62)] dark:bg-slate-950/35 dark:shadow-sm">
+    <div className="flex min-w-[8.75rem] items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-2.5 py-2 shadow-[0_8px_22px_rgba(15,23,42,0.06),inset_0_1px_0_hsl(0_0%_100%/0.62)] dark:border-white/10 dark:bg-slate-950/35 dark:shadow-sm">
       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
         <Icon className="h-3.5 w-3.5" />
       </span>
@@ -545,11 +545,11 @@ export default function Agreements() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700 dark:text-amber-200">
               DocuSign workflow
             </p>
-            <h1 className="text-2xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
+            <h1 className="text-3xl font-black tracking-[-0.06em] text-foreground sm:text-5xl">
               Agency Agreements
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Manage and track Buyer's Agent Agreements sent via DocuSign
+              Manage, prepare, send, and audit buyer agency agreements through a DocuSign-ready workflow.
             </p>
           </div>
         </div>
@@ -565,6 +565,7 @@ export default function Agreements() {
         {[
           {
             label: "Total Agreements",
+            helper: "All generated records",
             value: agreements.length,
             Icon: FileText,
             className:
@@ -576,6 +577,7 @@ export default function Agreements() {
           },
           {
             label: "Sent",
+            helper: "Delivered or in-signing",
             value: totalSent,
             Icon: Send,
             className:
@@ -588,6 +590,7 @@ export default function Agreements() {
           },
           {
             label: "Awaiting Signature",
+            helper: "Sent, delivered, or viewed",
             value: pending,
             Icon: Clock,
             className:
@@ -600,6 +603,7 @@ export default function Agreements() {
           },
           {
             label: "Signed",
+            helper: totalSigned === 0 ? "None completed yet" : "Completed envelopes",
             value: totalSigned,
             Icon: CheckCircle2,
             className:
@@ -644,15 +648,18 @@ export default function Agreements() {
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </div>
                 </div>
-                <p
-                  className={cn(
-                    "text-4xl font-black leading-none tracking-[-0.06em] tabular-nums sm:text-5xl",
-                    stat.value === 0 && "opacity-90",
-                    stat.valueClassName,
-                  )}
-                >
-                  {stat.value}
-                </p>
+                <div>
+                  <p
+                    className={cn(
+                      "text-4xl font-black leading-none tracking-[-0.06em] tabular-nums sm:text-5xl",
+                      stat.value === 0 && "opacity-90",
+                      stat.valueClassName,
+                    )}
+                  >
+                    {stat.value}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-muted-foreground">{stat.helper}</p>
+                </div>
               </div>
             </DashboardThemeFrame>
           );
@@ -674,8 +681,13 @@ export default function Agreements() {
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               A searchable agreement ledger for reviewing buyers, delivery
-              status, signature milestones, and actions.
+              status, signature milestones, and safe agreement actions.
             </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] font-bold uppercase tracking-[0.12em]">
+              <span className="rounded-full border border-sky-300/45 bg-sky-500/10 px-2.5 py-1 text-sky-700 dark:border-sky-200/25 dark:text-sky-100">Generated = ready to prepare</span>
+              <span className="rounded-full border border-amber-300/45 bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:border-amber-200/25 dark:text-amber-100">Sent/Awaiting = with buyer</span>
+              <span className="rounded-full border border-emerald-300/45 bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:border-emerald-200/25 dark:text-emerald-100">Signed = completed</span>
+            </div>
           </div>
           <div className="group/search relative w-full sm:min-w-80 sm:max-w-md lg:w-96">
             <label htmlFor={searchInputId} className="sr-only">Search agreements by buyer name, email, or status</label>
@@ -686,7 +698,7 @@ export default function Agreements() {
               id={searchInputId}
               type="search"
               aria-label="Search agreements by buyer name, email, or status"
-              placeholder="Search by name, email, status..."
+              placeholder={`Search ${agreements.length} agreements by name, email, status...`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-[3.25rem] rounded-[1.15rem] border-border/70 bg-background/95 py-3 pl-14 pr-4 text-[0.95rem] font-medium text-foreground shadow-[0_16px_42px_rgba(15,23,42,0.10),inset_0_1px_0_hsl(0_0%_100%/0.45)] outline-none transition-all duration-300 placeholder:text-muted-foreground/80 hover:border-amber-300/50 hover:bg-background hover:shadow-[0_18px_48px_rgba(15,23,42,0.13),0_0_0_1px_hsl(43_84%_52%/0.12),inset_0_1px_0_hsl(0_0%_100%/0.55)] focus-visible:border-amber-400/70 focus-visible:ring-2 focus-visible:ring-amber-400/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-white/10 dark:bg-slate-950/75 dark:shadow-[0_16px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] dark:placeholder:text-slate-300/70 dark:hover:border-amber-200/35 dark:hover:bg-slate-950/90 dark:hover:shadow-[0_18px_48px_rgba(0,0,0,0.34),0_0_0_1px_hsl(43_84%_52%/0.12),inset_0_1px_0_rgba(255,255,255,0.10)] dark:focus-visible:border-amber-200/60 dark:focus-visible:ring-amber-300/25"
@@ -720,7 +732,7 @@ export default function Agreements() {
             </div>
           ) : (
             <ScrollArea role="region" aria-label="Agreements table with horizontal scrolling" className="min-h-[22rem] max-h-[min(58dvh,46rem)] rounded-2xl border border-border/80 bg-card/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_18px_44px_rgba(15,23,42,0.10)] [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&_[data-radix-scroll-area-viewport]]:overscroll-contain dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
-              <div className="min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
+              <div className="min-w-0 overflow-x-auto overflow-y-visible overscroll-x-contain [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
                 <Table aria-label="Agency agreements" className="min-w-[1040px]">
                   <TableHeader className="sticky top-0 z-10 border-b border-border/70 bg-muted/90 shadow-[0_1px_0_hsl(var(--border)/0.95),0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-slate-900/90">
                     <TableRow className="border-border/70 hover:bg-transparent">
@@ -820,6 +832,7 @@ export default function Agreements() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                               align="end"
+                              side="bottom"
                               sideOffset={10}
                               collisionPadding={{ top: 16, right: 16, bottom: 24, left: 16 }}
                               aria-label={`Actions for ${agreement.buyer_names}`}
