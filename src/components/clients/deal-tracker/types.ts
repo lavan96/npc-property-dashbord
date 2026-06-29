@@ -190,9 +190,9 @@ export const BUILD_PAYMENT_STAGES = [
 ];
 
 export const RISK_STATUS_CONFIG: Record<RiskStatus, { label: string; color: string; emoji: string }> = {
-  on_track: { label: 'On Track', color: 'bg-green-500/10 text-green-700 border-green-500/30', emoji: '🟢' },
-  needs_follow_up: { label: 'Needs Follow-Up', color: 'bg-amber-500/10 text-amber-700 border-amber-500/30', emoji: '🟠' },
-  urgent: { label: 'Urgent', color: 'bg-red-500/10 text-red-700 border-red-500/30', emoji: '🔴' },
+  on_track: { label: 'On Track', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-300/30 dark:bg-emerald-400/15 dark:text-emerald-200', emoji: '🟢' },
+  needs_follow_up: { label: 'Needs Follow-Up', color: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:border-amber-300/35 dark:bg-amber-400/15 dark:text-amber-200', emoji: '🟠' },
+  urgent: { label: 'Urgent', color: 'border-red-500/35 bg-red-500/10 text-red-700 dark:border-red-300/35 dark:bg-red-400/15 dark:text-red-200', emoji: '🔴' },
 };
 
 export const DEAL_TYPE_LABELS: Record<DealType, string> = {

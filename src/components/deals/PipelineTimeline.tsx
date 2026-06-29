@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RISK_STATUS_CONFIG } from '@/components/clients/deal-tracker/types';
+import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 import type { DealWithClient } from '@/hooks/useAllDeals';
 
 interface Props {
@@ -206,7 +207,7 @@ function DealTimelineRow({
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">{getDealTypeIcon(deal.deal_type)}</span>
             <p className="text-xs font-semibold truncate leading-tight text-foreground">{deal.client_name}</p>
-            <Badge className={cn('text-[8px] px-1 py-0 h-3.5 border shrink-0', riskCfg.color)}>
+            <Badge className={cn(pipelineBadgeClass(deal.risk_status === 'on_track' ? 'success' : deal.risk_status === 'needs_follow_up' ? 'warning' : 'danger', true, 'h-4 shrink-0 px-1'), riskCfg.color)}>
               {riskCfg.emoji}
             </Badge>
           </div>
@@ -529,19 +530,19 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
         <div className="flex items-center gap-2 flex-wrap">
           {/* Alert badges */}
           {stats.upcoming > 0 && (
-            <Badge variant="outline" className="text-[10px] gap-1 border-success/40 text-success">
+            <Badge variant="outline" className={pipelineBadgeClass('success')}>
               <CheckCircle2 className="h-3 w-3" />
               {stats.upcoming} settling in 30d
             </Badge>
           )}
           {stats.overdue > 0 && (
-            <Badge variant="destructive" className="text-[10px] gap-1">
+            <Badge variant="outline" className={pipelineBadgeClass('danger')}>
               <AlertTriangle className="h-3 w-3" />
               {stats.overdue} overdue
             </Badge>
           )}
           {stats.financeExpiring > 0 && (
-            <Badge variant="outline" className="text-[10px] gap-1 border-warning/40 text-warning">
+            <Badge variant="outline" className={pipelineBadgeClass('warning')}>
               <Clock className="h-3 w-3" />
               {stats.financeExpiring} finance expiring
             </Badge>
