@@ -72,21 +72,23 @@ const premiumScrollbar = "[scrollbar-width:thin] [scrollbar-color:rgba(251,191,3
 const premiumPageShell = "relative -mx-4 -mt-4 min-h-[calc(100vh-1rem)] overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_34%),radial-gradient(circle_at_80%_8%,rgba(124,58,237,0.10),transparent_28%),linear-gradient(135deg,hsl(222_47%_5%),hsl(220_34%_8%)_46%,hsl(0_0%_4%))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
 const premiumPanel = "border-white/10 bg-black/35 shadow-2xl shadow-black/30 backdrop-blur-xl";
 const premiumCard = "border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/35 hover:shadow-amber-500/10";
-const premiumMetricCard = "group relative overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10";
-const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105";
+const premiumMetricCard = "group relative overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/85 to-black/95 shadow-lg shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:-translate-y-1 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-500/10 focus-within:ring-2 focus-within:ring-amber-300/45 motion-reduce:transition-none motion-reduce:hover:translate-y-0";
+const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105 group-hover:border-amber-200/40 group-hover:shadow-amber-500/15 motion-reduce:transition-none";
 const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400";
 const premiumMetricValue = "text-2xl font-bold leading-none tracking-tight md:text-[1.65rem]";
 const premiumControl = "border-white/10 bg-black/35 text-foreground shadow-inner shadow-black/20 transition-colors hover:border-amber-400/40 hover:bg-amber-400/5 focus-visible:ring-2 focus-visible:ring-amber-400/70";
-const premiumFilterControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-amber-300/70";
-const premiumFilterControlActive = "border-amber-300/45 bg-amber-300/12 text-amber-50 shadow-amber-500/10";
-const premiumSearchInput = "h-11 rounded-2xl border-white/10 bg-black/55 pl-11 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 transition-all duration-200 hover:border-amber-300/30 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
-const detailDialogShell = "overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-950/95 to-black/98 text-zinc-50 shadow-2xl shadow-amber-950/30 backdrop-blur-xl";
-const detailCard = "overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/90 via-zinc-900/75 to-black/85 shadow-lg shadow-black/25";
-const detailMetaCard = "rounded-2xl border border-white/10 bg-white/[0.035] p-3 shadow-inner shadow-black/20";
+const premiumFilterControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:shadow-[0_0_0_1px_rgba(251,191,36,0.2),0_0_24px_rgba(245,158,11,0.10)] active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0";
+const premiumFilterControlActive = "border-amber-300/45 bg-amber-300/12 text-amber-50 shadow-lg shadow-amber-500/10";
+const premiumSearchInput = "h-11 rounded-2xl border-white/10 bg-black/55 pl-11 text-sm text-zinc-100 shadow-inner shadow-black/30 placeholder:text-zinc-500 selection:bg-amber-300/30 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/65 focus-visible:border-amber-300/60 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:shadow-[0_0_0_1px_rgba(251,191,36,0.2),0_0_28px_rgba(245,158,11,0.12)]";
+const detailDialogShell = "overflow-hidden border-white/10 bg-gradient-to-br from-zinc-950/98 via-zinc-950/95 to-black/98 text-zinc-50 shadow-2xl shadow-amber-950/30 backdrop-blur-xl duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95";
+const detailCard = "overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/90 via-zinc-900/75 to-black/85 shadow-lg shadow-black/25 transition-all duration-200 hover:border-amber-300/25 hover:shadow-amber-500/10";
+const detailMetaCard = "rounded-2xl border border-white/10 bg-white/[0.035] p-3 shadow-inner shadow-black/20 transition-all duration-200 hover:border-amber-300/25 hover:bg-amber-300/[0.04]";
 const detailLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500";
 const detailValue = "mt-1 text-sm font-semibold text-zinc-100";
-const premiumActiveFilterBadge = callLogBadgeTone('tag');
-const premiumActionBase = "min-h-9 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
+const detailTabTrigger = "rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:translate-y-0";
+const premiumInteractiveBadge = "transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/40 hover:shadow-md hover:shadow-amber-500/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0";
+const premiumActiveFilterBadge = callLogBadgeTone('tag', premiumInteractiveBadge);
+const premiumActionBase = "min-h-9 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/10 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:shadow-lg focus-visible:shadow-amber-500/15 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none motion-reduce:hover:translate-y-0";
 const premiumReportAction = `${premiumActionBase} border-amber-300/50 bg-gradient-to-r from-amber-300/95 to-yellow-500/90 text-amber-950 shadow-amber-500/20 hover:border-amber-100 hover:from-amber-200 hover:to-yellow-400 hover:text-amber-950 hover:shadow-lg hover:shadow-amber-500/25 focus-visible:ring-amber-300`;
 const premiumUtilityAction = `${premiumActionBase} border-sky-300/25 bg-sky-400/10 text-sky-100 hover:border-sky-300/45 hover:bg-sky-400/15 hover:text-sky-50 focus-visible:ring-sky-300`;
 const premiumQualityAction = `${premiumActionBase} border-emerald-300/25 bg-emerald-400/10 text-emerald-100 hover:border-emerald-300/45 hover:bg-emerald-400/15 hover:text-emerald-50 focus-visible:ring-emerald-300`;
@@ -94,7 +96,7 @@ const premiumAlertAction = `${premiumActionBase} border-amber-300/30 bg-amber-40
 const premiumDangerAction = `${premiumActionBase} border-red-400/35 bg-red-500/10 text-red-200 hover:border-red-300/55 hover:bg-red-500/15 hover:text-red-100 focus-visible:ring-red-300`;
 const premiumSecondaryAction = `${premiumActionBase} border-white/10 bg-white/5 text-zinc-100 hover:border-amber-300/35 hover:bg-amber-300/10 hover:text-amber-50 focus-visible:ring-amber-300`;
 const premiumTabList = "inline-flex h-auto min-w-max items-center gap-1.5 rounded-[1.35rem] border border-white/10 bg-black/45 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl";
-const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-zinc-400 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-amber-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-400/25 data-[state=active]:via-yellow-300/15 data-[state=active]:to-amber-500/10 data-[state=active]:text-amber-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] md:text-sm";
+const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-zinc-400 transition-all duration-300 ease-out after:pointer-events-none after:absolute after:inset-x-4 after:-bottom-px after:h-px after:bg-gradient-to-r after:from-transparent after:via-amber-200/0 after:to-transparent after:transition-all after:duration-300 hover:-translate-y-0.5 hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100 hover:after:via-amber-200/60 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.99] data-[state=active]:border-amber-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-400/25 data-[state=active]:via-yellow-300/15 data-[state=active]:to-amber-500/10 data-[state=active]:text-amber-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] data-[state=active]:after:via-amber-200/90 motion-reduce:transition-none motion-reduce:hover:translate-y-0 md:text-sm";
 
 interface SquadAssistant {
   id: string;
@@ -464,11 +466,11 @@ const CallLogs = () => {
   };
 
   const getOutcomeBadge = (outcome: string | null) => {
-    if (!outcome) return <Badge variant="outline" className={callLogBadgeTone('neutral')}>Unknown</Badge>;
+    if (!outcome) return <Badge variant="outline" className={callLogBadgeTone('neutral', premiumInteractiveBadge)}>Unknown</Badge>;
     const display = OUTCOME_DISPLAY[outcome];
     if (display) {
       const Icon = display.icon;
-      return <Badge className={cn("shadow-sm", callLogBadgeTone('neutral'), display.color)}><Icon className="w-3 h-3 mr-1" /> {display.label}</Badge>;
+      return <Badge className={cn("shadow-sm", callLogBadgeTone('neutral'), display.color, premiumInteractiveBadge)}><Icon className="w-3 h-3 mr-1" /> {display.label}</Badge>;
     }
     // Fallback for any VAPI reason not explicitly mapped - format nicely
     const category = getOutcomeCategory(outcome);
@@ -478,19 +480,19 @@ const CallLogs = () => {
     };
     const color = fallbackColors[category] || fallbackColors['other'];
     const label = outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    return <Badge className={cn("shadow-sm", callLogBadgeTone('neutral'), color)}><XCircle className="w-3 h-3 mr-1" /> {label}</Badge>;
+    return <Badge className={cn("shadow-sm", callLogBadgeTone('neutral'), color, premiumInteractiveBadge)}><XCircle className="w-3 h-3 mr-1" /> {label}</Badge>;
   };
 
   const getSentimentBadge = (sentiment: string | null) => {
     switch (sentiment) {
       case 'positive':
-        return <Badge className={callLogBadgeTone('success')}>Positive</Badge>;
+        return <Badge className={callLogBadgeTone('success', premiumInteractiveBadge)}>Positive</Badge>;
       case 'negative':
-        return <Badge className={callLogBadgeTone('danger')}>Negative</Badge>;
+        return <Badge className={callLogBadgeTone('danger', premiumInteractiveBadge)}>Negative</Badge>;
       case 'neutral':
-        return <Badge className={callLogBadgeTone('neutral')}>Neutral</Badge>;
+        return <Badge className={callLogBadgeTone('neutral', premiumInteractiveBadge)}>Neutral</Badge>;
       case 'mixed':
-        return <Badge className={callLogBadgeTone('warning')}>Mixed</Badge>;
+        return <Badge className={callLogBadgeTone('warning', premiumInteractiveBadge)}>Mixed</Badge>;
       default:
         return null;
     }
@@ -535,8 +537,8 @@ const CallLogs = () => {
           {!isMobile && <CleanupContactNames onComplete={fetchCalls} triggerClassName={premiumQualityAction} />}
           {!isMobile && <CallAlerts calls={filteredCalls} triggerClassName={premiumAlertAction} />}
           <CallLogsExport calls={filteredCalls} stats={stats} triggerClassName={premiumSecondaryAction} />
-          <Button onClick={fetchCalls} variant="outline" size="sm" className={cn("gap-2", premiumSecondaryAction)}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button onClick={fetchCalls} variant="outline" size="sm" aria-busy={loading} className={cn("group gap-2", premiumSecondaryAction, loading && "border-amber-300/40 bg-amber-300/10 text-amber-100")}>
+            <RefreshCw className={`w-4 h-4 transition-transform duration-200 motion-reduce:transition-none ${loading ? 'animate-spin motion-reduce:animate-none' : 'group-hover:rotate-45'}`} />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
           </div>
@@ -1079,19 +1081,19 @@ const CallLogs = () => {
                   </Badge>
                 )}
                 {selectedSquad !== 'all' && (
-                  <Badge className={callLogBadgeTone('squad')}>
+                  <Badge className={callLogBadgeTone('squad', premiumInteractiveBadge)}>
                     Squad: {squads.find(s => s.id === selectedSquad)?.name}
                   </Badge>
                 )}
                 {selectedIntent !== 'all' && (
-                  <Badge className={callLogBadgeTone('success')}>
+                  <Badge className={callLogBadgeTone('success', premiumInteractiveBadge)}>
                     Intent: {selectedIntent.replace(/_/g, ' ')}
                   </Badge>
                 )}
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="h-7 rounded-full px-3 text-xs text-zinc-300 transition-colors hover:bg-amber-300/10 hover:text-amber-100"
+                  className="h-7 rounded-full px-3 text-xs text-zinc-300 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.99]"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1152,9 +1154,10 @@ const CallLogs = () => {
               {filteredCalls.map(call => (
                 <div
                   key={call.id}
-                  className={`group relative cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-zinc-950/95 via-zinc-900/85 to-black/90 p-4 shadow-sm shadow-black/30 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-amber-200/0 before:to-transparent after:pointer-events-none after:absolute after:inset-0 after:bg-gradient-to-r after:from-amber-300/10 after:via-transparent after:to-transparent after:opacity-0 after:transition-opacity after:duration-300 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 hover:before:via-amber-200/90 hover:after:opacity-100 focus-within:ring-2 focus-within:ring-amber-400/60 sm:p-5 ${
+                  className={`group relative cursor-pointer overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-r from-zinc-950/95 via-zinc-900/85 to-black/90 p-4 shadow-sm shadow-black/30 outline-none transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-amber-200/0 before:to-transparent after:pointer-events-none after:absolute after:inset-0 after:bg-gradient-to-r after:from-amber-300/10 after:via-transparent after:to-transparent after:opacity-0 after:transition-opacity after:duration-300 hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 hover:before:via-amber-200/90 hover:after:opacity-100 focus-within:ring-2 focus-within:ring-amber-400/60 focus-visible:ring-2 focus-visible:ring-amber-300/75 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.997] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-5 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
+                  tabIndex={0}
                   onClick={() => openCallDetail(call)}
                 >
                   <div className="relative z-10 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -1186,7 +1189,7 @@ const CallLogs = () => {
                           
                           {/* Squad badge with name */}
                           {call.is_squad_call && (
-                            <Badge className={callLogBadgeTone('squad', 'max-w-[220px]')}>
+                            <Badge className={callLogBadgeTone('squad', cn('max-w-[220px]', premiumInteractiveBadge))}>
                               <Users className="mr-1 h-3 w-3 shrink-0" />
                               <span className="truncate">{call.squad_name || 'Squad Call'}</span>
                             </Badge>
@@ -1194,7 +1197,7 @@ const CallLogs = () => {
                           
                           {/* Intent badge */}
                           {call.call_intent && (
-                            <Badge className={callLogBadgeTone('success', 'max-w-[220px]')}>
+                            <Badge className={callLogBadgeTone('success', cn('max-w-[220px]', premiumInteractiveBadge))}>
                               <Target className="mr-1 h-3 w-3 shrink-0" />
                               <span className="truncate">{call.call_intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
                             </Badge>
@@ -1202,7 +1205,7 @@ const CallLogs = () => {
                           
                           {/* Agent badge for non-squad calls */}
                           {call.agent_name && !call.is_squad_call && (
-                            <Badge className={callLogBadgeTone('info', 'max-w-[220px]')}>
+                            <Badge className={callLogBadgeTone('info', cn('max-w-[220px]', premiumInteractiveBadge))}>
                               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-300" />
                               <span className="truncate">{call.agent_name}</span>
                             </Badge>
@@ -1214,7 +1217,7 @@ const CallLogs = () => {
                           <div className="mb-3 flex flex-wrap items-center gap-1.5">
                             {call.assistants_involved.map((assistant, i) => (
                               <div key={assistant.id} className="flex items-center">
-                                <span className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-purple-300/20 bg-purple-400/10 px-2.5 py-1 text-xs font-medium text-purple-200">
+                                <span className="inline-flex max-w-[180px] items-center gap-1 rounded-full border border-purple-300/20 bg-purple-400/10 px-2.5 py-1 text-xs font-medium text-purple-200 transition-all duration-200 group-hover:border-purple-200/35 group-hover:bg-purple-400/15 group-hover:shadow-sm group-hover:shadow-purple-500/10">
                                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-purple-300" />
                                   <span className="truncate">{assistant.name || `Agent ${i + 1}`}</span>
                                 </span>
@@ -1224,7 +1227,7 @@ const CallLogs = () => {
                               </div>
                             ))}
                             {call.handoff_sequence && call.handoff_sequence.length > 0 && (
-                              <Badge variant="secondary" className={callLogBadgeTone('neutral', 'ml-1')}>
+                              <Badge variant="secondary" className={callLogBadgeTone('neutral', cn('ml-1', premiumInteractiveBadge))}>
                                 <GitBranch className="mr-1 h-3 w-3" />
                                 {call.handoff_sequence.length} handoff{call.handoff_sequence.length > 1 ? 's' : ''}
                               </Badge>
@@ -1259,7 +1262,7 @@ const CallLogs = () => {
                         {call.tags && call.tags.length > 0 && (
                           <div className="mt-3 flex flex-wrap items-center gap-1.5">
                             {call.tags.map(tag => (
-                              <Badge key={tag} className={callLogBadgeTone('tag', 'max-w-[180px]')}>
+                              <Badge key={tag} className={callLogBadgeTone('tag', cn('max-w-[180px]', premiumInteractiveBadge))}>
                                 <Tag className="mr-1 h-3 w-3 shrink-0" />
                                 <span className="truncate">{tag}</span>
                               </Badge>
@@ -1319,7 +1322,7 @@ const CallLogs = () => {
             {selectedCall && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {selectedCall.phone_number && (
-                  <Badge className={callLogBadgeTone('neutral')}>{selectedCall.phone_number}</Badge>
+                  <Badge className={callLogBadgeTone('neutral', premiumInteractiveBadge)}>{selectedCall.phone_number}</Badge>
                 )}
                 {getOutcomeBadge(selectedCall.call_outcome)}
                 {getSentimentBadge(selectedCall.sentiment)}
@@ -1333,17 +1336,17 @@ const CallLogs = () => {
                   ? "inline-flex h-auto w-auto min-w-max gap-1 rounded-2xl border border-white/10 bg-black/35 p-1"
                   : `grid w-full rounded-2xl border border-white/10 bg-black/35 p-1 ${selectedCall.is_squad_call ? 'grid-cols-7' : 'grid-cols-6'}`
                 }>
-                  <TabsTrigger value="overview" className={cn("rounded-xl data-[state=active]:bg-amber-300/15 data-[state=active]:text-amber-100", isMobile ? "text-xs" : "")}>Overview</TabsTrigger>
+                  <TabsTrigger value="overview" className={cn(detailTabTrigger, "data-[state=active]:bg-amber-300/15 data-[state=active]:text-amber-100", isMobile ? "text-xs" : "")}>Overview</TabsTrigger>
                   {selectedCall.is_squad_call && (
-                    <TabsTrigger value="squad" className={cn("flex items-center gap-1 rounded-xl data-[state=active]:bg-purple-400/15 data-[state=active]:text-purple-100", isMobile && "text-xs")}>
+                    <TabsTrigger value="squad" className={cn(detailTabTrigger, "flex items-center gap-1 data-[state=active]:bg-purple-400/15 data-[state=active]:text-purple-100", isMobile && "text-xs")}>
                       <Users className="w-3 h-3" />
                       Squad
                     </TabsTrigger>
                   )}
-                  <TabsTrigger value="transcript" className={cn("rounded-xl data-[state=active]:bg-amber-300/15 data-[state=active]:text-amber-100", isMobile ? "text-xs" : "")}>Transcript</TabsTrigger>
-                  <TabsTrigger value="tool-calls" className={cn("rounded-xl data-[state=active]:bg-blue-400/15 data-[state=active]:text-blue-100", isMobile ? "text-xs" : "")}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
-                  <TabsTrigger value="analysis" className={cn("rounded-xl data-[state=active]:bg-emerald-400/15 data-[state=active]:text-emerald-100", isMobile ? "text-xs" : "")}>Analysis</TabsTrigger>
-                  <TabsTrigger value="metadata" className={cn("rounded-xl data-[state=active]:bg-zinc-700/70 data-[state=active]:text-zinc-100", isMobile ? "text-xs" : "")}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
+                  <TabsTrigger value="transcript" className={cn(detailTabTrigger, "data-[state=active]:bg-amber-300/15 data-[state=active]:text-amber-100", isMobile ? "text-xs" : "")}>Transcript</TabsTrigger>
+                  <TabsTrigger value="tool-calls" className={cn(detailTabTrigger, "data-[state=active]:bg-blue-400/15 data-[state=active]:text-blue-100", isMobile ? "text-xs" : "")}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
+                  <TabsTrigger value="analysis" className={cn(detailTabTrigger, "data-[state=active]:bg-emerald-400/15 data-[state=active]:text-emerald-100", isMobile ? "text-xs" : "")}>Analysis</TabsTrigger>
+                  <TabsTrigger value="metadata" className={cn(detailTabTrigger, "data-[state=active]:bg-zinc-700/70 data-[state=active]:text-zinc-100", isMobile ? "text-xs" : "")}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
                 </TabsList>
               </div>
               
@@ -1352,15 +1355,15 @@ const CallLogs = () => {
                   {/* Squad badge if applicable */}
                   {selectedCall.is_squad_call && (
                     <div className="flex items-center gap-2 mb-4">
-                      <Badge className={callLogBadgeTone('squad')}>
+                      <Badge className={callLogBadgeTone('squad', premiumInteractiveBadge)}>
                         <Users className="w-3 h-3 mr-1" />
                         Squad Call
                       </Badge>
                       {selectedCall.squad_name && (
-                        <Badge className={callLogBadgeTone('neutral')}>{selectedCall.squad_name}</Badge>
+                        <Badge className={callLogBadgeTone('neutral', premiumInteractiveBadge)}>{selectedCall.squad_name}</Badge>
                       )}
                       {selectedCall.call_intent && (
-                        <Badge className={callLogBadgeTone('success')}>
+                        <Badge className={callLogBadgeTone('success', premiumInteractiveBadge)}>
                           <Target className="w-3 h-3 mr-1" />
                           {selectedCall.call_intent.replace(/_/g, ' ')}
                         </Badge>
