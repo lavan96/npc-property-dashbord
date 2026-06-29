@@ -2,7 +2,8 @@
 -- Templates remain reusable blueprints; instances are dated occurrences.
 ALTER TABLE public.checklist_instances
   ADD COLUMN IF NOT EXISTS due_date DATE,
-  ADD COLUMN IF NOT EXISTS recurrence_key TEXT;
+  ADD COLUMN IF NOT EXISTS recurrence_key TEXT,
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 -- Backfill existing instance dates so old checklist history is preserved and remains queryable.
 UPDATE public.checklist_instances
@@ -10,8 +11,31 @@ SET due_date = created_at::date
 WHERE due_date IS NULL;
 
 UPDATE public.checklist_instances
-SET recurrence_key = COALESCE(template_id::text, id::text) || ':' || due_date::text
-WHERE recurrence_key IS NULL;
+SET archived_at = COALESCE(archived_at, updated_at)
+WHERE status = 'archived'
+  AND archived_at IS NULL;
+
+-- Preserve every existing row even if historical duplicates already exist for the same template/date.
+-- The first historical occurrence gets the canonical template:date key used by recurrence checks;
+-- additional historical duplicates keep unique suffixes instead of blocking the migration.
+WITH ranked_instances AS (
+  SELECT
+    id,
+    COALESCE(template_id::text, id::text) || ':' || due_date::text AS canonical_key,
+    row_number() OVER (
+      PARTITION BY template_id, due_date
+      ORDER BY created_at, id
+    ) AS duplicate_rank
+  FROM public.checklist_instances
+  WHERE recurrence_key IS NULL
+)
+UPDATE public.checklist_instances ci
+SET recurrence_key = CASE
+  WHEN ranked_instances.duplicate_rank = 1 THEN ranked_instances.canonical_key
+  ELSE ranked_instances.canonical_key || ':' || ci.id::text
+END
+FROM ranked_instances
+WHERE ci.id = ranked_instances.id;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_checklist_instances_recurrence_key
   ON public.checklist_instances(recurrence_key)
@@ -19,3 +43,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_checklist_instances_recurrence_key
 
 CREATE INDEX IF NOT EXISTS idx_checklist_instances_due_date
   ON public.checklist_instances(due_date);
+
+CREATE INDEX IF NOT EXISTS idx_checklist_instances_template_due_date
+  ON public.checklist_instances(template_id, due_date)
+  WHERE template_id IS NOT NULL;

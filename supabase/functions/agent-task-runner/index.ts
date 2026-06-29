@@ -186,6 +186,10 @@ Deno.serve(async (req) => {
           }).select().single();
 
           if (instErr || !instance) {
+            if (instErr?.code === '23505') {
+              console.log(`[agent-task-runner] Checklist occurrence was created concurrently for ${tmpl.name} on ${occurrenceDate}, skipping duplicate`);
+              continue;
+            }
             console.error(`[agent-task-runner] Failed to create instance for "${tmpl.name}":`, instErr?.message);
             failed++;
             continue;

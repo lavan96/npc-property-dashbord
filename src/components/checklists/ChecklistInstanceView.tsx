@@ -73,7 +73,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   };
 
   const handleArchive = () => {
-    mutations.updateInstance.mutate({ id: instance.id, status: 'archived' });
+    mutations.updateInstance.mutate({ id: instance.id, status: 'archived', archived_at: new Date().toISOString() });
     onBack();
   };
 

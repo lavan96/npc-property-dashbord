@@ -46,6 +46,7 @@ export interface ChecklistInstance {
   generated_by: string | null;
   status: 'in_progress' | 'completed' | 'archived';
   completed_at: string | null;
+  archived_at: string | null;
   progress_percent: number;
   due_date: string | null;
   recurrence_key: string | null;
