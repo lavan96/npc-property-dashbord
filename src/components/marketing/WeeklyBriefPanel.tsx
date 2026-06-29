@@ -58,26 +58,28 @@ export function WeeklyBriefPanel({
 
   return (
     <>
-      <Card>
+      <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_60%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Weekly AI Brief
-                <Badge variant="secondary" className="text-[10px]">Phase 3</Badge>
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-0">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                  <FileText className="h-5 w-5 text-primary" />
+                </span>
+                <span className="truncate">Weekly AI Brief</span>
+                <Badge variant="secondary" className="rounded-full border-primary/20 bg-primary/10 text-[10px] text-primary">Phase 3</Badge>
               </CardTitle>
               <CardDescription className="mt-1">
                 AI-generated strategic performance report with forecasts
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
               {pastBriefs.length > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowPastBriefs(!showPastBriefs)}
-                  className="text-xs"
+                  className="rounded-xl text-xs hover:bg-primary/10 hover:text-primary"
                 >
                   <Clock className="h-3.5 w-3.5 mr-1" />
                   History ({pastBriefs.length})
@@ -89,6 +91,7 @@ export function WeeklyBriefPanel({
                 size="sm"
                 onClick={onGenerate}
                 disabled={generating || loading}
+                className="rounded-xl border-primary/20 hover:bg-primary/10 hover:text-primary"
               >
                 {generating ? (
                   <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
@@ -103,7 +106,7 @@ export function WeeklyBriefPanel({
         <CardContent className="space-y-4">
           {/* Past Briefs History */}
           {showPastBriefs && (
-            <div className="space-y-2 border-b border-border/50 pb-4">
+            <div className="space-y-2 rounded-2xl border border-border/60 bg-background/40 p-3">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Past Reports</h4>
               {pastBriefsLoading ? (
                 <div className="flex items-center gap-2 py-3">
@@ -115,11 +118,11 @@ export function WeeklyBriefPanel({
               ) : (
                 <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                   {pastBriefs.map((report) => (
-                    <div key={report.id} className="flex items-center justify-between rounded-md border border-border/50 bg-muted/20 px-3 py-2 gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
+                    <div key={report.id} className="flex items-center justify-between gap-2 rounded-2xl border border-border/50 bg-background/55 px-3 py-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <div className="min-w-0">
-                          <span className="text-xs font-medium block truncate">{report.title}</span>
+                          <span className="block truncate text-xs font-medium" title={report.title}>{report.title}</span>
                           <span className="text-[10px] text-muted-foreground">
                             {formatDate(report.period_start)} – {formatDate(report.period_end)}
                           </span>
@@ -136,7 +139,7 @@ export function WeeklyBriefPanel({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0"
+                              className="h-7 w-7 rounded-xl p-0"
                               onClick={() => setViewingBrief(report)}
                               title="View brief"
                             >
@@ -145,7 +148,7 @@ export function WeeklyBriefPanel({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0"
+                              className="h-7 w-7 rounded-xl p-0"
                               onClick={() => downloadBriefAsMarkdown(report)}
                               title="Download brief"
                             >
@@ -165,7 +168,7 @@ export function WeeklyBriefPanel({
 
           {/* Current Brief Content */}
           {loading || generating ? (
-            <div className="flex flex-col items-center justify-center py-12">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-border/60 bg-background/45 py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
               <p className="text-sm font-medium text-foreground">
                 {generating ? 'Generating weekly brief...' : 'Loading...'}
@@ -175,23 +178,23 @@ export function WeeklyBriefPanel({
               </p>
             </div>
           ) : currentBriefError ? (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
               <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">Brief generation encountered an issue</p>
-                <p className="text-xs text-muted-foreground mt-1">{currentBriefError}</p>
+              <p className="mt-1 break-words text-xs text-muted-foreground">{currentBriefError}</p>
               </div>
             </div>
           ) : currentBrief ? (
             <BriefContent content={currentBrief} />
           ) : (
-            <div className="text-center py-12">
+            <div className="rounded-2xl border border-dashed border-primary/25 bg-background/45 py-12 text-center">
               <FileText className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-sm font-medium text-foreground">No weekly brief generated yet</p>
               <p className="text-xs text-muted-foreground mt-1 mb-4">
                 Click "Generate Brief" to create an AI-powered strategic report
               </p>
-              <Button variant="outline" size="sm" onClick={onGenerate} disabled={generating}>
+              <Button variant="outline" size="sm" className="rounded-xl border-primary/20 hover:bg-primary/10 hover:text-primary" onClick={onGenerate} disabled={generating}>
                 <Brain className="h-3.5 w-3.5 mr-1.5" />
                 Generate First Brief
               </Button>
@@ -202,13 +205,13 @@ export function WeeklyBriefPanel({
 
       {/* View Past Brief Modal */}
       <Dialog open={!!viewingBrief} onOpenChange={(open) => !open && setViewingBrief(null)}>
-        <DialogContent className="max-w-3xl w-[calc(100vw-32px)] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-[calc(100vw-32px)] max-h-[85vh] overflow-y-auto rounded-3xl border-primary/20 bg-card/95">
           {viewingBrief && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base">
+                <DialogTitle className="flex min-w-0 items-center gap-2 text-base">
                   <FileText className="h-4 w-4 text-primary" />
-                  {viewingBrief.title}
+                  <span className="truncate" title={viewingBrief.title}>{viewingBrief.title}</span>
                 </DialogTitle>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
                   <span>{formatDate(viewingBrief.period_start)} – {formatDate(viewingBrief.period_end)}</span>
@@ -245,12 +248,12 @@ export function WeeklyBriefPanel({
 function BriefContent({ content }: { content: string }) {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none">
-      <div className="rounded-lg border border-primary/10 bg-primary/[0.01] p-5">
+      <div className="rounded-2xl border border-primary/10 bg-primary/[0.03] p-5">
         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
           <Brain className="h-4 w-4 text-primary" />
           <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI-Generated Strategic Brief</span>
         </div>
-        <div className="text-sm leading-relaxed [&>h1]:text-base [&>h1]:font-bold [&>h1]:mt-4 [&>h1]:mb-2 [&>h2]:text-sm [&>h2]:font-bold [&>h2]:mt-4 [&>h2]:mb-2 [&>h3]:text-sm [&>h3]:font-semibold [&>h3]:mt-3 [&>h3]:mb-1.5 [&>p]:mb-2 [&>ul]:mb-2 [&>ul]:pl-4 [&>ol]:mb-2 [&>ol]:pl-4 [&>li]:mb-0.5 [&>strong]:font-semibold">
+        <div className="break-words text-sm leading-relaxed [&>h1]:text-base [&>h1]:font-bold [&>h1]:mt-4 [&>h1]:mb-2 [&>h2]:text-sm [&>h2]:font-bold [&>h2]:mt-4 [&>h2]:mb-2 [&>h3]:text-sm [&>h3]:font-semibold [&>h3]:mt-3 [&>h3]:mb-1.5 [&>p]:mb-2 [&>ul]:mb-2 [&>ul]:pl-4 [&>ol]:mb-2 [&>ol]:pl-4 [&>li]:mb-0.5 [&>strong]:font-semibold">
           <ReactMarkdown>
             {content}
           </ReactMarkdown>
