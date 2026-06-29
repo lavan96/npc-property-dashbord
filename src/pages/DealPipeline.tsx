@@ -34,8 +34,20 @@ import { CommissionForecastWidget } from "@/components/deals/CommissionForecastW
 import { AtRiskDealsPanel } from "@/components/deals/AtRiskDealsPanel";
 import { LinkedFinanceFilesPanel } from "@/components/deals/LinkedFinanceFilesPanel";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { useModulePermissions } from "@/hooks/useModulePermissions";
 import type { DealWithClient } from "@/hooks/useAllDeals";
+
+const pipelineTabTriggerClass = cn(
+  "group relative flex h-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-zinc-300/82 transition-all duration-200",
+  "border border-transparent hover:-translate-y-0.5 hover:border-amber-200/20 hover:bg-white/[0.075] hover:text-amber-100 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
+  "data-[state=active]:border-amber-100/60 data-[state=active]:bg-[linear-gradient(135deg,#fde68a,#f59e0b_58%,#b45309)] data-[state=active]:text-amber-950",
+  "data-[state=active]:shadow-[0_16px_36px_rgba(245,158,11,0.32),inset_0_1px_0_rgba(255,255,255,0.55)] data-[state=active]:hover:text-amber-950 sm:h-12 sm:px-4 sm:text-sm",
+);
+
+const pipelineTabIconClass =
+  "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-data-[state=active]:drop-shadow-[0_1px_8px_rgba(120,53,15,0.28)] sm:h-[18px] sm:w-[18px]";
 
 export default function DealPipeline() {
   const { data: deals = [], isLoading, error } = useAllDeals();
@@ -118,20 +130,25 @@ export default function DealPipeline() {
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
 
-      <section className="relative overflow-hidden rounded-[1.5rem] border border-amber-300/15 bg-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur sm:p-5">
-        <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700" />
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-200/35 bg-amber-300/10 shadow-[0_0_30px_rgba(245,158,11,0.18)]">
-            <TrendingUp className="h-5 w-5 text-amber-200 sm:h-6 sm:w-6" />
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.085)_34%,rgba(0,0,0,0.34))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.28)] backdrop-blur sm:p-6">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/75 to-transparent" />
+        <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
+        <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-amber-100 via-amber-400 to-amber-700 shadow-[0_0_24px_rgba(245,158,11,0.35)]" />
+        <div className="flex items-center gap-4 sm:gap-5">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] border border-amber-100/40 bg-[radial-gradient(circle_at_30%_20%,rgba(254,243,199,0.24),rgba(245,158,11,0.12)_42%,rgba(0,0,0,0.32))] shadow-[0_16px_38px_rgba(245,158,11,0.18),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-16 sm:w-16">
+            <div className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-amber-100/60 bg-amber-300 text-[11px] font-bold text-amber-950 shadow-[0_8px_18px_rgba(245,158,11,0.28)]">
+              $
+            </div>
+            <TrendingUp className="h-6 w-6 text-amber-100 drop-shadow-[0_0_16px_rgba(251,191,36,0.45)] sm:h-7 sm:w-7" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-amber-200/75">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-amber-200/80">
               Deal command centre
             </p>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
               Deal Pipeline
             </h1>
-            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
               Cross-client deal tracking, commission monitoring, and builder
               invoice management.
             </p>
@@ -178,61 +195,37 @@ export default function DealPipeline() {
         onValueChange={setActiveTab}
         className="relative rounded-[1.5rem] border border-white/10 bg-black/30 p-2 shadow-[0_22px_70px_rgba(0,0,0,0.26)] backdrop-blur sm:p-3"
       >
-        <TabsList className="inline-flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-zinc-950/80 p-1.5 scrollbar-hide shadow-inner">
-          <TabsTrigger
-            value="summary"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+        <TabsList className="relative inline-flex h-auto w-full justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 scrollbar-hide shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5">
+          <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
+            <LayoutDashboard className={pipelineTabIconClass} />
             <span className="hidden sm:inline">Executive </span>Summary
           </TabsTrigger>
-          <TabsTrigger
-            value="kanban"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <Kanban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <TabsTrigger value="kanban" className={pipelineTabTriggerClass}>
+            <Kanban className={pipelineTabIconClass} />
             <span className="hidden sm:inline">Pipeline </span>Board
           </TabsTrigger>
-          <TabsTrigger
-            value="commissions"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <TabsTrigger value="commissions" className={pipelineTabTriggerClass}>
+            <DollarSign className={pipelineTabIconClass} />
             Commissions
           </TabsTrigger>
-          <TabsTrigger
-            value="analytics"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <TabsTrigger value="analytics" className={pipelineTabTriggerClass}>
+            <BarChart3 className={pipelineTabIconClass} />
             Analytics
           </TabsTrigger>
-          <TabsTrigger
-            value="timeline"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <TabsTrigger value="timeline" className={pipelineTabTriggerClass}>
+            <CalendarDays className={pipelineTabIconClass} />
             Timeline
           </TabsTrigger>
-          <TabsTrigger
-            value="clawback"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <ShieldAlert className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <TabsTrigger value="clawback" className={pipelineTabTriggerClass}>
+            <ShieldAlert className={pipelineTabIconClass} />
             Clawback
           </TabsTrigger>
-          <TabsTrigger
-            value="manage"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <TabsTrigger value="manage" className={pipelineTabTriggerClass}>
+            <Edit3 className={pipelineTabIconClass} />
             Manage
           </TabsTrigger>
-          <TabsTrigger
-            value="invoices"
-            className="flex-shrink-0 gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-xs text-muted-foreground transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-amber-950 data-[state=active]:shadow-[0_10px_26px_rgba(245,158,11,0.24)] sm:gap-1.5 sm:text-sm"
-          >
-            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <TabsTrigger value="invoices" className={pipelineTabTriggerClass}>
+            <FileText className={pipelineTabIconClass} />
             <span className="hidden sm:inline">Builder </span>Invoices
           </TabsTrigger>
         </TabsList>
