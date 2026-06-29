@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useAgencyAgreements, useAgreementMutations, AgencyAgreement } from '@/hooks/useAgencyAgreements';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FlattenPdfMenuItem } from '@/components/common/FlattenPdfMenuItem';
 import { fetchPdfBlob } from '@/lib/pdf/downloadPdf';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -24,18 +23,20 @@ import { useNavigate } from 'react-router-dom';
 import { useModulePermissions } from '@/hooks/useModulePermissions';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import GammaTemplateManager from '@/components/agreements/GammaTemplateManager';
-import { PrepareForSigningModal, type SigningRecipient, type SigningTab } from '@/components/agreements/PrepareForSigningModal';
+import { PrepareForSigningModal, type SigningRecipient } from '@/components/agreements/PrepareForSigningModal';
 import { EnvelopeStatusDialog, DocuSignStatusBadge } from '@/components/agreements/EnvelopeStatusDialog';
 import { supabase } from '@/integrations/supabase/client';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
+import { cn } from '@/lib/utils';
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ComponentType<any> }> = {
-  pending_pdf: { label: 'Processing PDF', variant: 'secondary', icon: Clock },
-  generating: { label: 'Generating', variant: 'secondary', icon: Loader2 },
+const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning'; icon: React.ComponentType<any> }> = {
+  pending_pdf: { label: 'Processing PDF', variant: 'warning', icon: Clock },
+  generating: { label: 'Generating', variant: 'warning', icon: Loader2 },
   generated: { label: 'Generated', variant: 'outline', icon: FileSignature },
   sent: { label: 'Sent', variant: 'default', icon: Send },
   delivered: { label: 'Delivered', variant: 'default', icon: CheckCircle2 },
   viewed: { label: 'Viewed', variant: 'default', icon: Eye },
-  signed: { label: 'Signed', variant: 'default', icon: CheckCircle2 },
+  signed: { label: 'Signed', variant: 'success', icon: CheckCircle2 },
   declined: { label: 'Declined', variant: 'destructive', icon: AlertTriangle },
   voided: { label: 'Voided', variant: 'destructive', icon: Ban },
   expired: { label: 'Expired', variant: 'secondary', icon: Clock },
@@ -189,10 +190,10 @@ export default function Agreements() {
   };
 
   const renderStatusBadge = (status: string) => {
-    const config = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+    const config = STATUS_CONFIG[status] || STATUS_CONFIG.generated;
     const Icon = config.icon;
     return (
-      <Badge variant={config.variant} className="gap-1">
+      <Badge variant={config.variant} className="gap-1 border-border/40 shadow-sm">
         <Icon className="h-3 w-3" />
         {config.label}
       </Badge>
@@ -200,76 +201,87 @@ export default function Agreements() {
   };
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <FileSignature className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Agency Agreements</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground truncate">
-            Manage and track Buyer's Agent Agreements sent via DocuSign.
-          </p>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Total Agreements</p>
-            <p className="text-2xl font-bold">{agreements.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Sent</p>
-            <p className="text-2xl font-bold text-foreground">{totalSent}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Awaiting Signature</p>
-            <p className="text-2xl font-bold text-foreground">{pending}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Signed</p>
-            <p className="text-2xl font-bold text-emerald-600">{totalSigned}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search & Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <CardTitle className="text-base">All Agreements</CardTitle>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, email, status..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="space-y-5 p-3 text-foreground sm:p-6"
+    >
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex flex-col gap-4 border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.84)_52%,hsl(var(--primary)/0.12))] shadow-lg shadow-primary/5 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/15 text-primary shadow-inner shadow-primary/20">
+            <FileSignature className="h-6 w-6" />
           </div>
-        </CardHeader>
-        <Separator />
-        <CardContent className="p-0">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">Agency agreements</p>
+            <h1 className="text-xl font-bold tracking-tight sm:text-3xl">DocuSign agreement centre</h1>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+              Manage generated agreements, signing status, audit trails, and buyer follow-up.
+            </p>
+          </div>
+        </div>
+        <div className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary shadow-sm">
+          {pending} awaiting signature
+        </div>
+      </DashboardThemeFrame>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          { label: 'Total Agreements', value: agreements.length, tone: 'primary' },
+          { label: 'Sent', value: totalSent, tone: 'foreground' },
+          { label: 'Awaiting Signature', value: pending, tone: 'warning' },
+          { label: 'Signed', value: totalSigned, tone: 'success' },
+        ].map((stat) => (
+          <DashboardThemeFrame key={stat.label} variant="premiumCard" className="p-4">
+            <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
+            <p
+              className={cn(
+                'mt-2 text-2xl font-bold tracking-tight',
+                stat.tone === 'primary' && 'text-primary',
+                stat.tone === 'warning' && 'text-[hsl(var(--warning))]',
+                stat.tone === 'success' && 'text-[hsl(var(--success))]',
+                stat.tone === 'foreground' && 'text-foreground'
+              )}
+            >
+              {stat.value}
+            </p>
+          </DashboardThemeFrame>
+        ))}
+      </div>
+
+      <DashboardThemeFrame variant="section" className="p-0">
+        <div className="flex flex-col gap-3 border-b border-border/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div>
+            <CardTitle className="text-base">All Agreements</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Search, review, download, and manage envelope status.</p>
+          </div>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, status..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10 rounded-xl border-border/70 bg-background/75 pl-9 shadow-sm transition-all focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/30"
+            />
+          </div>
+        </div>
+        <div className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : filteredAgreements.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">
+            <div className="mx-4 my-5 rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-12 text-center text-sm text-muted-foreground">
               {searchTerm ? 'No agreements match your search.' : 'No agreements sent yet. Open a client and click "Send Agreement" to get started.'}
             </div>
           ) : (
-            <ScrollArea className="max-h-[500px]">
+            <ScrollArea className="max-h-[560px] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
               <Table>
-                <TableHeader>
-                  <TableRow>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead>Buyer</TableHead>
                     <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead>Status</TableHead>
@@ -281,10 +293,10 @@ export default function Agreements() {
                 </TableHeader>
                 <TableBody>
                   {filteredAgreements.map((agreement) => (
-                    <TableRow key={agreement.id}>
+                    <TableRow key={agreement.id} className="group hover:bg-primary/5">
                       <TableCell className="font-medium">
                         <button
-                          className="hover:underline text-left"
+                          className="text-left text-foreground transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           onClick={() => handleViewClient(agreement.client_id)}
                         >
                           {agreement.buyer_names}
@@ -322,11 +334,11 @@ export default function Agreements() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/50">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="border-border/70 bg-popover/95 shadow-xl shadow-black/10 backdrop-blur">
                             <DropdownMenuItem onClick={() => handleViewAgreement(agreement)}>
                               <FileText className="h-4 w-4 mr-2" />
                               View Agreement
@@ -373,7 +385,7 @@ export default function Agreements() {
                             )}
                             {canEditAgreements && ['sent', 'delivered', 'viewed'].includes(agreement.status) && (
                               <DropdownMenuItem
-                                className="text-destructive"
+                                className="text-destructive focus:text-destructive"
                                 onClick={() => handleVoid(agreement.id)}
                               >
                                 <XCircle className="h-4 w-4 mr-2" />
@@ -389,24 +401,23 @@ export default function Agreements() {
               </Table>
             </ScrollArea>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardThemeFrame>
 
-      {/* Gamma Template Manager */}
       <GammaTemplateManager />
 
       {/* Agreement Preview Dialog */}
       <Dialog open={!!previewHtml || isPreviewLoading} onOpenChange={(open) => { if (!open) { setPreviewHtml(null); setPreviewTitle(''); } }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col rounded-2xl border-border/70 bg-card text-card-foreground shadow-2xl">
           <DialogHeader>
             <DialogTitle>{previewTitle}</DialogTitle>
           </DialogHeader>
           {isPreviewLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : previewHtml ? (
-            <div className="flex-1 overflow-auto border rounded-md">
+            <div className="flex-1 overflow-auto rounded-xl border border-border/70 bg-background">
               {previewHtml.startsWith('__PDF__') ? (
                 <iframe
                   src={previewHtml.replace('__PDF__', '')}
@@ -449,6 +460,6 @@ export default function Agreements() {
           title={`${statusAgreement.buyer_names} — Envelope`}
         />
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }
