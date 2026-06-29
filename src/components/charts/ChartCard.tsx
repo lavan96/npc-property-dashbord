@@ -35,7 +35,7 @@ interface ChartCardProps {
   selectionMode: boolean;
 }
 
-export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.075),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.98)_0%,hsl(var(--muted)/0.20)_48%,hsl(var(--card)/0.94)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.11)] ring-1 ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/75 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_34px_rgba(245,158,11,0.16)] focus-within:border-amber-300/80 focus-within:ring-2 focus-within:ring-amber-300/35 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_30px_rgba(245,158,11,0.14)] dark:border-amber-200/12 dark:ring-white/10';
+export const PREMIUM_CHART_CARD_CLASS = 'group relative overflow-hidden rounded-[1.35rem] border border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.075),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.98)_0%,hsl(var(--muted)/0.20)_48%,hsl(var(--card)/0.94)_100%)] shadow-[0_18px_48px_rgba(15,23,42,0.11)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/75 hover:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_34px_rgba(245,158,11,0.16)] focus-within:border-amber-300/80 focus-within:ring-2 focus-within:ring-amber-300/35 focus-within:shadow-[0_24px_64px_rgba(15,23,42,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_30px_rgba(245,158,11,0.14)] dark:border-amber-200/12 dark:ring-white/10';
 
 const DEFAULT_TYPE_BADGE = { color: 'border-border/70 bg-muted/70 text-muted-foreground shadow-muted/10', emoji: '📊', label: 'Chart' };
 
@@ -228,7 +228,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
             }
           }}
         >
-          <div className="relative flex h-48 w-full min-[420px]:h-56 items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
+          <div className="relative flex h-48 w-full min-[420px]:h-56 items-center justify-center overflow-hidden rounded-xl border border-border dark:border-white/70 bg-card/95 dark:bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
             {renderChartImage(chart)}
           </div>
           <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-slate-950/5 transition-all duration-300 group-hover/img:ring-amber-400/25 dark:ring-white/10" />
@@ -238,7 +238,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
           {selectionMode && isSelected && (
             <div className="pointer-events-none absolute inset-2 rounded-xl bg-amber-950/10 ring-2 ring-inset ring-amber-300/70" />
           )}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover/img:bg-amber-950/5 group-hover/img:opacity-100">
+          <div className="absolute inset-0 flex items-center justify-center bg-background dark:bg-black/0 opacity-0 transition-all group-hover/img:bg-amber-950/5 group-hover/img:opacity-100">
             <div className="rounded-full border border-primary/25 bg-background/90 p-2 shadow-lg shadow-primary/10 backdrop-blur-sm">
               <Maximize2 className="h-4 w-4 text-foreground" />
             </div>

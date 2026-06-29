@@ -15,7 +15,7 @@ export default function PortfolioReports() {
     <DashboardThemeFrame variant="hero" className="px-3 py-4 sm:px-5 sm:py-6 lg:px-8">
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-7">
         {/* Header */}
-        <div className="flex flex-col gap-5 rounded-3xl border border-border/70 bg-card/70 p-5 shadow-lg shadow-black/10 backdrop-blur dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25 sm:flex-row sm:items-center sm:justify-between lg:p-7">
+        <div className="flex flex-col gap-5 rounded-3xl border border-border/70 bg-card/70 p-5 shadow-lg shadow-sm dark:shadow-black/10 backdrop-blur dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25 sm:flex-row sm:items-center sm:justify-between lg:p-7">
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-200 shadow-lg shadow-amber-950/30">
               <BarChart3 className="h-6 w-6" />
@@ -25,8 +25,8 @@ export default function PortfolioReports() {
                 <Sparkles className="h-3.5 w-3.5" />
                 Portfolio Intelligence
               </div>
-              <h1 className="break-words text-2xl font-bold tracking-[-0.03em] text-white sm:text-4xl lg:text-5xl">Portfolio Performance Reports</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300/90 sm:text-base">
+              <h1 className="break-words text-2xl font-bold tracking-[-0.03em] text-foreground dark:text-white sm:text-4xl lg:text-5xl">Portfolio Performance Reports</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground dark:text-slate-300/90 sm:text-base">
                 {clientId
                   ? 'Viewing reports for selected client'
                   : 'View all generated portfolio performance analysis reports across clients'}

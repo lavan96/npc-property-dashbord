@@ -127,7 +127,7 @@ export function DateRangePicker({
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[calc(100vw-2rem)] max-w-[42rem] overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-2xl shadow-black/20 backdrop-blur dark:bg-slate-950/95" align="end" sideOffset={8}>
+        <PopoverContent className="w-[calc(100vw-2rem)] max-w-[42rem] overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-slate-950/95" align="end" sideOffset={8}>
           <div className="p-3 border-b border-border">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-foreground">

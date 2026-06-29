@@ -165,7 +165,7 @@ export default function CommercialProperties() {
           </TabsList>
         </Tabs>
 
-        <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-lg shadow-black/5">
+        <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-lg shadow-sm dark:shadow-black/5">
           <CardContent className="p-0">
           {loading ? (
             <div className="ci-loading-state">

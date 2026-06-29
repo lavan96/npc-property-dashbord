@@ -12,9 +12,9 @@ import { toast } from 'sonner';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { cn } from '@/lib/utils';
 
-const reportDialogShell = "max-h-[90vh] overflow-hidden rounded-3xl border-white/10 bg-zinc-950/95 p-0 text-zinc-100 shadow-2xl shadow-black/50 backdrop-blur-xl sm:max-w-2xl";
-const reportSectionCard = "overflow-hidden rounded-2xl border-white/10 bg-black/35 shadow-inner shadow-black/20";
-const reportControl = "h-11 rounded-2xl border-white/10 bg-black/45 text-zinc-100 shadow-inner shadow-black/25 transition-colors hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70";
+const reportDialogShell = "max-h-[90vh] overflow-hidden rounded-3xl border-border dark:border-white/10 bg-background dark:bg-zinc-950/95 p-0 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/50 backdrop-blur-xl sm:max-w-2xl";
+const reportSectionCard = "overflow-hidden rounded-2xl border-border dark:border-white/10 bg-background dark:bg-black/35 shadow-inner shadow-sm dark:shadow-black/20";
+const reportControl = "h-11 rounded-2xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-colors hover:border-amber-300/35 focus-visible:ring-2 focus-visible:ring-amber-300/70";
 
 export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ triggerClassName }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -77,12 +77,12 @@ export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ tr
       <DialogContent className={reportDialogShell}>
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
         <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-amber-500/10 blur-3xl" />
-        <DialogHeader className="relative border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.94),rgba(0,0,0,0.78),rgba(120,53,15,0.16))] px-6 py-5">
+        <DialogHeader className="relative border-b border-border dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.94),rgba(0,0,0,0.78),rgba(120,53,15,0.16))] px-6 py-5">
           <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
             <ShieldCheck className="h-3 w-3" />
             Reporting Workflow
           </div>
-          <DialogTitle className="flex items-center gap-3 text-2xl text-zinc-50">
+          <DialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-500/10 text-amber-200 shadow-inner shadow-amber-950/40">
               <FileText className="h-5 w-5" />
             </span>
@@ -92,30 +92,30 @@ export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ tr
 
         <div className="relative space-y-5 px-6 py-5">
           <Card className={reportSectionCard}>
-            <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-blue-500/10 pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm text-zinc-50">
+            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-blue-500/10 pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-50">
                 <BarChart3 className="h-4 w-4 text-amber-300" />
                 Report Contents
               </CardTitle>
-              <CardDescription className="text-xs text-zinc-500">
+              <CardDescription className="text-xs text-muted-foreground dark:text-zinc-500">
                 Summary of call performance metrics
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-4 text-sm text-zinc-400">
+            <CardContent className="p-4 text-sm text-muted-foreground dark:text-zinc-400">
               <ul className="grid gap-2 sm:grid-cols-2">
-                <li className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">Total call volume & average duration</li>
-                <li className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">Quality scores & grades</li>
-                <li className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">Sentiment analysis breakdown</li>
-                <li className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">Call outcomes summary</li>
-                <li className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">Top call intents</li>
-                <li className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2">Alerts triggered count</li>
+                <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Total call volume & average duration</li>
+                <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Quality scores & grades</li>
+                <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Sentiment analysis breakdown</li>
+                <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Call outcomes summary</li>
+                <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Top call intents</li>
+                <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Alerts triggered count</li>
               </ul>
             </CardContent>
           </Card>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="recipientEmail" className="text-xs uppercase tracking-[0.16em] text-zinc-500">Recipient Email</Label>
+              <Label htmlFor="recipientEmail" className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Recipient Email</Label>
               <Input
                 id="recipientEmail"
                 type="email"
@@ -127,7 +127,7 @@ export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ tr
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reportPeriod" className="text-xs uppercase tracking-[0.16em] text-zinc-500">Report Period</Label>
+              <Label htmlFor="reportPeriod" className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Report Period</Label>
               <Select value={reportPeriod} onValueChange={setReportPeriod}>
                 <SelectTrigger className={reportControl}>
                   <SelectValue />
@@ -166,7 +166,7 @@ export const WeeklyReportConfig: React.FC<{ triggerClassName?: string }> = ({ tr
             )}
           </Button>
 
-          <p className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-xs text-zinc-500">
+          <p className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-4 py-3 text-center text-xs text-muted-foreground dark:text-zinc-500">
             <Calendar className="mr-1 inline h-3 w-3 text-amber-300" />
             For automated weekly reports, contact your administrator
           </p>

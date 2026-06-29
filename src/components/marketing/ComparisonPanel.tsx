@@ -98,7 +98,7 @@ export function ComparisonPanel({
   });
 
   return (
-    <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_58%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
+    <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_58%,hsl(var(--primary)/0.08))] shadow-xl shadow-sm dark:shadow-black/5 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">

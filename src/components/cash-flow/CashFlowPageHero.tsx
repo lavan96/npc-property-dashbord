@@ -32,7 +32,7 @@ export function CashFlowPageHero({ reports, filteredReports, dateRangeLabel, bui
   }).length;
 
   return (
-    <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white shadow-xl">
+    <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-card dark:from-slate-950 via-card dark:via-slate-900 to-slate-800 text-foreground dark:text-white shadow-xl">
       <CardContent className="relative p-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.24),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
         <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-amber-300 via-primary to-transparent" />
@@ -47,25 +47,25 @@ export function CashFlowPageHero({ reports, filteredReports, dateRangeLabel, bui
 
               <div className="space-y-3">
                 <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight md:text-4xl">
-                  <span className="rounded-2xl border border-white/15 bg-white/10 p-2 shadow-inner">
+                  <span className="rounded-2xl border border-border dark:border-white/15 bg-card/10 dark:bg-white/10 p-2 shadow-inner">
                     <Calculator className="h-7 w-7 text-amber-200 md:h-8 md:w-8" />
                   </span>
                   10-Year Cash Flow Analysis
                 </h1>
-                <p className="max-w-3xl text-sm leading-6 text-slate-200 md:text-base">
+                <p className="max-w-3xl text-sm leading-6 text-foreground dark:text-slate-200 md:text-base">
                   Model long-term property performance, yearly assumptions, rental growth, expenses, land tax, debt, equity, and after-tax cash flow from generated investment reports.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 text-xs text-slate-300">
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground dark:text-slate-300">
               {representedBuildTypes.length > 0 ? representedBuildTypes.map(([buildType, count]) => (
-                <span key={buildType} className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                <span key={buildType} className="inline-flex items-center gap-1 rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-3 py-1">
                   {getBuildTypeIcon(buildType)}
                   {getBuildTypeLabel(buildType)}: {count}
                 </span>
               )) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                <span className="inline-flex items-center gap-1 rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-3 py-1">
                   <Building2 className="h-3.5 w-3.5" />
                   No build types represented yet
                 </span>
@@ -96,15 +96,15 @@ export function CashFlowPageHero({ reports, filteredReports, dateRangeLabel, bui
 
 function HeroMetric({ icon: Icon, label, value, detail, warning = false }: { icon: typeof Calculator; label: string; value: string; detail?: string; warning?: boolean }) {
   return (
-    <div className={`rounded-2xl border p-4 backdrop-blur ${warning ? 'border-amber-300/35 bg-amber-300/10' : 'border-white/10 bg-white/8'}`}>
+    <div className={`rounded-2xl border p-4 backdrop-blur ${warning ? 'border-amber-300/35 bg-amber-300/10' : 'border-border dark:border-white/10 bg-card/8 dark:bg-white/8'}`}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-300">{label}</span>
-        <span className={`rounded-lg p-2 ${warning ? 'bg-amber-300/15 text-amber-100' : 'bg-white/10 text-amber-100'}`}>
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground dark:text-slate-300">{label}</span>
+        <span className={`rounded-lg p-2 ${warning ? 'bg-amber-300/15 text-amber-100' : 'bg-card/10 dark:bg-white/10 text-amber-100'}`}>
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="text-2xl font-bold capitalize text-white">{value}</p>
-      {detail && <p className="mt-1 text-xs text-slate-300">{detail}</p>}
+      <p className="text-2xl font-bold capitalize text-foreground dark:text-white">{value}</p>
+      {detail && <p className="mt-1 text-xs text-muted-foreground dark:text-slate-300">{detail}</p>}
     </div>
   );
 }

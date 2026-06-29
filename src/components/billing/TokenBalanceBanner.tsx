@@ -903,7 +903,7 @@ export function TokenBalanceBanner() {
             variant="outline"
             size="sm"
             onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
-            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-500 px-4 font-semibold text-white shadow-sm shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_12px_28px_rgba(217,119,6,0.22)] focus-visible:ring-amber-400 active:translate-y-0 sm:w-auto dark:border-amber-300/40 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300"
+            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-500 px-4 font-semibold text-foreground dark:text-white shadow-sm shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_12px_28px_rgba(217,119,6,0.22)] focus-visible:ring-amber-400 active:translate-y-0 sm:w-auto dark:border-amber-300/40 dark:bg-amber-400 dark:text-amber-950 dark:hover:bg-amber-300"
           >
             Top up
           </Button>
@@ -927,7 +927,7 @@ export function TokenBalanceBanner() {
             variant="outline"
             size="sm"
             onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
-            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-500 px-4 font-semibold text-white shadow-md shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_14px_32px_rgba(217,119,6,0.24)] focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 sm:w-auto dark:border-amber-300/40 dark:bg-amber-300 dark:text-amber-950 dark:hover:bg-amber-200"
+            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-500 px-4 font-semibold text-foreground dark:text-white shadow-md shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_14px_32px_rgba(217,119,6,0.24)] focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 sm:w-auto dark:border-amber-300/40 dark:bg-amber-300 dark:text-amber-950 dark:hover:bg-amber-200"
           >
             Top up
           </Button>
@@ -953,7 +953,7 @@ export function TokenBalanceBanner() {
             variant="outline"
             size="sm"
             onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
-            className="w-full shrink-0 rounded-full border-amber-300/75 bg-amber-500 px-5 font-semibold text-white shadow-[0_12px_30px_hsl(43_84%_52%/0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.32)] focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 dark:border-amber-200/65 dark:bg-amber-300 dark:text-amber-950 dark:hover:border-amber-100 dark:hover:bg-amber-200 dark:hover:text-amber-950 sm:w-auto"
+            className="w-full shrink-0 rounded-full border-amber-300/75 bg-amber-500 px-5 font-semibold text-foreground dark:text-white shadow-[0_12px_30px_hsl(43_84%_52%/0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_18px_42px_hsl(43_84%_52%/0.32)] focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 dark:border-amber-200/65 dark:bg-amber-300 dark:text-amber-950 dark:hover:border-amber-100 dark:hover:bg-amber-200 dark:hover:text-amber-950 sm:w-auto"
           >
             Top up
           </Button>
@@ -977,7 +977,7 @@ export function TokenBalanceBanner() {
             variant="outline"
             size="sm"
             onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
-            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-500 px-4 font-semibold text-white shadow-sm shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_12px_28px_rgba(217,119,6,0.22)] focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 sm:w-auto dark:border-amber-300/35 dark:bg-amber-300 dark:text-amber-950 dark:hover:bg-amber-200"
+            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-500 px-4 font-semibold text-foreground dark:text-white shadow-sm shadow-amber-950/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-600 hover:text-white hover:shadow-[0_12px_28px_rgba(217,119,6,0.22)] focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 sm:w-auto dark:border-amber-300/35 dark:bg-amber-300 dark:text-amber-950 dark:hover:bg-amber-200"
           >
             Top up
           </Button>

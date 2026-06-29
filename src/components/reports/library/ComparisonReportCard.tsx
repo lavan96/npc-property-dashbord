@@ -80,7 +80,7 @@ export function ComparisonReportCard({ comparison, generatorLabel, onView, onTog
 
 function MetricTile({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof MapPin }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-3 shadow-inner shadow-black/5">
+    <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-3 shadow-inner shadow-sm dark:shadow-black/5">
       <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{label}</span>
         <Icon className="h-3.5 w-3.5 text-emerald-600/80 dark:text-emerald-300/80" />

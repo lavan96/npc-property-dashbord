@@ -126,7 +126,7 @@ export function LeadMagnetsPanel() {
             const pipeline = pipelines.find(p => p.ghl_id === m.ghl_pipeline_id);
             const stage = stages.find(s => s.ghl_id === m.ghl_stage_id);
             return (
-              <Card key={m.id} className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 transition-colors hover:border-primary/25 hover:bg-primary/[0.03] dark:border-white/10 dark:shadow-black/20">
+              <Card key={m.id} className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-sm dark:shadow-black/5 transition-colors hover:border-primary/25 hover:bg-primary/[0.03] dark:border-white/10 dark:shadow-black/20">
                 <CardContent className="p-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                     <div className="h-10 w-10 rounded-2xl border border-primary/20 bg-primary/10 text-primary flex items-center justify-center shrink-0">

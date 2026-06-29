@@ -110,7 +110,7 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
           <Filter className="h-4 w-4 mr-2" />
           Filters
           {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 p-0 text-xs text-white shadow-sm">
+            <Badge variant="secondary" className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 p-0 text-xs text-foreground dark:text-white shadow-sm">
               {activeFilterCount}
             </Badge>
           )}

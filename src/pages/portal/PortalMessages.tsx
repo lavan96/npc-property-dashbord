@@ -96,7 +96,7 @@ function ChannelThread({ channel, messages, displayName, onSend, sending, disabl
                   </AvatarFallback>
                 </Avatar>
                 <div className={`flex min-w-0 max-w-[min(78%,42rem)] flex-col ${isClient ? 'items-end' : 'items-start'}`}>
-                  <div className={`w-fit max-w-full rounded-2xl border px-4 py-3 text-sm leading-6 shadow-lg shadow-black/10 whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
+                  <div className={`w-fit max-w-full rounded-2xl border px-4 py-3 text-sm leading-6 shadow-lg shadow-sm dark:shadow-black/10 whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                     isClient
                       ? 'rounded-br-md border-primary/40 bg-gradient-to-br from-primary to-amber-500 text-primary-foreground'
                       : 'rounded-bl-md border-border/60 bg-card/95 text-foreground shadow-primary/5'

@@ -249,7 +249,7 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
                             {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
                           {call.escalation_severity && (
-                            <Badge className={`${getSeverityColor(call.escalation_severity)} text-white text-xs`}>
+                            <Badge className={`${getSeverityColor(call.escalation_severity)} text-foreground dark:text-white text-xs`}>
                               Severity {call.escalation_severity}
                             </Badge>
                           )}
@@ -366,7 +366,7 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
                 </div>
                 <div className="p-3 rounded-lg border">
                   <p className="text-xs text-muted-foreground mb-1">Escalation Severity</p>
-                  <Badge className={`${getSeverityColor(selectedCall.escalation_severity)} text-white`}>
+                  <Badge className={`${getSeverityColor(selectedCall.escalation_severity)} text-foreground dark:text-white`}>
                     {selectedCall.escalation_severity ? `Level ${selectedCall.escalation_severity}/5` : 'Not rated'}
                   </Badge>
                 </div>

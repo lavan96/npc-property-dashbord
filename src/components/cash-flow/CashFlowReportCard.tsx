@@ -40,7 +40,7 @@ export function CashFlowReportCard({ report, buildType, gradeInfo, isOpening, on
               )}
             </Badge>
             {gradeInfo && (
-              <Badge className={`${gradeInfo.color} text-white`}>
+              <Badge className={`${gradeInfo.color} text-foreground dark:text-white`}>
                 {gradeInfo.grade}
               </Badge>
             )}

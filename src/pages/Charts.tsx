@@ -300,7 +300,7 @@ export default function Charts() {
     return (
       <main className="min-h-screen animate-fade-in overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),radial-gradient(circle_at_85%_0%,hsl(43_96%_56%/0.12),transparent_30%)] p-4 sm:p-6">
         <DashboardThemeFrame variant="page" className="max-w-[1700px] space-y-6">
-          <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-6 shadow-2xl shadow-black/15">
+          <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-6 shadow-2xl shadow-sm dark:shadow-black/15">
             <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
             <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-300/15 blur-3xl" />
             <div className="flex items-center gap-4">
@@ -347,7 +347,7 @@ export default function Charts() {
     <main className="min-h-screen animate-fade-in bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_32%),radial-gradient(circle_at_85%_10%,hsl(43_96%_56%/0.09),transparent_28%)] p-4 sm:p-6">
       <DashboardThemeFrame variant="page" className="max-w-[1700px] space-y-7">
         {/* Header */}
-        <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-5 shadow-2xl shadow-black/15 sm:p-6">
+        <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-5 shadow-2xl shadow-sm dark:shadow-black/15 sm:p-6">
           <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
           <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-20 bottom-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
@@ -355,7 +355,7 @@ export default function Charts() {
             <div className="flex min-w-0 flex-col gap-4 min-[420px]:flex-row min-[420px]:items-start">
               <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-amber-200/45">
                 <div className="absolute inset-x-3 top-0 h-px bg-amber-100/90" />
-                <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-white/20 blur-md" />
+                <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-card/20 dark:bg-white/20 blur-md" />
                 <BarChart3 className="relative h-6 w-6 text-primary-foreground drop-shadow-sm" />
               </div>
               <div className="min-w-0 space-y-1.5">
@@ -370,7 +370,7 @@ export default function Charts() {
               <Button
                 variant="outline"
                 size="sm"
-                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/45"
+                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/45"
                 onClick={fetchCharts}
                 aria-label="Refresh chart gallery"
               >
@@ -454,7 +454,7 @@ export default function Charts() {
 
         {/* Content */}
       {charts.length === 0 ? (
-        <DashboardThemeFrame variant="section" className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
+        <DashboardThemeFrame variant="section" className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-sm dark:shadow-black/10">
           <CardContent className="flex flex-col items-center justify-center h-80 space-y-4">
             <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/12 via-amber-500/10 to-background shadow-inner">
               <BarChart3 className="h-9 w-9 text-primary" />
@@ -468,7 +468,7 @@ export default function Charts() {
           </CardContent>
         </DashboardThemeFrame>
       ) : filteredCharts.length === 0 ? (
-        <DashboardThemeFrame variant="section" className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-black/10">
+        <DashboardThemeFrame variant="section" className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-sm dark:shadow-black/10">
           <CardContent className="flex flex-col items-center justify-center h-64 space-y-4 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border/70 bg-muted/45"><SearchX className="h-7 w-7 text-muted-foreground" /></div>
             <div className="space-y-1"><h3 className="text-lg font-semibold">No matching charts</h3><p className="max-w-sm text-sm text-muted-foreground">Your search, report, chart type or date filters do not match any saved charts.</p></div>

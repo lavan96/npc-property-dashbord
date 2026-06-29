@@ -19,7 +19,7 @@ export function AIDigestPanel({ digest, loading, error, onRegenerate, regenerati
 
   if (loading) {
     return (
-      <Card className="overflow-hidden border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.78))] shadow-xl shadow-black/5 dark:shadow-black/25">
+      <Card className="overflow-hidden border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/5 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
@@ -44,7 +44,7 @@ export function AIDigestPanel({ digest, loading, error, onRegenerate, regenerati
   }
 
   return (
-    <Card className="overflow-hidden border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.78))] shadow-xl shadow-black/5 dark:shadow-black/25">
+    <Card className="overflow-hidden border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/5 dark:shadow-black/25">
       <CardHeader className="pb-2">
         <div className="flex flex-col gap-2">
           <div className="flex min-w-0 items-center justify-between gap-3">

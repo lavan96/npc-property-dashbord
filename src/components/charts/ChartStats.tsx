@@ -59,7 +59,7 @@ export function ChartStats({ charts }: ChartStatsProps) {
         <DashboardThemeFrame
           key={s.label}
           variant="premiumCard"
-          className={`relative rounded-3xl bg-gradient-to-br ${s.insight ? 'from-primary/16 via-card/95 to-amber-950/10 border-primary/25' : 'from-card/95 via-card/90 to-slate-950/5'} shadow-xl shadow-black/10 backdrop-blur hover:border-amber-300/65 hover:ring-1 hover:ring-amber-300/30 hover:shadow-[0_24px_70px_hsl(43_74%_49%/0.18),0_0_0_1px_hsl(43_96%_56%/0.14)] focus-within:border-amber-300/65 focus-within:ring-2 focus-within:ring-amber-300/25 dark:shadow-black/25`}
+          className={`relative rounded-3xl bg-gradient-to-br ${s.insight ? 'from-primary/16 via-card/95 to-amber-950/10 border-primary/25' : 'from-card/95 via-card/90 to-card dark:to-slate-950/5'} shadow-xl shadow-sm dark:shadow-black/10 backdrop-blur hover:border-amber-300/65 hover:ring-1 hover:ring-amber-300/30 hover:shadow-[0_24px_70px_hsl(43_74%_49%/0.18),0_0_0_1px_hsl(43_96%_56%/0.14)] focus-within:border-amber-300/65 focus-within:ring-2 focus-within:ring-amber-300/25 dark:shadow-black/25`}
         >
           <div className={`pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r ${s.edge} opacity-70 transition-opacity duration-300 group-hover:opacity-100`} />
           <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-3xl transition-opacity duration-300 group-hover:opacity-80" />
@@ -73,7 +73,7 @@ export function ChartStats({ charts }: ChartStatsProps) {
                 </p>
                 <div className="h-px w-12 bg-gradient-to-r from-amber-300/70 via-amber-100/25 to-transparent" />
               </div>
-              <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br ${s.iconChrome} shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_14px_32px_rgba(0,0,0,0.16)] ring-1 ${s.color}`}>
+              <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border dark:border-white/10 bg-gradient-to-br ${s.iconChrome} shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_14px_32px_rgba(0,0,0,0.16)] ring-1 ${s.color}`}>
                 {s.connected && (
                   <span className="absolute -left-2 top-1/2 h-px w-2 bg-gradient-to-l from-violet-300/70 to-transparent" />
                 )}

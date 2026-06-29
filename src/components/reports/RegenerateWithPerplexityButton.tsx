@@ -111,7 +111,7 @@ export function RegenerateWithPerplexityButton({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleRegenerate}
-              className="text-white border-0"
+              className="text-foreground dark:text-white border-0"
               style={{ 
                 background: 'linear-gradient(135deg, #1A1A2E 0%, #20B2AA 100%)',
               }}

@@ -243,7 +243,7 @@ export const CallQualityScore = ({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-12 h-12 rounded-full border shadow-sm ${getGradeColor(grade)} flex items-center justify-center`}>
-            <span className="text-white font-bold text-lg">{grade}</span>
+            <span className="text-foreground dark:text-white font-bold text-lg">{grade}</span>
           </div>
           <div>
             <p className="font-semibold">Call Quality Score</p>

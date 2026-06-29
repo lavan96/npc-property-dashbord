@@ -50,11 +50,11 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
     <Dialog open={!!chart} onOpenChange={() => onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[radial-gradient(circle_at_50%_0%,rgba(245,158,11,0.16),transparent_36%),rgba(2,6,23,0.90)] backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-0.75rem)] max-w-7xl sm:max-h-[94dvh] sm:w-[min(96vw,86rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.99),hsl(var(--background)/0.96))] p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-white/10 backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-0.75rem)] max-w-7xl sm:max-h-[94dvh] sm:w-[min(96vw,86rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.99),hsl(var(--background)/0.96))] p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-border dark:ring-white/10 backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
           <div className="pointer-events-none absolute -right-24 -top-28 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-28 bottom-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
-          <DialogPrimitive.Close className="absolute right-3 top-3 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-slate-950/70 text-white/80 shadow-[0_14px_36px_rgba(0,0,0,0.32)] ring-1 ring-white/10 backdrop-blur-xl transition-all hover:scale-105 hover:border-amber-300/55 hover:bg-amber-400/15 hover:text-white hover:shadow-[0_18px_42px_rgba(245,158,11,0.18)] focus:outline-none focus:ring-2 focus:ring-amber-300/80 focus:ring-offset-2 focus:ring-offset-slate-950 sm:right-4 sm:top-4">
+          <DialogPrimitive.Close className="absolute right-3 top-3 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border dark:border-white/15 bg-background dark:bg-slate-950/70 text-foreground dark:text-white/80 shadow-[0_14px_36px_rgba(0,0,0,0.32)] ring-1 ring-border dark:ring-white/10 backdrop-blur-xl transition-all hover:scale-105 hover:border-amber-300/55 hover:bg-amber-400/15 hover:text-white hover:shadow-[0_18px_42px_rgba(245,158,11,0.18)] focus:outline-none focus:ring-2 focus:ring-amber-300/80 focus:ring-offset-2 focus:ring-offset-slate-950 sm:right-4 sm:top-4">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
@@ -89,7 +89,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
             </DialogHeader>
 
             <div className="relative mt-4 min-h-[240px] flex-1 px-0 sm:mt-5 sm:px-14">
-              <div className="relative flex h-[42dvh] min-h-[240px] max-h-[680px] sm:h-[56vh] sm:min-h-[320px] items-center justify-center overflow-hidden rounded-[1.75rem] border border-amber-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-white/10 sm:p-5 lg:p-7">
+              <div className="relative flex h-[42dvh] min-h-[240px] max-h-[680px] sm:h-[56vh] sm:min-h-[320px] items-center justify-center overflow-hidden rounded-[1.75rem] border border-amber-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/10 sm:p-5 lg:p-7">
                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent" />
                 <div className="pointer-events-none absolute -left-24 top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
                 <div className="pointer-events-none absolute -right-20 bottom-8 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
@@ -99,7 +99,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                     {renderChartImage(chart)}
                   </div>
                 </div>
-                <div className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-slate-950/62 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70 shadow-lg backdrop-blur-xl sm:flex">
+                <div className="pointer-events-none absolute bottom-4 left-1/2 hidden -translate-x-1/2 items-center gap-2 rounded-full border border-border dark:border-white/10 bg-background dark:bg-slate-950/62 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground dark:text-white/70 shadow-lg backdrop-blur-xl sm:flex">
                   <span>← Previous</span>
                   <span className="h-1 w-1 rounded-full bg-amber-300/70" />
                   <span>Next →</span>
@@ -110,7 +110,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute bottom-3 left-3 top-auto inline-flex h-11 w-11 sm:top-1/2 sm:h-12 sm:w-12 translate-y-0 items-center sm:-translate-y-1/2 justify-center rounded-full border-amber-200/45 bg-slate-950/78 text-amber-100 shadow-[0_16px_42px_rgba(0,0,0,0.36)] ring-1 ring-white/10 backdrop-blur-xl transition-all hover:-translate-x-0.5 hover:scale-105 hover:border-amber-200/85 hover:bg-amber-400/22 hover:text-white hover:shadow-[0_18px_46px_rgba(245,158,11,0.22)] active:scale-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:left-2 lg:left-4"
+                  className="absolute bottom-3 left-3 top-auto inline-flex h-11 w-11 sm:top-1/2 sm:h-12 sm:w-12 translate-y-0 items-center sm:-translate-y-1/2 justify-center rounded-full border-amber-200/45 bg-background dark:bg-slate-950/78 text-amber-100 shadow-[0_16px_42px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10 backdrop-blur-xl transition-all hover:-translate-x-0.5 hover:scale-105 hover:border-amber-200/85 hover:bg-amber-400/22 hover:text-white hover:shadow-[0_18px_46px_rgba(245,158,11,0.22)] active:scale-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:left-2 lg:left-4"
                   onClick={onPrev}
                   aria-label="View previous chart"
                 >
@@ -121,7 +121,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute bottom-3 right-3 top-auto inline-flex h-11 w-11 sm:top-1/2 sm:h-12 sm:w-12 translate-y-0 items-center sm:-translate-y-1/2 justify-center rounded-full border-amber-200/45 bg-slate-950/78 text-amber-100 shadow-[0_16px_42px_rgba(0,0,0,0.36)] ring-1 ring-white/10 backdrop-blur-xl transition-all hover:translate-x-0.5 hover:scale-105 hover:border-amber-200/85 hover:bg-amber-400/22 hover:text-white hover:shadow-[0_18px_46px_rgba(245,158,11,0.22)] active:scale-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:right-2 lg:right-4"
+                  className="absolute bottom-3 right-3 top-auto inline-flex h-11 w-11 sm:top-1/2 sm:h-12 sm:w-12 translate-y-0 items-center sm:-translate-y-1/2 justify-center rounded-full border-amber-200/45 bg-background dark:bg-slate-950/78 text-amber-100 shadow-[0_16px_42px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10 backdrop-blur-xl transition-all hover:translate-x-0.5 hover:scale-105 hover:border-amber-200/85 hover:bg-amber-400/22 hover:text-white hover:shadow-[0_18px_46px_rgba(245,158,11,0.22)] active:scale-100 focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:right-2 lg:right-4"
                   onClick={onNext}
                   aria-label="View next chart"
                 >

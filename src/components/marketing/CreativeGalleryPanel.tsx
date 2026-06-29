@@ -171,7 +171,7 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                           {isBestCPL && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge className="bg-emerald-600 text-white text-[9px] px-1.5 py-0 gap-0.5">
+                                <Badge className="bg-emerald-600 text-foreground dark:text-white text-[9px] px-1.5 py-0 gap-0.5">
                                   <Trophy className="h-2.5 w-2.5" /> CPL
                                 </Badge>
                               </TooltipTrigger>
@@ -238,7 +238,7 @@ function CreativePreviewModal({ creative, onClose }: { creative: Creative | null
         {creative && (
           <div className="flex flex-col">
             {/* Media area - dynamic sizing based on actual dimensions */}
-            <div className="relative bg-black flex items-center justify-center">
+            <div className="relative bg-background dark:bg-black flex items-center justify-center">
               {creative.is_video && creative.video_url ? (
                 <video
                   src={creative.video_url}

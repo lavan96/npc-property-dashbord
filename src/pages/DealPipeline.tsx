@@ -41,7 +41,7 @@ import { useModulePermissions } from "@/hooks/useModulePermissions";
 import type { DealWithClient } from "@/hooks/useAllDeals";
 
 const pipelineTabTriggerClass = cn(
-  "group relative flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-zinc-300/82 transition-all duration-200",
+  "group relative flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-muted-foreground dark:text-zinc-300/82 transition-all duration-200",
   "border border-transparent hover:-translate-y-0.5 hover:border-amber-200/20 hover:bg-white/[0.075] hover:text-amber-100 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
   "data-[state=active]:border-amber-100/60 data-[state=active]:bg-[linear-gradient(135deg,#fde68a,#f59e0b_58%,#b45309)] data-[state=active]:text-amber-950",
@@ -55,7 +55,7 @@ const premiumScrollbarClass =
   "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950/80 [&::-webkit-scrollbar-thumb]:bg-amber-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/75";
 
 const pipelineTabContentClass = cn(
-  "mt-4 min-h-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-2 shadow-inner sm:p-4",
+  "mt-4 min-h-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-border dark:border-white/10 bg-background dark:bg-zinc-950/35 p-2 shadow-inner sm:p-4",
   "data-[state=active]:flex data-[state=active]:max-h-none data-[state=active]:flex-col md:data-[state=active]:max-h-[min(72dvh,calc(100dvh-12rem))]",
   premiumScrollbarClass,
 );
@@ -200,7 +200,7 @@ export default function DealPipeline() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="relative flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
+        className="relative flex min-h-0 flex-col rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
       >
         <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>

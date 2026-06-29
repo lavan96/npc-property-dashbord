@@ -431,7 +431,7 @@ export default function MarketingAnalytics() {
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="relative isolate border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.84)_52%,hsl(var(--primary)/0.10))] p-4 shadow-2xl shadow-black/10 dark:shadow-black/35 sm:p-5 lg:p-6"
+        className="relative isolate border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.84)_52%,hsl(var(--primary)/0.10))] p-4 shadow-2xl shadow-sm dark:shadow-black/10 dark:shadow-black/35 sm:p-5 lg:p-6"
       >
         <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative z-10 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -469,7 +469,7 @@ export default function MarketingAnalytics() {
       {/* Cross-Channel Summary (visible before selecting a tab) */}
       {!isLoading && insights.length > 0 && (
         <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 dark:shadow-black/25">
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card shadow-lg shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Layers className="h-3.5 w-3.5" />
@@ -479,7 +479,7 @@ export default function MarketingAnalytics() {
               <p className="text-[10px] text-muted-foreground mt-0.5">Meta Ads + ManyChat</p>
             </CardContent>
           </Card>
-          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
+          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <DollarSign className="h-3.5 w-3.5" />
@@ -489,7 +489,7 @@ export default function MarketingAnalytics() {
               <p className="text-[10px] text-muted-foreground mt-0.5">{dateLabel}</p>
             </CardContent>
           </Card>
-          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
+          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Target className="h-3.5 w-3.5" />
@@ -499,7 +499,7 @@ export default function MarketingAnalytics() {
               <p className="text-[10px] text-muted-foreground mt-0.5">From Meta Ads</p>
             </CardContent>
           </Card>
-          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
+          <Card className="overflow-hidden border-border/70 bg-card/85 shadow-lg shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 dark:border-white/10 dark:shadow-black/25">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <TrendingUp className="h-3.5 w-3.5" />
@@ -513,7 +513,7 @@ export default function MarketingAnalytics() {
       )}
 
       <Tabs value={activeChannel} onValueChange={setActiveChannel} className="min-w-0">
-        <DashboardThemeFrame variant="toolbar" className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-black/5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] dark:shadow-black/25">
+        <DashboardThemeFrame variant="toolbar" className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-sm dark:shadow-black/5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] dark:shadow-black/25">
         <TabsList className="h-auto min-w-max flex-1 justify-start gap-1 bg-transparent p-0 sm:min-w-0 sm:flex-wrap">
           <TabsTrigger value="meta" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
             <Target className="h-4 w-4" />
@@ -536,7 +536,7 @@ export default function MarketingAnalytics() {
         <TabsContent value="meta">
           <div className="space-y-6 mt-4">
       {/* Header */}
-      <DashboardThemeFrame variant="toolbar" className="items-start justify-between gap-3 rounded-3xl border-primary/15 bg-card/70 p-3 shadow-xl shadow-black/5 dark:shadow-black/20">
+      <DashboardThemeFrame variant="toolbar" className="items-start justify-between gap-3 rounded-3xl border-primary/15 bg-card/70 p-3 shadow-xl shadow-sm dark:shadow-black/5 dark:shadow-black/20">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Analytics Range</p>
           <p className="mt-1 text-sm text-muted-foreground">Filter Meta Ads performance without changing metric calculations.</p>
@@ -790,7 +790,7 @@ function KPICard({ icon, label, value, loading, accent }: {
 }) {
   return (
     <Card tabIndex={0} className={cn(
-      'group min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/10 dark:border-white/10 dark:shadow-black/25',
+      'group min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-lg shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/10 dark:border-white/10 dark:shadow-black/25',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
       accent && 'border-primary/25 bg-primary/[0.04] ring-1 ring-primary/10'
     )}>

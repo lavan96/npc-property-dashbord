@@ -542,7 +542,7 @@ function EditorialCanvasImpl({
             {guides.v.map((v, i) => (
               <div key={`v${i}`} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: v * zoom, width: 1, background: 'hsl(330 90% 55%)' }}>
                 <span
-                  className="absolute -translate-x-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-white shadow"
+                  className="absolute -translate-x-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-foreground dark:text-white shadow"
                   style={{ left: 0, top: 4 }}
                 >
                   x {Math.round(v)}
@@ -552,7 +552,7 @@ function EditorialCanvasImpl({
             {guides.h.map((h, i) => (
               <div key={`h${i}`} className="absolute left-0 right-0 pointer-events-none" style={{ top: h * zoom, height: 1, background: 'hsl(330 90% 55%)' }}>
                 <span
-                  className="absolute -translate-y-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-white shadow"
+                  className="absolute -translate-y-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-foreground dark:text-white shadow"
                   style={{ top: 0, left: 4 }}
                 >
                   y {Math.round(h)}
@@ -614,7 +614,7 @@ function EditorialCanvasImpl({
                 >
                   {overlayCommentCounts.has(o.id) && (
                     <div
-                      className="absolute -right-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white shadow"
+                      className="absolute -right-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-foreground dark:text-white shadow"
                       title={`${overlayCommentCounts.get(o.id)} unresolved comment${overlayCommentCounts.get(o.id) === 1 ? '' : 's'}`}
                     >
                       {overlayCommentCounts.get(o.id)}

@@ -65,7 +65,7 @@ export function ChartListRow({ chart, isSelected, onToggleSelect, onExpand, onEx
           }
         }}
       >
-        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-white/70 bg-white/95 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] transition-transform duration-200 group-hover/thumb:scale-[1.045] dark:border-white/10 dark:bg-slate-950/70">
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg border border-border dark:border-white/70 bg-card/95 dark:bg-white/95 p-1 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)] transition-transform duration-200 group-hover/thumb:scale-[1.045] dark:border-white/10 dark:bg-slate-950/70">
           {renderChartImage(chart)}
           <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-slate-950/5 group-hover/thumb:ring-amber-300/35 dark:ring-white/10" />
         </div>

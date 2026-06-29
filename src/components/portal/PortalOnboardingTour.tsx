@@ -183,7 +183,7 @@ export function PortalOnboardingTour() {
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-300" />
+      <div className="fixed inset-0 z-50 bg-background dark:bg-black/50 backdrop-blur-sm transition-opacity duration-300" />
 
       {isWelcome ? (
         /* Welcome Screen */

@@ -149,7 +149,7 @@ export function CalendarSearchDropdown({
             setIsOpen(true);
           }}
           onFocus={() => searchQuery.trim() && setIsOpen(true)}
-          className="h-10 w-full rounded-xl border-border bg-card/80 pl-10 pr-10 text-sm shadow-inner shadow-black/20 transition-all placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/35 sm:w-[300px] lg:w-[340px]"
+          className="h-10 w-full rounded-xl border-border bg-card/80 pl-10 pr-10 text-sm shadow-inner shadow-sm dark:shadow-black/20 transition-all placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/35 sm:w-[300px] lg:w-[340px]"
         />
         {searchQuery && (
           <button
@@ -173,10 +173,10 @@ export function CalendarSearchDropdown({
               <div className="space-y-2 p-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <Skeleton className="h-10 w-10 rounded-xl bg-white/10" />
+                    <Skeleton className="h-10 w-10 rounded-xl bg-card/10 dark:bg-white/10" />
                     <div className="flex-1 space-y-1.5">
-                      <Skeleton className="h-4 w-3/4 rounded bg-white/10" />
-                      <Skeleton className="h-3 w-1/2 rounded bg-white/10" />
+                      <Skeleton className="h-4 w-3/4 rounded bg-card/10 dark:bg-white/10" />
+                      <Skeleton className="h-3 w-1/2 rounded bg-card/10 dark:bg-white/10" />
                     </div>
                   </div>
                 ))}

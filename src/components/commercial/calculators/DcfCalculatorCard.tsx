@@ -677,7 +677,7 @@ export function DcfCalculatorCard() {
 
   return (
     <>
-    <Card className="overflow-hidden border-primary/20 bg-card/95 shadow-xl shadow-black/20">
+    <Card className="overflow-hidden border-primary/20 bg-card/95 shadow-xl shadow-sm dark:shadow-black/20">
       <CardHeader className="border-b border-border/60 bg-gradient-to-br from-background via-card to-primary/5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -783,7 +783,7 @@ export function DcfCalculatorCard() {
           </div>
 
           <aside className="order-1 space-y-4 lg:order-2">
-            <section className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-background p-4 shadow-lg shadow-black/20">
+            <section className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-background p-4 shadow-lg shadow-sm dark:shadow-black/20">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Label className="text-sm font-semibold text-primary">Cashflow readiness status</Label>

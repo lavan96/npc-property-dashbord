@@ -86,7 +86,7 @@ export function DrillDownExplorer({
   const bestCTR = enrichedRows.sort((a, b) => Number(b.ctr || 0) - Number(a.ctr || 0))[0];
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

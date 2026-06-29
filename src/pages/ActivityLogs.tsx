@@ -911,7 +911,7 @@ export default function ActivityLogs() {
       {/* Save Preset Dialog (lightweight popover) */}
       {presetDialogOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-background dark:bg-black/40 flex items-center justify-center p-4"
           onClick={() => setPresetDialogOpen(false)}
         >
           <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>

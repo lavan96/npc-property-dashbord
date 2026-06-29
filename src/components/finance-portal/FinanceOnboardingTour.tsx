@@ -108,7 +108,7 @@ export function FinanceOnboardingTour() {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm" />
+      <div className="fixed inset-0 z-50 bg-background dark:bg-black/55 backdrop-blur-sm" />
       {isWelcome ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 fade-in duration-300">

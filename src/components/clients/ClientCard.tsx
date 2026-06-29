@@ -263,11 +263,11 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
           {client.pipeline_status && client.pipeline_status !== 'New Lead' && (
             <div className="flex items-center justify-between gap-2 border-t border-stone-200 pt-2 dark:border-white/10">
               <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400"><Target className="h-3.5 w-3.5" />Pipeline</span>
-              <Badge className={cn(getPipelineStageColor(client.pipeline_status), 'max-w-[11rem] truncate text-xs text-white')}>{client.pipeline_status}</Badge>
+              <Badge className={cn(getPipelineStageColor(client.pipeline_status), 'max-w-[11rem] truncate text-xs text-foreground dark:text-white')}>{client.pipeline_status}</Badge>
             </div>
           )}
           {client.deal_status === 'closed' && (
-            <div className="flex items-center justify-between border-t border-stone-200 pt-2 dark:border-white/10"><span className="text-xs text-slate-500 dark:text-slate-400">Deal Status</span><Badge className="bg-emerald-600 text-white hover:bg-emerald-700">🏆 Deal Closed</Badge></div>
+            <div className="flex items-center justify-between border-t border-stone-200 pt-2 dark:border-white/10"><span className="text-xs text-slate-500 dark:text-slate-400">Deal Status</span><Badge className="bg-emerald-600 text-foreground dark:text-white hover:bg-emerald-700">🏆 Deal Closed</Badge></div>
           )}
         </div>
 

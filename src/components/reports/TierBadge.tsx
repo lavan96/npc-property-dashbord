@@ -19,7 +19,7 @@ export const TIER_INFO = {
     description: 'Client-facing 40-page macro, suburb, planning & risk report',
     pages: '~40',
     icon: Compass,
-    color: 'bg-amber-500 text-white hover:bg-amber-600',
+    color: 'bg-amber-500 text-foreground dark:text-white hover:bg-amber-600',
     badgeVariant: 'default' as const,
   },
   financial: {
@@ -28,7 +28,7 @@ export const TIER_INFO = {
     description: 'Separate financial breakdown: yield, loan, cashflow, 10-yr, tax',
     pages: '~20',
     icon: Calculator,
-    color: 'bg-emerald-600 text-white hover:bg-emerald-700',
+    color: 'bg-emerald-600 text-foreground dark:text-white hover:bg-emerald-700',
     badgeVariant: 'default' as const,
   },
   briefing: {
@@ -37,7 +37,7 @@ export const TIER_INFO = {
     description: 'Condensed ~20 page executive summary',
     pages: '~20',
     icon: FileText,
-    color: 'bg-blue-500 text-white hover:bg-blue-600',
+    color: 'bg-blue-500 text-foreground dark:text-white hover:bg-blue-600',
     badgeVariant: 'secondary' as const,
   },
   snapshot: {
@@ -46,7 +46,7 @@ export const TIER_INFO = {
     description: 'Quick 4-5 page summary overview',
     pages: '4-5',
     icon: Zap,
-    color: 'bg-green-500 text-white hover:bg-green-600',
+    color: 'bg-green-500 text-foreground dark:text-white hover:bg-green-600',
     badgeVariant: 'outline' as const,
   },
 };

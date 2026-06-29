@@ -592,8 +592,8 @@ export function ClawbackRiskMonitor({ deals, isLoading, onDealClick }: Props) {
               all: 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/20',
               active: 'bg-destructive text-destructive-foreground border-destructive shadow-sm shadow-destructive/20',
               expiring_soon: 'bg-warning text-warning-foreground border-warning shadow-sm shadow-warning/20',
-              expired: 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/20',
-              safe: 'bg-teal-600 text-white border-teal-600 shadow-sm shadow-teal-600/20',
+              expired: 'bg-emerald-600 text-foreground dark:text-white border-emerald-600 shadow-sm shadow-emerald-600/20',
+              safe: 'bg-teal-600 text-foreground dark:text-white border-teal-600 shadow-sm shadow-teal-600/20',
             };
             return (
               <button

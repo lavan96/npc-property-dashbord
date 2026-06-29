@@ -182,7 +182,7 @@ export function ManyChatPanel() {
     const isNotConfigured = errMsg.includes('MANYCHAT_API_KEY');
 
     return (
-      <Card className="overflow-hidden border-dashed border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+      <Card className="overflow-hidden border-dashed border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardContent className="py-12 text-center">
           <Bot className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-1">
@@ -223,7 +223,7 @@ export function ManyChatPanel() {
       </div>
 
       {/* Page Info Card */}
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <div className="bg-[linear-gradient(135deg,hsl(var(--primary)/0.10),hsl(var(--background)/0.35)_58%,hsl(var(--card)/0.92))] p-5">
           {isLoading ? (
             <div className="flex items-center gap-4">
@@ -314,7 +314,7 @@ export function ManyChatPanel() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Flow Status Card */}
           {flows.length > 0 && (
-            <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-black/20">
+            <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Activity className="h-4 w-4 text-primary" />
@@ -360,7 +360,7 @@ export function ManyChatPanel() {
 
           {/* Widget Type Breakdown */}
           {widgets.length > 0 && (
-            <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-black/20">
+            <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
@@ -393,7 +393,7 @@ export function ManyChatPanel() {
       )}
 
       {/* Subscriber Search */}
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -724,7 +724,7 @@ function CollapsibleSection({ title, description, icon, count, expanded, onToggl
   children: React.ReactNode;
 }) {
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-black/20">
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/20">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"

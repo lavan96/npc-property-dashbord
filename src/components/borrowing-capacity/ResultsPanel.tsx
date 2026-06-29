@@ -243,7 +243,7 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           }`}>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-medium text-muted-foreground">PROPOSED LOAN CHECK</p>
-              <Badge className={proposedLoanCheck.isServiceable ? 'bg-success text-white' : 'bg-destructive text-white'}>
+              <Badge className={proposedLoanCheck.isServiceable ? 'bg-success text-foreground dark:text-white' : 'bg-destructive text-foreground dark:text-white'}>
                 {proposedLoanCheck.isServiceable ? '✅ Serviceable' : '❌ Not Serviceable'}
               </Badge>
             </div>
@@ -581,10 +581,10 @@ export function ResultsPanel({ result, isCalculating, calculationMode = 'bank', 
           <p className="text-xs font-medium text-muted-foreground mb-2">SERVICEABILITY BAND</p>
           <div className="flex items-center gap-3">
             <div className={`p-3 rounded-lg ${bandConfig.bgColor}`}>
-              <BandIcon className="h-6 w-6 text-white" />
+              <BandIcon className="h-6 w-6 text-foreground dark:text-white" />
             </div>
             <div>
-              <Badge className={`${bandConfig.bgColor} text-white px-3 py-1`}>
+              <Badge className={`${bandConfig.bgColor} text-foreground dark:text-white px-3 py-1`}>
                 {bandConfig.label}
               </Badge>
               <p className="text-sm text-muted-foreground mt-1">{bandConfig.message}</p>

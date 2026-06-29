@@ -834,7 +834,7 @@ export default function Calendar() {
                     {/* Tab content */}
                     <ScrollArea className="flex-1 p-4">
                       {/* Mini Calendar Navigator */}
-                      <div className="mb-4 rounded-2xl border border-border bg-background/55 p-3 shadow-inner shadow-black/20">
+                      <div className="mb-4 rounded-2xl border border-border bg-background/55 p-3 shadow-inner shadow-sm dark:shadow-black/20">
                         <MiniCalendarNavigator
                           currentMonth={currentMonth}
                           setCurrentMonth={setCurrentMonth}
@@ -856,7 +856,7 @@ export default function Calendar() {
                           {isLoading ? (
                             <SidebarLoadingSkeleton />
                           ) : (selectedDate ? selectedDateEvents : upcomingEvents).length === 0 ? (
-                            <div className="rounded-2xl border border-border bg-background/55 px-4 py-8 text-center text-muted-foreground shadow-inner shadow-black/20">
+                            <div className="rounded-2xl border border-border bg-background/55 px-4 py-8 text-center text-muted-foreground shadow-inner shadow-sm dark:shadow-black/20">
                               <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary/80">
                                 <CalendarIcon className="h-5 w-5" />
                               </div>
@@ -980,7 +980,7 @@ export default function Calendar() {
               setSearchQuery={setSearchQuery}
             />
             <Tabs value={view} onValueChange={(v) => handleViewChange(v as 'month' | 'week' | 'timeline')}>
-              <TabsList className="h-10 w-full rounded-xl border border-border bg-card/80 p-1 shadow-inner shadow-black/20 sm:w-auto">
+              <TabsList className="h-10 w-full rounded-xl border border-border bg-card/80 p-1 shadow-inner shadow-sm dark:shadow-black/20 sm:w-auto">
                 <TabsTrigger value="month" className="h-8 rounded-lg px-3 text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-muted/50 data-[state=inactive]:hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40">Month</TabsTrigger>
                 <TabsTrigger value="week" className="h-8 rounded-lg px-3 text-xs text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=inactive]:hover:bg-muted/50 data-[state=inactive]:hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40">Week</TabsTrigger>
                 {!isMobile && (
@@ -992,7 +992,7 @@ export default function Calendar() {
               </TabsList>
             </Tabs>
             <Select value={selectedCalendarId} onValueChange={setSelectedCalendarId}>
-              <SelectTrigger className="h-10 w-full min-w-[200px] flex-1 shrink-0 rounded-xl border-border bg-card/80 px-3 text-sm shadow-inner shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px] sm:flex-none">
+              <SelectTrigger className="h-10 w-full min-w-[200px] flex-1 shrink-0 rounded-xl border-border bg-card/80 px-3 text-sm shadow-inner shadow-sm dark:shadow-black/20 transition-all hover:border-primary/30 hover:bg-primary/10 focus:ring-2 focus:ring-primary/40 sm:w-[220px] sm:flex-none">
                 <Filter className="mr-2 h-4 w-4 text-primary/80" />
                 <SelectValue placeholder="All Calendars" />
               </SelectTrigger>
@@ -1198,7 +1198,7 @@ export default function Calendar() {
               ) : view === 'month' ? (
                 <>
                   {/* Day headers - Sticky */}
-                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-card/90 p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+                  <div className="sticky top-0 z-10 mb-2 grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-card/90 p-1.5 shadow-inner shadow-sm dark:shadow-black/30 backdrop-blur">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                       <div key={day} className="rounded-xl py-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-xs">
                         {isMobile ? day.charAt(0) : day}
@@ -1206,7 +1206,7 @@ export default function Calendar() {
                     ))}
                   </div>
                   {/* Calendar grid with DropZones */}
-                  <div className="grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-muted/40 p-1.5 shadow-inner shadow-black/20 md:gap-2 md:p-2">
+                  <div className="grid grid-cols-7 gap-1.5 rounded-2xl border border-border bg-muted/40 p-1.5 shadow-inner shadow-sm dark:shadow-black/20 md:gap-2 md:p-2">
                     {calendarDays.map(day => {
                       const dayEvents = getEventsForDay(day);
                       const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -1284,7 +1284,7 @@ export default function Calendar() {
                                         }
                                       }}
                                       style={getEventStyle(event)}
-                                      className="flex min-h-[20px] items-center gap-1.5 overflow-hidden rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-none shadow-sm ring-1 ring-white/10 transition-all duration-150 ease-out cursor-pointer hover:translate-x-0.5 hover:opacity-95 hover:ring-white/20 hover:shadow-[0_6px_18px_hsl(0_0%_0%/0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
+                                      className="flex min-h-[20px] items-center gap-1.5 overflow-hidden rounded-lg px-1.5 py-1 text-[10px] font-semibold leading-none shadow-sm ring-1 ring-border dark:ring-white/10 transition-all duration-150 ease-out cursor-pointer hover:translate-x-0.5 hover:opacity-95 hover:ring-white/20 hover:shadow-[0_6px_18px_hsl(0_0%_0%/0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 md:px-2"
                                     >
                                       <span className="shrink-0 tabular-nums">{safeFormatISO(event.startTime, 'HH:mm')}</span>
                                       {!isMobile && (
@@ -1308,7 +1308,7 @@ export default function Calendar() {
                 </>
               ) : view === 'week' ? (
                 /* Week View with Drag and Drop */
-                <div className={cn("h-[600px] rounded-2xl border border-border bg-muted/40 shadow-inner shadow-black/20", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
+                <div className={cn("h-[600px] rounded-2xl border border-border bg-muted/40 shadow-inner shadow-sm dark:shadow-black/20", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
                   <div className="min-w-[700px]">
                     {/* Week day headers - Sticky */}
                     <div className="sticky top-0 z-10 mb-1 grid grid-cols-8 gap-1 border-b border-border bg-popover p-2 shadow-sm backdrop-blur-xl">
@@ -1363,7 +1363,7 @@ export default function Calendar() {
                                         }
                                       }}
                                       style={getEventStyle(event)}
-                                      className="mb-1 w-full cursor-pointer truncate rounded-lg px-1.5 py-1 text-left text-[10px] shadow-sm ring-1 ring-white/10 transition-all hover:translate-x-0.5 hover:opacity-90 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+                                      className="mb-1 w-full cursor-pointer truncate rounded-lg px-1.5 py-1 text-left text-[10px] shadow-sm ring-1 ring-border dark:ring-white/10 transition-all hover:translate-x-0.5 hover:opacity-90 hover:ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                                     >
                                       <div className="font-medium truncate">
                                         {event.title || 'Event'}
@@ -1495,7 +1495,7 @@ export default function Calendar() {
 
                 <TooltipProvider delayDuration={100}>
                   <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as any)}>
-                    <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-2xl border border-border bg-card/80 p-2 shadow-inner shadow-black/20">
+                    <TabsList className="grid h-auto w-full grid-cols-4 gap-2 rounded-2xl border border-border bg-card/80 p-2 shadow-inner shadow-sm dark:shadow-black/20">
                       {SIDEBAR_TABS.map((tab) => {
                         const isPinned = pinnedTabs.includes(tab.id);
                         return (
@@ -1538,7 +1538,7 @@ export default function Calendar() {
 
               <CardContent className="p-3">
               {/* Mini Calendar Navigator */}
-              <div className="mb-4 rounded-2xl border border-border bg-muted/40 p-3 shadow-inner shadow-black/20">
+              <div className="mb-4 rounded-2xl border border-border bg-muted/40 p-3 shadow-inner shadow-sm dark:shadow-black/20">
                 <MiniCalendarNavigator
                   currentMonth={currentMonth}
                   setCurrentMonth={setCurrentMonth}

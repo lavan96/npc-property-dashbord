@@ -63,7 +63,7 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 rounded-2xl border-border/70 bg-card/95 p-4 shadow-xl shadow-black/10 backdrop-blur" align="end">
+      <PopoverContent className="w-80 rounded-2xl border-border/70 bg-card/95 p-4 shadow-xl shadow-sm dark:shadow-black/10 backdrop-blur" align="end">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold tracking-tight">Filter Overview Data</h4>

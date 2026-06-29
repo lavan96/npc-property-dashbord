@@ -130,7 +130,7 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
 
   return (
     <Card className="min-w-0 overflow-hidden rounded-[1.35rem] border-amber-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_36%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.90)_48%,rgba(0,0,0,0.72))] shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]">
-      <CardHeader className="border-b border-amber-100/10 bg-black/15 px-4 py-4 sm:px-6">
+      <CardHeader className="border-b border-amber-100/10 bg-background dark:bg-black/15 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight sm:text-lg">
@@ -147,9 +147,9 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
         </div>
       </CardHeader>
       <CardContent className="min-w-0 p-3 sm:p-4">
-        <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-amber-100/15 bg-zinc-950/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
+        <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-amber-100/15 bg-background dark:bg-zinc-950/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
           <Table className="min-w-[900px]">
-            <TableHeader className="sticky top-0 z-10 bg-zinc-950/85 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/75">
+            <TableHeader className="sticky top-0 z-10 bg-background dark:bg-zinc-950/85 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/75">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="whitespace-nowrap px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Client</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Stage</TableHead>

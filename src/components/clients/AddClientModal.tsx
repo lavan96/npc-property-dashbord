@@ -233,23 +233,23 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
       if (!isOpen) resetForm();
       onOpenChange(isOpen);
     }}>
-      <DialogContent className="w-[95vw] overflow-hidden rounded-3xl border-amber-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-0 shadow-2xl shadow-black/40 sm:max-w-[560px]">
+      <DialogContent className="w-[95vw] overflow-hidden rounded-3xl border-amber-500/20 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.98),rgba(3,7,18,0.96))] p-0 shadow-2xl shadow-sm dark:shadow-black/40 sm:max-w-[560px]">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
-        <DialogHeader className="border-b border-white/10 px-5 pb-4 pt-5 sm:px-6">
-          <DialogTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-white">
+        <DialogHeader className="border-b border-border dark:border-white/10 px-5 pb-4 pt-5 sm:px-6">
+          <DialogTitle className="flex items-center gap-3 text-xl font-bold tracking-tight text-foreground dark:text-white">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/15 text-amber-100 shadow-lg shadow-amber-950/20">
               <UserPlus className="h-5 w-5" />
             </span>
             Add New Client
           </DialogTitle>
-          <DialogDescription className="text-sm leading-6 text-slate-400">
+          <DialogDescription className="text-sm leading-6 text-muted-foreground dark:text-slate-400">
             Create a new client record. Optionally sync to GoHighLevel.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="max-h-[75vh] space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
           {/* Primary Contact */}
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="space-y-3 rounded-2xl border border-border dark:border-white/10 bg-white/[0.035] p-4">
             <h4 className="text-sm font-semibold text-amber-100">Primary Contact</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -297,8 +297,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
           </div>
 
           {/* Secondary Contact */}
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-            <h4 className="text-sm font-semibold text-slate-300">Secondary Contact (Optional)</h4>
+          <div className="space-y-3 rounded-2xl border border-border dark:border-white/10 bg-white/[0.025] p-4">
+            <h4 className="text-sm font-semibold text-muted-foreground dark:text-slate-300">Secondary Contact (Optional)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="secondary_first_name">First Name</Label>
@@ -322,7 +322,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
           </div>
 
           {/* Address */}
-          <div className="space-y-1.5 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+          <div className="space-y-1.5 rounded-2xl border border-border dark:border-white/10 bg-white/[0.025] p-4">
             <Label htmlFor="current_address">Current Address</Label>
             <Input
               id="current_address"
@@ -346,7 +346,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
 
           {/* Pipeline + Stage (shown when GHL sync enabled) */}
           {syncToGHL && (
-            <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="space-y-3 rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/20 p-4">
               <div className="space-y-1.5">
                 <Label htmlFor="pipeline">Pipeline (Optional)</Label>
                 <Select
@@ -415,8 +415,8 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
             </div>
           )}
 
-          <DialogFooter className="gap-2 border-t border-white/10 pt-4 sm:gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-2xl border-white/15 bg-white/[0.03] hover:bg-white/[0.07]">
+          <DialogFooter className="gap-2 border-t border-border dark:border-white/10 pt-4 sm:gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-2xl border-border dark:border-white/15 bg-white/[0.03] hover:bg-white/[0.07]">
               Cancel
             </Button>
             <Button type="submit" disabled={createClientMutation.isPending} className="rounded-2xl bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 font-bold text-black shadow-lg shadow-amber-500/25 hover:from-amber-200 hover:via-yellow-300 hover:to-amber-400 disabled:opacity-60">

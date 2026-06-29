@@ -199,13 +199,13 @@ export function GamePlanDetail({ plan, onBack }: Props) {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.16)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
+      className="min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.16)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-sm dark:shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
     >
       {/* Header */}
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.13))] p-4 shadow-xl shadow-black/10 dark:shadow-black/30 sm:p-5 lg:p-6"
+        className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.13))] p-4 shadow-xl shadow-sm dark:shadow-black/10 dark:shadow-black/30 sm:p-5 lg:p-6"
       >
         <Button variant="ghost" size="sm" onClick={onBack} className="mb-4 gap-1.5 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Game Plans
@@ -284,7 +284,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
           ) : (
             <div className="flex min-w-0 items-center gap-4">
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/20 text-2xl shadow-lg ring-1 ring-white/30 dark:ring-white/10"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border dark:border-white/20 text-2xl shadow-lg ring-1 ring-border dark:ring-white/30 dark:ring-white/10"
                 style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}80)` }}
               >
                 {plan.icon}
@@ -334,7 +334,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
           { label: 'KPIs Tracked', value: kpis.length, emoji: '📊' },
           { label: 'Progress', value: `${overallProgress}%`, emoji: '🚀' },
         ].map(stat => (
-          <DashboardThemeFrame key={stat.label} variant="card" className="p-3 text-center shadow-lg shadow-black/5 dark:shadow-black/20">
+          <DashboardThemeFrame key={stat.label} variant="card" className="p-3 text-center shadow-lg shadow-sm dark:shadow-black/5 dark:shadow-black/20">
             <span className="text-lg">{stat.emoji}</span>
             <div className="mt-0.5 text-lg font-bold text-foreground">{stat.value}</div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{stat.label}</div>
@@ -358,7 +358,7 @@ export function GamePlanDetail({ plan, onBack }: Props) {
 
       {/* Search bar */}
       {phases.length > 0 && (
-        <div className="relative rounded-2xl border border-border/60 bg-card/60 p-2 shadow-lg shadow-black/5 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/20">
+        <div className="relative rounded-2xl border border-border/60 bg-card/60 p-2 shadow-lg shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/20">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={searchQuery}

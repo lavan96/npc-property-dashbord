@@ -146,7 +146,7 @@ const FALLBACK_STAGES = [
 const badgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 shadow-sm";
 const compactBadgeBaseClass = "inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 shadow-sm";
 const actionIconButtonClass = "client-tracker-gold-interaction rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0";
-const actionMenuContentClass = "z-50 min-w-[12rem] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-black/20 backdrop-blur-xl";
+const actionMenuContentClass = "z-50 min-w-[12rem] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur-xl";
 const actionMenuItemClass = "cursor-pointer rounded-lg px-2.5 py-2 text-sm focus:bg-primary/10 focus:text-primary";
 
 const getStageBadgeStyle = (color: string) => ({
@@ -803,7 +803,7 @@ export default function ClientTracker() {
   return (
     <DashboardThemeFrame as="main" variant="page" className="min-h-screen max-w-none space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_42%,hsl(var(--muted)/0.18))] p-3 pb-20 md:space-y-6 md:p-6 md:pb-8">
       {/* Header */}
-      <DashboardThemeFrame as="header" variant="hero" className="client-tracker-gold-interaction border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-black/25 md:p-5">
+      <DashboardThemeFrame as="header" variant="hero" className="client-tracker-gold-interaction border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82))] p-4 shadow-2xl shadow-sm dark:shadow-black/25 md:p-5">
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
         <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -963,7 +963,7 @@ export default function ClientTracker() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -977,7 +977,7 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -991,7 +991,7 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-red-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -1005,7 +1005,7 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
           <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
@@ -1023,7 +1023,7 @@ export default function ClientTracker() {
 
       {/* Upcoming Appointments from GHL Calendar */}
       {upcomingAppointments.length > 0 && (
-        <Card className="border-border/70 bg-card/80 shadow-lg shadow-black/10">
+        <Card className="border-border/70 bg-card/80 shadow-lg shadow-sm dark:shadow-black/10">
           <CardHeader className="py-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -1123,7 +1123,7 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <DashboardThemeFrame as="section" variant="section" className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.35rem] border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-black/15">
+      <DashboardThemeFrame as="section" variant="section" className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.35rem] border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-sm dark:shadow-black/15">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
         <div className="relative flex flex-col gap-3 md:flex-row md:items-center">
           <div className="group relative flex-1">
@@ -1157,7 +1157,7 @@ export default function ClientTracker() {
                         <Layers className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Select Pipeline" />
                       </SelectTrigger>
-                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur-xl">
                         <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                         {pipelines.map(pipeline => (
                           <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
@@ -1174,7 +1174,7 @@ export default function ClientTracker() {
                         <Filter className="mr-2 h-4 w-4 text-primary" />
                         <SelectValue placeholder="Filter by stage" />
                       </SelectTrigger>
-                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                      <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur-xl">
                         <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                         {stagesForPipeline.map(stage => (
                           <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
@@ -1198,7 +1198,7 @@ export default function ClientTracker() {
                   <Layers className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Select Pipeline" />
                 </SelectTrigger>
-                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur-xl">
                   <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Pipelines</SelectItem>
                   {pipelines.map(pipeline => (
                     <SelectItem key={pipeline.id} value={pipeline.id} className="focus:bg-primary/10 focus:text-foreground">
@@ -1213,7 +1213,7 @@ export default function ClientTracker() {
                   <Filter className="mr-2 h-4 w-4 text-primary" />
                   <SelectValue placeholder="Filter by stage" />
                 </SelectTrigger>
-                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur-xl">
+                <SelectContent className="border-border/70 bg-popover/95 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur-xl">
                   <SelectItem value="all" className="font-medium text-muted-foreground focus:bg-primary/10 focus:text-foreground">All Stages</SelectItem>
                   {stagesForPipeline.map(stage => (
                     <SelectItem key={stage.id} value={stage.name} className="focus:bg-primary/10 focus:text-foreground">
@@ -1232,7 +1232,7 @@ export default function ClientTracker() {
 
       {/* No pipelines synced message */}
       {!isLoading && pipelines.length === 0 && (
-        <Card className="overflow-hidden rounded-2xl border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.66))] shadow-xl shadow-black/15">
+        <Card className="overflow-hidden rounded-2xl border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.66))] shadow-xl shadow-sm dark:shadow-black/15">
           <CardContent className="py-10 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-inner">
               <Layers className="h-7 w-7" />
@@ -1267,7 +1267,7 @@ export default function ClientTracker() {
 
       {/* Tabs for different views */}
       {(pipelines.length > 0 || clients.length > 0) && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-border/70 bg-card/55 p-3 shadow-xl shadow-black/15 backdrop-blur md:p-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-border/70 bg-card/55 p-3 shadow-xl shadow-sm dark:shadow-black/15 backdrop-blur md:p-4">
           <div className="-mx-3 overflow-x-auto px-3 md:mx-0 md:px-0" aria-label="Client tracker view tabs">
             <TabsList className="inline-flex h-12 w-auto min-w-max gap-1 rounded-2xl border border-border/70 bg-background/80 p-1.5 shadow-inner">
               {!isMobile && (
@@ -1321,7 +1321,7 @@ export default function ClientTracker() {
               </div>
             )}
             
-            <div className="rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(135deg,hsl(var(--background)/0.72),hsl(var(--card)/0.62))] p-3 shadow-inner shadow-black/20">
+            <div className="rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(135deg,hsl(var(--background)/0.72),hsl(var(--card)/0.62))] p-3 shadow-inner shadow-sm dark:shadow-black/20">
               <ScrollArea className="client-tracker-kanban-scroll w-full whitespace-nowrap rounded-[1.15rem]" aria-label="Kanban board stages">
                 <div className="flex gap-4 pb-5 pr-3 sm:gap-5">
                 {/* Render stages in order */}
@@ -1338,7 +1338,7 @@ export default function ClientTracker() {
                       onDrop={isDragDropEnabled ? (e) => handleDrop(e, stage.id, stage.name) : undefined}
                     >
                       <Card className={cn(
-                        "client-tracker-gold-interaction flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-primary/10",
+                        "client-tracker-gold-interaction flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-border/70 bg-background/75 shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-primary/10",
                         draggedClient && isDragDropEnabled && !isDragOver && "border-primary/20 bg-primary/[0.03]",
                         isDragOver && isDragDropEnabled && "client-tracker-drop-glow scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                       )}>
@@ -1408,7 +1408,7 @@ export default function ClientTracker() {
                     onDrop={isDragDropEnabled ? (e) => handleDrop(e, null, 'Unassigned') : undefined}
                   >
                     <Card className={cn(
-                      "client-tracker-gold-interaction flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-black/15 transition-all duration-300 hover:border-primary/35",
+                      "client-tracker-gold-interaction flex h-full min-h-[620px] flex-col overflow-hidden rounded-2xl border-dashed border-border/70 bg-background/60 shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 hover:border-primary/35",
                       draggedClient && isDragDropEnabled && dragOverStageId !== 'unassigned' && "border-primary/20 bg-primary/[0.03]",
                       dragOverStageId === 'unassigned' && isDragDropEnabled && "client-tracker-drop-glow scale-[1.01] border-primary/70 bg-primary/12 ring-2 ring-primary/45 shadow-2xl shadow-primary/25"
                     )}>
@@ -1472,7 +1472,7 @@ export default function ClientTracker() {
 
           {/* Pipeline List View */}
           <TabsContent value="pipeline" className="mt-4">
-            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
+            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-sm dark:shadow-black/15">
               <CardContent className="p-0">
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center gap-3 p-10 text-center text-muted-foreground">
@@ -1606,7 +1606,7 @@ export default function ClientTracker() {
 
           {/* Table View */}
           <TabsContent value="table" className="mt-4">
-            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-black/15">
+            <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.76),hsl(var(--card)/0.58))] shadow-xl shadow-sm dark:shadow-black/15">
               <CardContent className="client-tracker-kanban-scroll overflow-x-auto p-0" role="region" aria-label="Client tracker table" tabIndex={0}>
                 <Table className="min-w-[1120px]" aria-label="Client tracker client table">
                   <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-xl">
@@ -1736,7 +1736,7 @@ export default function ClientTracker() {
           {/* Active Clients View */}
           <TabsContent value="active" className="mt-4">
             <div className="grid gap-4">
-              <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.78),hsl(var(--card)/0.6))] shadow-xl shadow-black/15">
+              <Card className="overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(135deg,hsl(var(--background)/0.78),hsl(var(--card)/0.6))] shadow-xl shadow-sm dark:shadow-black/15">
                 <CardHeader className="border-b border-border/60 bg-card/35">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
@@ -1754,7 +1754,7 @@ export default function ClientTracker() {
                       </p>
                     </div>
                     {/* Deal Status Sub-Filters */}
-                    <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-black/10">
+                    <div className="flex flex-wrap items-center gap-1 rounded-2xl border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-sm dark:shadow-black/10">
                       <Button
                         variant={activeDealFilter === 'all' ? 'secondary' : 'ghost'}
                         size="sm"
@@ -1911,7 +1911,7 @@ function KanbanCard({
   return (
     <Card 
       className={cn(
-        "client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.72))] p-3.5 shadow-md shadow-black/15 transition-all duration-300 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:-translate-y-1 hover:border-primary/40 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/15 hover:before:bg-primary/80",
+        "client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.72))] p-3.5 shadow-md shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/0 before:transition-colors hover:-translate-y-1 hover:border-primary/40 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/15 hover:before:bg-primary/80",
         isDraggable && "cursor-grab active:cursor-grabbing",
         isDragging && "client-tracker-drop-glow z-20 -rotate-1 scale-[1.02] cursor-grabbing border-primary/80 bg-primary/12 opacity-90 shadow-2xl shadow-primary/30 ring-2 ring-primary/60 before:bg-primary"
       )}

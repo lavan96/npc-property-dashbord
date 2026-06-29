@@ -83,7 +83,7 @@ export function MessageComposer({ value, onChange, onSend, isSending, disabled, 
 
   return (
     <div className={cn(
-      'rounded-2xl border border-amber-200/15 bg-zinc-950/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_28px_rgba(0,0,0,0.18)] overflow-hidden transition-all duration-200 focus-within:border-amber-300/55 focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(251,191,36,0.12),0_0_34px_rgba(245,158,11,0.16)]',
+      'rounded-2xl border border-amber-200/15 bg-background dark:bg-zinc-950/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_28px_rgba(0,0,0,0.18)] overflow-hidden transition-all duration-200 focus-within:border-amber-300/55 focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(251,191,36,0.12),0_0_34px_rgba(245,158,11,0.16)]',
       showToolbar && 'ring-0 focus-within:ring-2 focus-within:ring-amber-300/20'
     )}>
       {showToolbar && (
@@ -95,7 +95,7 @@ export function MessageComposer({ value, onChange, onSend, isSending, disabled, 
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 rounded-lg text-zinc-300 transition-all hover:-translate-y-0.5 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  className="h-7 w-7 rounded-lg text-muted-foreground dark:text-zinc-300 transition-all hover:-translate-y-0.5 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                   onClick={() => insertFormatting(prefix, suffix)}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -125,7 +125,7 @@ export function MessageComposer({ value, onChange, onSend, isSending, disabled, 
           }}
           placeholder={placeholder}
           rows={rows}
-          className="min-h-[60px] max-h-[160px] resize-none rounded-xl border-0 bg-transparent py-1.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-[60px] max-h-[160px] resize-none rounded-xl border-0 bg-transparent py-1.5 text-sm text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-zinc-500 focus-visible:ring-0 focus-visible:ring-offset-0"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();

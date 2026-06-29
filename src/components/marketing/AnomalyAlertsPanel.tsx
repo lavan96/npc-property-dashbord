@@ -55,7 +55,7 @@ interface AnomalyAlertsPanelProps {
 export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelProps) {
   if (loading) {
     return (
-      <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+      <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
@@ -80,7 +80,7 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
   const info = anomalies.filter(a => a.type === 'info');
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base">
