@@ -218,45 +218,45 @@ export default function GammaTemplateManager() {
             </TableHeader>
             <TableBody>
               {templates.map((t) => (
-                <TableRow key={t.id} className="border-border/45 transition-colors hover:bg-amber-500/5 dark:hover:bg-amber-300/5">
+                <TableRow key={t.id} className="group border-border/40 transition-all duration-200 hover:bg-[linear-gradient(90deg,hsl(43_84%_52%/0.08),hsl(var(--background)/0.55))] hover:shadow-[inset_3px_0_0_hsl(43_84%_52%/0.75)] dark:border-white/10 dark:hover:bg-[linear-gradient(90deg,rgba(251,191,36,0.09),rgba(15,23,42,0.28))] dark:hover:shadow-[inset_3px_0_0_rgba(251,191,36,0.72)]">
                   <TableCell className="py-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-foreground sm:text-base">{t.name}</span>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span className="text-sm font-bold tracking-[-0.01em] text-foreground transition-colors group-hover:text-amber-700 sm:text-base dark:group-hover:text-amber-100">{t.name}</span>
                     {t.is_default && (
-                      <Badge variant="default" className="gap-1 rounded-full border-amber-300/40 bg-[linear-gradient(135deg,hsl(43_84%_52%),hsl(38_92%_50%))] px-2.5 py-1 text-[0.68rem] font-bold text-slate-950 shadow-[0_8px_22px_hsl(43_84%_52%/0.25)]"><Sparkles className="h-3 w-3" />Default</Badge>
+                      <Badge variant="default" className="gap-1 rounded-full border border-amber-200/70 bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_48%,hsl(35_92%_48%))] px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-950 shadow-[0_10px_24px_hsl(43_84%_52%/0.28),inset_0_1px_0_rgba(255,255,255,0.72)] dark:border-amber-100/35 dark:shadow-[0_10px_28px_rgba(251,191,36,0.18),inset_0_1px_0_rgba(255,255,255,0.35)]"><Sparkles className="h-3 w-3 fill-slate-950/20" />Default</Badge>
                     )}
                     </div>
                     {t.description && <p className="mt-1 max-w-md truncate text-xs text-muted-foreground">{t.description}</p>}
                   </TableCell>
                   <TableCell className="hidden py-4 md:table-cell">
-                    <code className="inline-flex max-w-[15rem] items-center rounded-lg border border-border/60 bg-muted/45 px-2.5 py-1 font-mono text-[0.72rem] text-muted-foreground shadow-inner dark:border-white/10 dark:bg-white/[0.04]" title={t.gamma_template_id}>
+                    <code className="inline-flex max-w-[15rem] items-center rounded-xl border border-border/70 bg-muted/55 px-3 py-1.5 font-mono text-[0.72rem] font-semibold text-foreground/75 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45)] transition-colors group-hover:border-amber-300/45 group-hover:bg-amber-50/60 group-hover:text-amber-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:group-hover:border-amber-200/25 dark:group-hover:bg-amber-200/10 dark:group-hover:text-amber-50" title={t.gamma_template_id}>
                       <span className="truncate">{t.gamma_template_id}</span>
                     </code>
                   </TableCell>
                   <TableCell className="hidden py-4 sm:table-cell">
-                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary dark:border-amber-200/15 dark:bg-amber-200/10 dark:text-amber-100">
+                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-indigo-300/35 bg-indigo-500/10 px-2.5 py-1 text-xs font-bold text-indigo-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-indigo-200/20 dark:bg-indigo-300/10 dark:text-indigo-100">
                       <Layers3 className="h-3 w-3" />
                       {t.placeholder_mappings.length} mappings
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4">
-                    <Badge variant={t.is_active ? 'outline' : 'secondary'} className={t.is_active ? 'rounded-full border-emerald-400/35 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300' : 'rounded-full px-2.5 py-1 text-xs font-semibold'}>
+                    <Badge variant={t.is_active ? 'outline' : 'secondary'} className={t.is_active ? 'rounded-full border-teal-400/45 bg-[linear-gradient(135deg,rgba(20,184,166,0.14),rgba(16,185,129,0.10))] px-2.5 py-1 text-xs font-bold text-teal-700 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_8px_18px_rgba(20,184,166,0.10)] dark:border-teal-200/25 dark:bg-teal-300/10 dark:text-teal-200' : 'rounded-full border border-slate-300/50 bg-slate-500/10 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:border-white/10 dark:text-slate-300'}>
                       <span className={t.is_active ? 'mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.14)]' : 'mr-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
                       {t.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4">
-                    <div className="flex justify-end gap-1.5">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
-                        {t.is_default ? <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" /> : <StarOff className="h-3.5 w-3.5" />}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-amber-300/45 hover:bg-amber-500/10 hover:text-amber-700 hover:shadow-[0_8px_18px_hsl(43_84%_52%/0.16)] dark:hover:border-amber-200/25 dark:hover:text-amber-200" onClick={() => setDefaultMutation.mutate(t.id)} title="Set as default">
+                        {t.is_default ? <Star className="h-4 w-4 fill-amber-400 text-amber-500 drop-shadow-[0_0_7px_rgba(245,158,11,0.45)]" /> : <StarOff className="h-4 w-4" />}
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-amber-500/10 hover:text-amber-700 dark:hover:text-amber-200" onClick={() => openEdit(t)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-sky-300/45 hover:bg-sky-500/10 hover:text-sky-700 hover:shadow-[0_8px_18px_rgba(14,165,233,0.14)] dark:hover:border-sky-200/25 dark:hover:text-sky-200" onClick={() => openEdit(t)} title="Edit template">
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => {
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl border border-transparent text-destructive/80 transition-all hover:-translate-y-0.5 hover:border-destructive/25 hover:bg-destructive/10 hover:text-destructive hover:shadow-[0_8px_18px_hsl(var(--destructive)/0.12)]" title="Delete template" onClick={() => {
                         if (confirm('Delete this template?')) deleteMutation.mutate(t.id);
                       }}>
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
