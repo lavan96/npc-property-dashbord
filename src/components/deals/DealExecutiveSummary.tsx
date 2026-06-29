@@ -150,7 +150,7 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
       {/* Deal Table — filters now handled by parent toolbar */}
       <Card className="overflow-hidden rounded-[1.25rem] border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(9,9,11,0.92))] shadow-[0_20px_60px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)]">
         <CardContent className="p-0">
-          <div className="max-w-full overflow-auto">
+          <div className="max-w-full overflow-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
             <Table className="min-w-[880px]">
               <TableHeader className="bg-black/30">
                 <TableRow className="border-amber-100/10 hover:bg-transparent">

@@ -515,7 +515,7 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-h-0 min-w-0 space-y-3 overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="flex items-center gap-2 flex-wrap">
@@ -562,7 +562,7 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
 
       {/* Timeline chart */}
       <Card className="overflow-hidden border-border/70 bg-card/80 shadow-xl shadow-black/5">
-        <div className="overflow-x-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border" ref={scrollRef}>
+        <div className="min-w-0 overflow-x-auto scroll-smooth overscroll-x-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70" ref={scrollRef}>
           <div style={{ minWidth: `${Math.max(920, totalDays * 4)}px` }}>
             {/* Header with month markers */}
             <TimelineHeader globalStart={globalStart} globalEnd={globalEnd} totalDays={totalDays} />

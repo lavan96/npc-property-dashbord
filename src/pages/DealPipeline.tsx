@@ -50,6 +50,15 @@ const pipelineTabTriggerClass = cn(
 const pipelineTabIconClass =
   "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-data-[state=active]:drop-shadow-[0_1px_8px_rgba(120,53,15,0.28)] sm:h-[18px] sm:w-[18px]";
 
+const premiumScrollbarClass =
+  "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950/80 [&::-webkit-scrollbar-thumb]:bg-amber-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/75";
+
+const pipelineTabContentClass = cn(
+  "mt-4 min-h-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4",
+  "data-[state=active]:flex data-[state=active]:max-h-[min(72dvh,calc(100dvh-12rem))] data-[state=active]:flex-col",
+  premiumScrollbarClass,
+);
+
 export default function DealPipeline() {
   const { data: deals = [], isLoading, error } = useAllDeals();
   const { updateBuildPayment, updateDeal, updateDealStage } =
@@ -122,7 +131,7 @@ export default function DealPipeline() {
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-[1800px] space-y-5 overflow-hidden rounded-[2rem] border border-amber-300/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.92)_42%,rgba(10,10,10,0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6">
+    <div className={cn("relative mx-auto flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1800px] flex-col space-y-5 overflow-y-auto overflow-x-hidden rounded-[2rem] border border-amber-300/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.92)_42%,rgba(10,10,10,0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
@@ -157,7 +166,7 @@ export default function DealPipeline() {
       <PipelineValueSummaryBar deals={deals} />
 
       {/* Settlement Countdown & At-Risk Panel */}
-      <section className="relative grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <section className="relative grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-2">
         <SettlementCountdownCards
           deals={filteredDeals}
           onDealClick={handleDealClick}
@@ -190,9 +199,9 @@ export default function DealPipeline() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="relative rounded-[1.5rem] border border-white/10 bg-black/30 p-2 shadow-[0_22px_70px_rgba(0,0,0,0.26)] backdrop-blur sm:p-3"
+        className="relative flex min-h-0 flex-col rounded-[1.5rem] border border-white/10 bg-black/30 p-2 shadow-[0_22px_70px_rgba(0,0,0,0.26)] backdrop-blur sm:p-3"
       >
-        <TabsList className="relative inline-flex h-auto w-full justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 scrollbar-hide shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5">
+        <TabsList className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
             <LayoutDashboard className={pipelineTabIconClass} />
             <span className="hidden sm:inline">Executive </span>Summary
@@ -229,7 +238,7 @@ export default function DealPipeline() {
 
         <TabsContent
           value="summary"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <DealExecutiveSummary
             deals={filteredDeals}
@@ -241,7 +250,7 @@ export default function DealPipeline() {
 
         <TabsContent
           value="kanban"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <PipelineKanbanBoard
             deals={filteredDeals}
@@ -252,7 +261,7 @@ export default function DealPipeline() {
 
         <TabsContent
           value="commissions"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <CommissionDashboard
             deals={filteredDeals}
@@ -263,14 +272,14 @@ export default function DealPipeline() {
 
         <TabsContent
           value="analytics"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <PipelineAnalytics deals={filteredDeals} isLoading={isLoading} />
         </TabsContent>
 
         <TabsContent
           value="timeline"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <PipelineTimeline
             deals={filteredDeals}
@@ -281,7 +290,7 @@ export default function DealPipeline() {
 
         <TabsContent
           value="clawback"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <ClawbackRiskMonitor
             deals={filteredDeals}
@@ -292,7 +301,7 @@ export default function DealPipeline() {
 
         <TabsContent
           value="manage"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <DealManagement
             deals={filteredDeals}
@@ -305,7 +314,7 @@ export default function DealPipeline() {
 
         <TabsContent
           value="invoices"
-          className="mt-4 rounded-[1.25rem] border border-white/10 bg-zinc-950/35 p-3 shadow-inner sm:p-4"
+          className={pipelineTabContentClass}
         >
           <BuilderInvoiceLog
             deals={filteredDeals}

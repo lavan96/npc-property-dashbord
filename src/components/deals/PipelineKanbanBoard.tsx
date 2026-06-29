@@ -243,7 +243,7 @@ function KanbanColumn({
   const urgentCount = deals.filter(d => d.risk_status === 'urgent').length;
 
   return (
-    <div className="flex min-w-[300px] max-w-[300px] shrink-0 flex-col xl:min-w-[320px] xl:max-w-[320px]">
+    <div className="flex min-h-0 min-w-[300px] max-w-[300px] shrink-0 flex-col xl:min-w-[320px] xl:max-w-[320px]">
       {/* Column header */}
       <div className={cn('relative overflow-hidden rounded-t-[1.2rem] border border-b-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.095),rgba(39,39,42,0.88)_44%,rgba(0,0,0,0.72))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] border-t-4', column.color)}>
         <div className="flex items-center justify-between">
@@ -280,8 +280,8 @@ function KanbanColumn({
       </div>
 
       {/* Cards container */}
-      <div className="min-h-[260px] flex-1 rounded-b-[1.2rem] border border-t-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] shadow-[inset_0_18px_34px_rgba(0,0,0,0.18)]">
-        <div className="h-[calc(100vh-360px)] min-h-[260px] overflow-y-auto p-2.5 pr-2 [scrollbar-color:rgba(245,158,11,0.45)_rgba(24,24,27,0.75)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
+      <div className="min-h-0 flex-1 rounded-b-[1.2rem] border border-t-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] shadow-[inset_0_18px_34px_rgba(0,0,0,0.18)]">
+        <div className="max-h-[min(58dvh,calc(100dvh-22rem))] min-h-[260px] overflow-y-auto overscroll-contain p-2.5 pr-2 [scrollbar-color:rgba(245,158,11,0.45)_rgba(24,24,27,0.75)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
           <div className="space-y-2.5">
             {deals.length === 0 ? (
               <div className="flex h-32 flex-col items-center justify-center rounded-[1rem] border border-dashed border-amber-200/15 bg-white/[0.025] px-4 text-center text-[11px] text-zinc-500">
@@ -352,7 +352,7 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="min-h-0 min-w-0 space-y-3 overflow-hidden">
       {/* Board summary bar */}
       <div className="flex flex-wrap items-center gap-3 rounded-[1.1rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035)_42%,rgba(0,0,0,0.18))] px-4 py-3 text-xs text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
         <span>{deals.length} deal{deals.length !== 1 ? 's' : ''} across {activeColumns.length} stages</span>
@@ -370,8 +370,8 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
       </div>
 
       {/* Kanban board - horizontal scroll */}
-      <div className="-mx-3 overflow-x-auto px-3 pb-5 [scrollbar-color:rgba(245,158,11,0.50)_rgba(24,24,27,0.85)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950 [&::-webkit-scrollbar-thumb]:bg-gradient-to-r [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-amber-200/55 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/90 sm:-mx-6 sm:px-6">
-        <div className="flex items-start gap-5 pr-6">
+      <div className="-mx-3 min-w-0 overflow-x-auto overscroll-x-contain px-3 pb-5 [scrollbar-color:rgba(245,158,11,0.50)_rgba(24,24,27,0.85)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950 [&::-webkit-scrollbar-thumb]:bg-gradient-to-r [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-amber-200/55 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/90 sm:-mx-6 sm:px-6">
+        <div className="flex min-w-max items-start gap-5 pr-6">
           {activeColumns.map(col => (
             <KanbanColumn
               key={col.id}
