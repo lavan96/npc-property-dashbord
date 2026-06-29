@@ -147,7 +147,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40 sm:w-auto">
+      <DialogContent className="max-h-[min(85vh,760px)] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40 sm:w-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-50">
             {step === 'input' && 'Import Checklist Template'}
@@ -239,7 +239,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   placeholder={`Paste your checklist in any format:\n\n## Daily Operations\n\n### Start of the Day\n- [ ] Check emails\n- [ ] Review pipeline\n- [x] Update tracker\n\nOr JSON: { "name": "...", "sections": [...] }\nOr HTML: <h2>Section</h2><ul><li>Item</li></ul>`}
                   value={pasteContent}
                   onChange={e => setPasteContent(e.target.value)}
-                  className="min-h-72 border-amber-500/15 bg-black/35 font-mono text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/40"
+                  className="max-h-[42vh] min-h-72 overflow-y-auto [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-amber-500/15 bg-black/35 font-mono text-xs text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/40"
                 />
                 <Button onClick={handleParsePaste} disabled={!pasteContent.trim()} className="w-full bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black hover:from-amber-400 hover:to-yellow-300">
                   Parse Content
@@ -304,7 +304,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
             </div>
 
             {/* Sections preview */}
-            <div className="max-h-[40vh] overflow-y-auto space-y-2">
+            <div className="max-h-[40vh] space-y-2 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
               {parsedTemplate.sections.map((section, si) => (
                 <Card key={si} className="rounded-2xl border-amber-500/10 bg-zinc-950/80 shadow-lg shadow-black/20">
                   <CardContent className="px-4 py-3">

@@ -104,7 +104,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   };
 
   return (
-    <div className="space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 md:p-6">
+    <div className="min-h-0 space-y-6 rounded-3xl border border-amber-500/10 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] p-4 text-zinc-100 md:p-6">
       {/* Header */}
       <div className="rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -195,7 +195,8 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
       ) : sections.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">This checklist has no items.</p>
       ) : (
-        sections.map((section, idx) => {
+        <div className="min-h-0 space-y-4 overflow-x-hidden">
+          {sections.map((section, idx) => {
           const sectionChecked = section.items.filter(i => i.is_checked).length;
           const sectionTotal = section.items.length;
           const sectionComplete = sectionTotal > 0 && sectionChecked === sectionTotal;
@@ -234,7 +235,7 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
                 {section.items.map(item => (
                   <div
                     key={item.id}
-                    className={`group/task flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all hover:border-amber-300/25 hover:bg-amber-500/10 focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
+                    className={`group/task flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 leading-relaxed outline-none transition-all hover:border-amber-300/25 hover:bg-amber-500/10 focus-visible:border-amber-300/45 focus-visible:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${item.is_checked ? 'border-emerald-300/15 bg-emerald-400/10' : 'border-white/5 bg-black/20'}`}
                     onClick={() => handleToggleItem(item.id, item.is_checked)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
@@ -264,7 +265,8 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
               </CardContent>
             </Card>
           );
-        })
+        })}
+        </div>
       )}
     </div>
   );
