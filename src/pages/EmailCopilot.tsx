@@ -1799,7 +1799,7 @@ export default function EmailCopilot() {
   return (
     <div className="h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] min-h-0 flex flex-col overflow-hidden overscroll-none bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.18))]">
       {/* Header */}
-      <div className="mx-3 md:mx-6 mt-3 md:mt-5 mb-3 flex shrink-0 flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.78))] px-4 md:px-5 py-3 md:py-4 shadow-2xl shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-card/70">
+      <div className="mx-3 md:mx-6 mt-3 md:mt-5 mb-3 flex shrink-0 flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center rounded-2xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.78))] px-4 md:px-5 py-3 md:py-4 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur supports-[backdrop-filter]:bg-card/70">
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           <div className="relative p-2 md:p-2.5 bg-primary/15 rounded-2xl ring-1 ring-primary/30 shadow-lg shadow-primary/10">
             <Mail className="h-4 w-4 md:h-5 md:w-5 text-primary" />
@@ -1817,7 +1817,7 @@ export default function EmailCopilot() {
             <p className="text-xs md:text-sm text-muted-foreground/90 hidden sm:block">AI-powered email summaries & draft replies</p>
           </div>
         </div>
-        <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end rounded-2xl border border-primary/10 bg-background/35 p-1.5 shadow-inner shadow-black/10 md:gap-2.5">
+        <div className="flex w-full max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end rounded-2xl border border-primary/10 bg-background/35 p-1.5 shadow-inner shadow-sm dark:shadow-black/10 md:gap-2.5">
           {/* Notification toggles */}
           <Button 
             variant="ghost" 
@@ -1888,7 +1888,7 @@ export default function EmailCopilot() {
                 <span className="hidden md:inline">Options</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-xl border-primary/15 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur">
+            <DropdownMenuContent align="end" className="rounded-xl border-primary/15 bg-popover/95 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur">
               {!personalMailbox && (
                 <>
                   <DropdownMenuItem onClick={() => setShowMailboxSettings(true)} className="rounded-lg transition-colors focus:bg-primary/10 focus:text-primary">
@@ -1929,7 +1929,7 @@ export default function EmailCopilot() {
 
       {/* Disclaimer - hidden on mobile to save space */}
       {!isMobile && (
-      <div className="relative mx-3 md:mx-6 mb-3 shrink-0 overflow-hidden rounded-2xl border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(10,10,10,0.72)_48%,rgba(24,24,27,0.64))] px-4 py-3 shadow-lg shadow-black/15 backdrop-blur">
+      <div className="relative mx-3 md:mx-6 mb-3 shrink-0 overflow-hidden rounded-2xl border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(10,10,10,0.72)_48%,rgba(24,24,27,0.64))] px-4 py-3 shadow-lg shadow-sm dark:shadow-black/15 backdrop-blur">
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
         <p className="flex items-center gap-3 text-xs leading-5 text-amber-50/85 md:text-sm">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-200/30 bg-amber-300/12 shadow-inner shadow-amber-950/20">
@@ -1941,7 +1941,7 @@ export default function EmailCopilot() {
       )}
 
       {/* Main Content */}
-      <div className="relative mx-3 md:mx-6 mb-3 md:mb-5 flex min-h-0 flex-1 basis-0 overflow-hidden rounded-3xl border border-primary/10 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.64))] shadow-2xl shadow-black/25 backdrop-blur"
+      <div className="relative mx-3 md:mx-6 mb-3 md:mb-5 flex min-h-0 flex-1 basis-0 overflow-hidden rounded-3xl border border-primary/10 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.64))] shadow-2xl shadow-sm dark:shadow-black/25 backdrop-blur"
         onMouseMove={(e) => {
           if (!isDraggingRef.current) return;
           const delta = e.clientX - dragStartXRef.current;
@@ -1958,7 +1958,7 @@ export default function EmailCopilot() {
         >
           {/* Inbox/Sent Tabs */}
           <div className="shrink-0 px-3 pt-3 border-b border-border/70 bg-background/30">
-            <div role="tablist" aria-label="Mailbox view" className="mb-3 flex gap-1.5 rounded-2xl border border-primary/10 bg-background/45 p-1.5 shadow-inner shadow-black/10">
+            <div role="tablist" aria-label="Mailbox view" className="mb-3 flex gap-1.5 rounded-2xl border border-primary/10 bg-background/45 p-1.5 shadow-inner shadow-sm dark:shadow-black/10">
               <button
                 onClick={() => { setViewMode('inbox'); setSelectedSentReply(null); }}
                 role="tab"
@@ -2006,7 +2006,7 @@ export default function EmailCopilot() {
                     aria-label="Search emails"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="min-h-10 rounded-2xl border-primary/15 bg-background/75 pl-10 pr-9 text-sm shadow-inner shadow-black/10 placeholder:text-muted-foreground/70 transition-all focus-visible:border-primary/65 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
+                    className="min-h-10 rounded-2xl border-primary/15 bg-background/75 pl-10 pr-9 text-sm shadow-inner shadow-sm dark:shadow-black/10 placeholder:text-muted-foreground/70 transition-all focus-visible:border-primary/65 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]"
                   />
                   {searchQuery && (
                     <button
@@ -2026,7 +2026,7 @@ export default function EmailCopilot() {
                       <Filter className="h-3 w-3 mr-1" />
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-primary/15 bg-popover/95 shadow-xl shadow-black/20 backdrop-blur">
+                    <SelectContent className="rounded-xl border-primary/15 bg-popover/95 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur">
                       <SelectItem value="all">All Emails</SelectItem>
                       <SelectItem value="unread">Unread</SelectItem>
                       <SelectItem value="read">Read</SelectItem>
@@ -2091,7 +2091,7 @@ export default function EmailCopilot() {
               // Inbox view
               <>
                 {isLoading ? (
-                  <div className="m-4 overflow-hidden rounded-[1.75rem] border border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.62))] p-8 text-center shadow-inner shadow-black/10">
+                  <div className="m-4 overflow-hidden rounded-[1.75rem] border border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.62))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
                     <span className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10">
                       <span className="absolute inset-2 animate-ping rounded-2xl bg-primary/10" />
                       <RefreshCw className="relative h-6 w-6 animate-spin text-primary/70" />
@@ -2100,7 +2100,7 @@ export default function EmailCopilot() {
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">Checking the selected mailbox for the latest messages.</p>
                   </div>
                 ) : filteredEmails.length === 0 ? (
-                  <div className="m-4 rounded-[1.75rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-black/10">
+                  <div className="m-4 rounded-[1.75rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
                     <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10">
                       <Inbox className="h-7 w-7 text-primary/45" />
                     </span>
@@ -2310,7 +2310,7 @@ export default function EmailCopilot() {
               // Sent view - shows both synced sent emails AND manually sent replies
               <>
                 {filteredEmails.length === 0 && sentReplies.length === 0 ? (
-                  <div className="m-4 rounded-[1.75rem] border border-dashed border-green-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-black/10">
+                  <div className="m-4 rounded-[1.75rem] border border-dashed border-green-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
                     <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-green-500/20 bg-green-500/10">
                       <Send className="h-7 w-7 text-green-500/55" />
                     </span>
@@ -2543,7 +2543,7 @@ export default function EmailCopilot() {
                     </div>
                   )}
                   
-                  <div className="bg-card/90 rounded-2xl border border-border/70 p-6 shadow-xl shadow-black/10">
+                  <div className="bg-card/90 rounded-2xl border border-border/70 p-6 shadow-xl shadow-sm dark:shadow-black/10">
                     <RichTextBody 
                       content={selectedSentReply.body}
                       className="prose prose-sm max-w-none dark:prose-invert"

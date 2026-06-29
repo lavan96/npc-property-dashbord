@@ -145,7 +145,7 @@ export function BackgroundGradientEditor({ value, onChange }: Props) {
                     style={{ background: bg }}
                     title={p.label}
                   >
-                    <span className="absolute inset-x-0 bottom-0 bg-black/40 text-white py-0.5">{p.label}</span>
+                    <span className="absolute inset-x-0 bottom-0 bg-background dark:bg-black/40 text-foreground dark:text-white py-0.5">{p.label}</span>
                   </button>
                 );
               })}

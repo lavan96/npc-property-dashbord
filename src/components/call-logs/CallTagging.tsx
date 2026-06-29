@@ -367,7 +367,7 @@ export const CallTagFilter = ({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 border-white/10 bg-zinc-950/95 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl" align="start">
+      <PopoverContent className="w-72 border-border dark:border-white/10 bg-background dark:bg-zinc-950/95 p-3 shadow-2xl shadow-sm dark:shadow-black/40 backdrop-blur-xl" align="start">
         <div className="space-y-3">
           <span className="text-sm font-semibold text-amber-100">Filter by Tags</span>
           <div className="flex flex-wrap gap-1.5">

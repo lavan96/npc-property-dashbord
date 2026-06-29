@@ -13,8 +13,8 @@ import { pipelineBadgeClass } from '@/components/deals/pipelineBadgeStyles';
 import { DealLoadingState, NoResultsState } from '@/components/deals/DealStatePresentation';
 
 
-const kpiCardBase = 'relative overflow-hidden rounded-2xl border shadow-xl shadow-black/5 before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent';
-const tableShellClass = 'overflow-hidden rounded-2xl border border-border/70 bg-card/80 shadow-xl shadow-black/5';
+const kpiCardBase = 'relative overflow-hidden rounded-2xl border shadow-xl shadow-sm dark:shadow-black/5 before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/70 before:to-transparent';
+const tableShellClass = 'overflow-hidden rounded-2xl border border-border/70 bg-card/80 shadow-xl shadow-sm dark:shadow-black/5';
 const tableHeaderClass = '[&_tr]:border-b [&_tr]:border-border/70 [&_th]:bg-muted/55 [&_th]:py-3 [&_th]:text-[10px] [&_th]:font-bold [&_th]:uppercase [&_th]:tracking-[0.16em] [&_th]:text-muted-foreground';
 const rowHoverClass = 'border-border/55 transition-colors hover:bg-amber-500/5 data-[state=selected]:bg-muted';
 const emptyDashClass = 'inline-flex min-w-6 justify-center rounded-full border border-dashed border-border/80 bg-muted/35 px-2 py-0.5 font-mono text-xs text-muted-foreground';
@@ -179,7 +179,7 @@ export function CommissionDashboard({ deals, isLoading, onUpdatePayment }: Props
       </div>
 
       {/* Pending Commissions */}
-      <Card className="overflow-hidden rounded-2xl border-amber-200/45 bg-gradient-to-br from-card via-card to-amber-50/35 shadow-xl shadow-black/5 dark:border-amber-900/40 dark:to-amber-950/15">
+      <Card className="overflow-hidden rounded-2xl border-amber-200/45 bg-gradient-to-br from-card via-card to-amber-50/35 shadow-xl shadow-sm dark:shadow-black/5 dark:border-amber-900/40 dark:to-amber-950/15">
         <CardHeader className="border-b border-amber-200/35 bg-amber-500/5 pb-3">
           <CardTitle className="text-sm sm:text-base flex items-center gap-2">
             <Clock className="h-4 w-4 text-amber-500" />
@@ -260,7 +260,7 @@ export function CommissionDashboard({ deals, isLoading, onUpdatePayment }: Props
 
       {/* Received Commissions */}
       {stats.received.length > 0 && (
-        <Card className="overflow-hidden rounded-2xl border-teal-200/45 bg-gradient-to-br from-card via-card to-teal-50/35 shadow-xl shadow-black/5 dark:border-teal-900/40 dark:to-teal-950/15">
+        <Card className="overflow-hidden rounded-2xl border-teal-200/45 bg-gradient-to-br from-card via-card to-teal-50/35 shadow-xl shadow-sm dark:shadow-black/5 dark:border-teal-900/40 dark:to-teal-950/15">
           <CardHeader className="border-b border-teal-200/35 bg-teal-500/5 pb-3">
             <CardTitle className="text-sm sm:text-base flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-green-600" />

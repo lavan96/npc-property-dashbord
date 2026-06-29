@@ -71,7 +71,7 @@ export function ClientFilters({ filters, onFiltersChange }: ClientFiltersProps) 
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 rounded-2xl border-amber-500/20 bg-card/95 shadow-2xl shadow-black/30 backdrop-blur" align="start">
+      <PopoverContent className="w-80 rounded-2xl border-amber-500/20 bg-card/95 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur" align="start">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-medium">Filters</h4>

@@ -104,7 +104,7 @@ export function MobileFilterSheet({ filters, setFilters, uniqueValues }: MobileF
           <Filter className="h-4 w-4" />
           <span className="hidden sm:inline">Filters</span>
           {activeFilterCount > 0 && (
-            <Badge variant="default" className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 p-0 text-xs text-white shadow-sm">
+            <Badge variant="default" className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 p-0 text-xs text-foreground dark:text-white shadow-sm">
               {activeFilterCount}
             </Badge>
           )}

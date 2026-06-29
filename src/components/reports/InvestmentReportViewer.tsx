@@ -426,10 +426,10 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       <div className={`w-14 h-14 rounded-xl font-bold text-xl flex items-center justify-center shadow-sm ${
                         (() => {
                           const grade = report.investment_score.grade?.toUpperCase();
-                          if (grade === 'A+' || grade === 'A') return 'bg-emerald-500 text-white';
+                          if (grade === 'A+' || grade === 'A') return 'bg-emerald-500 text-foreground dark:text-white';
                           if (grade === 'B+' || grade === 'B') return 'bg-yellow-500 text-black';
-                          if (grade === 'C+' || grade === 'C') return 'bg-orange-500 text-white';
-                          return 'bg-red-500 text-white';
+                          if (grade === 'C+' || grade === 'C') return 'bg-orange-500 text-foreground dark:text-white';
+                          return 'bg-red-500 text-foreground dark:text-white';
                         })()
                       }`}>
                         {report.investment_score.grade || '—'}

@@ -247,7 +247,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card
-        className="group/phase overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.14))] shadow-lg shadow-black/5 ring-1 ring-white/40 transition-all duration-300 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none dark:border-white/10 dark:bg-slate-950/60 dark:ring-white/10 dark:shadow-black/25"
+        className="group/phase overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.14))] shadow-lg shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/40 transition-all duration-300 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none dark:border-white/10 dark:bg-slate-950/60 dark:ring-white/10 dark:shadow-black/25"
         style={{ animationDelay: `${index * 100}ms` }}
       >
         {/* Phase color bar */}

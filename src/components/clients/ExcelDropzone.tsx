@@ -368,13 +368,13 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
             group relative min-h-[280px] cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-all duration-300 sm:p-8 md:p-10
             ${isDragActive
               ? 'scale-[1.01] border-amber-300 bg-amber-300/10 shadow-2xl shadow-amber-500/25 ring-4 ring-amber-300/20'
-              : 'border-amber-300/35 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_36%),linear-gradient(145deg,rgba(24,24,27,0.88),rgba(3,7,18,0.78))] shadow-xl shadow-black/20 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-300/[0.08] hover:shadow-2xl hover:shadow-amber-950/20 focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-300/20'
+              : 'border-amber-300/35 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_36%),linear-gradient(145deg,rgba(24,24,27,0.88),rgba(3,7,18,0.78))] shadow-xl shadow-sm dark:shadow-black/20 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-300/[0.08] hover:shadow-2xl hover:shadow-amber-950/20 focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-300/20'
             }
           `}
         >
           <input {...getInputProps()} />
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-          <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+          <div className="absolute right-4 top-4 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-slate-400">
             No file selected
           </div>
           <div className="flex min-h-[220px] flex-col items-center justify-center">
@@ -382,10 +382,10 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
               <FileSpreadsheet className="h-10 w-10" />
             </div>
             <div className="max-w-xl space-y-2">
-              <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+              <p className="text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl">
                 {isDragActive ? 'Drop the Excel file here' : 'Drag & drop your Excel file here'}
               </p>
-              <p className="text-sm leading-6 text-slate-400 sm:text-base">
+              <p className="text-sm leading-6 text-muted-foreground dark:text-slate-400 sm:text-base">
                 Import client intake data and property portfolios from a spreadsheet, or click anywhere in this panel to browse.
               </p>
             </div>
@@ -394,7 +394,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 <Upload className="h-3.5 w-3.5" />
                 Browse files
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-semibold text-slate-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/20 px-4 py-2 text-xs font-semibold text-muted-foreground dark:text-slate-300">
                 <FileCheck2 className="h-3.5 w-3.5 text-emerald-300" />
                 Supports .xlsx and .xls
               </span>
@@ -417,15 +417,15 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                   {status === 'parsing' ? 'Parsing' : 'Importing'}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-muted-foreground dark:text-slate-400">
                 {status === 'parsing' ? 'Parsing spreadsheet...' : 'Importing clients...'}
               </p>
-              <div className="mt-4 rounded-2xl border border-amber-300/10 bg-black/20 p-3">
+              <div className="mt-4 rounded-2xl border border-amber-300/10 bg-background dark:bg-black/20 p-3">
                 <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold text-amber-100/70">
                   <span>{status === 'parsing' ? 'Reading workbook structure' : 'Creating client records'}</span>
                   <span className="tabular-nums">{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-3 border border-amber-300/15 bg-amber-950/60 shadow-inner shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]" />
+                <Progress value={progress} className="h-3 border border-amber-300/15 bg-amber-950/60 shadow-inner shadow-sm dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]" />
               </div>
             </div>
           </div>
@@ -446,7 +446,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                   Complete
                 </span>
               </div>
-              <p className="mt-1 truncate text-sm text-slate-400">{fileName}</p>
+              <p className="mt-1 truncate text-sm text-muted-foreground dark:text-slate-400">{fileName}</p>
             </div>
           </div>
 

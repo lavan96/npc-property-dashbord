@@ -40,7 +40,7 @@ export function InvestmentReportHero({
                 <Badge variant="outline" className="capitalize">{reportVariantLabel}</Badge>
                 {isDerivedVariant && <Badge variant="secondary" className="gap-1"><GitBranch className="h-3 w-3" /> Variant</Badge>}
                 {isClientReport && <Badge variant="outline">Client-ready</Badge>}
-                {hasOverrides && <Badge className="gap-1 bg-amber-600 text-white hover:bg-amber-600"><AlertCircle className="h-3 w-3" /> {overrideCount} Adjustment{overrideCount !== 1 ? 's' : ''}</Badge>}
+                {hasOverrides && <Badge className="gap-1 bg-amber-600 text-foreground dark:text-white hover:bg-amber-600"><AlertCircle className="h-3 w-3" /> {overrideCount} Adjustment{overrideCount !== 1 ? 's' : ''}</Badge>}
               </div>
 
               <div>

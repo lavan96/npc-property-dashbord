@@ -8,7 +8,7 @@ const toneStyles: Record<CallStateTone, string> = {
   emerald: 'border-emerald-300/20 bg-emerald-500/10 text-emerald-200 shadow-emerald-500/10',
   blue: 'border-blue-300/20 bg-blue-500/10 text-blue-200 shadow-blue-500/10',
   purple: 'border-purple-300/20 bg-purple-500/10 text-purple-200 shadow-purple-500/10',
-  neutral: 'border-zinc-400/20 bg-zinc-400/10 text-zinc-300 shadow-black/20',
+  neutral: 'border-zinc-400/20 bg-zinc-400/10 text-muted-foreground dark:text-zinc-300 shadow-sm dark:shadow-black/20',
   danger: 'border-red-300/20 bg-red-500/10 text-red-200 shadow-red-500/10',
 };
 
@@ -31,7 +31,7 @@ export const CallStatePanel = ({
 }: CallStatePanelProps) => (
   <div
     className={cn(
-      'relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-950/90 via-black/65 to-zinc-950/90 px-6 py-12 text-center shadow-inner shadow-black/30',
+      'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/90 via-background dark:via-black/65 to-card dark:to-zinc-950/90 px-6 py-12 text-center shadow-inner shadow-sm dark:shadow-black/30',
       className
     )}
   >
@@ -41,8 +41,8 @@ export const CallStatePanel = ({
       <div className={cn('mb-4 rounded-3xl border p-4 shadow-lg', toneStyles[tone])}>
         {icon}
       </div>
-      <p className="font-semibold text-zinc-100">{title}</p>
-      {description && <div className="mt-2 text-sm leading-6 text-zinc-500">{description}</div>}
+      <p className="font-semibold text-foreground dark:text-zinc-100">{title}</p>
+      {description && <div className="mt-2 text-sm leading-6 text-muted-foreground dark:text-zinc-500">{description}</div>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   </div>

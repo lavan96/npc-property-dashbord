@@ -76,7 +76,7 @@ export function CapacityHistoryChart({ history, isLoading }: CapacityHistoryChar
         <p className="text-lg font-bold text-foreground">
           {formatCapacity(data.capacity)}
         </p>
-        <Badge className={`mt-1 ${bandColors[data.band] || 'bg-muted'} text-white`}>
+        <Badge className={`mt-1 ${bandColors[data.band] || 'bg-muted'} text-foreground dark:text-white`}>
           {data.band?.toUpperCase()}
         </Badge>
       </div>

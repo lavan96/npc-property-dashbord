@@ -72,7 +72,7 @@ export function QuantitativeReportCard({ report, generatorLabel, onView, onDownl
 
 function MetricTile({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof BarChart3 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-inner shadow-black/5">
+    <div className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-inner shadow-sm dark:shadow-black/5">
       <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{label}</span>
         <Icon className="h-3.5 w-3.5 text-blue-600/80 dark:text-blue-300/80" />

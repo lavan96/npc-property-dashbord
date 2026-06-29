@@ -18,19 +18,19 @@ export function CashFlowMetricsGrid({ baseFinancialData, projections, formatCurr
     .reduce((sum, projection) => sum + (projection.afterTaxCashFlowPA || 0), 0);
 
   return (
-    <Card className="overflow-hidden border-slate-200/80 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white shadow-lg">
+    <Card className="overflow-hidden border-slate-200/80 bg-gradient-to-br from-card dark:from-slate-950 via-card dark:via-slate-900 to-slate-800 text-foreground dark:text-white shadow-lg">
       <CardContent className="p-0">
-        <div className="border-b border-white/10 bg-white/5 px-4 py-3 md:px-5">
+        <div className="border-b border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-4 py-3 md:px-5">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-200">Executive snapshot</p>
               <h3 className="text-lg font-semibold">10-year cash-flow position</h3>
             </div>
-            <p className="text-xs text-slate-300">Derived from current projection values</p>
+            <p className="text-xs text-muted-foreground dark:text-slate-300">Derived from current projection values</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-px bg-white/10 min-[460px]:grid-cols-2 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-px bg-card/10 dark:bg-white/10 min-[460px]:grid-cols-2 xl:grid-cols-6">
           <KpiTile
             icon={Home}
             label="Current Market Value"
@@ -90,9 +90,9 @@ function KpiTile({ icon: Icon, label, sublabel, value, tone, positive = false }:
   const isNegative = resolvedTone === 'negative';
 
   return (
-    <div className="min-h-[140px] bg-slate-950/40 p-4 md:min-h-[150px] md:p-5">
+    <div className="min-h-[140px] bg-background dark:bg-slate-950/40 p-4 md:min-h-[150px] md:p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
-        <span className="rounded-2xl bg-white/10 p-2 text-amber-100">
+        <span className="rounded-2xl bg-card/10 dark:bg-white/10 p-2 text-amber-100">
           <Icon className="h-4 w-4" />
         </span>
         {resolvedTone && (
@@ -107,15 +107,15 @@ function KpiTile({ icon: Icon, label, sublabel, value, tone, positive = false }:
         )}
       </div>
       <div className="space-y-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground dark:text-slate-400">{label}</p>
         <p className={cn(
-          'break-words text-xl font-bold tracking-tight text-white md:text-2xl',
+          'break-words text-xl font-bold tracking-tight text-foreground dark:text-white md:text-2xl',
           isPositive && 'text-emerald-200',
           isNegative && 'text-red-200'
         )}>
           {value}
         </p>
-        <p className="text-xs text-slate-400">{sublabel}</p>
+        <p className="text-xs text-muted-foreground dark:text-slate-400">{sublabel}</p>
       </div>
     </div>
   );

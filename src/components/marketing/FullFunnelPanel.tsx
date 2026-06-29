@@ -34,7 +34,7 @@ export function FullFunnelPanel() {
   const maxValue = stages.length > 0 ? stages[0].value : 1;
 
   return (
-    <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_60%,hsl(var(--primary)/0.08))] shadow-xl shadow-black/5 dark:shadow-black/25">
+    <Card className="overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82)_60%,hsl(var(--primary)/0.08))] shadow-xl shadow-sm dark:shadow-black/5 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
@@ -78,7 +78,7 @@ export function FullFunnelPanel() {
                       </div>
                     )}
                     <div
-                      className="relative mx-auto overflow-hidden rounded-2xl shadow-lg shadow-black/10 transition-all duration-500"
+                      className="relative mx-auto overflow-hidden rounded-2xl shadow-lg shadow-sm dark:shadow-black/10 transition-all duration-500"
                       style={{
                         width: `${widthPct}%`,
                         minWidth: '120px',
@@ -86,8 +86,8 @@ export function FullFunnelPanel() {
                       }}
                     >
                       <div className="flex min-w-0 items-center justify-between gap-3 px-4 py-3">
-                        <span className="truncate text-sm font-medium text-white" title={stage.name}>{stage.name}</span>
-                        <span className="text-lg font-bold text-white font-mono">{formatNum(stage.value)}</span>
+                        <span className="truncate text-sm font-medium text-foreground dark:text-white" title={stage.name}>{stage.name}</span>
+                        <span className="text-lg font-bold text-foreground dark:text-white font-mono">{formatNum(stage.value)}</span>
                       </div>
                     </div>
                   </div>

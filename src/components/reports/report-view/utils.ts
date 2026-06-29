@@ -40,10 +40,10 @@ export function getInvestmentScoreSummary(report: InvestmentReport | null) {
 
 export function getInvestmentGradeTone(grade?: string | null) {
   const normalizedGrade = grade?.toUpperCase();
-  if (normalizedGrade === 'A+' || normalizedGrade === 'A') return 'bg-emerald-500 text-white';
+  if (normalizedGrade === 'A+' || normalizedGrade === 'A') return 'bg-emerald-500 text-foreground dark:text-white';
   if (normalizedGrade === 'B+' || normalizedGrade === 'B') return 'bg-yellow-500 text-black';
-  if (normalizedGrade === 'C+' || normalizedGrade === 'C') return 'bg-orange-500 text-white';
-  if (normalizedGrade) return 'bg-red-500 text-white';
+  if (normalizedGrade === 'C+' || normalizedGrade === 'C') return 'bg-orange-500 text-foreground dark:text-white';
+  if (normalizedGrade) return 'bg-red-500 text-foreground dark:text-white';
   return 'bg-muted text-muted-foreground';
 }
 

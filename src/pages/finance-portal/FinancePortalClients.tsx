@@ -1001,7 +1001,7 @@ export default function FinancePortalClients() {
                         <div className="relative shrink-0">
                           <Avatar className="h-11 w-11 border-2 border-border/30">
                             <AvatarFallback
-                              className="font-semibold text-sm text-white"
+                              className="font-semibold text-sm text-foreground dark:text-white"
                               style={{ backgroundColor: avatarBg }}
                             >
                               {getInitials(name)}

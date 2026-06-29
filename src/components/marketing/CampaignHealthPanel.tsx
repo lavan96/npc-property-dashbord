@@ -66,7 +66,7 @@ interface CampaignHealthPanelProps {
 export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPanelProps) {
   if (loading) {
     return (
-      <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+      <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
@@ -93,7 +93,7 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
   const sorted = [...healthScores].sort((a, b) => a.score - b.score);
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base">

@@ -107,7 +107,7 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
   const underSpending = pacingData.filter(p => p.pacingStatus === 'underspend').length;
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+    <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">

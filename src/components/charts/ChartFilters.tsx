@@ -38,7 +38,7 @@ export function ChartFilters({
   reports,
 }: ChartFiltersProps) {
   const filterTriggerClass = (isActive = false) => cn(
-    'h-11 min-w-0 w-full justify-between rounded-xl sm:min-w-[9.25rem] sm:w-auto border bg-background/80 px-3 text-sm font-semibold text-foreground shadow-sm shadow-black/5 transition-all duration-200',
+    'h-11 min-w-0 w-full justify-between rounded-xl sm:min-w-[9.25rem] sm:w-auto border bg-background/80 px-3 text-sm font-semibold text-foreground shadow-sm shadow-sm dark:shadow-black/5 transition-all duration-200',
     'hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.13)]',
     'focus:ring-2 focus:ring-amber-300/45 focus:ring-offset-0 focus-visible:ring-2 focus-visible:ring-amber-300/55 data-[state=open]:border-amber-300/70 data-[state=open]:bg-amber-500/10 data-[state=open]:shadow-[0_14px_32px_hsl(43_74%_49%/0.16)]',
     isActive
@@ -47,7 +47,7 @@ export function ChartFilters({
   );
 
   return (
-    <DashboardThemeFrame variant="toolbar" className="block border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.08),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.88))] p-3 shadow-2xl shadow-black/10 sm:p-4">
+    <DashboardThemeFrame variant="toolbar" className="block border-amber-200/18 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.08),transparent_34%),linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.88))] p-3 shadow-2xl shadow-sm dark:shadow-black/10 sm:p-4">
       <div className="pointer-events-none -mx-1 -mt-1 mb-3 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
       {/* Search + filters */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -60,7 +60,7 @@ export function ChartFilters({
             placeholder="Search charts by title, report, or analysis..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-12 rounded-2xl border-primary/15 bg-background/85 pl-12 pr-11 text-base font-medium shadow-inner shadow-black/5 transition-all placeholder:text-foreground/45 hover:border-amber-300/45 hover:bg-amber-500/5 focus-visible:border-amber-300/85 focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-amber-300/24 focus-visible:shadow-[inset_0_1px_0_hsl(var(--background)),0_0_0_1px_hsl(43_96%_56%/0.18),0_14px_34px_hsl(43_74%_49%/0.12)]"
+            className="h-12 rounded-2xl border-primary/15 bg-background/85 pl-12 pr-11 text-base font-medium shadow-inner shadow-sm dark:shadow-black/5 transition-all placeholder:text-foreground/45 hover:border-amber-300/45 hover:bg-amber-500/5 focus-visible:border-amber-300/85 focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-amber-300/24 focus-visible:shadow-[inset_0_1px_0_hsl(var(--background)),0_0_0_1px_hsl(43_96%_56%/0.18),0_14px_34px_hsl(43_74%_49%/0.12)]"
           />
           {searchQuery && (
             <Button variant="ghost" size="icon" className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full hover:bg-amber-500/12 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => onSearchChange('')} aria-label="Clear chart search">
@@ -172,7 +172,7 @@ export function ChartFilters({
           {selectionMode ? <Sparkles className="h-3.5 w-3.5 drop-shadow-sm" /> : <CheckSquare className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />}
           <span>{selectionMode ? 'Selecting' : 'Select'}</span>
           {selectionMode && (
-            <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-amber-100/45 bg-white/20 px-1.5 text-[10px] font-black tabular-nums shadow-inner">
+            <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-amber-100/45 bg-card/20 dark:bg-white/20 px-1.5 text-[10px] font-black tabular-nums shadow-inner">
               <CheckCircle2 className="mr-1 h-3 w-3" />
               {selectedCount}
             </span>

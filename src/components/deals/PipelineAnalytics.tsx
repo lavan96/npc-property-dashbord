@@ -40,7 +40,7 @@ interface Props {
   isLoading: boolean;
 }
 
-const analyticsPanelClass = 'overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 ring-1 ring-white/5 backdrop-blur-sm';
+const analyticsPanelClass = 'overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/5 backdrop-blur-sm';
 const analyticsPanelHeaderClass = 'border-b border-border/60 bg-gradient-to-br from-muted/45 via-background/70 to-background px-5 pb-3 pt-4';
 const analyticsPanelContentClass = 'px-5 pb-5 pt-4';
 const analyticsTitleClass = 'text-sm font-bold tracking-tight text-foreground flex items-center gap-2';
@@ -124,7 +124,7 @@ function AnalyticsKPIs({ deals }: { deals: DealWithClient[] }) {
         <Card
           key={c.label}
           className={cn(
-            'group relative overflow-hidden border-border/70 bg-card/95 shadow-md shadow-black/5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl',
+            'group relative overflow-hidden border-border/70 bg-card/95 shadow-md shadow-sm dark:shadow-black/5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl',
             c.tone === 'gold' && 'bg-gradient-to-br from-amber-500/15 via-card to-card ring-1 ring-amber-400/20',
             c.tone === 'conversion' && 'bg-gradient-to-br from-violet-500/12 via-card to-card ring-1 ring-violet-400/15',
             c.tone === 'urgent' && 'bg-gradient-to-br from-rose-500/12 via-card to-card ring-1 ring-rose-400/15',
@@ -199,14 +199,14 @@ function ConversionFunnel({ deals }: { deals: DealWithClient[] }) {
                 <span className="w-24 shrink-0 text-right text-xs font-semibold text-muted-foreground">{item.name}</span>
                 <div className="flex-1 relative">
                   <div
-                    className="flex h-9 items-center justify-between rounded-xl px-3 shadow-md shadow-black/10 ring-1 ring-white/25 transition-all duration-500 group-hover:brightness-110"
+                    className="flex h-9 items-center justify-between rounded-xl px-3 shadow-md shadow-sm dark:shadow-black/10 ring-1 ring-border dark:ring-white/25 transition-all duration-500 group-hover:brightness-110"
                     style={{
                       width: `${Math.max(pct, 8)}%`,
                       backgroundColor: item.fill,
                       opacity: 0.92,
                     }}
                   >
-                    <span className="text-[11px] font-black text-white drop-shadow-sm">{item.value}</span>
+                    <span className="text-[11px] font-black text-foreground dark:text-white drop-shadow-sm">{item.value}</span>
                   </div>
                 </div>
                 <span className="w-11 shrink-0 rounded-full bg-muted/60 px-2 py-1 text-center text-[10px] font-bold text-muted-foreground">{pct}%</span>

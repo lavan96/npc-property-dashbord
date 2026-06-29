@@ -163,9 +163,9 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
   };
 
   return (
-    <Card className="max-w-full overflow-hidden rounded-3xl border-white/10 bg-gradient-to-br from-zinc-950/95 via-zinc-900/80 to-black/90 shadow-lg shadow-black/25">
-      <CardHeader className="border-b border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-blue-500/10 pb-2">
-        <CardTitle className="flex items-center gap-2 text-base text-zinc-50">
+    <Card className="max-w-full overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-lg shadow-sm dark:shadow-black/25">
+      <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-blue-500/10 pb-2">
+        <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-zinc-50">
           <span className="flex h-8 w-8 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-500/10 text-amber-200">
             <Volume2 className="h-4 w-4 flex-shrink-0" />
           </span>
@@ -174,16 +174,16 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
       </CardHeader>
       <CardContent className="space-y-4 max-w-full overflow-hidden">
         {/* WaveSurfer Waveform */}
-        <div className="relative max-w-full overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-3 shadow-inner shadow-black/30">
+        <div className="relative max-w-full overflow-hidden rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/45 p-3 shadow-inner shadow-sm dark:shadow-black/30">
           <div 
             ref={waveformRef} 
             className="w-full min-h-[80px]"
           />
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/80 backdrop-blur-sm">
+            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-background dark:bg-black/80 backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 animate-pulse rounded-full bg-amber-300" />
-                <span className="text-sm text-zinc-400">Loading audio...</span>
+                <span className="text-sm text-muted-foreground dark:text-zinc-400">Loading audio...</span>
               </div>
             </div>
           )}
@@ -199,7 +199,7 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
             onValueChange={handleSeek}
             className="w-full"
           />
-          <div className="flex justify-between text-xs text-zinc-500">
+          <div className="flex justify-between text-xs text-muted-foreground dark:text-zinc-500">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(audioDuration)}</span>
           </div>
@@ -212,7 +212,7 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
               variant="ghost"
               size="icon"
               onClick={() => skipTime(-10)}
-              className="h-8 w-8 flex-shrink-0 rounded-xl text-zinc-400 hover:bg-white/10 hover:text-amber-100"
+              className="h-8 w-8 flex-shrink-0 rounded-xl text-muted-foreground dark:text-zinc-400 hover:bg-white/10 hover:text-amber-100"
             >
               <SkipBack className="w-4 h-4" />
             </Button>
@@ -233,7 +233,7 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
               variant="ghost"
               size="icon"
               onClick={() => skipTime(10)}
-              className="h-8 w-8 flex-shrink-0 rounded-xl text-zinc-400 hover:bg-white/10 hover:text-amber-100"
+              className="h-8 w-8 flex-shrink-0 rounded-xl text-muted-foreground dark:text-zinc-400 hover:bg-white/10 hover:text-amber-100"
             >
               <SkipForward className="w-4 h-4" />
             </Button>
@@ -244,7 +244,7 @@ export const CallRecordingPlayer = forwardRef<CallRecordingPlayerHandle, CallRec
               variant="ghost"
               size="icon"
               onClick={toggleMute}
-              className="h-8 w-8 flex-shrink-0 rounded-xl text-zinc-400 hover:bg-white/10 hover:text-amber-100"
+              className="h-8 w-8 flex-shrink-0 rounded-xl text-muted-foreground dark:text-zinc-400 hover:bg-white/10 hover:text-amber-100"
             >
               {isMuted ? (
                 <VolumeX className="w-4 h-4" />

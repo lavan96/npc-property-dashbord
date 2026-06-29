@@ -203,7 +203,7 @@ export default function Reports() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-border/70 bg-background/55 p-1.5 shadow-inner shadow-black/10 backdrop-blur">
+            <div className="rounded-3xl border border-border/70 bg-background/55 p-1.5 shadow-inner shadow-sm dark:shadow-black/10 backdrop-blur">
               <TabsList aria-label="Reports sections" className="grid h-auto w-full grid-cols-2 gap-1 bg-transparent p-0">
                 <TabsTrigger value="quantitative" className="reports-primary-tab">
                   <BarChart3 className="h-4 w-4" />

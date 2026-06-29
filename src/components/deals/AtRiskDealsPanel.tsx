@@ -99,7 +99,7 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
           : 'border-amber-300/25 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.15),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.92),rgba(9,9,11,0.86))]'
       )}
     >
-      <CardHeader className="border-b border-white/10 px-3 pb-3 pt-3 sm:px-4">
+      <CardHeader className="border-b border-border dark:border-white/10 px-3 pb-3 pt-3 sm:px-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-2.5">
             <div
@@ -137,7 +137,7 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
               <div
                 key={deal.id}
                 className={cn(
-                  'group cursor-pointer rounded-[1rem] border bg-black/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28)]',
+                  'group cursor-pointer rounded-[1rem] border bg-background dark:bg-black/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28)]',
                   'focus-within:ring-2 focus-within:ring-amber-300/35',
                   isCritical
                     ? 'border-red-300/20 hover:border-red-300/40 hover:bg-red-400/[0.06]'

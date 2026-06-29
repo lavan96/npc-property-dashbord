@@ -176,7 +176,7 @@ export function InvestmentReportCard({
 
       <CardContent className="relative space-y-4 px-4 pb-4">
         {report.investment_score ? (
-          <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-muted/25 to-background p-3 shadow-inner shadow-black/5">
+          <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-muted/25 to-background p-3 shadow-inner shadow-sm dark:shadow-black/5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-xl font-bold shadow-sm ${getGradeColor(grade)}`}>

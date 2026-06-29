@@ -77,7 +77,7 @@ export function DataQualityIndicator({ dataSources, inline = false, showDetails 
         <TooltipTrigger asChild>
           <Badge 
             variant="outline" 
-            className={`gap-1 ${getQualityColor(overallQuality)} text-white border-none`}
+            className={`gap-1 ${getQualityColor(overallQuality)} text-foreground dark:text-white border-none`}
           >
             {getQualityIcon(overallQuality)}
             {inline ? `${overallQuality}%` : `Data Quality: ${overallQuality}%`}

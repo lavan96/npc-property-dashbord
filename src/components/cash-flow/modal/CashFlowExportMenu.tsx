@@ -42,9 +42,9 @@ export function CashFlowExportMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-[380px] overflow-hidden border bg-background p-0 shadow-xl">
-        <div className="border-b bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-white">
-          <DropdownMenuLabel className="p-0 text-sm text-white">Export & Publish</DropdownMenuLabel>
-          <p className="mt-1 text-xs text-slate-300">Package this analysis for download, print, or client delivery.</p>
+        <div className="border-b bg-gradient-to-br from-card dark:from-slate-950 via-card dark:via-slate-900 to-slate-800 p-4 text-foreground dark:text-white">
+          <DropdownMenuLabel className="p-0 text-sm text-foreground dark:text-white">Export & Publish</DropdownMenuLabel>
+          <p className="mt-1 text-xs text-muted-foreground dark:text-slate-300">Package this analysis for download, print, or client delivery.</p>
         </div>
 
         <div className="grid gap-1 p-2">

@@ -74,7 +74,7 @@ export function DataIntegrityPanel({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-cyan-400 to-emerald-400" />
       {isValidating && (
         <div className="pointer-events-none absolute inset-x-0 top-0 h-1 overflow-hidden">
-          <div className="h-full w-1/2 animate-pulse bg-white/70 shadow-[0_0_24px_rgba(14,165,233,0.65)]" />
+          <div className="h-full w-1/2 animate-pulse bg-card/70 dark:bg-white/70 shadow-[0_0_24px_rgba(14,165,233,0.65)]" />
         </div>
       )}
       <CardHeader className="space-y-4 pb-4">
@@ -112,7 +112,7 @@ export function DataIntegrityPanel({
               size="sm"
               onClick={runValidation}
               disabled={isValidating}
-              className="order-1 min-h-10 gap-2 rounded-full bg-gradient-to-r from-sky-600 to-cyan-600 px-4 font-semibold text-white shadow-lg shadow-sky-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-sky-700 hover:to-cyan-700 hover:shadow-sky-500/30 focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 sm:order-2"
+              className="order-1 min-h-10 gap-2 rounded-full bg-gradient-to-r from-sky-600 to-cyan-600 px-4 font-semibold text-foreground dark:text-white shadow-lg shadow-sky-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:from-sky-700 hover:to-cyan-700 hover:shadow-sky-500/30 focus-visible:ring-2 focus-visible:ring-sky-500/35 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 sm:order-2"
             >
               {isValidating ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />

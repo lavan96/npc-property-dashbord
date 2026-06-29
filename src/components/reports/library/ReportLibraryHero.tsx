@@ -66,7 +66,7 @@ export function ReportLibraryHero({
           {metrics.map(({ label, value, icon: Icon }) => (
             <div
               key={label}
-              className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-sm shadow-black/5 backdrop-blur dark:border-white/10 dark:bg-slate-950/45"
+              className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-sm shadow-sm dark:shadow-black/5 backdrop-blur dark:border-white/10 dark:bg-slate-950/45"
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">{label}</span>

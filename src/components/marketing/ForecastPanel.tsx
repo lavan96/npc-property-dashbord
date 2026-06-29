@@ -78,7 +78,7 @@ function formatShortDate(dateStr: string) {
 export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiError, loading, horizonDays }: ForecastPanelProps) {
   if (loading) {
     return (
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
@@ -114,7 +114,7 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
   }));
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="min-w-0">

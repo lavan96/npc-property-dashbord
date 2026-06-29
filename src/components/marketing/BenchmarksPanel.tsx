@@ -58,7 +58,7 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
 
   if (loading) {
     return (
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
@@ -93,7 +93,7 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
   const overallConfig = VERDICT_CONFIG[overallVerdict];
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="min-w-0">

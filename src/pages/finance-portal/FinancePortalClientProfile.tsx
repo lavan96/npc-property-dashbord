@@ -247,7 +247,7 @@ export default function FinancePortalClientProfile() {
             {/* Large Avatar */}
             <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-3 border-border/30 shrink-0 self-center sm:self-start">
               <AvatarFallback
-                className="font-bold text-xl sm:text-2xl text-white"
+                className="font-bold text-xl sm:text-2xl text-foreground dark:text-white"
                 style={{ backgroundColor: avatarBg }}
               >
                 {getInitials(name)}
