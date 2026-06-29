@@ -407,8 +407,9 @@ export function ManyChatPanel() {
               <Button
                 variant={searchMode === 'name' ? 'default' : 'outline'}
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 rounded-xl text-xs focus-visible:ring-primary/45"
                 onClick={() => { setSearchMode('name'); setSearchResults(null); }}
+                aria-pressed={searchMode === 'name'}
               >
                 <User className="h-3 w-3 mr-1" />
                 Name
@@ -416,8 +417,9 @@ export function ManyChatPanel() {
               <Button
                 variant={searchMode === 'custom_field' ? 'default' : 'outline'}
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 rounded-xl text-xs focus-visible:ring-primary/45"
                 onClick={() => { setSearchMode('custom_field'); setSearchResults(null); }}
+                aria-pressed={searchMode === 'custom_field'}
               >
                 <Filter className="h-3 w-3 mr-1" />
                 Field
@@ -447,8 +449,9 @@ export function ManyChatPanel() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1 min-w-0"
+              aria-label={searchMode === 'name' ? 'Search ManyChat subscribers by name' : 'Search ManyChat subscribers by custom field value'}
             />
-            <Button onClick={handleSearch} disabled={isSearching} size="sm" className="shrink-0 rounded-xl">
+            <Button onClick={handleSearch} disabled={isSearching} size="sm" className="shrink-0 rounded-xl focus-visible:ring-primary/45" aria-label="Search ManyChat subscribers">
               {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               <span className="ml-1.5 hidden sm:inline">Search</span>
             </Button>
@@ -722,9 +725,12 @@ function CollapsibleSection({ title, description, icon, count, expanded, onToggl
 }) {
   return (
     <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-black/20">
-      <div
-        className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer hover:bg-primary/[0.04] transition-colors"
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         onClick={onToggle}
+        aria-expanded={expanded}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} ${title}`}
       >
         <div className="flex min-w-0 items-center gap-3">
           <div className="text-muted-foreground shrink-0">{icon}</div>
@@ -737,7 +743,7 @@ function CollapsibleSection({ title, description, icon, count, expanded, onToggl
           <Badge variant="outline" className="rounded-full text-xs">{loading ? '...' : count}</Badge>
           {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </div>
-      </div>
+      </button>
       {expanded && (
         <CardContent className="pt-0 pb-4">
           <Separator className="mb-4" />

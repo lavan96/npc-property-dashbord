@@ -113,7 +113,7 @@ export function LeadMagnetsPanel() {
           <h2 className="truncate text-lg font-semibold">Lead Magnets</h2>
           <p className="text-sm text-muted-foreground">Embed once per page — swap the PDF anytime without touching the embed.</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="shrink-0 rounded-xl shadow-sm"><Plus className="h-4 w-4 mr-1.5" /> New Lead Magnet</Button>
+        <Button onClick={() => setCreateOpen(true)} className="shrink-0 rounded-xl shadow-sm focus-visible:ring-primary/45" aria-label="Create new lead magnet"><Plus className="h-4 w-4 mr-1.5" /> New Lead Magnet</Button>
       </div>
 
       {loading ? (
@@ -147,23 +147,23 @@ export function LeadMagnetsPanel() {
                       </div>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-1 lg:justify-end">
-                      <Switch checked={m.is_active} onCheckedChange={() => toggleActive(m)} />
-                      <Button size="sm" variant="ghost" title="Copy embed snippet" onClick={() => copyEmbed(m)}>
+                      <Switch checked={m.is_active} onCheckedChange={() => toggleActive(m)} aria-label={`${m.is_active ? 'Disable' : 'Enable'} ${m.title}`} />
+                      <Button size="sm" variant="ghost" title="Copy embed snippet" aria-label={`Copy embed snippet for ${m.title}`} onClick={() => copyEmbed(m)}>
                         <Copy className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" title="Live preview" onClick={() => setPreviewOpen(m)}>
+                      <Button size="sm" variant="ghost" title="Live preview" aria-label={`Open live preview for ${m.title}`} onClick={() => setPreviewOpen(m)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" title="PDF versions" onClick={() => setVersionsOpen(m)}>
+                      <Button size="sm" variant="ghost" title="PDF versions" aria-label={`Open PDF versions for ${m.title}`} onClick={() => setVersionsOpen(m)}>
                         <History className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" title="Captures" onClick={() => setDownloadsOpen(m)}>
+                      <Button size="sm" variant="ghost" title="Captures" aria-label={`Open captures for ${m.title}`} onClick={() => setDownloadsOpen(m)}>
                         <Users className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" title="Open capture page" onClick={() => window.open(`${window.location.origin}/lead-magnet-embed.html?slug=${encodeURIComponent(m.slug)}`, '_blank')}>
+                      <Button size="sm" variant="ghost" title="Open capture page" aria-label={`Open capture page for ${m.title}`} onClick={() => window.open(`${window.location.origin}/lead-magnet-embed.html?slug=${encodeURIComponent(m.slug)}`, '_blank')}>
                         <ExternalLink className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" title="Delete" onClick={() => handleDelete(m.id)}>
+                      <Button size="sm" variant="ghost" title="Delete" aria-label={`Delete ${m.title}`} onClick={() => handleDelete(m.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>

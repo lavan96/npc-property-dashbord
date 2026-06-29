@@ -515,18 +515,18 @@ export default function MarketingAnalytics() {
       <Tabs value={activeChannel} onValueChange={setActiveChannel} className="min-w-0">
         <DashboardThemeFrame variant="toolbar" className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-black/5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] dark:shadow-black/25">
         <TabsList className="h-auto min-w-max flex-1 justify-start gap-1 bg-transparent p-0 sm:min-w-0 sm:flex-wrap">
-          <TabsTrigger value="meta" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
+          <TabsTrigger value="meta" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
             <Target className="h-4 w-4" />
             Meta Ads
             {!isLoading && insights.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-4 rounded-full px-1.5 py-0 text-[9px]">{insights.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="manychat" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
+          <TabsTrigger value="manychat" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
             <Bot className="h-4 w-4" />
             ManyChat
           </TabsTrigger>
-          <TabsTrigger value="lead-magnets" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
+          <TabsTrigger value="lead-magnets" className="min-h-10 gap-1.5 rounded-2xl px-3 text-muted-foreground transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/15 sm:px-4">
             <FileDown className="h-4 w-4" />
             Lead Magnets
           </TabsTrigger>
@@ -548,7 +548,7 @@ export default function MarketingAnalytics() {
             customRange={customRange}
             onCustomRangeChange={setCustomRange}
           />
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={adsFetching} className="min-h-10 gap-2 rounded-2xl border-primary/20 bg-background/60 px-4 font-semibold hover:border-primary/40 hover:bg-primary/10 hover:text-primary">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={adsFetching} className="min-h-10 gap-2 rounded-2xl border-primary/20 bg-background/60 px-4 font-semibold hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background" aria-label="Refresh marketing analytics data">
             <RefreshCw className={`h-4 w-4 mr-1.5 ${adsFetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -789,8 +789,9 @@ function KPICard({ icon, label, value, loading, accent }: {
   accent?: boolean;
 }) {
   return (
-    <Card className={cn(
+    <Card tabIndex={0} className={cn(
       'group min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-lg shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/10 dark:border-white/10 dark:shadow-black/25',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
       accent && 'border-primary/25 bg-primary/[0.04] ring-1 ring-primary/10'
     )}>
       <CardContent className="pt-4 pb-3 px-4">

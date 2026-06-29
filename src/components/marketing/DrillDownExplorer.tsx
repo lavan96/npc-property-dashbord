@@ -213,10 +213,11 @@ export function DrillDownExplorer({
                       {comparisonMode && (
                         <TableCell className="pr-0" onClick={(e) => e.stopPropagation()}>
                           <input
+                            aria-label={`Select ${rowName} for comparison`}
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => onToggleComparison(rowId)}
-                            className="rounded border-border h-4 w-4 accent-primary"
+                            className="h-4 w-4 rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                           />
                         </TableCell>
                       )}

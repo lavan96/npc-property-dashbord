@@ -428,11 +428,11 @@ export function ReportDistributionPanel() {
               </CardDescription>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-1.5 rounded-xl border-primary/20 text-xs hover:bg-primary/10 hover:text-primary">
+              <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-1.5 rounded-xl border-primary/20 text-xs hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/45" aria-label={showHistory ? 'Show report schedules' : 'Show report distribution history'}>
                 <Clock className="h-3.5 w-3.5" />
                 {showHistory ? 'Schedules' : 'History'}
               </Button>
-              <Button size="sm" onClick={openCreateDialog} className="gap-1.5 rounded-xl text-xs shadow-sm">
+              <Button size="sm" onClick={openCreateDialog} className="gap-1.5 rounded-xl text-xs shadow-sm focus-visible:ring-primary/45" aria-label="Create new report distribution schedule">
                 <Plus className="h-3.5 w-3.5" />
                 New Schedule
               </Button>
@@ -530,6 +530,7 @@ export function ReportDistributionPanel() {
                             checked={schedule.is_enabled}
                             onCheckedChange={() => handleToggleEnabled(schedule)}
                             className="scale-75"
+                            aria-label={`${schedule.is_enabled ? 'Pause' : 'Activate'} ${schedule.name}`}
                           />
                         </div>
                       </div>
@@ -621,19 +622,20 @@ export function ReportDistributionPanel() {
                 {formTargets.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     {formTargets.map((t, i) => (
-                      <Badge
+                      <button
                         key={i}
-                        variant="secondary"
-                        className="max-w-full cursor-pointer gap-1 rounded-full text-[10px] hover:bg-destructive/20"
+                        type="button"
+                        className="inline-flex max-w-full items-center gap-1 rounded-full border border-transparent bg-secondary px-2.5 py-0.5 text-[10px] font-semibold text-secondary-foreground transition-colors hover:bg-destructive/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         onClick={() => {
                           const pipeline = pipelines.find(p => p.id === t.pipeline_id);
                           const stage = t.stage_id ? stages.find(s => s.id === t.stage_id) : undefined;
                           if (pipeline) toggleStageTarget(pipeline, stage);
                         }}
+                        aria-label={`Remove target ${t.pipeline_name} ${t.stage_name || 'All stages'}`}
                       >
                         <span className="truncate">{t.pipeline_name} → {t.stage_name || 'All stages'}</span>
                         <XCircle className="h-2.5 w-2.5" />
-                      </Badge>
+                      </button>
                     ))}
                   </div>
                 )}
