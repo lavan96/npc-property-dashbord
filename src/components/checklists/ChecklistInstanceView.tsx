@@ -44,32 +44,38 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
   const progress = totalCount > 0 ? Math.round((checkedCount / totalCount) * 100) : 0;
 
   const handleToggleItem = (itemId: string, currentChecked: boolean) => {
-    mutations.updateInstanceItem.mutate({
-      id: itemId,
-      is_checked: !currentChecked,
-      checked_at: !currentChecked ? new Date().toISOString() : null,
-    });
-
-    // Update instance progress
+    const nextChecked = !currentChecked;
     const newChecked = currentChecked ? checkedCount - 1 : checkedCount + 1;
     const newProgress = totalCount > 0 ? Math.round((newChecked / totalCount) * 100) : 0;
-    const isCompleted = newProgress === 100;
-    
-    mutations.updateInstance.mutate({
-      id: instance.id,
-      progress_percent: newProgress,
-      status: isCompleted ? 'completed' : 'in_progress',
-      completed_at: isCompleted ? new Date().toISOString() : null,
-    });
+    const isCompleted = totalCount > 0 && newProgress === 100;
+    const completedAt = isCompleted ? (instance.completed_at || new Date().toISOString()) : null;
 
-    if (isCompleted) {
-      logActivityDirect({
-        actionType: 'checklist_completed',
-        entityType: 'checklist',
-        entityId: instance.id,
-        entityName: instance.name,
-      });
-    }
+    mutations.updateInstanceItem.mutate(
+      {
+        id: itemId,
+        is_checked: nextChecked,
+        checked_at: nextChecked ? new Date().toISOString() : null,
+      },
+      {
+        onSuccess: () => {
+          mutations.updateInstance.mutate({
+            id: instance.id,
+            progress_percent: newProgress,
+            status: isCompleted ? 'completed' : 'in_progress',
+            completed_at: completedAt,
+          });
+
+          if (isCompleted) {
+            logActivityDirect({
+              actionType: 'checklist_completed',
+              entityType: 'checklist',
+              entityId: instance.id,
+              entityName: instance.name,
+            });
+          }
+        },
+      },
+    );
   };
 
   const handleArchive = () => {
