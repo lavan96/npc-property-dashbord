@@ -58,6 +58,32 @@ export function TokenBalanceBanner() {
     );
   }
 
+  if (isDealPipelinePage) {
+    return (
+      <Alert className="relative mx-auto w-full max-w-[1800px] overflow-hidden rounded-[1.65rem] border-amber-300/45 bg-[linear-gradient(135deg,rgba(245,158,11,0.20),rgba(10,10,10,0.97)_40%,rgba(24,24,27,0.94))] px-4 py-3.5 shadow-[0_18px_60px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:px-5">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
+        <div className="pointer-events-none absolute -left-14 -top-20 h-40 w-40 rounded-full bg-amber-300/16 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 bottom-0 h-32 w-32 rounded-full bg-yellow-500/12 blur-3xl" />
+        <AlertTriangle className="h-4 w-4 text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.55)]" />
+        <AlertTitle className="text-sm font-semibold tracking-tight text-amber-100">Token balance low</AlertTitle>
+        <AlertDescription className="flex flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="max-w-3xl leading-6 text-amber-50/82">
+            <span className="font-semibold tabular-nums text-amber-50">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-amber-100/80 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-400 px-5 font-semibold text-amber-950 shadow-[0_12px_30px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-50 hover:from-amber-200 hover:via-yellow-200 hover:to-amber-300 hover:text-amber-950 hover:shadow-[0_18px_42px_rgba(245,158,11,0.40)] focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 active:translate-y-0 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (isCallLogsPage) {
     return (
       <Alert className="relative mx-auto w-full max-w-[1800px] overflow-hidden rounded-3xl border-amber-300/45 bg-[linear-gradient(135deg,rgba(245,158,11,0.22),rgba(10,10,10,0.97)_42%,rgba(24,24,27,0.94))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.36)] backdrop-blur-xl sm:px-5">
