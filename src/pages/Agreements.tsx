@@ -77,18 +77,100 @@ const STATUS_CONFIG: Record<
       | "success"
       | "warning";
     icon: React.ComponentType<any>;
+    toneClassName: string;
   }
 > = {
-  pending_pdf: { label: "Processing PDF", variant: "warning", icon: Clock },
-  generating: { label: "Generating", variant: "warning", icon: Loader2 },
-  generated: { label: "Generated", variant: "outline", icon: FileSignature },
-  sent: { label: "Sent", variant: "default", icon: Send },
-  delivered: { label: "Delivered", variant: "default", icon: CheckCircle2 },
-  viewed: { label: "Viewed", variant: "default", icon: Eye },
-  signed: { label: "Signed", variant: "success", icon: CheckCircle2 },
-  declined: { label: "Declined", variant: "destructive", icon: AlertTriangle },
-  voided: { label: "Voided", variant: "destructive", icon: Ban },
-  expired: { label: "Expired", variant: "secondary", icon: Clock },
+  pending_pdf: {
+    label: "Processing PDF",
+    variant: "warning",
+    icon: Clock,
+    toneClassName:
+      "border-amber-300/45 bg-amber-500/12 text-amber-800 dark:border-amber-200/30 dark:bg-amber-300/12 dark:text-amber-100",
+  },
+  generating: {
+    label: "Generating",
+    variant: "warning",
+    icon: Loader2,
+    toneClassName:
+      "border-amber-300/45 bg-amber-500/12 text-amber-800 dark:border-amber-200/30 dark:bg-amber-300/12 dark:text-amber-100",
+  },
+  generated: {
+    label: "Generated",
+    variant: "outline",
+    icon: FileSignature,
+    toneClassName:
+      "border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+  },
+  draft: {
+    label: "Draft",
+    variant: "outline",
+    icon: FileText,
+    toneClassName:
+      "border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200",
+  },
+  sent: {
+    label: "Sent",
+    variant: "default",
+    icon: Send,
+    toneClassName:
+      "border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
+  },
+  delivered: {
+    label: "Delivered",
+    variant: "default",
+    icon: CheckCircle2,
+    toneClassName:
+      "border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
+  },
+  viewed: {
+    label: "Viewed",
+    variant: "default",
+    icon: Eye,
+    toneClassName:
+      "border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100",
+  },
+  signed: {
+    label: "Signed",
+    variant: "success",
+    icon: CheckCircle2,
+    toneClassName:
+      "border-emerald-300/55 bg-emerald-500/12 text-emerald-800 dark:border-emerald-200/35 dark:bg-emerald-300/12 dark:text-emerald-100",
+  },
+  completed: {
+    label: "Completed",
+    variant: "success",
+    icon: CheckCircle2,
+    toneClassName:
+      "border-teal-300/55 bg-teal-500/12 text-teal-800 dark:border-teal-200/35 dark:bg-teal-300/12 dark:text-teal-100",
+  },
+  declined: {
+    label: "Declined",
+    variant: "destructive",
+    icon: AlertTriangle,
+    toneClassName:
+      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+  },
+  voided: {
+    label: "Voided",
+    variant: "destructive",
+    icon: Ban,
+    toneClassName:
+      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+  },
+  expired: {
+    label: "Expired",
+    variant: "secondary",
+    icon: Clock,
+    toneClassName:
+      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+  },
+  failed: {
+    label: "Failed",
+    variant: "destructive",
+    icon: AlertTriangle,
+    toneClassName:
+      "border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100",
+  },
 };
 
 export default function Agreements() {
@@ -298,10 +380,13 @@ export default function Agreements() {
     return (
       <Badge
         variant={config.variant}
-        className="w-fit gap-1.5 whitespace-nowrap border-border/50 bg-background/75 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.08em] shadow-sm backdrop-blur dark:bg-slate-950/60"
+        className={cn(
+          "max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm backdrop-blur transition-colors",
+          config.toneClassName,
+        )}
       >
         <Icon className="h-3 w-3 shrink-0" />
-        {config.label}
+        <span className="min-w-0 truncate">{config.label}</span>
       </Badge>
     );
   };
@@ -579,7 +664,7 @@ export default function Agreements() {
                           )}
                         </TableCell>
                         <TableCell className="py-4 pr-5 align-middle">
-                          <div className="flex max-w-[11rem] flex-wrap items-center gap-1.5">
+                          <div className="flex max-w-[13rem] flex-wrap items-center gap-1.5">
                             {renderStatusBadge(agreement.status)}
                             {agreement.docusign_envelope_id &&
                               agreement.docusign_status && (

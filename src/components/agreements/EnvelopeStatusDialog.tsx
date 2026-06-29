@@ -35,24 +35,34 @@ interface Props {
 }
 
 const STATUS_TONE: Record<string, { tone: string; icon: any; label: string }> = {
-  sent: { tone: 'bg-blue-500/10 text-blue-700 border-blue-500/30', icon: Mail, label: 'Sent' },
-  delivered: { tone: 'bg-purple-500/10 text-purple-700 border-purple-500/30', icon: Eye, label: 'Delivered' },
-  completed: { tone: 'bg-green-500/10 text-green-700 border-green-500/30', icon: CheckCircle2, label: 'Completed' },
-  signed: { tone: 'bg-green-500/10 text-green-700 border-green-500/30', icon: CheckCircle2, label: 'Signed' },
-  declined: { tone: 'bg-red-500/10 text-red-700 border-red-500/30', icon: XCircle, label: 'Declined' },
-  voided: { tone: 'bg-red-500/10 text-red-700 border-red-500/30', icon: AlertTriangle, label: 'Voided' },
-  created: { tone: 'bg-muted text-muted-foreground border-border', icon: Clock, label: 'Created' },
-  autoresponded: { tone: 'bg-amber-500/10 text-amber-700 border-amber-500/30', icon: AlertTriangle, label: 'Bounced' },
+  sent: { tone: 'border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100', icon: Mail, label: 'Sent' },
+  delivered: { tone: 'border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100', icon: Eye, label: 'Delivered' },
+  completed: { tone: 'border-teal-300/55 bg-teal-500/12 text-teal-800 dark:border-teal-200/35 dark:bg-teal-300/12 dark:text-teal-100', icon: CheckCircle2, label: 'Completed' },
+  signed: { tone: 'border-emerald-300/55 bg-emerald-500/12 text-emerald-800 dark:border-emerald-200/35 dark:bg-emerald-300/12 dark:text-emerald-100', icon: CheckCircle2, label: 'Signed' },
+  declined: { tone: 'border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100', icon: XCircle, label: 'Declined' },
+  voided: { tone: 'border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100', icon: AlertTriangle, label: 'Voided' },
+  expired: { tone: 'border-red-300/60 bg-red-500/12 text-red-800 dark:border-red-300/35 dark:bg-red-400/12 dark:text-red-100', icon: Clock, label: 'Expired' },
+  created: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: Clock, label: 'Created' },
+  generated: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: FileText, label: 'Generated' },
+  draft: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: FileText, label: 'Draft' },
+  autoresponded: { tone: 'border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100', icon: AlertTriangle, label: 'Bounced' },
 };
 
 export function DocuSignStatusBadge({ status }: { status?: string | null }) {
   if (!status) return null;
   const key = status.toLowerCase();
-  const cfg = STATUS_TONE[key] || { tone: 'bg-muted text-muted-foreground border-border', icon: Clock, label: status };
+  const cfg = STATUS_TONE[key] || {
+    tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200',
+    icon: Clock,
+    label: status,
+  };
   const Icon = cfg.icon;
   return (
-    <Badge className={`text-[10px] border gap-1 ${cfg.tone} capitalize`}>
-      <Icon className="h-3 w-3" /> {cfg.label}
+    <Badge
+      className={`max-w-full justify-start gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-bold uppercase leading-4 tracking-[0.075em] shadow-sm ${cfg.tone}`}
+    >
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="min-w-0 truncate">{cfg.label}</span>
     </Badge>
   );
 }
@@ -194,7 +204,7 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
                       <div className="font-medium text-sm">{s.name}</div>
                       <div className="text-muted-foreground">{s.email}</div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                       <span className="text-muted-foreground">Order {s.routingOrder}</span>
                       <StatusBadge status={s.status} />
                     </div>
