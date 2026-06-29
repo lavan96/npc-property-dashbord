@@ -634,8 +634,10 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
     tables: [],
     pictures: [],
     vectors: [],
+    fonts: [],
     pages: {},
   };
+  const mergedFontNames = new Set<string>();
   const mergedOutline: any[] = [];
   const pageLanguages: Record<string, string> = {};
   const markdownParts: string[] = [];
@@ -696,6 +698,13 @@ async function finalizeJob(admin: Admin, jobId: string): Promise<void> {
         for (const p of dd.pictures ?? []) { rebaseProv(p); mergedDoc.pictures.push(p); }
         // Phase 2: carry vector graphics through the chunk merge (rebase page_no).
         for (const v of dd.vectors ?? []) { rebaseProv(v); mergedDoc.vectors.push(v); }
+        // Phase 3: carry document fonts through, deduped by family name.
+        for (const fnt of dd.fonts ?? []) {
+          const key = String(fnt?.basename ?? fnt?.psName ?? '').toLowerCase();
+          if (!key || mergedFontNames.has(key)) continue;
+          mergedFontNames.add(key);
+          mergedDoc.fonts.push(fnt);
+        }
         const pages = dd.pages ?? {};
         for (const [k, v] of Object.entries(pages)) {
           const localNo = Number(k);

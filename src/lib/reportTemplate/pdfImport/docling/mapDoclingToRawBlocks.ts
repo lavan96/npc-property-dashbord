@@ -24,6 +24,7 @@ import type {
   RawImportBlockType,
   ImportBBox,
 } from '@/lib/reportTemplate/ingestion/reconciliation';
+import { resolveSourceFontFamily, lookupEmbeddedFamily } from '../fontResolver';
 import type {
   DoclingBBox,
   DoclingDocument,
@@ -140,6 +141,8 @@ function blockId(prefix: string, pageNo: number, index: number): string {
 interface MapOptions {
   defaultConfidence?: number;
   source?: RawImportBlockSource;
+  /** Phase 3: source-font-name → embedded `@font-face` family (for full fonts). */
+  embeddedFontFamilies?: Record<string, string>;
 }
 
 function textItemToBlock(
@@ -178,13 +181,28 @@ function textItemToBlock(
   // Phase D: capture explicit cross-reference if exactly one ref present.
   const refList = (item.refs ?? []).map((r) => (typeof r === 'string' ? r : (r.$ref ?? r.cref))).filter(Boolean) as string[];
   const xref = refList.length === 1 ? refList[0] : undefined;
+  // Phase 3: preserve the source font family (→ Google Fonts via the catalog)
+  // instead of bucketing into the tiny design catalog; fall back to the
+  // label-aware design font only when the source font isn't catalog-known.
+  const sourceFont = item.font?.family;
+  const fontResolution = sourceFont ? resolveSourceFontFamily(sourceFont) : undefined;
+  // Phase 3: prefer an embedded (full, non-subset) program when available; else
+  // the catalog/web-font match; else the label-aware design fallback.
+  const embeddedFamily = sourceFont
+    ? lookupEmbeddedFamily(sourceFont, opts.embeddedFontFamilies)
+    : undefined;
+  const fontFamily = embeddedFamily
+    ? `"${embeddedFamily}", ${fontResolution?.family ?? nearestDesignFont(sourceFont, item.label)}`
+    : fontResolution && !fontResolution.substituted
+      ? fontResolution.family
+      : nearestDesignFont(sourceFont, item.label);
   return {
     id: blockId(String(item.label ?? 'text'), pageInfo.page_no, index),
     type: blockType,
     text: displayText,
     bbox,
     style: {
-      fontFamily: nearestDesignFont(item.font?.family, item.label),
+      fontFamily,
       fontSize,
       fontWeight,
       fontStyle,
@@ -207,6 +225,8 @@ function textItemToBlock(
       codeLanguage,
       language: item.language,
       xref,
+      ...(sourceFont ? { sourceFont } : {}),
+      ...(!embeddedFamily && fontResolution?.substituted ? { fontSubstituted: true } : {}),
     },
   };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DoclingDocument } from '../doclingTypes';
 import { mapDoclingToRawBlocks } from '../mapDoclingToRawBlocks';
 import { mapDoclingToPagePlan } from '../mapDoclingToPagePlan';
+import { fontLookupKey } from '../../fontResolver';
 
 const FIXTURE: DoclingDocument = {
   schema_version: '1.0.0',
@@ -250,7 +251,9 @@ describe('docling adapter', () => {
     const mapped = mapDoclingToRawBlocks(doc);
     const footnote = mapped.byPage[1][0];
     expect(footnote.bbox.y).toBe(550);
-    expect(footnote.style?.fontFamily).toContain('Georgia');
+    // Phase 3: "TimesNewRomanPSMT" now resolves to its faithful family instead of
+    // being bucketed into the generic serif (Georgia) fallback.
+    expect(footnote.style?.fontFamily).toContain('Times New Roman');
     expect(footnote.style?.fontStyle).toBe('italic');
     expect(footnote.style?.fontSize).toBe(8);
   });
@@ -301,6 +304,64 @@ describe('docling adapter', () => {
     expect(overlay.paths[0]).toMatchObject({ stroke: '#bf9b50', strokeWidth: 1.5 });
     // Geometry is exact (confidence 0.9 ≥ 0.7 lock threshold) → editable.
     expect(overlay.locked).toBe(false);
+  });
+
+  it('Phase 3: resolves known source fonts to catalog families and flags substitutions', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      texts: [
+        {
+          label: 'paragraph', text: 'Body',
+          font: { family: 'AOTJCW+OpenSans-Regular', size: 11 },
+          prov: [{ page_no: 1, bbox: { l: 60, t: 120, r: 535, b: 140, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+        {
+          label: 'title', text: 'Heading',
+          font: { family: 'TJBZJM+Unbounded-Bold', size: 28 },
+          prov: [{ page_no: 1, bbox: { l: 60, t: 60, r: 535, b: 100, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.95,
+        },
+        {
+          label: 'paragraph', text: 'Proprietary',
+          font: { family: 'AAAAAA+KudryashevDisplayContrast', size: 12 },
+          prov: [{ page_no: 1, bbox: { l: 60, t: 160, r: 535, b: 180, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+      ],
+    };
+    const mapped = mapDoclingToRawBlocks(doc);
+    const byText = (t: string) => mapped.byPage[1].find((b) => b.text === t)!;
+    expect(byText('Body').style?.fontFamily).toBe('Open Sans');
+    expect(byText('Heading').style?.fontFamily).toBe('Unbounded');
+    expect(byText('Proprietary').meta?.fontSubstituted).toBe(true);
+    expect(byText('Proprietary').meta?.sourceFont).toBe('AAAAAA+KudryashevDisplayContrast');
+
+    const plan = mapDoclingToPagePlan(doc, { importId: 'imp-font', mode: 'semantic' });
+    const heading = plan.pages[0].overlays.find((o) => (o as any).content === 'Heading') as any;
+    expect(heading.fontFamily).toBe('Unbounded');
+    expect(plan.warnings.some((w) => w.code === 'docling.font_substituted')).toBe(true);
+  });
+
+  it('Phase 3: uses an embedded @font-face family for matching text when available', () => {
+    const doc: DoclingDocument = {
+      pages: { '1': { page_no: 1, size: { width: 595, height: 842 } } },
+      texts: [
+        {
+          label: 'paragraph', text: 'Proprietary embedded',
+          font: { family: 'ABCDEF+ProprietarySans-Regular', size: 12 },
+          prov: [{ page_no: 1, bbox: { l: 60, t: 120, r: 535, b: 140, coord_origin: 'TOPLEFT' } }],
+          confidence: 0.9,
+        },
+      ],
+    };
+    const plan = mapDoclingToPagePlan(doc, {
+      importId: 'imp-emb',
+      mode: 'semantic',
+      embeddedFontFamilies: { [fontLookupKey('ProprietarySans-Regular')]: 'ProprietarySans-x' },
+    });
+    const ov = plan.pages[0].overlays[0] as any;
+    expect(ov.fontFamily).toContain('"ProprietarySans-x"');
   });
 
   it('Phase 2: carries real typography (line-height, letter-spacing, alignment) into text overlays', () => {

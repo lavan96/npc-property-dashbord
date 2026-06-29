@@ -34,6 +34,8 @@ export interface DoclingPlanOptions {
   engineVersion?: string;
   /** Confidence cutoff for hybrid lock policy. */
   lockBelowConfidence?: number;
+  /** Phase 3: source-font-name → embedded `@font-face` family (for full fonts). */
+  embeddedFontFamilies?: Record<string, string>;
 }
 
 const DEFAULT_LOCK_THRESHOLD = 0.7;
@@ -176,6 +178,21 @@ function pageWarnings(
       message: `Page ${pageNo} used OCR text extraction; verify text fidelity against the page image.`,
     });
   }
+  // Phase 3: surface non-catalog (substituted) source fonts so designers know
+  // which text won't render in its original typeface.
+  const substitutedFonts = Array.from(new Set(
+    blocks
+      .filter((b) => b.meta?.fontSubstituted && b.meta?.sourceFont)
+      .map((b) => String(b.meta!.sourceFont).replace(/^[A-Z]{6}\+/, '')),
+  ));
+  if (substitutedFonts.length) {
+    warnings.push({
+      code: 'docling.font_substituted',
+      severity: 'info',
+      pageId: pageId(pageNo),
+      message: `Page ${pageNo}: ${substitutedFonts.length} source font(s) are not available as web fonts and were substituted (${substitutedFonts.slice(0, 4).join(', ')}${substitutedFonts.length > 4 ? '…' : ''}).`,
+    });
+  }
   const lowConf = blocks.filter((b) => b.confidence < lockThreshold).length;
   if (!blocks.length) return warnings;
   const ratio = lowConf / blocks.length;
@@ -233,7 +250,7 @@ export function mapDoclingToPagePlan(
   doc: DoclingDocument,
   opts: DoclingPlanOptions,
 ): TemplateImportPlan {
-  const mapped = mapDoclingToRawBlocks(doc);
+  const mapped = mapDoclingToRawBlocks(doc, { embeddedFontFamilies: opts.embeddedFontFamilies });
   const pages: TemplateImportPagePlan[] = mapped.pages.map((page) =>
     pagePlanForPage(page, mapped.byPage[page.page_no] ?? [], opts, doc),
   );

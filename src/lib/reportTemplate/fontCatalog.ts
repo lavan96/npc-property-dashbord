@@ -103,7 +103,7 @@ export function primaryFamily(stack: string): string {
   return String(stack ?? '').split(',')[0].replace(/["']/g, '').trim();
 }
 
-function findCatalogFontLoose(family: string): CatalogFont | undefined {
+export function findCatalogFontLoose(family: string): CatalogFont | undefined {
   const fam = primaryFamily(family).toLowerCase();
   if (!fam) return undefined;
   return FONT_CATALOG.find((f) => f.family.toLowerCase() === fam);

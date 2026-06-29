@@ -23,6 +23,8 @@ import { applyTemplateImportPlan } from '@/lib/reportTemplate/ingestion/reconcil
 import { validateReconstructedSchema } from '@/lib/reportTemplate/referenceImport';
 import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDoclingToPagePlan';
 import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
+import { buildEmbeddedFontFace, type FontFaceEntry } from './fontFaceBuilder';
+import { fontLookupKey } from './fontResolver';
 import type {
   DoclingDocument,
   DoclingRasterByPage,
@@ -634,16 +636,44 @@ export async function extractPdfViaDocling(
         ? 'Mapping Docling → template (Pixel-Perfect selected for OCR-heavy PDF)…'
         : 'Mapping Docling → template…',
     });
+    // Phase 3: build @font-face entries for fully-embeddable source fonts (non-
+    // subset, real cmap) and a name→family map so matching overlays use the
+    // embedded face. Subset/CID fonts (the common case) carry no `base64` and are
+    // resolved to web fonts by name in the mapper instead.
+    const embeddedFaces: FontFaceEntry[] = [];
+    const embeddedFontFamilies: Record<string, string> = {};
+    for (const f of doclingDoc.fonts ?? []) {
+      if (!f?.base64) continue;
+      const built = buildEmbeddedFontFace({
+        loadedName: f.basename,
+        postscriptName: f.psName ?? f.basename,
+        base64: f.base64,
+        mimetype: f.mimetype,
+        bold: f.bold,
+        italic: f.italic,
+      });
+      embeddedFaces.push(built.face);
+      embeddedFontFamilies[fontLookupKey(f.basename)] = built.family;
+    }
+
     const plan = mapDoclingToPagePlan(doclingDoc, {
       importId,
       mode: effectiveMode,
       rastersByPage: rasters,
       engineVersion: job.engine_version ?? 'docling',
+      embeddedFontFamilies,
     });
 
     const template = applyTemplateImportPlan(plan, {
       templateName: options.templateName ?? file.name.replace(/\.pdf$/i, ''),
     });
+    if (embeddedFaces.length) {
+      const tokens = (template.tokens ?? {}) as any;
+      const existing: any[] = tokens.fontFaces ?? [];
+      const seen = new Set(existing.map((x) => x?.family));
+      tokens.fontFaces = [...existing, ...embeddedFaces.filter((x) => !seen.has(x.family))];
+      template.tokens = tokens;
+    }
     template.meta = {
       ...(template.meta ?? {}),
       pdfImport: {
