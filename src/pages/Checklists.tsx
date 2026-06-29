@@ -123,11 +123,16 @@ export default function Checklists() {
     const statusClass = instance.status === 'completed'
       ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-200'
       : instance.status === 'archived'
-        ? 'border-zinc-500/35 bg-zinc-500/10 text-zinc-300'
+        ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
         : 'border-amber-300/40 bg-amber-400/10 text-amber-200';
     const progressClass = instance.status === 'completed'
       ? '[&>div]:from-emerald-500 [&>div]:via-teal-300 [&>div]:to-emerald-200'
       : '[&>div]:from-amber-500 [&>div]:via-yellow-300 [&>div]:to-amber-200';
+    const progressPercentClass = instance.status === 'completed'
+      ? 'border-emerald-300/20 bg-emerald-400/10 text-emerald-200'
+      : instance.status === 'archived'
+        ? 'border-amber-700/35 bg-amber-950/30 text-amber-200'
+        : 'border-amber-300/20 bg-amber-300/10 text-amber-200';
 
     return (
       <Card
@@ -165,7 +170,7 @@ export default function Checklists() {
           <div className="rounded-xl border border-white/5 bg-black/35 p-3.5 shadow-inner shadow-black/35">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Progress</span>
-              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[11px] font-bold tabular-nums text-amber-200">{instance.progress_percent}%</span>
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold tabular-nums ${progressPercentClass}`}>{instance.progress_percent}%</span>
             </div>
             <Progress value={instance.progress_percent} className={`h-2.5 bg-zinc-800/90 shadow-inner shadow-black/40 [&>div]:bg-gradient-to-r ${progressClass}`} />
             {instance.progress_percent === 0 && (
@@ -307,30 +312,32 @@ export default function Checklists() {
                       <Plus className="h-3 w-3" /> New Template
                     </Button>
                   </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Template</DialogTitle>
-                    <DialogDescription>Build a reusable checklist template from scratch</DialogDescription>
+                <DialogContent className="max-h-[85vh] overflow-y-auto border-amber-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-zinc-100 shadow-2xl shadow-black/40">
+                  <DialogHeader className="rounded-2xl border border-amber-500/10 bg-black/35 p-4 shadow-inner shadow-amber-950/10">
+                    <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-50">Create New Template</DialogTitle>
+                    <DialogDescription className="text-zinc-400">Build a reusable checklist template from scratch</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="flex gap-3">
+                  <div className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/70 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row">
                       <div className="w-20">
-                        <Label className="text-xs text-muted-foreground">Icon</Label>
-                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} className="text-center text-xl" />
+                        <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Icon</Label>
+                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} className="mt-1 border-amber-500/15 bg-black/35 text-center text-xl text-zinc-100 focus-visible:ring-amber-300/45" />
                       </div>
                       <div className="flex-1">
-                        <Label className="text-xs text-muted-foreground">Name</Label>
-                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" />
+                        <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Name</Label>
+                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                        <p className="mt-1.5 text-[11px] text-zinc-500">Give this blueprint a clear operational name.</p>
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">Description (optional)</Label>
-                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} />
+                      <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">Description (optional)</Label>
+                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} className="mt-1 border-amber-500/15 bg-black/35 text-zinc-100 placeholder:text-zinc-500 focus-visible:ring-amber-300/45" />
+                      <p className="mt-1.5 text-[11px] text-zinc-500">Use this to clarify when the template should be generated or followed.</p>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
+                  <DialogFooter className="gap-2">
+                    <Button variant="ghost" className="text-zinc-300 hover:bg-white/5 hover:text-zinc-50" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                    <Button className="bg-gradient-to-r from-amber-500 to-yellow-400 font-semibold text-black shadow-[0_12px_28px_rgba(245,158,11,0.24)] hover:from-amber-400 hover:to-yellow-300" onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
                   </DialogFooter>
                 </DialogContent>
                 </Dialog>
