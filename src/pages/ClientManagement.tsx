@@ -603,7 +603,7 @@ export default function ClientManagement() {
   ];
 
   return (
-    <div className="relative -mx-3 space-y-6 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
+    <div className="client-management-page relative -mx-3 space-y-6 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))]" />
       <GHLExportDialog
         open={showExportDialog}
@@ -618,13 +618,13 @@ export default function ClientManagement() {
       />
 
       {/* Header */}
-      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-6">
+      <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-white dark:bg-[linear-gradient(135deg,rgba(20,20,20,0.94),rgba(3,7,18,0.9))] p-4 shadow-2xl shadow-black/30 backdrop-blur md:p-6">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
         <div className="pointer-events-none absolute -right-14 -top-20 h-44 w-44 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-2">
-            <div className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-200">Premium client workspace</div>
-            <h1 className="bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent md:text-5xl">Client Management</h1>
+            <div className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">Premium client workspace</div>
+            <h1 className="bg-gradient-to-r from-slate-950 via-amber-700 to-amber-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-amber-100 dark:to-amber-300 md:text-5xl">Client Management</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
               Manage clients, properties, and sync with GoHighLevel
             </p>
@@ -726,7 +726,7 @@ export default function ClientManagement() {
         {kpiCards.map(({ label, value, icon: Icon, accent, iconSurface, glow, valueClassName, barClassName }) => (
           <Card
             key={label}
-            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-300/50 hover:shadow-2xl hover:shadow-amber-950/35"
+            className="group relative overflow-hidden rounded-2xl border border-border/70 bg-white dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-black/25 transition-all duration-300 hover:-translate-y-1.5 hover:border-amber-300/50 hover:shadow-2xl hover:shadow-amber-950/35"
           >
             <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} via-transparent to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-100`} />
             <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -748,7 +748,7 @@ export default function ClientManagement() {
       {/* Main Content */}
       <Tabs defaultValue="clients" className="space-y-5 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-2xl shadow-black/20 backdrop-blur md:p-4">
         <div className="-mx-3 overflow-x-auto px-3 pb-1 md:mx-0 md:px-0">
-          <TabsList aria-label="Client management sections" className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] p-1.5 shadow-inner shadow-black/30 backdrop-blur">
+          <TabsList aria-label="Client management sections" className="inline-flex h-auto min-h-14 w-auto min-w-max gap-1.5 rounded-2xl border border-amber-500/20 bg-stone-100 p-1.5 shadow-inner shadow-stone-200/70 backdrop-blur dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.86),rgba(3,7,18,0.78))] dark:shadow-black/30">
             <TabsTrigger value="clients" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Clients</TabsTrigger>
             <TabsTrigger value="portfolio-reports" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Portfolio</TabsTrigger>
             <TabsTrigger value="analytics" className="min-h-11 rounded-xl px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-300 data-[state=active]:to-yellow-500 data-[state=active]:text-black data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/25">Analytics</TabsTrigger>
@@ -767,7 +767,7 @@ export default function ClientManagement() {
           />
 
           {/* Search & Filters */}
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/15 bg-[linear-gradient(135deg,rgba(24,24,27,0.76),rgba(3,7,18,0.62))] p-3 shadow-inner shadow-black/25 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/15 bg-stone-100 dark:bg-[linear-gradient(135deg,rgba(24,24,27,0.76),rgba(3,7,18,0.62))] p-3 shadow-inner shadow-black/25 backdrop-blur">
             <div className="relative min-w-full flex-1 sm:min-w-[240px] md:max-w-md">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/70" />
               <Input
@@ -819,7 +819,7 @@ export default function ClientManagement() {
 
           {/* Client List */}
           {isLoading ? (
-            <div className="grid items-stretch gap-5 sm:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid items-stretch gap-5 lg:grid-cols-2 2xl:grid-cols-3">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="relative min-h-[22rem] overflow-hidden rounded-3xl border-amber-300/15 bg-[linear-gradient(145deg,rgba(24,24,27,0.86),rgba(3,7,18,0.72))] shadow-xl shadow-black/20">
                   <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
@@ -871,7 +871,7 @@ export default function ClientManagement() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid items-stretch gap-5 sm:grid-cols-2 2xl:grid-cols-3">
+            <div className="grid items-stretch gap-5 lg:grid-cols-2 2xl:grid-cols-3">
               {displayClients.map((client) => (
               <ClientCard
                     key={client.id}
