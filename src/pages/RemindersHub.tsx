@@ -379,10 +379,13 @@ export default function RemindersHub() {
               <Button
                 onClick={() => setShowCreateForm(true)}
                 variant="outline"
-                className="mb-1 w-full gap-2 border-amber-300/25 bg-amber-400/10 text-amber-100 hover:border-amber-200/50 hover:bg-amber-400/20 hover:shadow-[0_0_30px_rgba(245,158,11,0.16)] focus-visible:ring-amber-300"
+                className="group relative mb-1 h-12 w-full overflow-hidden rounded-2xl border-amber-300/35 bg-[linear-gradient(135deg,rgba(251,191,36,0.22),rgba(245,158,11,0.10),rgba(0,0,0,0.40))] text-sm font-semibold text-amber-50 shadow-[0_14px_36px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-200/70 hover:bg-amber-400/20 hover:text-white hover:shadow-[0_0_38px_rgba(245,158,11,0.22),0_18px_42px_rgba(0,0,0,0.32)] focus-visible:ring-2 focus-visible:ring-amber-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-60 sm:h-14"
               >
-                <Plus className="h-4 w-4" />
-                Create Reminder
+                <span className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent opacity-80" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-amber-100/30 bg-amber-300/20 shadow-inner transition-all duration-200 group-hover:scale-105 group-hover:bg-amber-300/30">
+                  <Plus className="h-4 w-4 text-amber-50" />
+                </span>
+                <span>Create Reminder</span>
               </Button>
             )
           )}
