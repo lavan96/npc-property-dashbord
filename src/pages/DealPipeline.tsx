@@ -118,20 +118,25 @@ export default function DealPipeline() {
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
 
-      <section className="relative overflow-hidden rounded-[1.5rem] border border-amber-300/15 bg-black/35 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur sm:p-5">
-        <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700" />
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-200/35 bg-amber-300/10 shadow-[0_0_30px_rgba(245,158,11,0.18)]">
-            <TrendingUp className="h-5 w-5 text-amber-200 sm:h-6 sm:w-6" />
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(245,158,11,0.085)_34%,rgba(0,0,0,0.34))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.28)] backdrop-blur sm:p-6">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/75 to-transparent" />
+        <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
+        <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-amber-100 via-amber-400 to-amber-700 shadow-[0_0_24px_rgba(245,158,11,0.35)]" />
+        <div className="flex items-center gap-4 sm:gap-5">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] border border-amber-100/40 bg-[radial-gradient(circle_at_30%_20%,rgba(254,243,199,0.24),rgba(245,158,11,0.12)_42%,rgba(0,0,0,0.32))] shadow-[0_16px_38px_rgba(245,158,11,0.18),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-16 sm:w-16">
+            <div className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-amber-100/60 bg-amber-300 text-[11px] font-bold text-amber-950 shadow-[0_8px_18px_rgba(245,158,11,0.28)]">
+              $
+            </div>
+            <TrendingUp className="h-6 w-6 text-amber-100 drop-shadow-[0_0_16px_rgba(251,191,36,0.45)] sm:h-7 sm:w-7" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-amber-200/75">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-amber-200/80">
               Deal command centre
             </p>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            <h1 className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
               Deal Pipeline
             </h1>
-            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
               Cross-client deal tracking, commission monitoring, and builder
               invoice management.
             </p>
