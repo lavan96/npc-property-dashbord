@@ -182,7 +182,7 @@ export function ManyChatPanel() {
     const isNotConfigured = errMsg.includes('MANYCHAT_API_KEY');
 
     return (
-      <Card className="border-dashed">
+      <Card className="overflow-hidden border-dashed border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardContent className="py-12 text-center">
           <Bot className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-1">
@@ -205,26 +205,26 @@ export function ManyChatPanel() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-10 w-10 shrink-0 rounded-2xl border border-primary/20 bg-primary/10 flex items-center justify-center">
             <Bot className="h-5 w-5 text-primary" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground">ManyChat</h2>
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-bold tracking-tight text-foreground">ManyChat</h2>
             <p className="text-muted-foreground text-sm">Chat automation & subscriber management</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching} className="shrink-0 rounded-xl border-primary/20 hover:bg-primary/10 hover:text-primary">
           <RefreshCw className={`h-4 w-4 mr-1.5 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
 
       {/* Page Info Card */}
-      <Card className="overflow-hidden">
-        <div className="bg-gradient-to-r from-primary/5 to-primary/[0.02] p-5">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
+        <div className="bg-[linear-gradient(135deg,hsl(var(--primary)/0.10),hsl(var(--background)/0.35)_58%,hsl(var(--card)/0.92))] p-5">
           {isLoading ? (
             <div className="flex items-center gap-4">
               <div className="h-14 w-14 rounded-full bg-muted animate-pulse" />
@@ -244,22 +244,22 @@ export function ManyChatPanel() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold text-foreground text-lg truncate">{pageInfo.name || 'ManyChat Account'}</h3>
-                  <Badge variant={pageInfo.is_pro ? 'default' : 'secondary'} className="shrink-0">
+                  <h3 className="font-semibold text-foreground text-lg truncate" title={pageInfo.name || 'ManyChat Account'}>{pageInfo.name || 'ManyChat Account'}</h3>
+                  <Badge variant={pageInfo.is_pro ? 'default' : 'secondary'} className="shrink-0 rounded-full">
                     {pageInfo.is_pro ? '⭐ Pro' : 'Free'}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-4 mt-1.5 text-sm text-muted-foreground flex-wrap">
                   {pageInfo.timezone && (
-                    <span className="flex items-center gap-1">
+                    <span className="flex min-w-0 items-center gap-1">
                       <Globe className="h-3.5 w-3.5" />
-                      {pageInfo.timezone}
+                      <span className="truncate">{pageInfo.timezone}</span>
                     </span>
                   )}
                   {pageInfo.category && (
-                    <span className="flex items-center gap-1">
+                    <span className="flex min-w-0 items-center gap-1">
                       <Tag className="h-3.5 w-3.5" />
-                      {pageInfo.category}
+                      <span className="truncate">{pageInfo.category}</span>
                     </span>
                   )}
                   {pageInfo.subscribers !== undefined && (
@@ -274,7 +274,7 @@ export function ManyChatPanel() {
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-border border-t">
+        <div className="grid grid-cols-2 divide-y divide-border border-t sm:grid-cols-5 sm:divide-x sm:divide-y-0">
           <QuickStat
             icon={<MousePointerClick className="h-4 w-4" />}
             label="Growth Tools"
@@ -314,7 +314,7 @@ export function ManyChatPanel() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Flow Status Card */}
           {flows.length > 0 && (
-            <Card>
+            <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-black/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Activity className="h-4 w-4 text-primary" />
@@ -360,7 +360,7 @@ export function ManyChatPanel() {
 
           {/* Widget Type Breakdown */}
           {widgets.length > 0 && (
-            <Card>
+            <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-black/20">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
@@ -370,7 +370,7 @@ export function ManyChatPanel() {
               <CardContent className="pb-4">
                 <div className="space-y-2">
                   {widgetTypeMap.slice(0, 5).map(([type, count]) => (
-                    <div key={type} className="flex items-center gap-3">
+                    <div key={type} className="flex min-w-0 items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs text-muted-foreground capitalize truncate">{type}</span>
@@ -393,7 +393,7 @@ export function ManyChatPanel() {
       )}
 
       {/* Subscriber Search */}
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -440,15 +440,15 @@ export function ManyChatPanel() {
               </SelectContent>
             </Select>
           )}
-          <div className="flex gap-2">
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
             <Input
               placeholder={searchMode === 'name' ? 'Search by name...' : 'Enter field value...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1"
+              className="flex-1 min-w-0"
             />
-            <Button onClick={handleSearch} disabled={isSearching} size="sm">
+            <Button onClick={handleSearch} disabled={isSearching} size="sm" className="shrink-0 rounded-xl">
               {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               <span className="ml-1.5 hidden sm:inline">Search</span>
             </Button>
@@ -460,7 +460,7 @@ export function ManyChatPanel() {
                 {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
               </p>
               {searchResults.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-sm">
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/45 py-6 text-center text-sm text-muted-foreground">
                   No subscribers match "{searchQuery}"
                 </div>
               ) : (
@@ -468,7 +468,7 @@ export function ManyChatPanel() {
                   {searchResults.map((sub: any) => (
                     <div
                       key={sub.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer"
+                      className="flex items-center justify-between p-3 rounded-2xl border border-border/60 bg-background/45 hover:border-primary/25 hover:bg-primary/[0.04] transition-colors cursor-pointer"
                       onClick={() => handleViewSubscriber(sub.id)}
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -523,18 +523,18 @@ export function ManyChatPanel() {
         ) : (
           <div className="space-y-2">
             {widgets.map((widget: any, i: number) => (
-              <div key={widget.id || i} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
+              <div key={widget.id || i} className="flex items-center justify-between p-3 rounded-2xl border border-border/60 bg-background/45 hover:border-primary/25 hover:bg-primary/[0.04] transition-colors">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                     <Zap className="h-4 w-4 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{widget.name || `Widget ${i + 1}`}</p>
+                    <p className="text-sm font-medium text-foreground truncate" title={widget.name || `Widget ${i + 1}`}>{widget.name || `Widget ${i + 1}`}</p>
                     <p className="text-xs text-muted-foreground capitalize">{(widget.type || 'unknown').replace(/_/g, ' ')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-2 shrink-0">
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="max-w-[140px] truncate rounded-full text-xs" title={`ID: ${widget.id}`}>
                     ID: {widget.id}
                   </Badge>
                 </div>
@@ -558,9 +558,9 @@ export function ManyChatPanel() {
         ) : (
           <div className="flex flex-wrap gap-2">
             {tags.map((tag: any, i: number) => (
-              <Badge key={tag.id || i} variant="secondary" className="text-xs px-3 py-1.5">
+              <Badge key={tag.id || i} variant="secondary" className="max-w-full rounded-full px-3 py-1.5 text-xs" title={tag.name || `Tag ${i + 1}`}>
                 <Hash className="h-3 w-3 mr-1" />
-                {tag.name || `Tag ${i + 1}`}
+                <span className="truncate">{tag.name || `Tag ${i + 1}`}</span>
               </Badge>
             ))}
           </div>
@@ -590,10 +590,10 @@ export function ManyChatPanel() {
             </div>
             <div className="space-y-1.5">
               {customFields.map((field: any, i: number) => (
-                <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
+                <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-2xl border border-border/60 bg-background/45">
                   <div className="flex items-center gap-2 min-w-0">
                     <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-foreground truncate">{field.name}</span>
+                    <span className="text-sm text-foreground truncate" title={field.name}>{field.name}</span>
                   </div>
                   <div className="flex items-center gap-2 ml-2 shrink-0">
                     {field.type && (
@@ -621,17 +621,17 @@ export function ManyChatPanel() {
         ) : (
           <div className="space-y-1.5">
             {botFields.map((field: any, i: number) => (
-              <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-md bg-muted/40">
+              <div key={field.id || i} className="flex items-center justify-between p-2.5 rounded-2xl border border-border/60 bg-background/45">
                 <div className="flex items-center gap-2 min-w-0">
                   <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-foreground truncate">{field.name}</span>
+                  <span className="text-sm text-foreground truncate" title={field.name}>{field.name}</span>
                 </div>
                 <div className="flex items-center gap-2 ml-2 shrink-0">
                   {field.type && (
                     <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
                   )}
                   {field.value !== undefined && field.value !== null && (
-                    <span className="text-xs text-muted-foreground font-mono">{String(field.value)}</span>
+                    <span className="max-w-[180px] truncate text-xs text-muted-foreground font-mono" title={String(field.value)}>{String(field.value)}</span>
                   )}
                 </div>
               </div>
@@ -654,9 +654,9 @@ export function ManyChatPanel() {
         ) : (
           <div className="space-y-2">
             {flows.map((flow: any, i: number) => (
-              <div key={flow.ns_id || i} className="flex items-center justify-between p-3 rounded-lg bg-muted/40">
+              <div key={flow.ns_id || i} className="flex items-center justify-between p-3 rounded-2xl border border-border/60 bg-background/45 hover:border-primary/25 hover:bg-primary/[0.04]">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{flow.name || `Flow ${i + 1}`}</p>
+                  <p className="text-sm font-medium text-foreground truncate" title={flow.name || `Flow ${i + 1}`}>{flow.name || `Flow ${i + 1}`}</p>
                   {flow.folder_name && (
                     <p className="text-xs text-muted-foreground">{flow.folder_name}</p>
                   )}
@@ -670,7 +670,7 @@ export function ManyChatPanel() {
         )}
       </CollapsibleSection>
 
-      <Card className="border-dashed">
+      <Card className="border-dashed border-border/70 bg-card/80">
         <CardContent className="py-3 px-4">
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -696,7 +696,7 @@ function QuickStat({ icon, label, value, loading, accent }: {
   accent?: boolean;
 }) {
   return (
-    <div className="px-4 py-3 text-center">
+    <div className="min-w-0 px-4 py-3 text-center">
       <div className="flex items-center justify-center gap-1.5 text-muted-foreground mb-1">
         {icon}
         <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
@@ -721,20 +721,20 @@ function CollapsibleSection({ title, description, icon, count, expanded, onToggl
   children: React.ReactNode;
 }) {
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 dark:border-white/10 dark:shadow-black/20">
       <div
-        className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-muted/30 transition-colors"
+        className="flex items-center justify-between gap-3 px-5 py-4 cursor-pointer hover:bg-primary/[0.04] transition-colors"
         onClick={onToggle}
       >
-        <div className="flex items-center gap-3">
-          <div className="text-muted-foreground">{icon}</div>
-          <div>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="text-muted-foreground shrink-0">{icon}</div>
+          <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className="truncate text-xs text-muted-foreground">{description}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">{loading ? '...' : count}</Badge>
+          <Badge variant="outline" className="rounded-full text-xs">{loading ? '...' : count}</Badge>
           {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </div>
       </div>
@@ -756,7 +756,7 @@ function CollapsibleSection({ title, description, icon, count, expanded, onToggl
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="text-center py-6">
+    <div className="rounded-2xl border border-dashed border-border/70 bg-background/45 py-6 text-center">
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
@@ -768,10 +768,10 @@ function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: (
   const visibleCustomFields = subscriberCustomFields.filter((field: any) => field.value !== null && field.value !== '');
 
   return (
-    <Card className="border-primary/20 bg-primary/[0.02]">
+    <Card className="overflow-hidden border-primary/20 bg-primary/[0.02]">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               {subscriber.profile_pic ? (
                 <img src={subscriber.profile_pic} alt="Profile" className="h-10 w-10 rounded-full" />
@@ -779,8 +779,8 @@ function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: (
                 <User className="h-5 w-5 text-primary" />
               )}
             </div>
-            <div>
-              <CardTitle className="text-base">
+            <div className="min-w-0">
+              <CardTitle className="truncate text-base">
                 {subscriber.first_name} {subscriber.last_name}
               </CardTitle>
               {subscriber.name && (
@@ -837,9 +837,9 @@ function SubscriberDetail({ subscriber, onClose }: { subscriber: any; onClose: (
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Custom Fields</p>
             <div className="space-y-1.5">
               {visibleCustomFields.map((field: any) => (
-                <div key={field.id} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{field.name}</span>
-                  <span className="text-foreground font-medium">{String(field.value)}</span>
+                <div key={field.id} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate text-muted-foreground" title={field.name}>{field.name}</span>
+                  <span className="max-w-[60%] truncate text-foreground font-medium" title={String(field.value)}>{String(field.value)}</span>
                 </div>
               ))}
             </div>

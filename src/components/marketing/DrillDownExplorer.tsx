@@ -86,14 +86,16 @@ export function DrillDownExplorer({
   const bestCTR = enrichedRows.sort((a, b) => Number(b.ctr || 0) - Number(a.ctr || 0))[0];
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-black/5 dark:border-white/10 dark:shadow-black/25">
       <CardHeader className="pb-3">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Performance Explorer
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </span>
+                <span className="truncate">Performance Explorer</span>
               </CardTitle>
               <CardDescription className="mt-1">
                 {insights.length} {level === 'campaign' ? 'campaigns' : level === 'adset' ? 'ad sets' : level === 'ad' ? 'ads' : 'results'} · {dateLabel}
@@ -102,22 +104,23 @@ export function DrillDownExplorer({
           </div>
 
           {/* Breadcrumb navigation */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto rounded-2xl border border-border/60 bg-background/45 p-1.5">
             {breadcrumbs.map((crumb, idx) => (
-              <div key={idx} className="flex items-center gap-1.5">
+              <div key={idx} className="flex min-w-0 shrink-0 items-center gap-1.5">
                 {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                 <Button
                   variant={idx === breadcrumbs.length - 1 ? 'secondary' : 'ghost'}
                   size="sm"
-                  className={`h-7 px-2.5 text-xs font-medium ${
+                  className={`h-7 max-w-[220px] rounded-xl px-2.5 text-xs font-medium ${
                     idx === breadcrumbs.length - 1
-                      ? 'bg-primary/10 text-primary pointer-events-none'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary/10 text-primary pointer-events-none shadow-sm'
+                      : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
                   }`}
                   onClick={() => idx < breadcrumbs.length - 1 && onBreadcrumbClick(idx)}
+                  title={crumb.label}
                 >
                   {idx === 0 && <Home className="h-3 w-3 mr-1" />}
-                  {crumb.label}
+                  <span className="truncate">{crumb.label}</span>
                 </Button>
               </div>
             ))}
@@ -127,15 +130,15 @@ export function DrillDownExplorer({
           {!loading && enrichedRows.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap text-xs">
               {bestCTR && level !== 'account' && (
-                <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 text-[10px] font-normal gap-1">
+                <Badge variant="outline" className="max-w-full gap-1 truncate rounded-full border-emerald-500/30 bg-emerald-500/5 text-[10px] font-normal text-emerald-600 dark:text-emerald-400" title={`Best CTR: ${getRowName(bestCTR)} (${formatPercent(bestCTR.ctr)})`}>
                   <ArrowUpRight className="h-3 w-3" />
-                  Best CTR: {getRowName(bestCTR)} ({formatPercent(bestCTR.ctr)})
+                  <span className="truncate">Best CTR: {getRowName(bestCTR)} ({formatPercent(bestCTR.ctr)})</span>
                 </Badge>
               )}
               {bestCPL && level !== 'account' && (
-                <Badge variant="outline" className="border-blue-500/30 text-blue-600 dark:text-blue-400 bg-blue-500/5 text-[10px] font-normal gap-1">
+                <Badge variant="outline" className="max-w-full gap-1 truncate rounded-full border-blue-500/30 bg-blue-500/5 text-[10px] font-normal text-blue-600 dark:text-blue-400" title={`Best CPL: ${getRowName(bestCPL)} (${formatCurrency(bestCPL._cpl)})`}>
                   <ArrowDownRight className="h-3 w-3" />
-                  Best CPL: {getRowName(bestCPL)} ({formatCurrency(bestCPL._cpl)})
+                  <span className="truncate">Best CPL: {getRowName(bestCPL)} ({formatCurrency(bestCPL._cpl)})</span>
                 </Badge>
               )}
             </div>
@@ -166,8 +169,8 @@ export function DrillDownExplorer({
             <p className="text-sm mt-1">Try a different date range or go back up</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="overflow-x-auto rounded-2xl border border-border/70 bg-background/35">
+            <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>
                   {comparisonMode && <TableHead className="w-[40px]" />}
@@ -200,7 +203,7 @@ export function DrillDownExplorer({
                   return (
                     <TableRow
                       key={rowId}
-                      className={`group ${canDrillDown ? 'cursor-pointer hover:bg-muted/80' : ''} ${isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
+                      className={`group transition-colors ${canDrillDown ? 'cursor-pointer hover:bg-primary/5' : ''} ${isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
                       onClick={() => {
                         if (canDrillDown && nextLevel && !comparisonMode) {
                           onDrillDown(nextLevel as 'adset' | 'ad', rowId, rowName);
@@ -218,8 +221,8 @@ export function DrillDownExplorer({
                         </TableCell>
                       )}
                       {level !== 'account' && (
-                        <TableCell className="font-medium max-w-[250px]">
-                          <div className="flex items-center gap-2">
+                        <TableCell className="font-medium max-w-[280px]">
+                          <div className="flex min-w-0 items-center gap-2" title={rowName}>
                             <span className="truncate">{rowName}</span>
                             {level === 'campaign' && campaign?.status && (
                               <Badge

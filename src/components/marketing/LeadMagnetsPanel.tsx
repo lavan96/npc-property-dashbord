@@ -107,46 +107,46 @@ export function LeadMagnetsPanel() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Lead Magnets</h2>
+    <div className="space-y-4 min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-semibold">Lead Magnets</h2>
           <p className="text-sm text-muted-foreground">Embed once per page — swap the PDF anytime without touching the embed.</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4 mr-1.5" /> New Lead Magnet</Button>
+        <Button onClick={() => setCreateOpen(true)} className="shrink-0 rounded-xl shadow-sm"><Plus className="h-4 w-4 mr-1.5" /> New Lead Magnet</Button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : magnets.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No lead magnets yet. Click "New Lead Magnet" to upload your first.</CardContent></Card>
+        <Card className="overflow-hidden border-dashed border-border/70 bg-card/95"><CardContent className="py-12 text-center text-sm text-muted-foreground">No lead magnets yet. Click "New Lead Magnet" to upload your first.</CardContent></Card>
       ) : (
         <div className="grid gap-3">
           {magnets.map(m => {
             const pipeline = pipelines.find(p => p.ghl_id === m.ghl_pipeline_id);
             const stage = stages.find(s => s.ghl_id === m.ghl_stage_id);
             return (
-              <Card key={m.id}>
+              <Card key={m.id} className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-black/5 transition-colors hover:border-primary/25 hover:bg-primary/[0.03] dark:border-white/10 dark:shadow-black/20">
                 <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+                    <div className="h-10 w-10 rounded-2xl border border-primary/20 bg-primary/10 text-primary flex items-center justify-center shrink-0">
                       <FileText className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-medium">{m.title}</h3>
-                        <Badge variant={m.is_active ? 'default' : 'secondary'}>{m.is_active ? 'Active' : 'Disabled'}</Badge>
-                        <Badge variant="outline">{m.download_count} downloads</Badge>
+                        <h3 className="truncate font-medium" title={m.title}>{m.title}</h3>
+                        <Badge variant={m.is_active ? 'default' : 'secondary'} className="rounded-full">{m.is_active ? 'Active' : 'Disabled'}</Badge>
+                        <Badge variant="outline" className="rounded-full">{m.download_count} downloads</Badge>
                       </div>
                       {m.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{m.description}</p>}
-                      <div className="text-xs text-muted-foreground mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                        <span>slug: <code>{m.slug}</code></span>
-                        <span>file: {m.file_name}</span>
-                        {pipeline && <span>Pipeline: {pipeline.name}{stage ? ` → ${stage.name}` : ''}</span>}
-                        {m.ghl_tag && <span>Tag: {m.ghl_tag}</span>}
+                      <div className="mt-3 grid gap-2 text-xs text-muted-foreground md:grid-cols-2 xl:grid-cols-4">
+                        <span className="min-w-0 rounded-xl bg-muted/30 px-2.5 py-1.5">slug: <code className="break-all">{m.slug}</code></span>
+                        <span className="min-w-0 truncate rounded-xl bg-muted/30 px-2.5 py-1.5" title={m.file_name}>file: {m.file_name}</span>
+                        {pipeline && <span className="min-w-0 truncate rounded-xl bg-muted/30 px-2.5 py-1.5" title={`Pipeline: ${pipeline.name}${stage ? ` → ${stage.name}` : ''}`}>Pipeline: {pipeline.name}{stage ? ` → ${stage.name}` : ''}</span>}
+                        {m.ghl_tag && <span className="min-w-0 truncate rounded-xl bg-muted/30 px-2.5 py-1.5" title={`Tag: ${m.ghl_tag}`}>Tag: {m.ghl_tag}</span>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 flex-wrap items-center gap-1 lg:justify-end">
                       <Switch checked={m.is_active} onCheckedChange={() => toggleActive(m)} />
                       <Button size="sm" variant="ghost" title="Copy embed snippet" onClick={() => copyEmbed(m)}>
                         <Copy className="h-4 w-4" />
@@ -246,7 +246,7 @@ function CreateLeadMagnetDialog({ open, onClose, onCreated, pipelines, stages }:
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader><DialogTitle>New Lead Magnet</DialogTitle></DialogHeader>
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-4 py-2">
@@ -254,7 +254,7 @@ function CreateLeadMagnetDialog({ open, onClose, onCreated, pipelines, stages }:
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] || null); }}
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border'}`}
+              className={`rounded-2xl border-2 border-dashed p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border bg-background/45'}`}
             >
               <UploadCloud className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               {file ? (
@@ -386,11 +386,11 @@ function VersionsDialog({ magnet, onClose, onChanged }: { magnet: LeadMagnet | n
 
   return (
     <Dialog open={!!magnet} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl h-[90vh] flex flex-col">
-        <DialogHeader><DialogTitle>PDF Versions — {magnet?.title}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader><DialogTitle className="truncate">PDF Versions — {magnet?.title}</DialogTitle></DialogHeader>
         <ScrollArea className="flex-1 -mx-6 px-6">
           <div className="space-y-4 py-2">
-            <Card>
+            <Card className="overflow-hidden border-border/70 bg-card/95">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <UploadCloud className="h-4 w-4 text-primary" />
@@ -415,17 +415,17 @@ function VersionsDialog({ magnet, onClose, onChanged }: { magnet: LeadMagnet | n
                 {versions.map(v => {
                   const isActive = magnet?.active_version_id === v.id;
                   return (
-                    <div key={v.id} className={`border rounded p-3 flex items-center justify-between gap-3 ${isActive ? 'border-primary bg-primary/5' : ''}`}>
+                    <div key={v.id} className={`border rounded-2xl p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ${isActive ? 'border-primary bg-primary/5' : 'border-border/70 bg-background/45'}`}>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge variant={isActive ? 'default' : 'outline'}>v{v.version_number}{isActive && ' · ACTIVE'}</Badge>
-                          <span className="text-sm font-medium truncate">{v.file_name}</span>
+                          <span className="text-sm font-medium truncate" title={v.file_name}>{v.file_name}</span>
                           <span className="text-xs text-muted-foreground">{v.file_size ? `${(v.file_size / 1024 / 1024).toFixed(2)} MB` : ''}</span>
                         </div>
-                        {v.notes && <p className="text-xs text-muted-foreground mt-1">{v.notes}</p>}
+                        {v.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{v.notes}</p>}
                         <p className="text-xs text-muted-foreground mt-0.5">{new Date(v.created_at).toLocaleString()}</p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex flex-wrap items-center gap-1 shrink-0">
                         {!isActive && (
                           <Button size="sm" variant="outline" onClick={() => activate(v)}>
                             <Check className="h-3.5 w-3.5 mr-1" /> Make active
@@ -452,12 +452,12 @@ function VersionsDialog({ magnet, onClose, onChanged }: { magnet: LeadMagnet | n
 function PreviewDialog({ magnet, onClose }: { magnet: LeadMagnet | null; onClose: () => void }) {
   return (
     <Dialog open={!!magnet} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-xl h-[90vh] flex flex-col">
+      <DialogContent className="max-w-xl h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Live Preview — {magnet?.title}</DialogTitle>
+          <DialogTitle className="truncate">Live Preview — {magnet?.title}</DialogTitle>
           <p className="text-xs text-muted-foreground">This is exactly what visitors see when they land on a page with your embed.</p>
         </DialogHeader>
-        <div className="flex-1 overflow-hidden bg-muted/30 rounded">
+        <div className="flex-1 overflow-hidden bg-muted/30 rounded-2xl border border-border/70">
           {magnet && (
             <iframe
               src={`${window.location.origin}/lead-magnet-embed.html?slug=${encodeURIComponent(magnet.slug)}`}
@@ -494,10 +494,10 @@ function DownloadsDialog({ magnet, onClose }: { magnet: LeadMagnet | null; onClo
 
   return (
     <Dialog open={!!magnet} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
-        <DialogHeader><DialogTitle>Captures — {magnet?.title}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-3xl h-[80vh] flex flex-col overflow-hidden">
+        <DialogHeader><DialogTitle className="truncate">Captures — {magnet?.title}</DialogTitle></DialogHeader>
 
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-1 gap-2 mb-3 sm:grid-cols-3">
           <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total captures</p><p className="text-2xl font-semibold">{stats.total}</p></CardContent></Card>
           <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Last 7 days</p><p className="text-2xl font-semibold">{stats.last7}</p></CardContent></Card>
           <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">GHL sync rate</p><p className="text-2xl font-semibold">{stats.syncRate}%</p></CardContent></Card>
@@ -511,9 +511,9 @@ function DownloadsDialog({ magnet, onClose }: { magnet: LeadMagnet | null; onClo
           ) : (
             <div className="space-y-1.5">
               {rows.map(r => (
-                <div key={r.id} className="text-sm border rounded p-2 flex items-center justify-between gap-2">
+                <div key={r.id} className="text-sm border border-border/70 bg-background/45 rounded-2xl p-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{r.full_name} <span className="text-muted-foreground font-normal">— {r.email}</span></p>
+                    <p className="font-medium truncate" title={`${r.full_name} — ${r.email}`}>{r.full_name} <span className="text-muted-foreground font-normal">— {r.email}</span></p>
                     <p className="text-xs text-muted-foreground">{r.phone || 'no phone'} · {new Date(r.created_at).toLocaleString()}</p>
                   </div>
                   <Badge variant={r.ghl_synced ? 'default' : 'secondary'}>{r.ghl_synced ? 'GHL synced' : 'Pending'}</Badge>
