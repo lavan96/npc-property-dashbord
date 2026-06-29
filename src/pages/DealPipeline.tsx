@@ -131,7 +131,7 @@ export default function DealPipeline() {
   }
 
   return (
-    <div className={cn("relative mx-auto flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1800px] flex-col space-y-5 overflow-y-auto overflow-x-hidden rounded-[2rem] border border-amber-300/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.92)_42%,rgba(10,10,10,0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
+    <div className={cn("deal-pipeline-polish relative mx-auto flex max-h-[calc(100dvh-1rem)] min-h-0 w-full max-w-[1800px] flex-col space-y-5 overflow-y-auto overflow-x-hidden rounded-[2rem] border border-amber-300/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(24,24,27,0.92)_42%,rgba(10,10,10,0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />

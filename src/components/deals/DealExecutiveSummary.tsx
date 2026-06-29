@@ -96,7 +96,7 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
     );
   }
 
-  const kpiCardClass = "overflow-hidden border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(24,24,27,0.84)_48%,rgba(0,0,0,0.88))] shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]";
+  const kpiCardClass = "group relative overflow-hidden border-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/45 hover:shadow-[0_22px_54px_rgba(0,0,0,0.34),0_0_28px_rgba(245,158,11,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(24,24,27,0.84)_48%,rgba(0,0,0,0.88))] shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]";
   const kpiLabelClass = "text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400";
 
   return (

@@ -36,7 +36,7 @@ export function SettlementCountdownCards({ deals, onDealClick }: Props) {
   if (upcoming.length === 0) return null;
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-amber-200/15 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),rgba(24,24,27,0.86))] shadow-[0_18px_46px_rgba(0,0,0,0.22)]">
       <CardHeader className="pb-2 pt-3 px-3 sm:px-4">
         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
           <Clock className="h-4 w-4 text-primary" />
@@ -52,7 +52,7 @@ export function SettlementCountdownCards({ deals, onDealClick }: Props) {
               <div
                 key={deal.id}
                 className={cn(
-                  'rounded-lg border p-2.5 cursor-pointer transition-all hover:shadow-sm',
+                  'rounded-lg border p-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22),0_0_18px_rgba(245,158,11,0.14)]',
                   bucket.color,
                   onDealClick && 'hover:ring-2 ' + bucket.ring
                 )}
