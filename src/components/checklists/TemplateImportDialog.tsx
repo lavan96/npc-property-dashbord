@@ -209,9 +209,14 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                     />
                   )}
                   {isProcessing ? (
-                    <div className="space-y-3">
-                      <Loader2 className="mx-auto h-9 w-9 animate-spin text-amber-300" />
-                      <p className="text-sm font-medium text-zinc-300">{progressLabel}</p>
+                    <div className="mx-auto max-w-sm space-y-4 rounded-2xl border border-amber-300/15 bg-black/35 p-5 shadow-inner shadow-amber-950/20">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200">
+                        <Loader2 className="h-7 w-7 animate-spin" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-zinc-100">{progressLabel}</p>
+                        <p className="mt-1 text-xs text-zinc-500">Reading and validating the template file</p>
+                      </div>
                       <Progress value={progress} className="mx-auto h-2.5 max-w-xs bg-zinc-800 [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-yellow-300" />
                     </div>
                   ) : (
@@ -243,9 +248,14 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
             </Tabs>
 
             {parseError && (
-              <div className="flex items-start gap-2 rounded-xl border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <p>{parseError}</p>
+              <div className="flex items-start gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive shadow-inner shadow-red-950/10">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-destructive/25 bg-destructive/10">
+                  <AlertCircle className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-semibold">Import needs attention</p>
+                  <p className="mt-1 text-destructive/90">{parseError}</p>
+                </div>
               </div>
             )}
           </div>
@@ -323,9 +333,16 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
         {/* ── Step 3: Importing ── */}
         {step === 'importing' && (
-          <div className="py-8 text-center space-y-3">
-            <Loader2 className="mx-auto h-9 w-9 animate-spin text-amber-300" />
-            <p className="text-sm font-medium text-zinc-300">Creating template and items...</p>
+          <div className="py-8 text-center">
+            <div className="mx-auto max-w-sm space-y-4 rounded-2xl border border-amber-300/15 bg-black/35 p-5 shadow-inner shadow-amber-950/20">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200">
+                <Loader2 className="h-7 w-7 animate-spin" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">Creating template and items...</p>
+                <p className="mt-1 text-xs text-zinc-500">Saving the imported blueprint to Templates</p>
+              </div>
+            </div>
           </div>
         )}
 

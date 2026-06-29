@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, CheckCircle2, Trash2, Archive } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Trash2, Archive, Loader2 } from 'lucide-react';
 import { useChecklistInstanceItems, useChecklistMutations, type ChecklistInstance } from '@/hooks/useChecklists';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 
@@ -183,7 +183,15 @@ export function ChecklistInstanceView({ instance, onBack }: ChecklistInstanceVie
 
       {/* Sections & Items */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading checklist items...</p>
+        <Card className="overflow-hidden rounded-2xl border border-amber-500/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+          <CardContent className="py-10 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
+              <Loader2 className="h-7 w-7 animate-spin" />
+            </div>
+            <p className="text-sm font-semibold text-zinc-100">Loading checklist items...</p>
+            <p className="mt-1 text-xs text-zinc-500">Syncing sections, tasks and progress</p>
+          </CardContent>
+        </Card>
       ) : sections.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">This checklist has no items.</p>
       ) : (

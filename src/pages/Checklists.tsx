@@ -18,6 +18,19 @@ import { TemplateImportDialog } from '@/components/checklists/TemplateImportDial
 import type { ParsedTemplate } from '@/utils/checklistTemplateParser';
 import { toast } from 'sonner';
 
+
+const ChecklistLoadingState = ({ message }: { message: string }) => (
+  <Card className="overflow-hidden border border-amber-500/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+    <CardContent className="py-10 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
+        <Loader2 className="h-7 w-7 animate-spin" />
+      </div>
+      <p className="text-sm font-semibold text-zinc-100">{message}</p>
+      <p className="mt-1 text-xs text-zinc-500">Preparing the workflow workspace</p>
+    </CardContent>
+  </Card>
+);
+
 export default function Checklists() {
   const { canEdit, canDelete } = useModulePermissions('checklists');
   const [activeTab, setActiveTab] = useState('active');
@@ -227,9 +240,7 @@ export default function Checklists() {
         {/* Active Checklists */}
         <TabsContent value="active" className="space-y-4 rounded-2xl border border-white/5 bg-zinc-950/55 p-4 shadow-xl shadow-black/20">
           {instancesLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
-            </div>
+            <ChecklistLoadingState message="Loading..." />
           ) : activeInstances.length === 0 ? (
             <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
               <CardContent className="relative py-14 text-center">
@@ -348,9 +359,7 @@ export default function Checklists() {
           </div>
 
           {templatesLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading templates...
-            </div>
+            <ChecklistLoadingState message="Loading templates..." />
           ) : templates.length === 0 ? (
             <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
               <CardContent className="relative py-14 text-center">
