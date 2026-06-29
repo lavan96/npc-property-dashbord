@@ -65,37 +65,60 @@ export default function GamePlan() {
       </DashboardThemeFrame>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="plans" className="gap-1.5">
-            <Map className="h-4 w-4" />
-            Game Plans
-          </TabsTrigger>
-          <TabsTrigger value="assigned" className="gap-1.5">
-            <ListChecks className="h-4 w-4" />
-            Assigned Tasks
-            {outstandingCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-1 h-5 min-w-[20px] px-1.5 text-[10px] font-bold rounded-full"
-              >
-                {outstandingCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <DashboardThemeFrame
+          variant="toolbar"
+          className="overflow-x-auto rounded-2xl border-primary/15 bg-card/65 p-1.5 shadow-inner shadow-black/5 dark:bg-slate-950/45 dark:shadow-black/20"
+        >
+          <TabsList className="grid h-auto w-full min-w-max grid-cols-2 gap-1 bg-transparent p-0 sm:min-w-0 md:w-auto">
+            <TabsTrigger
+              value="plans"
+              className="min-h-10 gap-1.5 rounded-xl border border-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-primary/40 data-[state=active]:border-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
+            >
+              <Map className="h-4 w-4" />
+              Game Plans
+            </TabsTrigger>
+            <TabsTrigger
+              value="assigned"
+              className="min-h-10 gap-1.5 rounded-xl border border-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-primary/40 data-[state=active]:border-primary/25 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20"
+            >
+              <ListChecks className="h-4 w-4" />
+              Assigned Tasks
+              {outstandingCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-1 h-5 min-w-[20px] rounded-full px-1.5 text-[10px] font-bold shadow-sm"
+                >
+                  {outstandingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </DashboardThemeFrame>
 
-        <TabsContent value="plans" className="mt-4">
-          <GamePlanList
-            plans={plans}
-            isLoading={isLoading}
-            onSelect={setSelectedPlanId}
-            onDelete={canDelete ? (id) => planMut.remove.mutateAsync(id) : undefined}
-          />
+        <TabsContent value="plans" className="mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <DashboardThemeFrame
+            as="section"
+            variant="section"
+            className="border-primary/10 bg-card/55 p-3 shadow-xl shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20 sm:p-4 md:p-5"
+          >
+            <GamePlanList
+              plans={plans}
+              isLoading={isLoading}
+              onSelect={setSelectedPlanId}
+              onDelete={canDelete ? (id) => planMut.remove.mutateAsync(id) : undefined}
+            />
+          </DashboardThemeFrame>
         </TabsContent>
 
-        <TabsContent value="assigned" className="mt-4">
-          <AssignedTasksTab />
+        <TabsContent value="assigned" className="mt-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <DashboardThemeFrame
+            as="section"
+            variant="section"
+            className="border-primary/10 bg-card/55 p-3 shadow-xl shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20 sm:p-4 md:p-5"
+          >
+            <AssignedTasksTab />
+          </DashboardThemeFrame>
         </TabsContent>
       </Tabs>
 
