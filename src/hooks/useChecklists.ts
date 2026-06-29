@@ -84,6 +84,55 @@ function buildLegacyChecklistRecurrenceKey(templateId: string, dueDate = getChec
   return `${templateId}:${dueDate}`;
 }
 
+
+function getChecklistOccurrenceIdentity(instance: ChecklistInstance) {
+  if (instance.recurrence_key) {
+    const parts = instance.recurrence_key.split(':');
+    if (parts.length >= 3) return parts.slice(0, 3).join(':');
+    return instance.recurrence_key;
+  }
+
+  if (instance.template_id && instance.due_date) {
+    return `${instance.template_id}:${instance.due_date}:${instance.generated_by || 'global'}`;
+  }
+
+  return null;
+}
+
+function compareActiveChecklistCandidates(current: ChecklistInstance, candidate: ChecklistInstance) {
+  const currentProgress = current.progress_percent || 0;
+  const candidateProgress = candidate.progress_percent || 0;
+  if (candidateProgress !== currentProgress) return candidateProgress > currentProgress ? candidate : current;
+
+  const currentUpdated = new Date(current.updated_at || current.created_at).getTime();
+  const candidateUpdated = new Date(candidate.updated_at || candidate.created_at).getTime();
+  return candidateUpdated > currentUpdated ? candidate : current;
+}
+
+function filterActiveChecklistInstances(records: ChecklistInstance[]) {
+  const activeOnly = records.filter(instance => instance.status === 'in_progress');
+  const instancesByOccurrence = new Map<string, ChecklistInstance>();
+  const unkeyedInstances: ChecklistInstance[] = [];
+
+  for (const instance of activeOnly) {
+    const occurrenceIdentity = getChecklistOccurrenceIdentity(instance);
+    if (!occurrenceIdentity) {
+      unkeyedInstances.push(instance);
+      continue;
+    }
+
+    const current = instancesByOccurrence.get(occurrenceIdentity);
+    instancesByOccurrence.set(
+      occurrenceIdentity,
+      current ? compareActiveChecklistCandidates(current, instance) : instance,
+    );
+  }
+
+  return [...instancesByOccurrence.values(), ...unkeyedInstances].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+}
+
 async function invoke(body: Record<string, any>) {
   const { data, error } = await invokeSecureFunction('manage-templates', body);
   if (error) throw new Error(error.message);
@@ -134,7 +183,8 @@ export function useChecklistInstances(status?: string) {
       const filters: Record<string, any> = {};
       if (status) filters.status = status;
       const data = await invoke({ operation: 'list', table: 'checklist_instances', listOptions: { orderBy: 'created_at', orderAsc: false, filters } });
-      return (data?.records || []) as ChecklistInstance[];
+      const records = (data?.records || []) as ChecklistInstance[];
+      return status === 'in_progress' ? filterActiveChecklistInstances(records) : records;
     },
   });
 }
