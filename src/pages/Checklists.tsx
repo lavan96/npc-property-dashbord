@@ -231,12 +231,14 @@ export default function Checklists() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading...
             </div>
           ) : activeInstances.length === 0 ? (
-            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
-              <CardContent className="py-12 text-center">
-                <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="font-semibold mb-1">No active checklists</h3>
-                <p className="text-sm text-muted-foreground mb-4">Generate one from a template to get started</p>
-                <Button variant="secondary" onClick={() => setActiveTab('templates')}>
+            <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+              <CardContent className="relative py-14 text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.16)]">
+                  <ClipboardList className="h-8 w-8" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-50">No active checklists</h3>
+                <p className="mb-5 text-sm text-zinc-400">Generate one from a template to get started</p>
+                <Button variant="secondary" className="border border-amber-300/20 bg-amber-400/10 text-amber-100 hover:bg-amber-400/20 hover:text-amber-50" onClick={() => setActiveTab('templates')}>
                   <LayoutTemplate className="h-4 w-4 mr-2" /> View Templates
                 </Button>
               </CardContent>
@@ -350,11 +352,13 @@ export default function Checklists() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading templates...
             </div>
           ) : templates.length === 0 ? (
-            <Card className="border-dashed border-amber-500/20 bg-zinc-950/80">
-              <CardContent className="py-12 text-center">
-                <LayoutTemplate className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="font-semibold mb-1">No templates yet</h3>
-                <p className="text-sm text-muted-foreground mb-4">Create your first checklist template or import one</p>
+            <Card className="overflow-hidden border-dashed border-amber-500/25 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,3,0.96))] shadow-inner shadow-amber-950/20">
+              <CardContent className="relative py-14 text-center">
+                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-400/10 text-amber-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
+                  <LayoutTemplate className="h-8 w-8" />
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-zinc-50">No templates yet</h3>
+                <p className="text-sm text-zinc-400">Create your first checklist template or import one</p>
               </CardContent>
             </Card>
           ) : (
