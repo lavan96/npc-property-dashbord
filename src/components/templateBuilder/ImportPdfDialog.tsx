@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -28,6 +28,13 @@ import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/report
 
 
 type ImportReviewDebugSnapshot = Record<string, string | number | boolean | null>;
+
+const MODE_LABELS: Record<FidelityMode, string> = {
+  semantic: 'Semantic',
+  hybrid: 'Hybrid',
+  pixel: 'Pixel-perfect',
+  ocr: 'OCR',
+};
 
 const STAGE_LABELS: Record<string, string> = {
   reading: 'Reading source PDF',
@@ -133,12 +140,14 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setRecordedDecision(null);
   };
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (modeOverride?: FidelityMode) => {
     if (!file) return;
+    const useMode = modeOverride ?? mode;
+    if (modeOverride && modeOverride !== mode) setMode(modeOverride);
     setBusy(true);
     setProgress({ phase: 'reading' });
     try {
-      const outcome = await runReferenceImport({ kind: 'pdf', file, mode }, {
+      const outcome = await runReferenceImport({ kind: 'pdf', file, mode: useMode }, {
         templateName: file.name.replace(/\.pdf$/i, ''),
         userId: user?.id ?? null,
         isSuperadmin,
@@ -807,6 +816,29 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                 <Stat label="Semantic only" value={result.fidelityReport.semanticPages} />
               </div>
 
+              {result.recommendedMode && result.recommendedMode !== mode && (
+                <div className="mt-3 rounded-md border border-primary/40 bg-primary/5 p-3 text-xs">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">Suggested mode: {MODE_LABELS[result.recommendedMode]}</span>
+                      {result.recommendedModeReason && (
+                        <p className="mt-0.5 text-muted-foreground">{result.recommendedModeReason}</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px] whitespace-nowrap"
+                      disabled={busy}
+                      onClick={() => start(result.recommendedMode)}
+                    >
+                      Re-import in {MODE_LABELS[result.recommendedMode]}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {importAssetSummary && (
                 <div className="mt-3 rounded-md border bg-background/70 p-3 text-xs">
                   <div className="flex items-center justify-between gap-2 font-medium">
@@ -867,7 +899,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
           {!result ? (
             <>
               <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy}>Cancel</Button>
-              <Button onClick={start} disabled={!file || busy}>
+              <Button onClick={() => start()} disabled={!file || busy}>
                 {busy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Importing…</> : 'Import'}
               </Button>
             </>
