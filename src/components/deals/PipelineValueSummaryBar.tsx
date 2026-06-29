@@ -7,12 +7,133 @@ import {
   DollarSign,
   Users,
   BarChart3,
+  type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { DealWithClient } from "@/hooks/useAllDeals";
+import { cn } from "@/lib/utils";
 
 interface Props {
   deals: DealWithClient[];
+}
+
+interface MetricCardProps {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  variant:
+    | "headline"
+    | "analytical"
+    | "financial"
+    | "existing"
+    | "land"
+    | "refinance"
+    | "operations";
+}
+
+const metricCardStyles: Record<
+  MetricCardProps["variant"],
+  {
+    card: string;
+    iconWrap: string;
+    icon: string;
+    value: string;
+    label: string;
+  }
+> = {
+  headline: {
+    card: "border-amber-300/35 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.34),transparent_42%),linear-gradient(145deg,rgba(146,64,14,0.42),rgba(24,24,27,0.96))] shadow-[0_18px_46px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)]",
+    iconWrap: "border-amber-200/25 bg-amber-300/15 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.22)]",
+    icon: "text-amber-100",
+    value: "text-xl text-amber-50 sm:text-2xl xl:text-[1.55rem]",
+    label: "text-amber-100/85",
+  },
+  analytical: {
+    card: "border-sky-300/20 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_38%),linear-gradient(145deg,rgba(15,23,42,0.92),rgba(24,24,27,0.94))]",
+    iconWrap: "border-sky-300/20 bg-sky-400/10 text-sky-200",
+    icon: "text-sky-200",
+    value: "text-sky-50",
+    label: "text-sky-100/70",
+  },
+  financial: {
+    card: "border-emerald-300/25 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.2),transparent_42%),linear-gradient(145deg,rgba(6,78,59,0.42),rgba(24,24,27,0.95))]",
+    iconWrap: "border-emerald-300/20 bg-emerald-400/10 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.18)]",
+    icon: "text-emerald-200",
+    value: "text-emerald-200",
+    label: "text-emerald-100/75",
+  },
+  existing: {
+    card: "border-violet-300/20 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.18),transparent_38%),linear-gradient(145deg,rgba(39,39,42,0.88),rgba(24,24,27,0.95))]",
+    iconWrap: "border-violet-300/20 bg-violet-400/10 text-violet-200",
+    icon: "text-violet-200",
+    value: "text-violet-50",
+    label: "text-violet-100/70",
+  },
+  land: {
+    card: "border-orange-300/20 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.18),transparent_38%),linear-gradient(145deg,rgba(67,20,7,0.35),rgba(24,24,27,0.95))]",
+    iconWrap: "border-orange-300/20 bg-orange-400/10 text-orange-200",
+    icon: "text-orange-200",
+    value: "text-orange-50",
+    label: "text-orange-100/72",
+  },
+  refinance: {
+    card: "border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_38%),linear-gradient(145deg,rgba(8,47,73,0.38),rgba(24,24,27,0.95))]",
+    iconWrap: "border-cyan-300/20 bg-cyan-400/10 text-cyan-200",
+    icon: "text-cyan-200",
+    value: "text-cyan-50",
+    label: "text-cyan-100/72",
+  },
+  operations: {
+    card: "border-slate-300/20 bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.18),transparent_38%),linear-gradient(145deg,rgba(51,65,85,0.38),rgba(24,24,27,0.95))]",
+    iconWrap: "border-slate-300/20 bg-slate-300/10 text-slate-200",
+    icon: "text-slate-200",
+    value: "text-slate-50",
+    label: "text-slate-200/72",
+  },
+};
+
+function MetricCard({ label, value, icon: Icon, variant }: MetricCardProps) {
+  const styles = metricCardStyles[variant];
+
+  return (
+    <Card
+      className={cn(
+        "group relative overflow-hidden rounded-3xl transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber-300/45 hover:shadow-[0_22px_58px_rgba(0,0,0,0.34),0_0_28px_rgba(251,191,36,0.18)]",
+        "before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent",
+        "after:absolute after:-right-10 after:-top-12 after:h-24 after:w-24 after:rounded-full after:bg-amber-200/0 after:blur-2xl after:transition-colors after:duration-300 hover:after:bg-amber-200/12",
+        styles.card,
+      )}
+    >
+      <CardContent className="relative z-10 flex min-h-[116px] flex-col justify-between p-4">
+        <div className="flex items-start justify-between gap-3">
+          <p
+            className={cn(
+              "max-w-[7.5rem] text-[0.68rem] font-semibold uppercase leading-tight tracking-[0.16em]",
+              styles.label,
+            )}
+          >
+            {label}
+          </p>
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border backdrop-blur-sm transition-transform duration-300 group-hover:scale-105",
+              styles.iconWrap,
+            )}
+          >
+            <Icon className={cn("h-[18px] w-[18px]", styles.icon)} />
+          </span>
+        </div>
+        <p
+          className={cn(
+            "mt-5 truncate text-2xl font-black leading-none tracking-tight",
+            styles.value,
+          )}
+        >
+          {value}
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function PipelineValueSummaryBar({ deals }: Props) {
@@ -66,86 +187,49 @@ export function PipelineValueSummaryBar({ deals }: Props) {
     }).format(v);
 
   return (
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-      <Card className="group overflow-hidden rounded-2xl border-amber-300/25 bg-[linear-gradient(145deg,rgba(245,158,11,0.16),rgba(24,24,27,0.9))] shadow-[0_16px_42px_rgba(0,0,0,0.24)]">
-        <CardContent className="p-3 text-center sm:p-3.5">
-          <DollarSign className="mx-auto mb-1 h-4 w-4 text-amber-200" />
-          <p className="text-sm font-bold text-amber-50 sm:text-lg">
-            {fmt(stats.totalValue)}
-          </p>
-          <p className="text-[9px] uppercase tracking-wide text-amber-100/70 sm:text-[10px]">
-            Total Pipeline
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-white/10 bg-zinc-950/55 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
-        <CardContent className="p-3 text-center sm:p-3.5">
-          <BarChart3 className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-          <p className="text-sm sm:text-lg font-bold">{fmt(stats.avgValue)}</p>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground">
-            Avg Deal Size
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-emerald-400/25 bg-emerald-500/10 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
-        <CardContent className="p-3 text-center sm:p-3.5">
-          <TrendingUp className="h-4 w-4 mx-auto text-emerald-300 mb-1" />
-          <p className="text-sm sm:text-lg font-bold text-emerald-300">
-            {fmt(stats.totalCommission)}
-          </p>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground">
-            Est. Commission
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-white/10 bg-zinc-950/55 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
-        <CardContent className="p-3 text-center sm:p-3.5">
-          <Building2 className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-          <p className="text-sm sm:text-lg font-bold">
-            {stats.byType.existing_property}
-          </p>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground">
-            Existing Property
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-white/10 bg-zinc-950/55 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
-        <CardContent className="p-3 text-center sm:p-3.5">
-          <Home className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-          <p className="text-sm sm:text-lg font-bold">
-            {stats.byType.house_and_land}
-          </p>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground">
-            House & Land
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-white/10 bg-zinc-950/55 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
-        <CardContent className="p-3 text-center sm:p-3.5">
-          <RefreshCw className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-          <p className="text-sm sm:text-lg font-bold">
-            {stats.byType.refinance}
-          </p>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground">
-            Refinance
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl border-white/10 bg-zinc-950/55 shadow-[0_14px_36px_rgba(0,0,0,0.2)]">
-        <CardContent className="p-3 text-center sm:p-3.5">
-          <Users className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-          <p className="text-sm sm:text-lg font-bold">{stats.uniquePersons}</p>
-          <p className="text-[9px] sm:text-[10px] text-muted-foreground">
-            Team Members
-          </p>
-        </CardContent>
-      </Card>
+    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+      <MetricCard
+        label="Total Pipeline"
+        value={fmt(stats.totalValue)}
+        icon={DollarSign}
+        variant="headline"
+      />
+      <MetricCard
+        label="Avg Deal Size"
+        value={fmt(stats.avgValue)}
+        icon={BarChart3}
+        variant="analytical"
+      />
+      <MetricCard
+        label="Est. Commission"
+        value={fmt(stats.totalCommission)}
+        icon={TrendingUp}
+        variant="financial"
+      />
+      <MetricCard
+        label="Existing Property"
+        value={stats.byType.existing_property}
+        icon={Building2}
+        variant="existing"
+      />
+      <MetricCard
+        label="House & Land"
+        value={stats.byType.house_and_land}
+        icon={Home}
+        variant="land"
+      />
+      <MetricCard
+        label="Refinance"
+        value={stats.byType.refinance}
+        icon={RefreshCw}
+        variant="refinance"
+      />
+      <MetricCard
+        label="Team Members"
+        value={stats.uniquePersons}
+        icon={Users}
+        variant="operations"
+      />
     </section>
   );
 }
