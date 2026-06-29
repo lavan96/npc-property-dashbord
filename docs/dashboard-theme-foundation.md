@@ -60,3 +60,15 @@ All new Deal Pipeline sections, components, pages, and updates must follow the s
 Do not introduce conflicting colours, fonts, layouts, or styling patterns on the Deal Pipeline Page unless clearly necessary. Where a detail is not explicitly defined, infer the closest matching style from this foundation and maintain consistency throughout the Deal Pipeline experience.
 
 For implementation plans and code changes on this page, include the `Global Theme Foundation / Cascading UI Subcomponent` step and first check whether `DashboardThemeFrame` variants or existing dashboard CSS variables can provide the required styling before adding page-local classes.
+
+## Agreements Page design source of truth
+
+This Agreements-specific prompt applies only to the Agreements page and agreement workflow surfaces. Do not cascade these instructions into unrelated dashboards, finance portal pages, reports, admin surfaces, Client Page work, CRM conversation surfaces, or deal pipeline surfaces unless a future request explicitly widens the scope.
+
+For Agreements Page updates, review `dashboard-theme-foundation.md` as the primary design source of truth before implementation. Use it to understand and replicate the established visual identity, including the full colour palette, typography, font hierarchy, spacing, layout structure, button styles, imagery treatment, icon style, borders, shadows, and recurring UI/UX patterns.
+
+All new Agreements Page sections, components, pages, and updates must follow the same format, theme, tone, and design system already established by this foundation. The goal is for new agreement workflow work to feel fully consistent and seamlessly cascaded from the existing brand and interface.
+
+Do not introduce conflicting colours, fonts, layouts, or styling patterns on the Agreements Page unless clearly necessary. Where a detail is not explicitly defined, infer the closest matching style from this foundation and maintain consistency throughout the agreement workflow experience.
+
+For implementation plans and code changes on this page, include the `Global Theme Foundation / Cascading UI Subcomponent` step and first check whether `DashboardThemeFrame` variants or existing dashboard CSS variables can provide the required styling before adding page-local classes.
