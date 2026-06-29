@@ -247,23 +247,23 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card
-        className="overflow-hidden border-border/50 transition-all duration-300"
+        className="group/phase overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.14))] shadow-lg shadow-black/5 ring-1 ring-white/40 transition-all duration-300 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none dark:border-white/10 dark:bg-slate-950/60 dark:ring-white/10 dark:shadow-black/25"
         style={{ animationDelay: `${index * 100}ms` }}
       >
         {/* Phase color bar */}
         <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${phase.color}, ${phase.color}80)` }} />
 
-        <CollapsibleTrigger className="w-full">
-          <div className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
+        <CollapsibleTrigger className="w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <div className="flex items-center justify-between p-4 transition-colors hover:bg-primary/5 motion-reduce:transition-none">
             <div className="flex items-center gap-3 min-w-0">
               {/* Reorder buttons */}
               {onReorder && (
                 <div className="flex flex-col gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-4 w-4 p-0" disabled={index === 0}
+                  <Button variant="ghost" size="icon" className="h-4 w-4 p-0 focus-visible:ring-primary/35" disabled={index === 0}
                     onClick={() => onReorder(phase.id, 'up')}>
                     <ChevronUp className="h-3 w-3 text-muted-foreground" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-4 w-4 p-0" disabled={index === totalPhases - 1}
+                  <Button variant="ghost" size="icon" className="h-4 w-4 p-0 focus-visible:ring-primary/35" disabled={index === totalPhases - 1}
                     onClick={() => onReorder(phase.id, 'down')}>
                     <ChevronDownIcon className="h-3 w-3 text-muted-foreground" />
                   </Button>
@@ -279,7 +279,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
               {/* Status dropdown */}
               <div onClick={e => e.stopPropagation()}>
                 <Select value={phase.status} onValueChange={handleStatusChange}>
-                  <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-1.5 text-xs focus:ring-0">
+                  <SelectTrigger className="h-7 w-auto gap-1 border-none bg-transparent px-1.5 text-xs focus:ring-primary/35" aria-label={`Change status for ${phase.name}`}>
                     <StatusIcon className={cn('h-3.5 w-3.5', statusCfg.color)} />
                     <span className={cn('hidden sm:inline', statusCfg.color)}>{statusCfg.label}</span>
                   </SelectTrigger>
@@ -310,7 +310,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                 {milestones.length > 0 && <span>{completedMilestones}/{milestones.length} 🏁</span>}
                 {actions.length > 0 && <span>{completedActions}/{actions.length} ✓</span>}
               </div>
-              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
+              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform motion-reduce:transition-none', isOpen && 'rotate-180')} />
             </div>
           </div>
         </CollapsibleTrigger>
@@ -319,13 +319,15 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
           <CardContent className="pt-0 pb-4 px-4 space-y-4">
             {/* Phase edit section */}
             {editingPhase ? (
-              <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 space-y-3">
+              <div className="space-y-3 rounded-2xl border border-primary/25 bg-primary/5 p-3 shadow-inner shadow-primary/5">
                 <div>
                   <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Icon</span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {PHASE_ICONS.map(i => (
                       <button key={i} onClick={() => setEditIcon(i)}
-                        className={cn('text-lg w-7 h-7 rounded-md flex items-center justify-center transition-all',
+                        type="button"
+                        aria-label={`Use ${i} phase icon`}
+                        className={cn('text-lg w-7 h-7 rounded-md flex items-center justify-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none',
                           editIcon === i ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-muted')}>
                         {i}
                       </button>
@@ -337,20 +339,22 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     {PHASE_COLORS.map(c => (
                       <button key={c} onClick={() => setEditColor(c)}
-                        className={cn('w-6 h-6 rounded-full transition-all',
+                        type="button"
+                        aria-label={`Use phase accent colour ${c}`}
+                        className={cn('w-6 h-6 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:scale-100',
                           editColor === c ? 'ring-2 ring-primary ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105')}
                         style={{ backgroundColor: c }} />
                     ))}
                   </div>
                 </div>
-                <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Phase name" className="h-9 font-medium" />
-                <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Phase description..." rows={2} className="text-sm" />
+                <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Phase name" className="h-9 font-medium focus-visible:ring-primary/35" />
+                <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Phase description..." rows={2} className="text-sm focus-visible:ring-primary/35" />
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Start Date</span>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editStartDate && 'text-muted-foreground')}>
+                        <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs focus-visible:ring-primary/35', !editStartDate && 'text-muted-foreground')}>
                           <CalendarIcon className="mr-1.5 h-3 w-3" />
                           {editStartDate ? format(editStartDate, 'MMM d, yyyy') : 'Pick date'}
                         </Button>
@@ -364,7 +368,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">End Date</span>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs', !editEndDate && 'text-muted-foreground')}>
+                        <Button variant="outline" className={cn('w-full mt-1 justify-start text-left font-normal h-8 text-xs focus-visible:ring-primary/35', !editEndDate && 'text-muted-foreground')}>
                           <CalendarIcon className="mr-1.5 h-3 w-3" />
                           {editEndDate ? format(editEndDate, 'MMM d, yyyy') : 'Pick date'}
                         </Button>
@@ -377,17 +381,17 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={savePhaseEdit} disabled={!editName.trim()}>Save Changes</Button>
-                  <Button size="sm" variant="ghost" onClick={cancelPhaseEdit}>Cancel</Button>
+                  <Button size="sm" onClick={savePhaseEdit} disabled={!editName.trim()} className="focus-visible:ring-primary/35">Save Changes</Button>
+                  <Button size="sm" variant="ghost" onClick={cancelPhaseEdit} className="focus-visible:ring-primary/35">Cancel</Button>
                 </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5 h-7" onClick={() => setEditingPhase(true)}>
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5 h-7 hover:bg-primary/10 hover:text-foreground focus-visible:ring-primary/35" onClick={() => setEditingPhase(true)}>
                   <Pencil className="h-3 w-3" /> Edit Phase
                 </Button>
                 {onClone && (
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5 h-7"
+                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1.5 h-7 hover:bg-primary/10 hover:text-foreground focus-visible:ring-primary/35"
                     onClick={() => onClone(phase, milestones, kpis, notes, actions)}>
                     <Copy className="h-3 w-3" /> Clone Phase
                   </Button>
@@ -735,12 +739,12 @@ function KPIRow({ kpi: k, mutations }: { kpi: GamePlanKPI; mutations: any }) {
           </Button>
         </div>
       </div>
-      <div className="relative h-2 rounded-full bg-muted overflow-hidden">
+      <div className="relative h-2 overflow-hidden rounded-full bg-muted">
         <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-          style={{ width: `${pct}%`, background: pct >= 100 ? 'hsl(var(--primary))' : pct >= 60 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))' }} />
+          style={{ width: `${pct}%`, background: pct >= 100 ? 'hsl(var(--primary))' : pct >= 60 ? 'hsl(var(--primary))' : 'hsl(var(--warning, 38 92% 50%))' }} />
       </div>
       <div className="text-right mt-0.5">
-        <span className={cn('text-[10px] font-bold', pct >= 100 ? 'text-green-500' : pct >= 60 ? 'text-primary' : 'text-destructive')}>{pct}%</span>
+        <span className={cn('text-[10px] font-bold', pct >= 100 ? 'text-green-500' : pct >= 60 ? 'text-primary' : 'text-amber-500')}>{pct}%</span>
       </div>
     </div>
   );
