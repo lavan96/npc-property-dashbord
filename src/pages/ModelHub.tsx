@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getRecommendedUpgrade, isModelDeprecated } from '@/lib/agentUpgradeRecommendations';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 type Route = 'gateway' | 'native' | 'openrouter';
 type Status = 'available' | 'preview' | 'deprecated' | 'unavailable';
@@ -90,6 +91,47 @@ const capabilityIcon: Record<string, React.ReactNode> = {
   citations: <Search className="h-3 w-3" />,
   audio: <Zap className="h-3 w-3" />,
 };
+
+
+function MetricTile({
+  label,
+  value,
+  icon: Icon,
+  tone,
+  helper,
+}: {
+  label: string;
+  value: number;
+  icon: typeof Sparkles;
+  tone: 'primary' | 'info' | 'warning' | 'success';
+  helper: string;
+}) {
+  const toneClasses = {
+    primary: 'border-primary/30 bg-primary/[0.08] text-primary shadow-primary/10',
+    info: 'border-info/25 bg-info/[0.08] text-info shadow-sky-500/10 dark:text-sky-300',
+    warning: 'border-warning/30 bg-warning/10 text-warning shadow-amber-500/10 dark:text-amber-300',
+    success: 'border-success/30 bg-success/10 text-success shadow-emerald-500/10 dark:text-emerald-300',
+  }[tone];
+
+  return (
+    <DashboardThemeFrame
+      variant="premiumCard"
+      className={`relative min-h-[132px] p-4 shadow-lg ${toneClasses}`}
+    >
+      <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-current/35 to-transparent" />
+      <div className="flex h-full items-start justify-between gap-4">
+        <div className="min-w-0 space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+          <p className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{value}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{helper}</p>
+        </div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-current/20 bg-current/10 shadow-inner">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </DashboardThemeFrame>
+  );
+}
 
 function statusBadge(status: Status) {
   switch (status) {
@@ -226,35 +268,50 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
   }, [assignments]);
 
   if (loading) {
-    return <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-2xl" />
+        ))}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <Alert className="border-primary/30 bg-card/40">
-        <Workflow className="h-4 w-4" />
-        <AlertTitle>Dynamic Agent Routing</AlertTitle>
-        <AlertDescription className="text-sm text-muted-foreground">
+      <Alert className="relative overflow-hidden border-primary/25 bg-[linear-gradient(135deg,hsl(var(--primary)/0.10),hsl(var(--card)/0.88)_42%,hsl(var(--background)/0.72))] p-5 shadow-lg shadow-primary/5 dark:border-primary/20">
+        <div className="absolute inset-y-0 left-0 w-1 bg-primary/70" />
+        <Workflow className="h-5 w-5 text-primary" />
+        <AlertTitle className="text-base font-semibold text-foreground">Dynamic Agent Routing</AlertTitle>
+        <AlertDescription className="mt-2 max-w-4xl text-sm leading-6 text-muted-foreground">
           Each agent reads its model assignment from this table at runtime. Changes apply immediately to the next call — no redeploys needed.
           The fallback chain auto-engages on 404/410/5xx errors.
         </AlertDescription>
       </Alert>
 
       {Object.entries(grouped).map(([category, agents]) => (
-        <Card key={category} className="border-border/60">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">{category} ({agents.length})</CardTitle>
+        <Card key={category} className="overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/5 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+          <CardHeader className="border-b border-border/60 bg-muted/30 pb-4 dark:border-white/10 dark:bg-white/[0.03]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-sm font-semibold uppercase tracking-[0.18em] text-foreground">{category}</CardTitle>
+                <CardDescription className="text-xs">Runtime route and model assignments for this agent group.</CardDescription>
+              </div>
+              <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                {agents.length} {agents.length === 1 ? 'agent' : 'agents'}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <ScrollArea className="w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[260px]">Agent</TableHead>
-                    <TableHead className="w-[110px]">Route</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead className="w-[120px]">Last used</TableHead>
-                    <TableHead className="w-[120px] text-right">Actions</TableHead>
+              <Table className="min-w-[960px]">
+                <TableHeader className="bg-background/70 dark:bg-black/20">
+                  <TableRow className="border-border/60 hover:bg-transparent">
+                    <TableHead className="w-[280px] py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Agent</TableHead>
+                    <TableHead className="w-[150px] py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Route</TableHead>
+                    <TableHead className="min-w-[360px] py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Model</TableHead>
+                    <TableHead className="w-[150px] py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Last used</TableHead>
+                    <TableHead className="w-[110px] py-3 text-right text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -267,21 +324,23 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                     const isOnRecommended = recommended && recommended.model_id === a.model_id && recommended.route === a.route;
                     const showUpgrade = recommended && !isOnRecommended && (deprecated || !currentExists || catalogEntry?.status === 'preview');
                     return (
-                      <TableRow key={a.agent_key} className={deprecated ? 'bg-amber-500/5' : undefined}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-sm">{a.agent_label}</div>
-                            {deprecated && (
-                              <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-300 text-[10px]">
-                                <AlertTriangle className="mr-1 h-2.5 w-2.5" /> deprecated
-                              </Badge>
-                            )}
+                      <TableRow key={a.agent_key} className={`border-border/50 transition-colors hover:bg-primary/5 ${deprecated ? 'bg-warning/10' : 'bg-card/30'}`}>
+                        <TableCell className="py-4 align-top">
+                          <div className="min-w-0 space-y-1.5">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <div className="truncate text-sm font-semibold text-foreground" title={a.agent_label}>{a.agent_label}</div>
+                              {deprecated && (
+                                <Badge variant="outline" className="shrink-0 border-warning/40 bg-warning/10 text-[10px] text-warning dark:text-amber-300">
+                                  <AlertTriangle className="mr-1 h-2.5 w-2.5" /> deprecated
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="truncate font-mono text-[11px] text-muted-foreground" title={a.agent_key}>{a.agent_key}</div>
                           </div>
-                          <div className="text-[11px] text-muted-foreground font-mono">{a.agent_key}</div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-4 align-top">
                           <Select value={a.route} onValueChange={(v: Route) => updateAssignment(a.agent_key, v, catalog.find((m) => m.route === v)?.model_id ?? a.model_id)}>
-                            <SelectTrigger className="h-8 text-xs">
+                            <SelectTrigger className="h-9 rounded-xl border-border/70 bg-background/80 text-xs shadow-sm focus:ring-ring" aria-label={`Route for ${a.agent_label}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -291,9 +350,9 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-4 align-top">
                           <Select value={a.model_id} onValueChange={(v) => updateAssignment(a.agent_key, a.route, v)} disabled={savingKey === a.agent_key}>
-                            <SelectTrigger className={`h-8 text-xs ${deprecated ? 'border-amber-500/40' : ''}`}>
+                            <SelectTrigger className={`h-9 min-w-0 rounded-xl border-border/70 bg-background/80 font-mono text-xs shadow-sm focus:ring-ring ${deprecated ? 'border-warning/50' : ''}`} aria-label={`Model for ${a.agent_label}`} title={a.model_id}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
@@ -306,7 +365,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                               ))}
                             </SelectContent>
                           </Select>
-                          {a.last_error && <p className="text-[10px] text-rose-300/80 mt-1 truncate max-w-[300px]" title={a.last_error}>⚠ {a.last_error.slice(0, 80)}</p>}
+                          {a.last_error && <p className="mt-2 max-w-[340px] truncate rounded-lg border border-destructive/20 bg-destructive/10 px-2 py-1 text-[10px] text-destructive dark:text-rose-300" title={a.last_error}>⚠ {a.last_error.slice(0, 80)}</p>}
                           {showUpgrade && recommended && (
                             <TooltipProvider delayDuration={150}>
                               <Tooltip>
@@ -315,10 +374,10 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                                     type="button"
                                     disabled={savingKey === a.agent_key}
                                     onClick={() => updateAssignment(a.agent_key, recommended.route, recommended.model_id)}
-                                    className="mt-1 inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0.5 text-[10px] text-emerald-300 hover:bg-emerald-500/10 transition disabled:opacity-50"
+                                    className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-1 text-[10px] font-medium text-success transition hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:text-emerald-300"
                                   >
                                     <ArrowUpCircle className="h-3 w-3" />
-                                    Upgrade to <span className="font-mono">{recommended.model_id}</span>
+                                    Upgrade to <span className="truncate font-mono" title={recommended.model_id}>{recommended.model_id}</span>
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-[300px] text-xs">
@@ -334,12 +393,20 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                             </p>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {a.last_used_at ? new Date(a.last_used_at).toLocaleString() : '—'}
+                        <TableCell className="py-4 align-top text-xs text-muted-foreground">
+                          <span className="block max-w-[140px] leading-5">{a.last_used_at ? new Date(a.last_used_at).toLocaleString() : '—'}</span>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" variant="ghost" disabled={testingKey === a.agent_key} onClick={() => testAgent(a.agent_key)}>
-                            {testingKey === a.agent_key ? <RefreshCw className="h-3 w-3 animate-spin" /> : <FlaskConical className="h-3 w-3" />}
+                        <TableCell className="py-4 text-right align-top">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={testingKey === a.agent_key}
+                            onClick={() => testAgent(a.agent_key)}
+                            aria-label={`Test model route for ${a.agent_label}`}
+                            title={`Test model route for ${a.agent_label}`}
+                            className="h-9 w-9 rounded-xl border border-border/60 bg-background/70 text-muted-foreground shadow-sm transition hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-ring"
+                          >
+                            {testingKey === a.agent_key ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <FlaskConical className="h-3.5 w-3.5" />}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -455,72 +522,69 @@ export default function ModelHub() {
   const providersByRoute = (route: Route) => (data?.providers ?? []).filter((p) => p.route === route);
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Model Hub</h1>
-          <p className="mt-1 text-muted-foreground">
-            Live LLM availability across Gateway, Native, and OpenRouter routes — with dynamic agent binding.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => fetchAll(false)} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Reload
-          </Button>
-          <Button onClick={() => fetchAll(true)} disabled={loading}>
-            <Network className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Live re-probe
-          </Button>
-        </div>
-      </div>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_10%_0%,hsl(var(--primary)/0.14),transparent_30rem),radial-gradient(circle_at_92%_8%,hsl(var(--info)/0.08),transparent_24rem)] p-3 text-foreground sm:p-5 lg:p-6">
+      <DashboardThemeFrame variant="page" className="space-y-6 pb-8">
+        <DashboardThemeFrame
+          as="header"
+          variant="hero"
+          className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.86)_50%,hsl(var(--primary)/0.10))] shadow-2xl shadow-black/10 dark:shadow-black/35"
+        >
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0 space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-sm shadow-primary/10">
+                <Network className="h-3.5 w-3.5" />
+                LLM operations control centre
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">Model Hub</h1>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Live LLM availability across Gateway, Native, and OpenRouter routes — with dynamic agent binding.
+                </p>
+              </div>
+            </div>
+            <div className="flex w-full flex-col gap-3 rounded-2xl border border-border/60 bg-background/55 p-3 shadow-sm backdrop-blur sm:w-auto sm:min-w-[320px] dark:border-white/10 dark:bg-slate-950/40">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => fetchAll(false)}
+                  disabled={loading}
+                  className="justify-center border-border/70 bg-card/80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/5 focus-visible:ring-ring"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  Reload
+                </Button>
+                <Button
+                  onClick={() => fetchAll(true)}
+                  disabled={loading}
+                  className="justify-center bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 focus-visible:ring-ring"
+                >
+                  <Network className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  Live re-probe
+                </Button>
+              </div>
+              <p className="text-center text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:text-right">
+                {data?.checkedAt ? `${data.cached ? 'Cached' : 'Live'} probe • ${new Date(data.checkedAt).toLocaleString()}` : 'Awaiting latest probe metadata'}
+              </p>
+            </div>
+          </div>
+        </DashboardThemeFrame>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Live models</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-            <Sparkles className="h-8 w-8 text-primary/60" />
-          </CardContent>
-        </Card>
-        <Card className="border-sky-500/30 bg-sky-500/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Preview</p>
-              <p className="text-2xl font-bold text-sky-300">{stats.preview}</p>
-            </div>
-            <Zap className="h-8 w-8 text-sky-400/60" />
-          </CardContent>
-        </Card>
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Deprecated</p>
-              <p className="text-2xl font-bold text-amber-300">{stats.deprecated}</p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-amber-400/60" />
-          </CardContent>
-        </Card>
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Providers</p>
-              <p className="text-2xl font-bold text-emerald-300">{stats.providers}</p>
-            </div>
-            <ShieldCheck className="h-8 w-8 text-emerald-400/60" />
-          </CardContent>
-        </Card>
-      </div>
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Model availability summary">
+          <MetricTile label="Live models" value={stats.total} icon={Sparkles} tone="primary" helper="Available catalogue entries across active routes." />
+          <MetricTile label="Preview" value={stats.preview} icon={Zap} tone="info" helper="Models marked preview by the current catalogue." />
+          <MetricTile label="Deprecated" value={stats.deprecated} icon={AlertTriangle} tone="warning" helper="Models flagged for migration or replacement." />
+          <MetricTile label="Providers" value={stats.providers} icon={ShieldCheck} tone="success" helper="Distinct providers represented in live data." />
+        </section>
 
-      <Tabs defaultValue="bindings" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
-          <TabsTrigger value="bindings" className="gap-2"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
-          <TabsTrigger value="gateway" className="gap-2"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
-          <TabsTrigger value="native" className="gap-2"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
-          <TabsTrigger value="openrouter" className="gap-2"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] border-pink-500/30 text-pink-300">on</Badge>}</TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="bindings" className="space-y-6">
+          <DashboardThemeFrame variant="toolbar" className="overflow-x-auto p-1.5">
+            <TabsList className="grid h-auto min-w-[620px] flex-1 grid-cols-4 gap-1 rounded-xl bg-muted/40 p-1 sm:min-w-0">
+              <TabsTrigger value="bindings" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
+              <TabsTrigger value="gateway" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
+              <TabsTrigger value="native" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
+              <TabsTrigger value="openrouter" className="gap-2 rounded-lg px-3 py-2 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px] border-pink-500/30 text-pink-300">on</Badge>}</TabsTrigger>
+            </TabsList>
+          </DashboardThemeFrame>
 
         <TabsContent value="bindings">
           {loading ? <Skeleton className="h-96 w-full" /> : <AgentBindings catalog={data?.models ?? []} onRefresh={() => fetchAll(false)} />}
@@ -585,6 +649,7 @@ export default function ModelHub() {
           {data.cached ? 'Cached' : 'Live'} • Last probe: {new Date(data.checkedAt).toLocaleString()}
         </p>
       )}
-    </div>
+      </DashboardThemeFrame>
+    </main>
   );
 }
