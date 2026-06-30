@@ -99,6 +99,15 @@ function EventBadge({ event, status, error }: { event: string; status?: string |
   );
 }
 
+function StatusBadge({ status }: { status?: string | null }) {
+  const tone = getEventTone(status ?? "", status);
+  return (
+    <Badge variant="outline" className={cn("rounded-full px-2.5 capitalize", tone.badge)}>
+      {status ?? "—"}
+    </Badge>
+  );
+}
+
 const PREMIUM_SCROLLBAR = "[scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-2.5 [&_[data-radix-scroll-area-thumb]]:bg-primary/35 [&_[data-radix-scroll-area-thumb]]:rounded-full";
 
 function fmtMs(ms: number) {
