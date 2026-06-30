@@ -823,7 +823,7 @@ export default function Integrations() {
       </DashboardThemeFrame>
 
       {supabaseSetupRequired && (
-        <Alert className="border-yellow-500/50 bg-yellow-500/10">
+        <Alert className="rounded-2xl border-amber-400/40 bg-amber-500/10 shadow-sm">
           <AlertCircle className="h-4 w-4 text-yellow-500" />
           <AlertDescription className="text-sm">
             <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets,
@@ -832,7 +832,7 @@ export default function Integrations() {
               href="https://supabase.com/dashboard/project/dduzbchuswwbefdunfct/settings/functions"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline"
+              className="rounded-sm text-primary underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
             >
               Supabase dashboard
             </a>.
@@ -841,7 +841,7 @@ export default function Integrations() {
               href="https://supabase.com/dashboard/account/tokens"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline"
+              className="rounded-sm text-primary underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
             >
               Account → Access Tokens
             </a>.
@@ -855,10 +855,10 @@ export default function Integrations() {
           className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-sm dark:shadow-black/25 [scrollbar-color:hsl(var(--primary)/0.35)_transparent]"
         >
           <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
-            <TabsTrigger value="all" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">All</TabsTrigger>
-            <TabsTrigger value="configured" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Configured</TabsTrigger>
-            <TabsTrigger value="pending" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Pending</TabsTrigger>
-            <TabsTrigger value="planned" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Roadmap</TabsTrigger>
+            <TabsTrigger value="all" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">All</TabsTrigger>
+            <TabsTrigger value="configured" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Configured</TabsTrigger>
+            <TabsTrigger value="pending" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Pending</TabsTrigger>
+            <TabsTrigger value="planned" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Roadmap</TabsTrigger>
           </TabsList>
         </DashboardThemeFrame>
 
