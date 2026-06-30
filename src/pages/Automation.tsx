@@ -276,7 +276,7 @@ const Automation = () => {
     <>
       <DashboardThemeFrame
         variant="page"
-        className="space-y-6 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.92))] p-3 pb-8 text-foreground sm:p-5 lg:p-6"
+        className="min-w-0 space-y-6 overflow-x-hidden rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.92))] p-3 pb-8 text-foreground sm:p-5 lg:p-6"
       >
         {/* Header */}
         <DashboardThemeFrame
@@ -300,6 +300,7 @@ const Automation = () => {
               variant="outline"
               onClick={() => setLogModalOpen(true)}
               size="sm"
+              aria-label="View auto-generation log"
               className="min-h-[44px] border-border/70 bg-background/80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-foreground focus-visible:ring-primary/45 sm:size-default"
             >
               <History className="h-4 w-4 mr-2" />
@@ -347,6 +348,7 @@ const Automation = () => {
                       variant="outline" 
                       size="sm"
                       disabled={clearing || !syncStats?.total}
+                      aria-label="Clear stuck report queue"
                       className="min-h-[44px] flex-1 border-destructive/25 bg-background/70 text-destructive shadow-sm transition-all hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/35 sm:min-h-0 sm:flex-none"
                     >
                       <XCircle className={`h-4 w-4 mr-1 ${clearing ? 'animate-spin' : ''}`} />
@@ -374,6 +376,7 @@ const Automation = () => {
                   size="sm"
                   onClick={() => runSync(true)}
                   disabled={syncing || !masterEnabled}
+                  aria-label="Run Airtable sync dry run"
                   className="min-h-[44px] flex-1 border-warning/30 bg-warning/10 text-foreground shadow-sm transition-all hover:border-warning/45 hover:bg-warning/15 focus-visible:ring-warning/40 sm:min-h-0 sm:flex-none"
                 >
                   <Eye className="h-4 w-4 mr-1 text-warning" />
@@ -383,6 +386,7 @@ const Automation = () => {
                   size="sm"
                   onClick={() => runSync(false)}
                   disabled={syncing || !masterEnabled}
+                  aria-label="Sync Airtable listings now"
                   className="min-h-[44px] flex-1 bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.20)] transition-all hover:bg-primary-hover focus-visible:ring-primary/45 sm:min-h-0 sm:flex-none"
                 >
                   <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
@@ -419,6 +423,7 @@ const Automation = () => {
                   checked={masterEnabled} 
                   onCheckedChange={toggleMaster}
                   disabled={masterLoading}
+                  aria-label="Toggle master auto-generation"
                   className="data-[state=checked]:bg-green-500 focus-visible:ring-green-500/40"
                 />
               </div>
@@ -450,7 +455,7 @@ const Automation = () => {
 
           {loading ? (
             <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/85 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-black/20">
-              <CardContent className="py-10 text-center text-muted-foreground">
+              <CardContent className="px-4 py-10 text-center text-muted-foreground">
                 Loading switches...
               </CardContent>
             </Card>
@@ -491,6 +496,7 @@ const Automation = () => {
                             checked={switchItem.is_enabled}
                             onCheckedChange={() => toggleSwitch(switchItem)}
                             disabled={!masterEnabled || !canEdit}
+                            aria-label={`Toggle switch ${switchItem.name}`}
                           />
                         </div>
                         <div className="min-w-0 flex-1 space-y-2">
@@ -524,6 +530,7 @@ const Automation = () => {
                             variant="ghost" 
                             size="sm"
                             onClick={() => openEditModal(switchItem)}
+                            aria-label={`Edit switch ${switchItem.name}`}
                             className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-primary/10 hover:text-foreground focus-visible:ring-primary/45 sm:min-h-0 sm:min-w-0"
                           >
                             <Settings2 className="h-4 w-4" />
@@ -534,6 +541,7 @@ const Automation = () => {
                             variant="ghost" 
                             size="sm"
                             onClick={() => deleteSwitch(switchItem)}
+                            aria-label={`Delete switch ${switchItem.name}`}
                             className="min-h-[44px] min-w-[44px] rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/35 sm:min-h-0 sm:min-w-0"
                           >
                             <Trash2 className="h-4 w-4" />
