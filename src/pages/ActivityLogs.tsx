@@ -572,7 +572,7 @@ export default function ActivityLogs() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Logs</h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">Track all user actions and system events</p>
         </div>
-        <DashboardThemeFrame variant="toolbar" className="w-full max-w-full shrink-0 justify-start overflow-visible border-primary/15 bg-background/80 shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] sm:w-auto sm:justify-end dark:bg-slate-950/45">
+        <DashboardThemeFrame variant="toolbar" className="w-full max-w-full shrink-0 justify-start overflow-visible border-primary/15 bg-background/80 shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] sm:w-auto sm:justify-end dark:bg-background/55">
           {/* Presets */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -995,7 +995,7 @@ export default function ActivityLogs() {
       {/* Save Preset Dialog (lightweight popover) */}
       {presetDialogOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/80 p-4 backdrop-blur-sm dark:bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/80 p-4 backdrop-blur-sm dark:bg-background/80"
           onClick={() => setPresetDialogOpen(false)}
         >
           <Card className="dashboard-panel w-full max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
