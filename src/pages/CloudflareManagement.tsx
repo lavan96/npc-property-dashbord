@@ -321,80 +321,107 @@ function WorkersTab() {
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
-      <h3 className="text-base sm:text-lg font-semibold">Workers & Pages</h3>
-
-      {isLoading && !workers.data && !pages.data ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <DashboardThemeFrame variant="section" className="space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-2">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Workers & Pages</h3>
+          <p className="max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">Deployment visibility for edge compute scripts and Pages projects connected to Cloudflare.</p>
         </div>
-      ) : (
-        <>
-          {/* Workers */}
-          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-            <CardHeader className="min-w-0 pb-3 sm:pb-6">
-              <div className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-amber-400" />
-                <CardTitle className="text-base">Workers ({workersList.length})</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {workersList.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No Workers deployed.</p>
-              ) : (
-                <div className="space-y-2">
-                  {workersList.map((w: any) => (
-                    <div key={w.id} className="flex items-center justify-between gap-2 min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <FileCode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+
+        {isLoading && !workers.data && !pages.data ? (
+          <div className="flex min-h-[16rem] items-center justify-center rounded-2xl border border-dashed border-primary/20 bg-muted/20 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+            {/* Workers */}
+            <Card className="min-w-0 overflow-hidden border-amber-500/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(38_92%_50%/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-amber-400/20 dark:bg-slate-950/60 dark:shadow-black/25">
+              <CardHeader className="min-w-0 pb-3 sm:pb-5">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/10 text-amber-500 dark:text-amber-300">
+                      <Zap className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="min-w-0 truncate text-base">Workers ({workersList.length})</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="flex-shrink-0 border-amber-500/25 bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-200 sm:text-xs">
+                    {workersList.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {workersList.length === 0 ? (
+                  <div className="flex min-h-[10rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 px-4 py-8 text-center shadow-inner dark:border-white/10 dark:bg-slate-950/30">
+                    <FileCode className="mb-3 h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm font-medium text-foreground">No Workers deployed.</p>
+                    <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Worker deployments will appear here when Cloudflare returns scripts for this account.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {workersList.map((w: any) => (
+                      <div key={w.id} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/55 p-3 shadow-sm transition-colors hover:border-amber-500/25 hover:bg-amber-500/5 dark:border-white/10 dark:bg-slate-950/35">
+                        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                          <FileCode className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-medium sm:text-sm" title={w.id}>{w.id}</p>
+                            <p className="text-[11px] text-muted-foreground sm:text-xs">
+                              Modified: {w.modified_on ? new Date(w.modified_on).toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="flex-shrink-0 border-green-500/30 bg-green-500/10 text-[11px] text-green-500 sm:text-xs">
+                          Active
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Pages */}
+            <Card className="min-w-0 overflow-hidden border-blue-500/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(217_91%_60%/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-blue-400/20 dark:bg-slate-950/60 dark:shadow-black/25">
+              <CardHeader className="min-w-0 pb-3 sm:pb-5">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-500/25 bg-blue-500/10 text-blue-500 dark:text-blue-300">
+                      <Globe className="h-5 w-5" />
+                    </div>
+                    <CardTitle className="min-w-0 truncate text-base">Pages Projects ({pagesList.length})</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="flex-shrink-0 border-blue-500/25 bg-blue-500/10 text-[11px] text-blue-600 dark:text-blue-200 sm:text-xs">
+                    {pagesList.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {pagesList.length === 0 ? (
+                  <div className="flex min-h-[10rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 px-4 py-8 text-center shadow-inner dark:border-white/10 dark:bg-slate-950/30">
+                    <Globe className="mb-3 h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm font-medium text-foreground">No Pages projects found.</p>
+                    <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Pages deployments will appear here when Cloudflare returns projects for this account.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {pagesList.map((p: any) => (
+                      <div key={p.id} className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/55 p-3 shadow-sm transition-colors hover:border-blue-500/25 hover:bg-blue-500/5 dark:border-white/10 dark:bg-slate-950/35">
                         <div className="min-w-0">
-                          <p className="text-xs sm:text-sm font-medium truncate">{w.id}</p>
-                          <p className="text-[11px] sm:text-xs text-muted-foreground">
-                            Modified: {w.modified_on ? new Date(w.modified_on).toLocaleDateString() : 'N/A'}
+                          <p className="truncate text-xs font-medium sm:text-sm" title={p.name}>{p.name}</p>
+                          <p className="truncate text-[11px] text-muted-foreground sm:text-xs" title={`${p.subdomain}.pages.dev`}>
+                            {p.subdomain}.pages.dev
                           </p>
                         </div>
+                        <Badge variant="outline" className="flex-shrink-0 border-blue-500/30 bg-blue-500/10 text-[11px] text-blue-500 sm:text-xs">
+                          {p.latest_deployment?.environment || 'production'}
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30 flex-shrink-0 text-[11px] sm:text-xs">
-                        Active
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Pages */}
-          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-            <CardHeader className="min-w-0 pb-3 sm:pb-6">
-              <div className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-blue-400" />
-                <CardTitle className="text-base">Pages Projects ({pagesList.length})</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {pagesList.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No Pages projects found.</p>
-              ) : (
-                <div className="space-y-2">
-                  {pagesList.map((p: any) => (
-                    <div key={p.id} className="flex items-center justify-between gap-2 min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
-                      <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-medium truncate">{p.name}</p>
-                        <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
-                          {p.subdomain}.pages.dev
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30 flex-shrink-0 text-[11px] sm:text-xs">
-                        {p.latest_deployment?.environment || 'production'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </DashboardThemeFrame>
     </div>
   );
 }
