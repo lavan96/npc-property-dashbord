@@ -727,119 +727,172 @@ export default function DataImport() {
 
       <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-card/80 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
         <CardHeader className="border-b border-border/50 bg-muted/20">
-          <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-300">
-              <AlertCircle className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 break-words">CSV Format Requirements</span>
-          </CardTitle>
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                <AlertCircle className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 break-words">
+                CSV Format Requirements
+              </span>
+            </CardTitle>
+            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+              <FileText className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Import specification guide</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="grid min-w-0 gap-4 text-sm md:grid-cols-2">
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                📍 Suburb Directory:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  📍 Suburb Directory:
+                </h4>
+                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                  All Australian
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 All Australian suburbs - no state selection needed
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 suburb,postcode,state
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                💵 Median Rent Cache:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  💵 Median Rent Cache:
+                </h4>
+                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                  No state selection
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 Pre-cached rent data - no state selection needed
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 suburb,postcode,state,property_type,bedrooms,median_weekly_rent,vacancy_rate,stock_on_market,source_url
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                🏫 Schools Directory:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  🏫 Schools Directory:
+                </h4>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  State required
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 name,suburb,postcode,state,school_type,school_level,icsea_score,student_count,latitude,longitude,address,website_url
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                📊 ABS Census Cache:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  📊 ABS Census Cache:
+                </h4>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  State required
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 postcode,state,dataset,data
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                🚨 Crime Statistics Cache:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  🚨 Crime Statistics Cache:
+                </h4>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  State required
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 suburb,postcode,state,data
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                🚇 Transport Data Cache:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  🚇 Transport Data Cache:
+                </h4>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  State required
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 latitude,longitude,state,suburb,data
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                ⚠️ Risk Assessment Cache:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  ⚠️ Risk Assessment Cache:
+                </h4>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  State required
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 suburb,postcode,state,latitude,longitude,flood_risk,bushfire_risk
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                🌡️ Climate Data Cache:
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  🌡️ Climate Data Cache:
+                </h4>
+                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                  State required
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 suburb,postcode,state,climate_zone,temperature_data,rainfall_data,humidity_data,extreme_weather,projections
               </code>
             </div>
 
-            <div className="min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4">
-              <h4 className="font-medium mb-2 break-words">
-                💰 Economic Data (National):
-              </h4>
+            <div className="group min-w-0 rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+              <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
+                <h4 className="font-medium break-words">
+                  💰 Economic Data (National):
+                </h4>
+                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                  National
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground mb-1">
                 No state selection needed
               </p>
-              <code className="block max-w-full rounded-xl bg-muted/80 p-3 text-xs overflow-x-auto whitespace-pre shadow-inner">
+              <code className="block max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
                 data_type,data
               </code>
             </div>
