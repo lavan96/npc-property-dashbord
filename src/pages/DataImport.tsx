@@ -114,6 +114,9 @@ export default function DataImport() {
 
   const selectedDataType = DATA_TYPES.find((t) => t.value === selectedType);
   const requiresState = selectedDataType?.requiresState ?? false;
+  const uploadReady = Boolean(
+    file && selectedType && (!requiresState || selectedState),
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -538,22 +541,33 @@ export default function DataImport() {
         </CardContent>
       </Card>
 
-      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-card/80 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
-        <CardHeader className="border-b border-border/50 bg-muted/20">
-          <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.24))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+        <CardHeader className="border-b border-border/50 bg-background/35">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Upload className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 break-words">Upload CSV Data</span>
+            </CardTitle>
+            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-border/60 bg-card/80 px-3 py-1 text-xs font-semibold text-muted-foreground">
               <Upload className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 break-words">Upload CSV Data</span>
-          </CardTitle>
+              <span className="truncate">Manual CSV workflow</span>
+            </div>
+          </div>
           <CardDescription className="break-words">
             Select a data type and upload a properly formatted CSV file
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-4 sm:p-6">
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-4 rounded-2xl border border-border/50 bg-background/45 p-3 sm:grid-cols-2 sm:p-4">
             <div className="min-w-0 space-y-2">
-              <Label htmlFor="dataType">Data Type</Label>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  1
+                </span>
+                <Label htmlFor="dataType">Data Type</Label>
+              </div>
               <Select
                 value={selectedType}
                 onValueChange={(value) => {
@@ -563,13 +577,17 @@ export default function DataImport() {
               >
                 <SelectTrigger
                   id="dataType"
-                  className="min-w-0 rounded-xl bg-background/80 focus:ring-primary/40"
+                  className="min-w-0 rounded-xl border-border/70 bg-card/90 shadow-sm transition-colors hover:border-primary/35 focus:ring-2 focus:ring-primary/40"
                 >
                   <SelectValue placeholder="Select data type..." />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-xl border-border/70 bg-popover shadow-xl">
                   {DATA_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
+                    <SelectItem
+                      key={type.value}
+                      value={type.value}
+                      className="min-w-0 rounded-lg focus:bg-primary/10 focus:text-foreground"
+                    >
                       <div className="flex min-w-0 items-center gap-2">
                         <Database className="h-4 w-4 shrink-0" />
                         <span className="truncate">{type.label}</span>
@@ -582,19 +600,28 @@ export default function DataImport() {
 
             {requiresState && (
               <div className="min-w-0 space-y-2">
-                <Label htmlFor="state">
-                  State/Territory <span className="text-destructive">*</span>
-                </Label>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    2
+                  </span>
+                  <Label htmlFor="state">
+                    State/Territory <span className="text-destructive">*</span>
+                  </Label>
+                </div>
                 <Select value={selectedState} onValueChange={setSelectedState}>
                   <SelectTrigger
                     id="state"
-                    className="min-w-0 rounded-xl bg-background/80 focus:ring-primary/40"
+                    className="min-w-0 rounded-xl border-border/70 bg-card/90 shadow-sm transition-colors hover:border-primary/35 focus:ring-2 focus:ring-primary/40"
                   >
                     <SelectValue placeholder="Select state..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-50 max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-y-auto rounded-xl border-border/70 bg-popover shadow-xl">
                     {AUSTRALIAN_STATES.map((state) => (
-                      <SelectItem key={state.value} value={state.value}>
+                      <SelectItem
+                        key={state.value}
+                        value={state.value}
+                        className="rounded-lg focus:bg-primary/10 focus:text-foreground"
+                      >
                         {state.label}
                       </SelectItem>
                     ))}
@@ -608,18 +635,26 @@ export default function DataImport() {
             )}
           </div>
 
-          <div className="min-w-0 space-y-2">
-            <Label htmlFor="csvFile">CSV File</Label>
-            <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:gap-4">
+          <div className="min-w-0 space-y-2 rounded-2xl border border-border/50 bg-background/45 p-3 sm:p-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                {requiresState ? "3" : "2"}
+              </span>
+              <Label htmlFor="csvFile">CSV File</Label>
+            </div>
+            <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-4 transition-colors focus-within:border-primary/45 focus-within:bg-primary/5 sm:flex-row sm:items-center sm:gap-4">
               <input
                 id="csvFile"
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
-                className="min-w-0 w-full text-sm text-muted-foreground file:mr-4 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-foreground hover:file:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                className="min-w-0 w-full text-sm text-muted-foreground file:mr-4 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-foreground file:shadow-sm hover:file:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               />
               {file && (
-                <div className="flex min-w-0 items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-2 text-sm text-muted-foreground shadow-sm sm:max-w-[18rem]">
+                <div
+                  className="flex min-w-0 items-center gap-2 rounded-full border border-border/60 bg-background px-3 py-2 text-sm text-muted-foreground shadow-sm sm:max-w-[18rem]"
+                  title={file.name}
+                >
                   <FileText className="h-4 w-4 shrink-0" />
                   <span className="truncate">{file.name}</span>
                 </div>
@@ -629,13 +664,12 @@ export default function DataImport() {
 
           <Button
             onClick={handleUpload}
-            disabled={
-              !file ||
-              !selectedType ||
-              (requiresState && !selectedState) ||
-              uploading
-            }
-            className="min-w-0 w-full rounded-full py-6 font-semibold shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:shadow-none"
+            disabled={!uploadReady || uploading}
+            className={`min-w-0 w-full rounded-full py-6 font-semibold transition-all focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none ${
+              uploadReady
+                ? "shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:-translate-y-0.5 hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)]"
+                : ""
+            }`}
           >
             {uploading ? (
               <>
