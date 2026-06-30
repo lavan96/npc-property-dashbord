@@ -99,6 +99,8 @@ function EventBadge({ event, status, error }: { event: string; status?: string |
   );
 }
 
+const PREMIUM_SCROLLBAR = "[scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-2.5 [&_[data-radix-scroll-area-thumb]]:bg-primary/35 [&_[data-radix-scroll-area-thumb]]:rounded-full";
+
 function fmtMs(ms: number) {
   if (!ms) return "—";
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`;
@@ -149,8 +151,8 @@ export function TokenEventDetailsDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden border-border/70 bg-card/95 p-0 sm:max-w-2xl dark:border-white/10">
-        <SheetHeader className={cn("min-w-0 border-b px-6 py-5 text-left", premiumTimeline ? "border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_36%),linear-gradient(135deg,hsl(var(--muted)/0.24),hsl(var(--card)/0.92))]" : "border-border/60 bg-muted/20")}>
+      <SheetContent side="right" className="flex h-[100dvh] max-h-[100dvh] w-full min-w-0 flex-col overflow-hidden border-border/70 bg-card/95 p-0 shadow-2xl sm:max-w-2xl dark:border-white/10">
+        <SheetHeader className={cn("min-w-0 border-b px-4 py-5 text-left sm:px-6", premiumTimeline ? "border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_36%),linear-gradient(135deg,hsl(var(--muted)/0.24),hsl(var(--card)/0.92))]" : "border-border/60 bg-muted/20")}>
           {premiumTimeline && (
             <div className="mb-1 inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               <Clock3 className="h-3.5 w-3.5" />
@@ -166,14 +168,14 @@ export function TokenEventDetailsDrawer({
               <code className={cn("min-w-0 flex-1 truncate border font-mono text-xs text-primary", premiumTimeline ? "rounded-xl border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-inner" : "rounded-lg border-primary/15 bg-primary/5 px-2 py-1")} title={idempotencyKey}>
                 {idempotencyKey}
               </code>
-              <Button size="icon" variant="outline" className="h-7 w-7 shrink-0 rounded-lg" onClick={copy}>
+              <Button size="icon" variant="outline" className="h-9 w-9 shrink-0 rounded-lg focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2" onClick={copy} aria-label="Copy idempotency key">
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </div>
           )}
         </SheetHeader>
 
-        <ScrollArea className={cn("min-h-0 flex-1 py-5", premiumTimeline ? "px-4 sm:px-6" : "px-6")}>
+        <ScrollArea className={cn("min-h-0 flex-1 overscroll-contain py-5", premiumTimeline ? "px-4 sm:px-6" : "px-6", PREMIUM_SCROLLBAR)}>
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
@@ -197,12 +199,12 @@ export function TokenEventDetailsDrawer({
                   <p className="text-xs text-muted-foreground">No outcome row yet.</p>
                 ) : (
                   data.outcomes.map((o) => (
-                    <div key={o.id} className={cn("min-w-0 space-y-3 rounded-2xl border border-border/70 p-4 text-sm shadow-sm", premiumTimeline ? "bg-background/65 ring-1 ring-white/40 dark:ring-white/5" : "bg-background/55")}>
+                    <div key={o.id} className={cn("min-w-0 space-y-3 rounded-2xl border border-border/70 p-4 text-sm shadow-sm", premiumTimeline ? "bg-background/65 ring-1 ring-black/5 dark:ring-white/5" : "bg-background/55")}>
                       <div className="flex min-w-0 items-center justify-between gap-3">
                         <span className="min-w-0 truncate font-medium" title={o.function_name}>{o.function_name}</span>
                         <StatusBadge status={o.status} />
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="break-words text-xs text-muted-foreground">
                         {format(new Date(o.created_at), "PPpp")}
                         {o.user_id && data.users[o.user_id] && <> · {data.users[o.user_id]}</>}
                       </div>
@@ -217,7 +219,7 @@ export function TokenEventDetailsDrawer({
                         <p className="break-words rounded-lg bg-destructive/10 p-2 text-xs text-destructive">{o.error_message}</p>
                       )}
                       {o.job_id && (
-                        <p className="truncate font-mono text-xs text-muted-foreground" title={o.job_id}>job: {o.job_id}</p>
+                        <p className="truncate rounded-lg bg-muted/35 px-2 py-1 font-mono text-xs text-muted-foreground" title={o.job_id}>job: {o.job_id}</p>
                       )}
                     </div>
                   ))
@@ -243,7 +245,7 @@ export function TokenEventDetailsDrawer({
                             <Icon className="h-4 w-4" />
                           </span>
                           <span className={cn("absolute left-5 top-14 h-[calc(100%-1.75rem)] w-px", tone.rail)} aria-hidden="true" />
-                          <div className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/65 p-4 text-xs shadow-sm ring-1 ring-white/40 dark:ring-white/5">
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/65 p-4 text-xs shadow-sm ring-1 ring-black/5 dark:ring-white/5">
                             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <span className="rounded-full bg-muted/55 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{tone.label}</span>
@@ -285,7 +287,7 @@ export function TokenEventDetailsDrawer({
                             {e.status && <span className="max-w-[35%] truncate text-muted-foreground" title={e.status}>{e.status}</span>}
                           </div>
                           {e.user_id && data.users[e.user_id] && (
-                            <p className="text-muted-foreground">User: {data.users[e.user_id]}</p>
+                            <p className="truncate text-muted-foreground" title={data.users[e.user_id]}>User: {data.users[e.user_id]}</p>
                           )}
                           <div className="grid min-w-0 grid-cols-2 gap-2 pt-1 sm:grid-cols-4">
                             <div><p className="text-muted-foreground">Requested</p><p className="font-medium tabular-nums">{e.requested_tokens.toLocaleString()}</p></div>

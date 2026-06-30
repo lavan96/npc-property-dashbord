@@ -76,6 +76,7 @@ function fmtMs(ms: number) {
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const PREMIUM_SCROLLBAR = "[scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:bg-transparent";
 
 export default function TokenUsageHistory() {
   const [scope, setScope] = useState<"mine" | "agency">("mine");
@@ -165,7 +166,7 @@ export default function TokenUsageHistory() {
   ];
 
   return (
-    <DashboardThemeFrame variant="page" className="min-h-[calc(100vh-5rem)] space-y-7 p-3 sm:p-5 lg:p-6">
+    <DashboardThemeFrame variant="page" className="min-h-[calc(100vh-5rem)] min-w-0 overflow-x-hidden space-y-7 p-3 sm:p-5 lg:p-6">
       <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--background))_55%,hsl(var(--primary)/0.10))] p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-7">
         <div className="flex min-w-0 items-start gap-4">
           <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
@@ -192,7 +193,7 @@ export default function TokenUsageHistory() {
           variant="outline"
           size="sm"
           disabled={loading}
-          className="w-full shrink-0 rounded-xl border-primary/25 bg-background/75 px-4 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/30 sm:w-auto"
+          className="min-h-10 w-full shrink-0 rounded-xl border-primary/25 bg-background/85 px-4 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
         >
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
@@ -226,7 +227,7 @@ export default function TokenUsageHistory() {
         ))}
       </div>
 
-      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/85 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-white/40 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-1.5">
@@ -244,7 +245,7 @@ export default function TokenUsageHistory() {
         </CardHeader>
         <CardContent className="min-w-0 space-y-5 p-4 sm:p-6">
           <Tabs value={scope} onValueChange={(v) => setScope(v as any)}>
-            <DashboardThemeFrame variant="toolbar" className="min-w-0 items-stretch justify-between gap-3 border-primary/10 bg-muted/25 p-2.5 sm:items-center">
+            <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-hidden items-stretch justify-between gap-3 border-primary/10 bg-muted/25 p-2.5 sm:items-center">
               <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl border border-border/60 bg-background/70 p-1 shadow-inner sm:w-auto">
                 <TabsTrigger value="mine" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
                   <UserRound className="h-3.5 w-3.5 shrink-0" />
@@ -260,6 +261,7 @@ export default function TokenUsageHistory() {
                 <Input
                   className="min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all placeholder:text-muted-foreground/75 hover:border-primary/25 hover:bg-background focus-visible:border-primary/45 focus-visible:ring-primary/30"
                   placeholder="Search by kind, function, status..."
+                  aria-label="Search token usage by kind, function, status, or idempotency key"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -341,8 +343,8 @@ export default function TokenUsageHistory() {
               ) : (
                 <>
                   <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background/45">
-                    <div className="overflow-x-auto">
-                      <Table className="min-w-[1180px] table-fixed">
+                    <div className={cn("overflow-x-auto overscroll-x-contain", PREMIUM_SCROLLBAR)}>
+                      <Table className="min-w-[1180px] table-fixed" aria-label="Token usage records">
                         <TableHeader>
                           <TableRow className="bg-muted/35 hover:bg-muted/35">
                             <TableHead className="w-[150px]">When</TableHead>
@@ -389,7 +391,7 @@ export default function TokenUsageHistory() {
                                   <button
                                     type="button"
                                     className={cn(
-                                      "flex max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+                                      "flex min-h-9 max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2",
                                       isOpen && "border-primary/45 bg-primary/15",
                                     )}
                                     title={r.idempotency_key}
@@ -431,7 +433,7 @@ export default function TokenUsageHistory() {
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span>Rows per page</span>
                       <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                        <SelectTrigger className="h-8 w-[80px] rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 w-[84px] rounded-xl" aria-label="Rows per page"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {PAGE_SIZE_OPTIONS.map((n) => (
                             <SelectItem key={n} value={String(n)}>{n}</SelectItem>
@@ -443,19 +445,19 @@ export default function TokenUsageHistory() {
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage === 1} onClick={() => setPage(1)}>
+                      <Button aria-label="First page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage === 1} onClick={() => setPage(1)}>
                         <ChevronsLeft className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                      <Button aria-label="Previous page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <span className="px-2 text-xs tabular-nums text-muted-foreground">
                         Page {safePage} / {totalPages}
                       </span>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                      <Button aria-label="Next page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}>
+                      <Button aria-label="Last page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}>
                         <ChevronsRight className="h-4 w-4" />
                       </Button>
                     </div>
