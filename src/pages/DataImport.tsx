@@ -520,8 +520,9 @@ export default function DataImport() {
             <Button
               onClick={handleImportSuburbDirectory}
               disabled={importingSuburbs}
+              aria-busy={importingSuburbs}
               variant="outline"
-              className="min-w-0 shrink-0 rounded-full border-primary/35 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)] focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:shadow-none lg:min-w-[18rem]"
+              className="min-w-0 shrink-0 rounded-full border-primary/35 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)] focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:cursor-wait disabled:border-primary/25 disabled:bg-primary/55 disabled:text-primary-foreground/80 disabled:shadow-none lg:min-w-[18rem]"
             >
               {importingSuburbs ? (
                 <>
@@ -538,6 +539,20 @@ export default function DataImport() {
               )}
             </Button>
           </div>
+          {importingSuburbs && (
+            <div
+              className="mt-4 flex min-w-0 items-start gap-3 rounded-2xl border border-primary/20 bg-primary/10 p-3 text-sm text-primary"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+              <p className="min-w-0 break-words">
+                Importing suburbs from the trusted external source. This action
+                will complete only after the existing import workflow confirms
+                the result.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -665,6 +680,7 @@ export default function DataImport() {
           <Button
             onClick={handleUpload}
             disabled={!uploadReady || uploading}
+            aria-busy={uploading}
             className={`min-w-0 w-full rounded-full py-6 font-semibold transition-all focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none ${
               uploadReady
                 ? "shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:-translate-y-0.5 hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)]"
@@ -683,14 +699,28 @@ export default function DataImport() {
               </>
             )}
           </Button>
+          {!uploadReady && !uploading && (
+            <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="min-w-0 break-words">
+                Upload Data becomes available after the required data type
+                selection{requiresState ? ", state selection" : ""} and CSV file
+                are provided.
+              </p>
+            </div>
+          )}
 
           {result && (
             <Alert
               variant={result.success ? "default" : "destructive"}
-              className="min-w-0 overflow-hidden rounded-2xl"
+              className={`min-w-0 overflow-hidden rounded-2xl ${
+                result.success
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100"
+                  : "border-destructive/35 bg-destructive/10"
+              }`}
             >
               {result.success ? (
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
               ) : (
                 <XCircle className="h-4 w-4" />
               )}
@@ -701,22 +731,52 @@ export default function DataImport() {
                       Upload completed successfully!
                     </p>
                     {result.summary && (
-                      <ul className="text-sm space-y-1 mt-2">
-                        <li>Total records: {result.summary.total}</li>
-                        <li>Imported: {result.summary.imported}</li>
+                      <div className="mt-3 grid min-w-0 gap-2 text-sm sm:grid-cols-2">
+                        <div className="min-w-0 rounded-xl border border-emerald-500/20 bg-background/70 p-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            Total records
+                          </p>
+                          <p className="mt-1 font-semibold tabular-nums text-foreground">
+                            {result.summary.total}
+                          </p>
+                        </div>
+                        <div className="min-w-0 rounded-xl border border-emerald-500/20 bg-background/70 p-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            Imported
+                          </p>
+                          <p className="mt-1 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                            {result.summary.imported}
+                          </p>
+                        </div>
                         {result.summary.updated !== undefined && (
-                          <li>Updated: {result.summary.updated}</li>
+                          <div className="min-w-0 rounded-xl border border-primary/20 bg-background/70 p-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              Updated
+                            </p>
+                            <p className="mt-1 font-semibold tabular-nums text-foreground">
+                              {result.summary.updated}
+                            </p>
+                          </div>
                         )}
                         {result.summary.skipped !== undefined && (
-                          <li>Skipped: {result.summary.skipped}</li>
+                          <div className="min-w-0 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                              Skipped
+                            </p>
+                            <p className="mt-1 font-semibold tabular-nums text-amber-900 dark:text-amber-100">
+                              {result.summary.skipped}
+                            </p>
+                          </div>
                         )}
-                      </ul>
+                      </div>
                     )}
                   </div>
                 ) : (
                   <div className="min-w-0">
                     <p className="font-medium">Upload failed</p>
-                    <p className="mt-1 break-words text-sm">{result.error}</p>
+                    <div className="mt-2 min-w-0 rounded-xl border border-destructive/25 bg-background/70 p-3">
+                      <p className="break-words text-sm">{result.error}</p>
+                    </div>
                   </div>
                 )}
               </AlertDescription>
