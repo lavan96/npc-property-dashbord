@@ -293,42 +293,50 @@ export default function Monitoring() {
       </Card>
 
       {/* Cache Performance */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-card/80">
-        <CardHeader className="border-b border-border/60 bg-muted/20">
-          <CardTitle className="flex min-w-0 items-center gap-2">
-            <Database className="h-5 w-5" />
-            Cache Performance
-          </CardTitle>
-          <CardDescription>
-            Real-time cache statistics and hit rates
-          </CardDescription>
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+        <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.22)_42%,hsl(var(--card)/0))] px-5 py-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
+              <Database className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="min-w-0 break-words text-lg font-semibold tracking-tight">
+                Cache Performance
+              </CardTitle>
+              <CardDescription className="max-w-3xl text-sm leading-6">
+                Real-time cache statistics and hit rates
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex min-h-40 items-center justify-center rounded-2xl border border-border/60 bg-muted/20 py-8">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="space-y-4">
               {cacheStats.map((stat) => (
-                <div key={stat.cache_type} className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 dark:border-white/10 dark:bg-background/25">
-                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Database className="h-4 w-4" />
-                      <span className="min-w-0 break-words font-medium capitalize">
+                <div key={stat.cache_type} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm ring-1 ring-transparent transition-all hover:border-primary/30 hover:bg-background/70 hover:ring-primary/10 dark:border-white/10 dark:bg-background/25">
+                  <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
+                        <Database className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 break-words font-medium capitalize leading-6">
                         {stat.cache_type.replace('_', ' ')}
                       </span>
                     </div>
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       {stat.retention_days > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {stat.retention_days}d retention
+                        <Badge variant="outline" className="min-w-0 max-w-full rounded-full border-primary/25 bg-primary/10 text-xs text-primary">
+                          <Clock className="mr-1 h-3 w-3 shrink-0" />
+                          <span className="truncate">{stat.retention_days}d retention</span>
                         </Badge>
                       )}
                       {stat.total_entries > 0 && (
-                        <Badge variant="default">
-                          {stat.total_entries.toLocaleString()} entries
+                        <Badge variant="default" className="min-w-0 max-w-full rounded-full bg-primary text-primary-foreground shadow-sm shadow-primary/10">
+                          <span className="truncate tabular-nums">{stat.total_entries.toLocaleString()} entries</span>
                         </Badge>
                       )}
                     </div>
@@ -336,42 +344,42 @@ export default function Monitoring() {
 
                   {stat.total_entries > 0 ? (
                     <>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Live Data</p>
-                          <p className="font-semibold">{stat.live_data.toLocaleString()}</p>
+                      <div className="grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="min-w-0 rounded-xl border border-border/60 bg-card/55 p-3">
+                          <p className="truncate text-muted-foreground">Live Data</p>
+                          <p className="break-words font-semibold tabular-nums text-foreground">{stat.live_data.toLocaleString()}</p>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Estimated</p>
-                          <p className="font-semibold">{stat.estimated_data.toLocaleString()}</p>
+                        <div className="min-w-0 rounded-xl border border-border/60 bg-card/55 p-3">
+                          <p className="truncate text-muted-foreground">Estimated</p>
+                          <p className="break-words font-semibold tabular-nums text-foreground">{stat.estimated_data.toLocaleString()}</p>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Avg Age</p>
-                          <p className="font-semibold">{stat.avg_age_days?.toFixed(1) || 0}d</p>
+                        <div className="min-w-0 rounded-xl border border-border/60 bg-card/55 p-3">
+                          <p className="truncate text-muted-foreground">Avg Age</p>
+                          <p className="break-words font-semibold tabular-nums text-foreground">{stat.avg_age_days?.toFixed(1) || 0}d</p>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Hit Potential</p>
-                          <p className="font-semibold">{stat.cache_hit_potential || 0}%</p>
+                        <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/10 p-3">
+                          <p className="truncate text-muted-foreground">Hit Potential</p>
+                          <p className="break-words font-semibold tabular-nums text-primary">{stat.cache_hit_potential || 0}%</p>
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Cache Hit Potential</span>
-                          <span>{stat.cache_hit_potential || 0}%</span>
+                      <div className="rounded-xl border border-border/60 bg-card/45 p-3">
+                        <div className="mb-2 flex min-w-0 justify-between gap-3 text-xs text-muted-foreground">
+                          <span className="min-w-0 truncate">Cache Hit Potential</span>
+                          <span className="shrink-0 tabular-nums">{stat.cache_hit_potential || 0}%</span>
                         </div>
-                        <Progress value={stat.cache_hit_potential || 0} className="h-2" />
+                        <Progress value={stat.cache_hit_potential || 0} className="h-2.5 bg-primary/12 [&>div]:bg-primary" />
                       </div>
 
                       {stat.expired_entries > 0 && (
-                        <div className="flex min-w-0 items-start gap-2 rounded-xl border border-warning/25 bg-warning/10 p-3 text-sm text-warning">
+                        <div className="flex min-w-0 items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning shadow-sm">
                           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                          <span className="min-w-0 break-words">{stat.expired_entries} expired entries need cleanup</span>
+                          <span className="min-w-0 break-words leading-6">{stat.expired_entries} expired entries need cleanup</span>
                         </div>
                       )}
                     </>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No data cached yet</p>
+                    <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-3 text-sm text-muted-foreground">No data cached yet</p>
                   )}
                 </div>
               ))}
