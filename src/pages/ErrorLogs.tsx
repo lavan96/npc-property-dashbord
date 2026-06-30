@@ -460,32 +460,34 @@ export default function ErrorLogs() {
       )}
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Filter className="h-5 w-5" />
+      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.86)_54%,hsl(var(--primary)/0.07))] shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-white/35 dark:border-white/10 dark:bg-slate-950/70 dark:ring-white/10 dark:shadow-black/25">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+              <Filter className="h-5 w-5" />
+            </span>
             Filters
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
+        <CardContent className="min-w-0">
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="min-w-0 flex-1">
+              <div className="relative min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search errors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  className="min-w-0 rounded-2xl border-border/70 bg-background/70 pl-9 pr-3 shadow-inner shadow-black/5 transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-primary/30 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55"
                 />
               </div>
             </div>
 
             <Select value={selectedSource} onValueChange={(v) => setSelectedSource(v as ErrorSource | 'all')}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full min-w-0 rounded-2xl border-border/70 bg-background/70 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55 lg:w-[190px]">
                 <SelectValue placeholder="All Sources" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72 min-w-[190px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
                 <SelectItem value="all">All Sources</SelectItem>
                 {Object.entries(SOURCE_CONFIG).map(([key, config]) => (
                   <SelectItem key={key} value={key}>
@@ -496,10 +498,10 @@ export default function ErrorLogs() {
             </Select>
 
             <Select value={selectedSeverity} onValueChange={(v) => setSelectedSeverity(v as ErrorSeverity | 'all')}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full min-w-0 rounded-2xl border-border/70 bg-background/70 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55 lg:w-[160px]">
                 <SelectValue placeholder="All Severities" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72 min-w-[160px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
                 <SelectItem value="all">All Severities</SelectItem>
                 <SelectItem value="critical">Critical</SelectItem>
                 <SelectItem value="error">Error</SelectItem>
@@ -508,10 +510,10 @@ export default function ErrorLogs() {
             </Select>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as '24h' | '7d' | '30d')}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-full min-w-0 rounded-2xl border-border/70 bg-background/70 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55 lg:w-[145px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-72 min-w-[145px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
                 <SelectItem value="24h">Last 24h</SelectItem>
                 <SelectItem value="7d">Last 7 days</SelectItem>
                 <SelectItem value="30d">Last 30 days</SelectItem>
@@ -523,20 +525,20 @@ export default function ErrorLogs() {
 
       {/* Error Tabs by Source */}
       <Tabs defaultValue="all">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="all" className="gap-2">
+        <TabsList className="h-auto min-w-0 justify-start gap-2 overflow-x-auto rounded-[1.35rem] border border-primary/15 bg-card/70 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+          <TabsTrigger value="all" className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
             All
-            <Badge variant="secondary" className="ml-1">{filteredErrors.length}</Badge>
+            <Badge variant="secondary" className="ml-1 rounded-full bg-background/80 px-2 text-foreground data-[state=active]:bg-primary-foreground/20">{filteredErrors.length}</Badge>
           </TabsTrigger>
           {Object.entries(SOURCE_CONFIG).map(([key, config]) => {
             const count = filteredErrors.filter(e => e.source === key).length;
             if (count === 0) return null;
             const Icon = config.icon;
             return (
-              <TabsTrigger key={key} value={key} className="gap-2">
+              <TabsTrigger key={key} value={key} className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
                 <Icon className={`h-4 w-4 ${config.color}`} />
                 {config.label}
-                <Badge variant="secondary" className="ml-1">{count}</Badge>
+                <Badge variant="secondary" className="ml-1 rounded-full bg-background/80 px-2 text-foreground">{count}</Badge>
               </TabsTrigger>
             );
           })}
