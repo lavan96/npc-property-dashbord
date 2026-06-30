@@ -193,7 +193,7 @@ export default function TokenUsageHistory() {
           variant="outline"
           size="sm"
           disabled={loading}
-          className="min-h-10 w-full shrink-0 rounded-xl border-primary/25 bg-background/85 px-4 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
+          className="min-h-10 w-full shrink-0 rounded-xl border-primary/25 bg-background/85 px-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
         >
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
@@ -202,7 +202,7 @@ export default function TokenUsageHistory() {
 
       <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
         {kpis.map(({ label, value, icon: Icon, helper, accent, iconClass, valueClass }) => (
-          <DashboardThemeFrame key={label} variant="premiumCard" className={cn("p-0", `bg-gradient-to-br ${accent}`)}>
+          <DashboardThemeFrame key={label} variant="premiumCard" className={cn("group p-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_20px_55px_rgba(15,23,42,0.12)] dark:hover:shadow-[0_20px_55px_rgba(0,0,0,0.34)]", `bg-gradient-to-br ${accent}`)}>
             <div className="flex min-h-[9.5rem] min-w-0 flex-col justify-between gap-5 p-5">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -213,7 +213,7 @@ export default function TokenUsageHistory() {
                     <p className={cn("mt-3 truncate text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl", valueClass)} title={value}>{value}</p>
                   )}
                 </div>
-                <div className={cn("rounded-2xl border p-2.5 shadow-sm", iconClass)}>
+                <div className={cn("rounded-2xl border p-2.5 shadow-sm transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_0_0_4px_hsl(var(--primary)/0.08)]", iconClass)}>
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
@@ -227,7 +227,7 @@ export default function TokenUsageHistory() {
         ))}
       </div>
 
-      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-1.5">
@@ -247,11 +247,11 @@ export default function TokenUsageHistory() {
           <Tabs value={scope} onValueChange={(v) => setScope(v as any)}>
             <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-hidden items-stretch justify-between gap-3 border-primary/10 bg-muted/25 p-2.5 sm:items-center">
               <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl border border-border/60 bg-background/70 p-1 shadow-inner sm:w-auto">
-                <TabsTrigger value="mine" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="mine" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.18)]">
                   <UserRound className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">My usage</span>
                 </TabsTrigger>
-                <TabsTrigger value="agency" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="agency" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.18)]">
                   <Building2 className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">Agency-wide</span>
                 </TabsTrigger>
@@ -259,7 +259,7 @@ export default function TokenUsageHistory() {
               <div className="group relative min-w-0 flex-1 sm:max-w-md">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
-                  className="min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all placeholder:text-muted-foreground/75 hover:border-primary/25 hover:bg-background focus-visible:border-primary/45 focus-visible:ring-primary/30"
+                  className="min-h-10 min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/30 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
                   placeholder="Search by kind, function, status..."
                   aria-label="Search token usage by kind, function, status, or idempotency key"
                   value={search}
@@ -319,6 +319,7 @@ export default function TokenUsageHistory() {
               ) : rows.length === 0 ? (
                 <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_42%),hsl(var(--muted)/0.18)] px-4 py-12 text-center">
                   <div className="mx-auto max-w-sm space-y-3">
+                    <div className="mx-auto w-fit rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-primary">Audit ready</div>
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
                       <Coins className="h-7 w-7" />
                     </div>
@@ -366,7 +367,7 @@ export default function TokenUsageHistory() {
                               <TableRow
                                 key={r.id}
                                 className={cn(
-                                  "group cursor-pointer border-l-2 border-l-transparent transition-all hover:border-l-primary/50 hover:bg-primary/5 focus-within:bg-primary/5",
+                                  "group cursor-pointer border-l-2 border-l-transparent transition-all duration-200 hover:border-l-primary/60 hover:bg-primary/5 hover:shadow-[inset_4px_0_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/5",
                                   isOpen && "border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.16)]",
                                 )}
                                 onClick={() => setActiveKey(r.idempotency_key)}
@@ -391,7 +392,7 @@ export default function TokenUsageHistory() {
                                   <button
                                     type="button"
                                     className={cn(
-                                      "flex min-h-9 max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2",
+                                      "flex min-h-9 max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all duration-200 hover:-translate-y-px hover:border-primary/45 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10),0_10px_22px_hsl(var(--primary)/0.12)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2",
                                       isOpen && "border-primary/45 bg-primary/15",
                                     )}
                                     title={r.idempotency_key}
@@ -411,7 +412,7 @@ export default function TokenUsageHistory() {
                                   <span className="text-emerald-700 dark:text-emerald-300">{r.actual_tokens.toLocaleString()}</span>
                                 </TableCell>
                                 <TableCell className="align-top text-right text-xs tabular-nums text-muted-foreground">
-                                  <span className="inline-flex rounded-full border border-border/60 bg-muted/45 px-2 py-1 font-medium">{fmtMs(r.duration_ms)}</span>
+                                  <span className="inline-flex rounded-full border border-border/60 bg-muted/45 px-2 py-1 font-medium shadow-sm">{fmtMs(r.duration_ms)}</span>
                                 </TableCell>
                                 <TableCell className="min-w-0 align-top"><StatusBadge status={r.status} /></TableCell>
                                 <TableCell className="min-w-0 align-top text-xs text-muted-foreground">

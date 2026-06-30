@@ -93,7 +93,7 @@ function getEventTone(event: string, status?: string | null, error?: string | nu
 function EventBadge({ event, status, error }: { event: string; status?: string | null; error?: string | null }) {
   const tone = getEventTone(event, status, error);
   return (
-    <Badge variant="outline" className={cn("max-w-full rounded-full px-2.5 capitalize", tone.badge)} title={event}>
+    <Badge variant="outline" className={cn("max-w-full rounded-full px-2.5 shadow-sm transition-colors capitalize", tone.badge)} title={event}>
       <span className="min-w-0 truncate">{event}</span>
     </Badge>
   );
@@ -165,10 +165,10 @@ export function TokenEventDetailsDrawer({
           </SheetDescription>
           {idempotencyKey && (
             <div className="flex min-w-0 items-center gap-2 pt-1">
-              <code className={cn("min-w-0 flex-1 truncate border font-mono text-xs text-primary", premiumTimeline ? "rounded-xl border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-inner" : "rounded-lg border-primary/15 bg-primary/5 px-2 py-1")} title={idempotencyKey}>
+              <code className={cn("min-w-0 flex-1 truncate border font-mono text-xs text-primary transition-colors", premiumTimeline ? "rounded-xl border-primary/20 bg-primary/10 px-2.5 py-1.5 shadow-inner" : "rounded-lg border-primary/15 bg-primary/5 px-2 py-1")} title={idempotencyKey}>
                 {idempotencyKey}
               </code>
-              <Button size="icon" variant="outline" className="h-9 w-9 shrink-0 rounded-lg focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2" onClick={copy} aria-label="Copy idempotency key">
+              <Button size="icon" variant="outline" className="h-9 w-9 shrink-0 rounded-lg transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2" onClick={copy} aria-label="Copy idempotency key">
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </div>
@@ -199,7 +199,7 @@ export function TokenEventDetailsDrawer({
                   <p className="text-xs text-muted-foreground">No outcome row yet.</p>
                 ) : (
                   data.outcomes.map((o) => (
-                    <div key={o.id} className={cn("min-w-0 space-y-3 rounded-2xl border border-border/70 p-4 text-sm shadow-sm", premiumTimeline ? "bg-background/65 ring-1 ring-black/5 dark:ring-white/5" : "bg-background/55")}>
+                    <div key={o.id} className={cn("min-w-0 space-y-3 rounded-2xl border border-border/70 p-4 text-sm shadow-sm transition-shadow duration-200", premiumTimeline ? "bg-background/65 ring-1 ring-black/5 hover:shadow-[0_16px_36px_rgba(15,23,42,0.08)] dark:ring-white/5 dark:hover:shadow-black/25" : "bg-background/55")}>
                       <div className="flex min-w-0 items-center justify-between gap-3">
                         <span className="min-w-0 truncate font-medium" title={o.function_name}>{o.function_name}</span>
                         <StatusBadge status={o.status} />
@@ -245,7 +245,7 @@ export function TokenEventDetailsDrawer({
                             <Icon className="h-4 w-4" />
                           </span>
                           <span className={cn("absolute left-5 top-14 h-[calc(100%-1.75rem)] w-px", tone.rail)} aria-hidden="true" />
-                          <div className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/65 p-4 text-xs shadow-sm ring-1 ring-black/5 dark:ring-white/5">
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/65 p-4 text-xs shadow-sm ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-[0_16px_36px_rgba(15,23,42,0.08)] dark:ring-white/5 dark:hover:shadow-black/25">
                             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <span className="rounded-full bg-muted/55 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{tone.label}</span>
