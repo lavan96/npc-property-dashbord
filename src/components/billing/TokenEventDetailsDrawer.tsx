@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Check, AlertTriangle, CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { Copy, Check, AlertTriangle, CheckCircle2, Clock3, XCircle, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -95,6 +95,15 @@ function EventBadge({ event, status, error }: { event: string; status?: string |
   return (
     <Badge variant="outline" className={cn("max-w-full rounded-full px-2.5 shadow-sm transition-colors capitalize", tone.badge)} title={event}>
       <span className="min-w-0 truncate">{event}</span>
+    </Badge>
+  );
+}
+
+function StatusBadge({ status }: { status?: string | null }) {
+  const tone = getEventTone(status ?? "", status);
+  return (
+    <Badge variant="outline" className={cn("rounded-full px-2.5 capitalize", tone.badge)}>
+      {status ?? "—"}
     </Badge>
   );
 }
