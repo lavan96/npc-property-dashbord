@@ -1390,10 +1390,10 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <CardHeader className="border-b border-border/60 bg-background/35">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm shadow-primary/10">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
@@ -1402,7 +1402,11 @@ export default function WhiteLabel() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 p-4 sm:p-6">
+          <div className="rounded-2xl border border-border/70 bg-background/55 p-4 shadow-inner">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Compliance snapshot</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">Readiness, asset coverage, and contrast checks use the current draft values and continue to block publishing when critical issues are present.</p>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             {BRAND_SLOT_ORDER.map((slot) => {
               const validation = assetValidation[slot];
@@ -1412,26 +1416,26 @@ export default function WhiteLabel() {
               return (
                 <div
                   key={slot}
-                  className={`min-w-0 rounded-2xl border p-4 shadow-sm ${
+                  className={`min-w-0 overflow-hidden rounded-2xl border p-4 shadow-lg transition-colors ${
                     isValid
-                      ? 'border-success/25 bg-success/5 shadow-success/5'
+                      ? 'border-success/30 bg-success/5 shadow-success/10 ring-1 ring-success/10'
                       : isInvalid
-                        ? 'border-warning/30 bg-warning/5 shadow-warning/5'
-                        : 'border-border bg-muted/20 shadow-background/5'
+                        ? 'border-warning/35 bg-warning/5 shadow-warning/10 ring-1 ring-warning/10'
+                        : 'border-border bg-muted/20 shadow-background/5 ring-1 ring-border/50'
                   }`}
                 >
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{BRAND_SLOT_LABELS[slot]}</p>
+                      <p className="break-words text-sm font-semibold text-foreground">{BRAND_SLOT_LABELS[slot]}</p>
                       <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">{validation.detail}</p>
                       {validation.meta ? (
-                        <div className="mt-3 space-y-1 rounded-xl border border-border/60 bg-background/55 px-3 py-2 text-xs text-muted-foreground">
-                          <p>{validation.meta.width}×{validation.meta.height}px · {validation.meta.aspectRatio.toFixed(2)}:1 aspect</p>
-                          <p>{validation.meta.recommendation}</p>
+                        <div className="mt-3 space-y-1 rounded-xl border border-border/60 bg-background/70 px-3 py-2 text-xs leading-5 text-muted-foreground shadow-inner">
+                          <p className="break-words">{validation.meta.width}×{validation.meta.height}px · {validation.meta.aspectRatio.toFixed(2)}:1 aspect</p>
+                          <p className="break-words">{validation.meta.recommendation}</p>
                         </div>
                       ) : null}
                     </div>
-                    <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-3 ${isValid ? 'border-success/30 bg-success/10 text-success' : isInvalid ? 'border-warning/30 bg-warning/10 text-warning' : 'bg-muted/40'}`}>
+                    <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${isValid ? 'border-success/35 bg-success/10 text-success shadow-sm shadow-success/10' : isInvalid ? 'border-warning/35 bg-warning/10 text-warning shadow-sm shadow-warning/10' : 'border-border bg-muted/40 text-muted-foreground'}`}>
                       {validation.status === 'validating' ? 'Checking' : validation.status === 'valid' ? 'Ready' : validation.status === 'invalid' ? 'Needs asset' : 'Idle'}
                     </Badge>
                   </div>
@@ -1443,10 +1447,10 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <CardHeader className="border-b border-border/60 bg-background/35">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm shadow-primary/10">
               <Monitor className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
@@ -1455,13 +1459,17 @@ export default function WhiteLabel() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 p-4 sm:p-6">
+          <div className="rounded-2xl border border-border/70 bg-background/55 p-4 shadow-inner">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Executive impact summary</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">These surfaces inherit the same saved brand system when the draft is committed, making it easier to review shell, controls, data views, and assets before publishing.</p>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             {impactPreview.map((item) => (
-              <div key={item.id} className="dashboard-section-band min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm">
-                <Badge variant="outline" className="w-fit rounded-full border-primary/25 bg-primary/5 px-3 text-primary">{item.surface}</Badge>
+              <div key={item.id} className="dashboard-section-band min-w-0 space-y-3 overflow-hidden rounded-2xl border border-border/70 bg-background/60 p-4 shadow-lg shadow-background/10 ring-1 ring-primary/5">
+                <Badge variant="outline" className="w-fit max-w-full rounded-full border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary shadow-sm shadow-primary/10"><span className="truncate">{item.surface}</span></Badge>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <p className="break-words text-sm font-semibold text-foreground">{item.label}</p>
                   <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">{item.detail}</p>
                 </div>
               </div>
