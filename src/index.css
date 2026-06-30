@@ -587,6 +587,26 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply min-w-0;
   }
 
+  /* Mobile-friendly table scrolling: edge fades + momentum scroll */
+  .responsive-table-scroll {
+    scrollbar-width: thin;
+  }
+  .responsive-table-scroll::-webkit-scrollbar { height: 6px; }
+  .responsive-table-scroll::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  @media (max-width: 767px) {
+    .responsive-table-scroll {
+      mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+    }
+    .responsive-table-scroll > table {
+      min-width: 560px;
+    }
+  }
+
+
   .dashboard-theme-hero::before,
   .dashboard-theme-section::before,
   .dashboard-theme-section-accent::before {
