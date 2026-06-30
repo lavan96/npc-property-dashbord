@@ -1578,10 +1578,37 @@ export default function UserGuide() {
     { label: 'Feature Documentation', targetId: 'feature-documentation' },
     { label: 'Getting Started', sectionId: 'getting-started' },
     { label: 'Client Management', sectionId: 'client-management' },
+    { label: 'Report Q&A', sectionId: 'report-qa' },
+    { label: 'Settings', sectionId: 'settings' },
     { label: 'Need Help', targetId: 'need-help' },
     { label: 'Troubleshooting', sectionId: 'troubleshooting' },
+    { label: 'Monitoring & Logs', sectionId: 'monitoring' },
     { label: 'Keyboard Shortcuts', sectionId: 'keyboard-shortcuts' },
     { label: 'API Usage & Costs', sectionId: 'api-usage' },
+    { label: 'Notifications', sectionId: 'notifications' },
+  ];
+
+  const needHelpItems = [
+    {
+      icon: Settings,
+      text: 'Check the Settings page for configuration options',
+      className: 'border-amber-400/25 bg-amber-500/8 text-amber-600 dark:text-amber-300',
+    },
+    {
+      icon: Bot,
+      text: 'Use the Report Q&A AI to ask questions about features',
+      className: 'border-primary/25 bg-primary/10 text-primary',
+    },
+    {
+      icon: AlertCircle,
+      text: 'Review Error Logs for troubleshooting system issues',
+      className: 'border-red-400/25 bg-red-500/8 text-red-600 dark:text-red-300',
+    },
+    {
+      icon: Headphones,
+      text: 'Contact your system administrator for technical support',
+      className: 'border-amber-400/25 bg-amber-500/8 text-amber-600 dark:text-amber-300',
+    },
   ];
 
   const handleQuickNavigation = useCallback((item: { targetId?: string; sectionId?: string }) => {
@@ -1904,7 +1931,7 @@ export default function UserGuide() {
                                     {shortcut.keys.map((key, keyIndex) => (
                                       <kbd
                                         key={keyIndex}
-                                        className="rounded border border-border bg-background px-2 py-1 text-xs font-semibold text-muted-foreground"
+                                        className="rounded-lg border border-primary/20 bg-background px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm shadow-primary/5 ring-1 ring-white/50 dark:bg-slate-950/60 dark:ring-white/10"
                                       >
                                         {key}
                                       </kbd>
@@ -1930,34 +1957,31 @@ export default function UserGuide() {
       </Card>
 
       {/* Support Section */}
-      <Card id="need-help" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
-        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
-          <CardTitle className="flex items-center gap-2">
-            <Headphones className="h-5 w-5 text-primary" />
-            Need Help?
+      <Card id="need-help" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/20 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-primary/15 dark:bg-slate-950/75 dark:shadow-black/25">
+        <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.10),hsl(var(--muted)/0.16))]">
+          <CardTitle className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-inner shadow-primary/10">
+              <Headphones className="h-5 w-5 text-primary" />
+            </span>
+            <span className="min-w-0">Need Help?</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 p-4 sm:p-6">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm leading-6 text-muted-foreground">
             If you need additional assistance or encounter any issues:
           </p>
-          <ul className="grid min-w-0 gap-2 sm:grid-cols-2">
-            <li className="flex items-start gap-2 text-sm">
-              <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
-              <span>Check the Settings page for configuration options</span>
-            </li>
-            <li className="flex items-start gap-2 text-sm">
-              <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
-              <span>Use the Report Q&A AI to ask questions about features</span>
-            </li>
-            <li className="flex items-start gap-2 text-sm">
-              <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
-              <span>Review Error Logs for troubleshooting system issues</span>
-            </li>
-            <li className="flex items-start gap-2 text-sm">
-              <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
-              <span>Contact your system administrator for technical support</span>
-            </li>
+          <ul className="grid min-w-0 gap-3 sm:grid-cols-2">
+            {needHelpItems.map((item) => (
+              <li
+                key={item.text}
+                className="group flex min-w-0 items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4 text-sm shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_14px_34px_rgba(15,23,42,0.08)] dark:bg-slate-950/35 dark:hover:shadow-black/25"
+              >
+                <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border shadow-inner ${item.className}`}>
+                  <item.icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 break-words leading-6 text-foreground/90">{item.text}</span>
+              </li>
+            ))}
           </ul>
         </CardContent>
       </Card>
