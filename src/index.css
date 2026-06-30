@@ -1273,6 +1273,45 @@ html {
   }
 
 
+  /* Batch 7 — Final mobile sweep
+     -------------------------------------------------- */
+
+  /* Global horizontal-overflow guard. Prevents stray fixed-width children
+     (legacy min-w-[600px], oversized SVGs, etc.) from causing the entire
+     page to scroll sideways on phones. Long-form content can still scroll
+     within its own container. */
+  @media (max-width: 767px) {
+    html, body, #root {
+      overflow-x: hidden;
+      max-width: 100vw;
+    }
+  }
+
+  /* Floating-action buttons (any fixed element using .fab or
+     [data-fab="true"]) must sit above the mobile bottom-nav and respect
+     the iOS safe-area inset. */
+  .fab,
+  [data-fab="true"] {
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  @media (max-width: 1023px) {
+    .fab,
+    [data-fab="true"] {
+      bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 4.75rem));
+    }
+  }
+
+  /* Long unbroken strings (URLs, emails, IDs) wrap inside table cells &
+     cards on phones instead of forcing horizontal scroll. */
+  @media (max-width: 639px) {
+    td, .break-anywhere {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+  }
+
+
+
   /* Reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     *,
