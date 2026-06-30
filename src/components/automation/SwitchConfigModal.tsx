@@ -241,8 +241,8 @@ export const SwitchConfigModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1 px-5 py-5 sm:px-6">
-          <div className="space-y-5 pr-3">
+        <ScrollArea className="min-h-0 flex-1 overscroll-contain px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
+          <div className="min-w-0 space-y-5 pr-3">
             {/* Basic Info */}
             <div className="rounded-2xl border border-border/60 bg-background/60 p-4 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
@@ -290,6 +290,7 @@ export const SwitchConfigModal = ({
                     variant={propertyTypes.includes(type) ? 'default' : 'outline'}
                     className="cursor-pointer rounded-full transition-all hover:border-primary/40 hover:bg-primary/10"
                     onClick={() => toggleArrayItem(propertyTypes, type, setPropertyTypes)}
+                    aria-label={`Toggle property type ${type}`}
                   >
                     {type}
                     {propertyTypes.includes(type) && <X className="h-3 w-3 ml-1" />}
@@ -301,7 +302,7 @@ export const SwitchConfigModal = ({
               {/* Price Range */}
               <div className="mt-5 space-y-3">
               <Label>Price Range</Label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Minimum ($)</Label>
                   <Input
@@ -394,6 +395,7 @@ export const SwitchConfigModal = ({
                     variant={states.includes(state) ? 'default' : 'outline'}
                     className="cursor-pointer rounded-full transition-all hover:border-primary/40 hover:bg-primary/10"
                     onClick={() => toggleArrayItem(states, state, setStates)}
+                    aria-label={`Toggle state ${state}`}
                   >
                     {state}
                     {states.includes(state) && <X className="h-3 w-3 ml-1" />}
@@ -412,6 +414,7 @@ export const SwitchConfigModal = ({
                     variant={categories.includes(cat) ? 'default' : 'outline'}
                     className="cursor-pointer rounded-full capitalize transition-all hover:border-primary/40 hover:bg-primary/10"
                     onClick={() => toggleArrayItem(categories, cat, setCategories)}
+                    aria-label={`Toggle category ${cat.replace('_', ' ')}`}
                   >
                     {cat.replace('_', ' ')}
                     {categories.includes(cat) && <X className="h-3 w-3 ml-1" />}
@@ -445,11 +448,12 @@ export const SwitchConfigModal = ({
               {/* Has Price */}
               <div className="mt-5 space-y-3">
               <Label>Price Requirement</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Badge
                   variant={hasPrice === true ? 'default' : 'outline'}
                   className="cursor-pointer rounded-full transition-all hover:border-primary/40 hover:bg-primary/10"
                   onClick={() => setHasPrice(hasPrice === true ? null : true)}
+                  aria-label="Toggle must have price requirement"
                 >
                   Must have price
                 </Badge>
@@ -457,6 +461,7 @@ export const SwitchConfigModal = ({
                   variant={hasPrice === false ? 'default' : 'outline'}
                   className="cursor-pointer rounded-full transition-all hover:border-primary/40 hover:bg-primary/10"
                   onClick={() => setHasPrice(hasPrice === false ? null : false)}
+                  aria-label="Toggle no price required option"
                 >
                   No price required
                 </Badge>
@@ -499,7 +504,7 @@ export const SwitchConfigModal = ({
             {criteriaCount} criteria configured
           </div>
           <div className="flex w-full gap-2 sm:w-auto">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="min-h-[44px] flex-1 border-border/70 bg-background/75 sm:min-h-0 sm:flex-initial">
+            <Button variant="outline" onClick={() => onOpenChange(false)} aria-label="Cancel switch configuration" className="min-h-[44px] flex-1 border-border/70 bg-background/75 sm:min-h-0 sm:flex-initial">
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving} className="min-h-[44px] flex-1 bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] hover:bg-primary-hover sm:min-h-0 sm:flex-initial">

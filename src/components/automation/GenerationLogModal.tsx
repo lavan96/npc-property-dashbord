@@ -93,7 +93,7 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1 px-5 py-5 sm:px-6">
+        <ScrollArea className="min-h-0 flex-1 overscroll-contain px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
           {loading ? (
             <div className="rounded-3xl border border-border/60 bg-background/60 py-10 text-center text-muted-foreground shadow-sm">Loading logs...</div>
           ) : logs.length === 0 ? (
@@ -107,7 +107,7 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-3xl border border-border/60 bg-background/55 shadow-sm [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+            <div className="min-w-0 overflow-x-auto overscroll-x-contain rounded-3xl border border-border/60 bg-background/55 shadow-sm [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
               <Table>
                 <TableHeader className="bg-muted/40">
                   <TableRow className="border-border/60 hover:bg-transparent">
