@@ -607,7 +607,7 @@ function FirewallTab() {
                 <div className="space-y-2">
                   <Label>Action</Label>
                   <Select value={newRule.action} onValueChange={v => setNewRule(r => ({ ...r, action: v }))}>
-                    <SelectTrigger className="border-border/70 bg-background/90 shadow-sm focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+                    <SelectTrigger aria-label="Action" className="border-border/70 bg-background/90 shadow-sm focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -624,6 +624,7 @@ function FirewallTab() {
               <div className="space-y-2">
                 <Label>Expression (Cloudflare filter syntax)</Label>
                 <Input
+                  aria-label="Expression (Cloudflare filter syntax)"
                   placeholder='(http.request.uri.path eq "/auth")'
                   value={newRule.expression}
                   onChange={e => setNewRule(r => ({ ...r, expression: e.target.value }))}
