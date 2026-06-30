@@ -51,6 +51,7 @@ import {
   Webhook,
 } from 'lucide-react';
 import { UserGuideAssistant } from '@/components/user-guide/UserGuideAssistant';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface GuideSection {
   id: string;
@@ -1507,17 +1508,36 @@ export default function UserGuide() {
   return (
     <>
     <UserGuideAssistant onNavigateToSection={handleNavigateToSection} />
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">User Guide</h1>
-        <p className="text-muted-foreground">
-          Complete guide to navigating and using your dashboard
-        </p>
-      </div>
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="space-y-6 pb-8 text-foreground selection:bg-primary/20 selection:text-foreground sm:space-y-7"
+    >
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_52%,hsl(var(--muted)/0.42))] shadow-[0_22px_70px_rgba(15,23,42,0.10)] dark:shadow-black/30"
+      >
+        <div className="relative z-10 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10 sm:h-14 sm:w-14">
+              <FolderOpen className="h-6 w-6 sm:h-7 sm:w-7" />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <div className="min-w-0 space-y-2">
+                <h1 className="break-words text-3xl font-bold tracking-tight text-foreground sm:text-4xl">User Guide</h1>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Complete guide to navigating and using your dashboard
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DashboardThemeFrame>
 
       {/* Quick Tips */}
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
           <CardTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-500" />
             Quick Tips
@@ -1526,12 +1546,12 @@ export default function UserGuide() {
             Essential tips to get the most out of your dashboard
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             {quickTips.map((tip, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+              <div key={index} className="group flex min-w-0 items-start gap-3 rounded-2xl border border-border/50 bg-muted/35 p-3 transition-colors hover:border-primary/25 hover:bg-primary/5">
                 <tip.icon className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <span className="text-sm">{tip.text}</span>
+                <span className="min-w-0 text-sm leading-6 text-foreground/90">{tip.text}</span>
               </div>
             ))}
           </div>
@@ -1539,8 +1559,8 @@ export default function UserGuide() {
       </Card>
 
       {/* Property Status Guide */}
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-blue-500" />
             Property Status Guide
@@ -1549,13 +1569,13 @@ export default function UserGuide() {
             Understanding property status indicators throughout the dashboard
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {statusGuide.map((item, index) => (
-              <div key={index} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
-                <div className={`w-3 h-3 rounded-full ${item.color}`} />
+              <div key={index} className="flex min-w-0 flex-wrap items-center gap-3 rounded-2xl border border-border/50 bg-muted/25 p-3">
+                <div className={`h-3 w-3 flex-shrink-0 rounded-full ${item.color}`} />
                 <Badge variant="outline">{item.status}</Badge>
-                <span className="text-sm text-muted-foreground">{item.description}</span>
+                <span className="min-w-0 flex-1 text-sm leading-6 text-muted-foreground">{item.description}</span>
               </div>
             ))}
           </div>
@@ -1563,8 +1583,8 @@ export default function UserGuide() {
       </Card>
 
       {/* Main Sections with Accordion */}
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
             Feature Documentation
@@ -1573,40 +1593,40 @@ export default function UserGuide() {
             Click on any section to expand and view detailed documentation
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Accordion type="multiple" className="w-full">
+        <CardContent className="p-0">
+          <Accordion type="multiple" className="w-full divide-y divide-border/50">
             {sections.map((section) => (
-              <AccordionItem key={section.id} value={section.id}>
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
+              <AccordionItem key={section.id} value={section.id} className="border-0 px-4 sm:px-6">
+                <AccordionTrigger className="min-w-0 py-5 text-left hover:no-underline focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background [&>svg]:ml-3 [&>svg]:flex-shrink-0">
+                  <div className="flex min-w-0 items-center gap-3 pr-2">
+                    <div className="flex-shrink-0 rounded-xl border border-primary/15 bg-primary/10 p-2">
                       <section.icon className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="text-left">
-                      <div className="font-semibold">{section.title}</div>
-                      <div className="text-sm text-muted-foreground font-normal">
+                    <div className="min-w-0 text-left">
+                      <div className="break-words font-semibold text-foreground">{section.title}</div>
+                      <div className="break-words text-sm font-normal leading-6 text-muted-foreground">
                         {section.description}
                       </div>
                     </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <div className="space-y-6 pt-4 pl-4 border-l-2 border-primary/20 ml-5">
+                  <div className="ml-5 min-w-0 space-y-6 border-l-2 border-primary/20 py-4 pl-4 sm:pl-6">
                     {section.items.map((item, itemIndex) => (
-                      <div key={itemIndex} className="space-y-3">
+                      <div key={itemIndex} className="min-w-0 space-y-3 rounded-2xl bg-muted/15 p-4 ring-1 ring-border/40">
                         <div>
                           <h4 className="font-semibold text-foreground">{item.title}</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.description}</p>
                         </div>
 
                         {item.features && (
                           <div className="space-y-2">
                             <h5 className="text-sm font-medium text-foreground">Key Features:</h5>
-                            <ul className="grid gap-1 sm:grid-cols-2">
+                            <ul className="grid min-w-0 gap-2 sm:grid-cols-2">
                               {item.features.map((feature, featureIndex) => (
-                                <li key={featureIndex} className="flex items-start gap-2 text-sm">
+                                <li key={featureIndex} className="flex min-w-0 items-start gap-2 text-sm leading-6">
                                   <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
-                                  <span>{feature}</span>
+                                  <span className="min-w-0">{feature}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1618,11 +1638,11 @@ export default function UserGuide() {
                             <h5 className="text-sm font-medium text-foreground">Step-by-Step Guide:</h5>
                             <ol className="space-y-2">
                               {item.steps.map((step, stepIndex) => (
-                                <li key={stepIndex} className="flex items-start gap-3 text-sm">
+                                <li key={stepIndex} className="flex min-w-0 items-start gap-3 text-sm">
                                   <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center mt-0.5 font-medium">
                                     {stepIndex + 1}
                                   </span>
-                                  <span className="leading-relaxed">{step}</span>
+                                  <span className="min-w-0 leading-relaxed">{step}</span>
                                 </li>
                               ))}
                             </ol>
@@ -1634,9 +1654,9 @@ export default function UserGuide() {
                             <h5 className="text-sm font-medium text-foreground">Tips:</h5>
                             <ul className="space-y-1">
                               {item.tips.map((tip, tipIndex) => (
-                                <li key={tipIndex} className="flex items-start gap-2 text-sm">
+                                <li key={tipIndex} className="flex min-w-0 items-start gap-2 text-sm leading-6">
                                   <Sparkles className="h-3 w-3 text-amber-500 mt-1 flex-shrink-0" />
-                                  <span>{tip}</span>
+                                  <span className="min-w-0">{tip}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1650,12 +1670,12 @@ export default function UserGuide() {
                               {item.shortcuts.map((shortcut, shortcutIndex) => (
                                 <div
                                   key={shortcutIndex}
-                                  className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                                  className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-muted/35 p-3"
                                 >
                                   <span className="text-sm text-muted-foreground">
                                     {shortcut.description}
                                   </span>
-                                  <div className="flex gap-1">
+                                  <div className="flex flex-shrink-0 flex-wrap gap-1">
                                     {shortcut.keys.map((key, keyIndex) => (
                                       <kbd
                                         key={keyIndex}
@@ -1683,18 +1703,18 @@ export default function UserGuide() {
       </Card>
 
       {/* Support Section */}
-      <Card>
-        <CardHeader>
+      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
           <CardTitle className="flex items-center gap-2">
             <Headphones className="h-5 w-5 text-primary" />
             Need Help?
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4 p-4 sm:p-6">
           <p className="text-sm text-muted-foreground">
             If you need additional assistance or encounter any issues:
           </p>
-          <ul className="space-y-2">
+          <ul className="grid min-w-0 gap-2 sm:grid-cols-2">
             <li className="flex items-start gap-2 text-sm">
               <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
               <span>Check the Settings page for configuration options</span>
@@ -1714,7 +1734,7 @@ export default function UserGuide() {
           </ul>
         </CardContent>
       </Card>
-    </div>
+    </DashboardThemeFrame>
     </>
   );
 }
