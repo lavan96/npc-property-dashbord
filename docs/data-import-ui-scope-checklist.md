@@ -3,7 +3,7 @@
 ## Inspected before UI changes
 
 - Route: `/data-import` is mounted through `ModuleGuard moduleKey="data_import"` in `src/App.tsx`.
-- Dashboard token banner: `TokenBalanceBanner` is mounted by `DashboardLayout`; no banner behavior was changed.
+- Dashboard token banner: `TokenBalanceBanner` is mounted by `DashboardLayout`; only the `/data-import` visual treatment was adjusted while low-balance logic and Top up behavior remain unchanged.
 - Header: Data Import title and subtitle are in `src/pages/DataImport.tsx`.
 - Quick Import panel: external source card and `Import Australian Suburb Directory` action are in `src/pages/DataImport.tsx`.
 - Upload CSV Data form: Data Type selector, optional State/Territory selector, CSV file input, Upload Data action and result alert are in `src/pages/DataImport.tsx`.
@@ -17,6 +17,7 @@
 ## Touched files
 
 - `src/pages/DataImport.tsx` — UI-only polish, containment and theme-token alignment for the Data Import tab.
+- `src/components/billing/TokenBalanceBanner.tsx` — `/data-import`-scoped token warning visual treatment only; token logic and Top up behavior unchanged.
 - `docs/data-import-ui-scope-checklist.md` — local developer checklist for this safe-scope pass.
 
 ## Intentionally untouched modules

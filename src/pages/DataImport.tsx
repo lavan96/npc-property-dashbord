@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useModulePermissions } from "@/hooks/useModulePermissions";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
   Card,
   CardContent,
@@ -416,12 +415,12 @@ export default function DataImport() {
   return (
     <DashboardThemeFrame
       variant="page"
-      className="space-y-5 px-1 pb-8 sm:space-y-6 sm:px-0"
+      className="space-y-5 rounded-[1.75rem] border border-border/45 bg-[linear-gradient(180deg,hsl(var(--background)/0.72),hsl(var(--muted)/0.18))] px-2 py-3 shadow-[0_18px_60px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--background)/0.42),hsl(var(--muted)/0.08))] dark:shadow-black/25 sm:space-y-6 sm:px-4 sm:py-4 lg:px-5"
     >
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="border-primary/20 p-5 shadow-xl shadow-sm dark:shadow-black/20 sm:p-6"
+        className="border-primary/20 p-5 shadow-xl shadow-sm ring-1 ring-white/45 dark:shadow-black/20 dark:ring-white/10 sm:p-7"
       >
         <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 left-8 h-32 w-32 rounded-full bg-amber-400/10 blur-3xl" />
@@ -432,10 +431,10 @@ export default function DataImport() {
               <span className="truncate">Cache-table operations</span>
             </div>
             <div className="min-w-0 space-y-2">
-              <h1 className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              <h1 className="break-words text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                 Data Import
               </h1>
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              <p className="max-w-3xl pt-1 text-sm leading-6 text-muted-foreground sm:text-base">
                 Upload CSV files to populate cache tables and directories
               </p>
             </div>
