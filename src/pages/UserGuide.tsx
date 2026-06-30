@@ -1827,22 +1827,31 @@ export default function UserGuide() {
                 </AccordionTrigger>
                 <AccordionContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
                   <div className="min-w-0 border-t border-border/50 bg-background/45 px-4 py-5 sm:px-5">
-                    <div className="ml-5 min-w-0 space-y-6 border-l-2 border-primary/25 pl-4 sm:pl-6">
+                    <div className="ml-5 min-w-0 space-y-5 border-l-2 border-primary/25 pl-4 sm:pl-6">
                     {section.items.map((item, itemIndex) => (
-                      <div key={itemIndex} className="min-w-0 space-y-3 rounded-2xl bg-muted/15 p-4 ring-1 ring-border/40">
-                        <div>
-                          <h4 className="font-semibold text-foreground">{item.title}</h4>
-                          <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.description}</p>
+                      <article
+                        key={itemIndex}
+                        className="min-w-0 overflow-hidden rounded-2xl border border-border/55 bg-card/80 shadow-[0_12px_34px_rgba(15,23,42,0.06)] ring-1 ring-white/40 dark:border-white/10 dark:bg-slate-950/45 dark:ring-white/5"
+                      >
+                        <div className="flex min-w-0 items-start gap-3 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.075),transparent_58%)] p-4 sm:p-5">
+                          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-semibold text-primary shadow-inner shadow-primary/10">
+                            {itemIndex + 1}
+                          </span>
+                          <div className="min-w-0 space-y-1.5">
+                            <h4 className="break-words text-base font-semibold leading-6 text-foreground">{item.title}</h4>
+                            <p className="text-sm leading-7 text-muted-foreground">{item.description}</p>
+                          </div>
                         </div>
 
+                        <div className="min-w-0 space-y-4 p-4 sm:p-5">
                         {item.features && (
-                          <div className="space-y-2">
-                            <h5 className="text-sm font-medium text-foreground">Key Features:</h5>
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-4">
+                            <h5 className="text-sm font-semibold leading-6 text-foreground">Key Features:</h5>
                             <ul className="grid min-w-0 gap-2 sm:grid-cols-2">
                               {item.features.map((feature, featureIndex) => (
-                                <li key={featureIndex} className="flex min-w-0 items-start gap-2 text-sm leading-6">
-                                  <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
-                                  <span className="min-w-0">{feature}</span>
+                                <li key={featureIndex} className="flex min-w-0 items-start gap-2.5 rounded-xl bg-background/55 p-2.5 text-sm leading-6 text-foreground/90 dark:bg-slate-950/35">
+                                  <CheckCircle className="mt-1 h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
+                                  <span className="min-w-0 break-words">{feature}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1850,15 +1859,15 @@ export default function UserGuide() {
                         )}
 
                         {item.steps && (
-                          <div className="space-y-2">
-                            <h5 className="text-sm font-medium text-foreground">Step-by-Step Guide:</h5>
-                            <ol className="space-y-2">
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                            <h5 className="text-sm font-semibold leading-6 text-foreground">Step-by-Step Guide:</h5>
+                            <ol className="space-y-2.5">
                               {item.steps.map((step, stepIndex) => (
-                                <li key={stepIndex} className="flex min-w-0 items-start gap-3 text-sm">
-                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center mt-0.5 font-medium">
+                                <li key={stepIndex} className="flex min-w-0 items-start gap-3 rounded-xl bg-background/60 p-3 text-sm dark:bg-slate-950/35">
+                                  <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/20">
                                     {stepIndex + 1}
                                   </span>
-                                  <span className="min-w-0 leading-relaxed">{step}</span>
+                                  <span className="min-w-0 break-words leading-7 text-foreground/90">{step}</span>
                                 </li>
                               ))}
                             </ol>
@@ -1866,13 +1875,13 @@ export default function UserGuide() {
                         )}
 
                         {item.tips && (
-                          <div className="space-y-2">
-                            <h5 className="text-sm font-medium text-foreground">Tips:</h5>
-                            <ul className="space-y-1">
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
+                            <h5 className="text-sm font-semibold leading-6 text-foreground">Tips:</h5>
+                            <ul className="space-y-2">
                               {item.tips.map((tip, tipIndex) => (
-                                <li key={tipIndex} className="flex min-w-0 items-start gap-2 text-sm leading-6">
-                                  <Sparkles className="h-3 w-3 text-amber-500 mt-1 flex-shrink-0" />
-                                  <span className="min-w-0">{tip}</span>
+                                <li key={tipIndex} className="flex min-w-0 items-start gap-2.5 rounded-xl bg-background/55 p-2.5 text-sm leading-6 dark:bg-slate-950/35">
+                                  <Sparkles className="mt-1 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+                                  <span className="min-w-0 break-words text-foreground/90">{tip}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1880,22 +1889,22 @@ export default function UserGuide() {
                         )}
 
                         {item.shortcuts && (
-                          <div className="space-y-2">
-                            <h5 className="text-sm font-medium text-foreground">Shortcuts:</h5>
-                            <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-border/55 bg-muted/20 p-4">
+                            <h5 className="text-sm font-semibold leading-6 text-foreground">Shortcuts:</h5>
+                            <div className="grid min-w-0 gap-2 sm:grid-cols-2">
                               {item.shortcuts.map((shortcut, shortcutIndex) => (
                                 <div
                                   key={shortcutIndex}
-                                  className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-muted/35 p-3"
+                                  className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-background/65 p-3 dark:bg-slate-950/35"
                                 >
-                                  <span className="text-sm text-muted-foreground">
+                                  <span className="min-w-0 text-sm leading-6 text-muted-foreground">
                                     {shortcut.description}
                                   </span>
                                   <div className="flex flex-shrink-0 flex-wrap gap-1">
                                     {shortcut.keys.map((key, keyIndex) => (
                                       <kbd
                                         key={keyIndex}
-                                        className="px-2 py-1 text-xs font-semibold text-muted-foreground bg-background rounded border border-border"
+                                        className="rounded border border-border bg-background px-2 py-1 text-xs font-semibold text-muted-foreground"
                                       >
                                         {key}
                                       </kbd>
@@ -1906,9 +1915,10 @@ export default function UserGuide() {
                             </div>
                           </div>
                         )}
+                        </div>
 
-                        {itemIndex < section.items.length - 1 && <Separator className="my-4" />}
-                      </div>
+                        {itemIndex < section.items.length - 1 && <Separator className="mx-5" />}
+                      </article>
                     ))}
                     </div>
                   </div>
