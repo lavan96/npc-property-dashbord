@@ -93,7 +93,7 @@ function AnalyticsTab() {
           </div>
           <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-background/55 p-1.5 shadow-sm dark:border-white/10 dark:bg-slate-950/40">
             <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="h-9 w-[132px] border-border/70 bg-card/90 text-xs font-medium shadow-sm focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/70 sm:text-sm">
+              <SelectTrigger aria-label="Analytics time range" className="h-9 w-[132px] border-border/70 bg-card/90 text-xs font-medium shadow-sm focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/70 sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -761,7 +761,7 @@ export default function CloudflareManagement() {
 
       <Tabs defaultValue="analytics" className="min-w-0 w-full">
         <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/45 dark:shadow-black/25">
-          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+          <TabsList aria-label="Cloudflare sections" className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
             <TabsTrigger value="analytics" className="gap-1.5 min-h-10 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <BarChart3 className="h-3.5 w-3.5" />
               <span>Analytics</span>
