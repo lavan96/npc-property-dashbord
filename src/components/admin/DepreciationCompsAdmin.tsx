@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { 
   Upload, 
   Plus, 
@@ -467,28 +468,55 @@ export function DepreciationCompsAdmin() {
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Depreciation Comparables Database
-            </CardTitle>
-            <CardDescription>
-              Manage the comparable properties dataset used for depreciation estimates
-            </CardDescription>
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-6 sm:px-0"
+    >
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.13),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.9)_55%,hsl(var(--primary)/0.08))] shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/45 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/35 dark:ring-white/10">
+        <CardHeader className="relative overflow-hidden border-b border-border/60 px-4 py-5 dark:border-white/10 sm:px-6 lg:px-7">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,hsl(var(--primary)/0.10),transparent_36%,hsl(var(--background)/0.22))]" />
+          <div className="relative flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                <Database className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                  Depreciation Comparables Database
+                </CardTitle>
+                <CardDescription className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Manage the comparable properties dataset used for depreciation estimates
+                </CardDescription>
+              </div>
+            </div>
+            <Badge
+              variant="secondary"
+              className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary shadow-sm"
+            >
+              {comps.length} records
+            </Badge>
           </div>
-          <Badge variant="secondary">{comps.length} records</Badge>
-        </div>
-      </CardHeader>
+        </CardHeader>
       
-      <CardContent className="space-y-6">
-        <Tabs defaultValue="list">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="list">View Data</TabsTrigger>
-            <TabsTrigger value="import">Import Data</TabsTrigger>
-          </TabsList>
+        <CardContent className="min-w-0 space-y-6 p-4 sm:p-6 lg:p-7">
+          <Tabs defaultValue="list" className="min-w-0 space-y-5">
+            <DashboardThemeFrame variant="toolbar" className="overflow-x-auto border-primary/15 bg-background/65 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/40 dark:shadow-black/25">
+              <TabsList className="grid min-w-[18rem] flex-1 grid-cols-2 rounded-xl bg-muted/45 p-1 sm:min-w-0">
+                <TabsTrigger
+                  value="list"
+                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  View Data
+                </TabsTrigger>
+                <TabsTrigger
+                  value="import"
+                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  Import Data
+                </TabsTrigger>
+              </TabsList>
+            </DashboardThemeFrame>
           
           <TabsContent value="list" className="space-y-4">
             {/* Actions */}
@@ -786,7 +814,8 @@ export function DepreciationCompsAdmin() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </DashboardThemeFrame>
   );
 }
