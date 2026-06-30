@@ -487,7 +487,7 @@ export function DepreciationCompsAdmin() {
                   Depreciation Comparables Database
                 </CardTitle>
                 <CardDescription className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-                  Manage the comparable properties dataset used for depreciation estimates
+                  Manage the comparable properties dataset used for depreciation estimates.
                 </CardDescription>
               </div>
             </div>
@@ -771,8 +771,9 @@ export function DepreciationCompsAdmin() {
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="min-w-0 space-y-2">
-                      <Label>Purchase Price</Label>
+                      <Label htmlFor="depreciation-comp-purchase-price">Purchase Price</Label>
                       <Input
+                        id="depreciation-comp-purchase-price"
                         type="number"
                         value={newComp.purchase_price || ''}
                         onChange={(e) => setNewComp(prev => ({ ...prev, purchase_price: parseFloat(e.target.value) || 0 }))}
@@ -782,8 +783,9 @@ export function DepreciationCompsAdmin() {
                     </div>
                     
                     <div className="min-w-0 space-y-2">
-                      <Label>Build Year</Label>
+                      <Label htmlFor="depreciation-comp-build-year">Build Year</Label>
                       <Input
+                        id="depreciation-comp-build-year"
                         type="number"
                         value={newComp.build_year || ''}
                         onChange={(e) => setNewComp(prev => ({ ...prev, build_year: parseInt(e.target.value) || 0 }))}
@@ -800,12 +802,12 @@ export function DepreciationCompsAdmin() {
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="min-w-0 space-y-2">
-                      <Label>Purchase Date Category</Label>
+                      <Label htmlFor="depreciation-comp-purchase-date-category">Purchase Date Category</Label>
                       <Select 
                         value={newComp.purchase_date_category} 
                         onValueChange={(v) => setNewComp(prev => ({ ...prev, purchase_date_category: v as PurchaseDateCategory }))}
                       >
-                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                        <SelectTrigger id="depreciation-comp-purchase-date-category" className="bg-background/80 focus:ring-primary">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -817,12 +819,12 @@ export function DepreciationCompsAdmin() {
                     </div>
                     
                     <div className="min-w-0 space-y-2">
-                      <Label>Property Type</Label>
+                      <Label htmlFor="depreciation-comp-property-type">Property Type</Label>
                       <Select 
                         value={newComp.property_type} 
                         onValueChange={(v) => setNewComp(prev => ({ ...prev, property_type: v as PropertyType }))}
                       >
-                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                        <SelectTrigger id="depreciation-comp-property-type" className="bg-background/80 focus:ring-primary">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -834,12 +836,12 @@ export function DepreciationCompsAdmin() {
                     </div>
                   
                     <div className="min-w-0 space-y-2">
-                      <Label>Finish Standard</Label>
+                      <Label htmlFor="depreciation-comp-finish-standard">Finish Standard</Label>
                       <Select 
                         value={newComp.finish_standard} 
                         onValueChange={(v) => setNewComp(prev => ({ ...prev, finish_standard: v as FinishStandard }))}
                       >
-                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                        <SelectTrigger id="depreciation-comp-finish-standard" className="bg-background/80 focus:ring-primary">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -851,12 +853,12 @@ export function DepreciationCompsAdmin() {
                     </div>
                     
                     <div className="min-w-0 space-y-2">
-                      <Label>Nearest City</Label>
+                      <Label htmlFor="depreciation-comp-nearest-city">Nearest City</Label>
                       <Select 
                         value={newComp.nearest_city} 
                         onValueChange={(v) => setNewComp(prev => ({ ...prev, nearest_city: v as NearestCity }))}
                       >
-                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                        <SelectTrigger id="depreciation-comp-nearest-city" className="bg-background/80 focus:ring-primary">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -876,8 +878,9 @@ export function DepreciationCompsAdmin() {
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Depreciation values</h3>
                   </div>
                   <div className="space-y-2">
-                    <Label>Bulk Year Values (paste from spreadsheet)</Label>
+                    <Label htmlFor="depreciation-comp-bulk-years">Bulk Year Values (paste from spreadsheet)</Label>
                     <Textarea
+                      id="depreciation-comp-bulk-years"
                       value={bulkYearsInput}
                       onChange={(e) => setBulkYearsInput(e.target.value)}
                       placeholder="Paste 20 values: DV Year 1-10, then PC Year 1-10 (tab, comma, or newline separated)"
@@ -895,8 +898,9 @@ export function DepreciationCompsAdmin() {
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Metadata</h3>
                   </div>
                   <div className="space-y-2">
-                    <Label>Notes (optional)</Label>
+                    <Label htmlFor="depreciation-comp-notes">Notes (optional)</Label>
                     <Input
+                      id="depreciation-comp-notes"
                       value={newComp.notes || ''}
                       onChange={(e) => setNewComp(prev => ({ ...prev, notes: e.target.value }))}
                       placeholder="Source or additional info"
@@ -911,13 +915,13 @@ export function DepreciationCompsAdmin() {
               <Button
                 variant="outline"
                 onClick={() => setShowAddModal(false)}
-                className="border-primary/20 bg-background/80 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary"
+                className="border-primary/20 bg-background/80 transition-colors hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary motion-reduce:transition-none"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleAddComp}
-                className="bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.24)] hover:bg-primary/90 focus-visible:ring-primary"
+                className="bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.24)] transition-colors hover:bg-primary/90 focus-visible:ring-primary motion-reduce:transition-none"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Comparable
