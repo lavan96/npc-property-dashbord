@@ -258,10 +258,6 @@ const TOOLBAR_BUTTON_CLASS = 'min-h-[44px] rounded-xl border-border/70 bg-card/7
 // Data fetching, audit log filters, export, live-tail, pagination, permissions, routing,
 // top-up behaviour, and backend contracts are preserved without behavioural changes.
 
-// Developer note (Phase 1 scope lock): Activity Logs UI polish only.
-// Files touched: src/pages/ActivityLogs.tsx. Data fetching, audit log filters, export, live-tail, pagination,
-// permissions, routing, and backend contracts are preserved without behavioural changes.
-
 interface FilterPreset {
   id: string;
   name: string;
@@ -679,7 +675,7 @@ export default function ActivityLogs() {
       </DashboardThemeFrame>
 
       {/* Quick Stats Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
         <StatTile
           label="Events today"
           value={stats?.eventsToday ?? '—'}
@@ -1076,12 +1072,42 @@ function CopyableMono({ value, onCopy }: { value: string; onCopy: (v: string, l?
   );
 }
 
-const STAT_TONE: Record<string, { ring: string; icon: string; value: string }> = {
-  info:        { ring: 'ring-primary/20',     icon: 'text-primary bg-primary/10',           value: 'text-foreground' },
-  success:     { ring: 'ring-success/20',     icon: 'text-success bg-success/10',           value: 'text-foreground' },
-  accent:      { ring: 'ring-accent/30',      icon: 'text-accent-foreground bg-accent/15',  value: 'text-foreground' },
-  destructive: { ring: 'ring-destructive/30', icon: 'text-destructive bg-destructive/10',   value: 'text-destructive' },
-  neutral:     { ring: 'ring-border',         icon: 'text-muted-foreground bg-muted/40',    value: 'text-foreground' },
+const STAT_TONE: Record<string, { ring: string; icon: string; value: string; glow: string; bar: string }> = {
+  info: {
+    ring: 'ring-primary/20 border-primary/20',
+    icon: 'text-primary bg-primary/10 border-primary/20 shadow-primary/10',
+    value: 'text-foreground',
+    glow: 'bg-primary/12',
+    bar: 'from-primary/70 via-primary/40 to-transparent',
+  },
+  success: {
+    ring: 'ring-success/25 border-success/25',
+    icon: 'text-success bg-success/10 border-success/25 shadow-success/10',
+    value: 'text-foreground',
+    glow: 'bg-success/12',
+    bar: 'from-success/75 via-success/40 to-transparent',
+  },
+  accent: {
+    ring: 'ring-primary/25 border-primary/25',
+    icon: 'text-primary bg-primary/10 border-primary/25 shadow-primary/10',
+    value: 'text-foreground',
+    glow: 'bg-primary/12',
+    bar: 'from-primary/75 via-primary/40 to-transparent',
+  },
+  destructive: {
+    ring: 'ring-destructive/25 border-destructive/30',
+    icon: 'text-destructive bg-destructive/10 border-destructive/25 shadow-destructive/10',
+    value: 'text-destructive',
+    glow: 'bg-destructive/10',
+    bar: 'from-destructive/75 via-destructive/40 to-transparent',
+  },
+  neutral: {
+    ring: 'ring-border border-border/70',
+    icon: 'text-muted-foreground bg-muted/45 border-border/70 shadow-muted/10',
+    value: 'text-foreground',
+    glow: 'bg-muted/35',
+    bar: 'from-muted-foreground/35 via-muted-foreground/15 to-transparent',
+  },
 };
 
 function StatTile({
@@ -1097,22 +1123,26 @@ function StatTile({
 }) {
   const t = STAT_TONE[tone];
   return (
-    <Card className={cn('dashboard-kpi-card ring-1 transition-transform duration-200 hover:-translate-y-0.5', t.ring)}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</div>
+    <Card className={cn('dashboard-kpi-card group min-h-[138px] ring-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_-34px_hsl(var(--primary)/0.48)]', t.ring)}>
+      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r', t.bar)} />
+      <div className={cn('pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full blur-3xl transition-opacity duration-300 group-hover:opacity-90', t.glow)} />
+      <CardContent className="relative flex h-full min-h-[138px] flex-col justify-between p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
             <div className={cn(
-              'mt-1 font-bold text-2xl leading-tight',
+              'font-bold text-3xl leading-none tracking-tight sm:text-[2rem]',
               t.value,
               truncate && 'truncate'
             )}>
               {value}
             </div>
-            {subValue && <div className="text-xs text-muted-foreground mt-0.5">{subValue}</div>}
-            {hint && <div className="text-[10px] text-muted-foreground/70 mt-1 italic">{hint}</div>}
           </div>
-          <div className={cn('p-2 rounded-lg shrink-0', t.icon)}>{icon}</div>
+          <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm transition-transform duration-300 group-hover:scale-105', t.icon)}>{icon}</div>
+        </div>
+        <div className="min-h-5 pt-3">
+          {subValue && <div className="text-xs font-medium text-muted-foreground">{subValue}</div>}
+          {hint && <div className="text-[10px] text-muted-foreground/70 italic">{hint}</div>}
         </div>
       </CardContent>
     </Card>

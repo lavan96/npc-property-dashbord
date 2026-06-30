@@ -29,7 +29,7 @@ export function TokenBalanceBanner() {
   const isAgreementsPage = pathname === "/agreements";
   const isMonitoringPage = pathname === "/monitoring";
   const isDataImportPage = pathname === "/data-import";
-  const isErrorLogsPage = pathname === "/error-logs";
+  const isActivityLogsPage = pathname === "/admin/activity-logs";
 
   if (!lowBalance || !balance) return null;
 
