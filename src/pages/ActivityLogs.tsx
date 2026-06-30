@@ -252,10 +252,10 @@ type ExportState = 'idle' | 'working' | 'success' | 'error';
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 const PRESETS_KEY = 'activityLogs.presets.v1';
 const DENSITY_KEY = 'activityLogs.density.v1';
-const TOOLBAR_BUTTON_CLASS = 'min-h-[44px] rounded-xl border-border/70 bg-card/70 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary/35 sm:min-h-0';
-const FILTER_CONTROL_CLASS = 'dashboard-input-control h-11 rounded-xl border-border/70 bg-card/70 text-sm shadow-sm transition-all placeholder:text-muted-foreground/70 hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25';
-const MENU_SURFACE_CLASS = 'rounded-2xl border-border/70 bg-popover/95 p-2 shadow-[0_22px_60px_hsl(var(--foreground)/0.16)] backdrop-blur-xl dark:border-white/10';
-const PAGINATION_BUTTON_CLASS = 'h-9 rounded-xl border-border/70 bg-card/70 px-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 disabled:hover:translate-y-0';
+const TOOLBAR_BUTTON_CLASS = 'min-h-[44px] max-w-full rounded-xl border-border/70 bg-card/80 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:min-h-0';
+const FILTER_CONTROL_CLASS = 'dashboard-input-control h-11 max-w-full rounded-xl border-border/70 bg-card/80 text-sm shadow-sm transition-all placeholder:text-muted-foreground/70 hover:border-primary/35 focus-visible:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 motion-reduce:transition-none';
+const MENU_SURFACE_CLASS = 'max-w-[calc(100vw-2rem)] rounded-2xl border-border/70 bg-popover/95 p-2 shadow-[0_22px_60px_hsl(var(--foreground)/0.16)] backdrop-blur-xl dark:border-white/10';
+const PAGINATION_BUTTON_CLASS = 'h-9 rounded-xl border-border/70 bg-card/80 px-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:hover:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0';
 const LEDGER_GRID_CLASS = 'grid-cols-[180px_minmax(120px,150px)_minmax(150px,190px)_minmax(0,1fr)_minmax(110px,140px)]';
 
 // Developer note (Phase 1 scope lock): Activity Logs UI polish only.
@@ -565,18 +565,18 @@ export default function ActivityLogs() {
 
   return (
     <TooltipProvider delayDuration={200}>
-    <DashboardThemeFrame variant="page" className="space-y-5 px-0 py-0 sm:space-y-6">
+    <DashboardThemeFrame variant="page" className="max-w-full space-y-5 overflow-x-hidden px-0 py-0 sm:space-y-6">
       {/* Header */}
-      <DashboardThemeFrame variant="hero" as="header" className="min-h-[148px] flex flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.92))] sm:flex-row sm:items-center sm:justify-between dark:border-primary/20 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.78))]">
+      <DashboardThemeFrame variant="hero" as="header" className="min-h-[148px] max-w-full flex flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.92))] sm:flex-row sm:items-center sm:justify-between dark:border-primary/20 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.78))]">
         <div className="min-w-0 space-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Logs</h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">Track all user actions and system events</p>
         </div>
-        <DashboardThemeFrame variant="toolbar" className="shrink-0 justify-start border-primary/15 bg-background/65 shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] sm:w-auto sm:justify-end dark:bg-slate-950/45">
+        <DashboardThemeFrame variant="toolbar" className="w-full max-w-full shrink-0 justify-start overflow-visible border-primary/15 bg-background/80 shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] sm:w-auto sm:justify-end dark:bg-slate-950/45">
           {/* Presets */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS}>
+              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS} aria-label="Open saved activity log presets">
                 <Bookmark className="h-4 w-4 mr-2" />
                 Presets
                 {presets.length > 0 && (
@@ -592,16 +592,18 @@ export default function ActivityLogs() {
                 <div className="px-2 py-3 text-xs text-muted-foreground">No saved presets yet.</div>
               ) : (
                 presets.map(p => (
-                  <div key={p.id} className="group flex items-center justify-between rounded-xl px-2.5 py-2 transition-colors hover:bg-primary/10">
-                    <button onClick={() => applyPreset(p)} className="flex-1 text-left text-sm font-medium truncate">
+                  <div key={p.id} className="group flex items-center justify-between rounded-xl px-2.5 py-2 transition-colors hover:bg-primary/10 focus-within:bg-primary/10">
+                    <button onClick={() => applyPreset(p)} className="min-w-0 flex-1 rounded-lg text-left text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
+                      <span className="block truncate" title={p.name}>
                       {p.name}
-                      <div className="text-[10px] text-muted-foreground">
+                      </span>
+                      <div className="truncate text-[10px] text-muted-foreground">
                         {p.actions.length + p.entities.length + p.users.length} filters · {p.dateRange}
                       </div>
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); deletePreset(p.id); }}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1"
+                      className="rounded-lg p-1 text-muted-foreground opacity-100 transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/25 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                       aria-label="Delete preset"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -638,7 +640,7 @@ export default function ActivityLogs() {
           {/* Export dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS}>
+              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS} aria-label="Open export menu">
                 <Download className={cn('h-4 w-4 mr-2', exportState === 'working' && 'animate-pulse')} />
                 {exportState === 'working' ? 'Exporting' : exportState === 'success' ? 'Exported' : exportState === 'error' ? 'Export failed' : 'Export'}
                 <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
@@ -683,6 +685,7 @@ export default function ActivityLogs() {
                 onClick={() => { setLiveTail(v => !v); setNewSinceMount(0); }}
                 className={cn(TOOLBAR_BUTTON_CLASS, 'relative', liveTail && 'border-success/45 bg-primary text-primary-foreground ring-2 ring-success/20 shadow-[0_16px_36px_hsl(var(--success)/0.18)] hover:bg-primary-hover hover:text-primary-foreground')}
                 aria-pressed={liveTail}
+                aria-label={liveTail ? 'Disable live tail polling' : 'Enable live tail polling'}
               >
                 <Radio className={cn('h-4 w-4 mr-2', liveTail && !liveTailError && 'animate-pulse text-success', liveTailError && 'text-destructive')} />
                 {liveTailError ? 'Live issue' : liveTail ? 'Live' : 'Live tail'}
@@ -707,7 +710,7 @@ export default function ActivityLogs() {
             </TooltipContent>
           </Tooltip>
 
-          <Button variant="outline" size="sm" onClick={() => loadLogs(false)} className={TOOLBAR_BUTTON_CLASS}>
+          <Button variant="outline" size="sm" onClick={() => loadLogs(false)} className={TOOLBAR_BUTTON_CLASS} aria-label="Refresh activity logs">
             <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
             Refresh
           </Button>
@@ -760,6 +763,7 @@ export default function ActivityLogs() {
             <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                aria-label="Search activity logs on this page"
                 placeholder="Search this page..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -768,7 +772,7 @@ export default function ActivityLogs() {
             </div>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeKey)}>
-              <SelectTrigger className={FILTER_CONTROL_CLASS}><SelectValue placeholder="Date range" /></SelectTrigger>
+              <SelectTrigger className={FILTER_CONTROL_CLASS} aria-label="Activity log date range"><SelectValue placeholder="Date range" /></SelectTrigger>
               <SelectContent collisionPadding={16} className={MENU_SURFACE_CLASS}>
                 <SelectItem value="24h">Last 24 hours</SelectItem>
                 <SelectItem value="7d">Last 7 days</SelectItem>
@@ -817,7 +821,7 @@ export default function ActivityLogs() {
             <div className="flex flex-wrap items-center gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn(FILTER_CONTROL_CLASS, "justify-start")}>
+                  <Button variant="outline" size="sm" className={cn(FILTER_CONTROL_CLASS, "justify-start")} aria-label="Choose activity log start date">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     {customStart ? format(customStart, 'PP') : 'Start date'}
                   </Button>
@@ -830,7 +834,7 @@ export default function ActivityLogs() {
               <span className="text-muted-foreground text-sm">to</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn(FILTER_CONTROL_CLASS, "justify-start")}>
+                  <Button variant="outline" size="sm" className={cn(FILTER_CONTROL_CLASS, "justify-start")} aria-label="Choose activity log end date">
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     {customEnd ? format(customEnd, 'PP') : 'End date'}
                   </Button>
@@ -885,8 +889,8 @@ export default function ActivityLogs() {
                 <div key={i} className="flex items-center gap-4">
                   <Skeleton className="h-10 w-10 rounded-2xl" />
                   <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-[260px]" />
-                    <Skeleton className="h-3 w-[180px]" />
+                    <Skeleton className="h-4 w-full max-w-[260px]" />
+                    <Skeleton className="h-3 w-full max-w-[180px]" />
                   </div>
                 </div>
               ))}
@@ -934,9 +938,9 @@ export default function ActivityLogs() {
               </div>
 
               {/* Desktop — virtualized */}
-              <div className="hidden sm:block">
+              <div className="hidden overflow-x-auto sm:block [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]">
                 {/* Sticky column header */}
-                <div className={cn("sticky top-0 z-10 grid gap-3 rounded-t-2xl border border-border/70 bg-card/95 px-4 h-12 items-center text-xs font-semibold text-muted-foreground uppercase tracking-[0.14em] shadow-sm backdrop-blur", LEDGER_GRID_CLASS)}>
+                <div className={cn("sticky top-0 z-10 grid min-w-[760px] gap-3 rounded-t-2xl border border-border/70 bg-card/95 px-4 h-12 items-center text-xs font-semibold text-muted-foreground uppercase tracking-[0.14em] shadow-sm backdrop-blur", LEDGER_GRID_CLASS)}>
                   <div>Timestamp</div>
                   <div>User</div>
                   <div>Action</div>
@@ -962,7 +966,7 @@ export default function ActivityLogs() {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Rows per page</span>
                 <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                  <SelectTrigger className={cn(FILTER_CONTROL_CLASS, "h-9 w-[84px]")}><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={cn(FILTER_CONTROL_CLASS, "h-9 w-[84px]")} aria-label="Rows per page"><SelectValue /></SelectTrigger>
                   <SelectContent collisionPadding={16} className={MENU_SURFACE_CLASS}>
                     {PAGE_SIZE_OPTIONS.map(n => (
                       <SelectItem key={n} value={String(n)}>{n}</SelectItem>
@@ -974,14 +978,14 @@ export default function ActivityLogs() {
                 <span className="mr-1 text-xs font-medium text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
-                <Button variant="outline" size="sm" className={PAGINATION_BUTTON_CLASS} disabled={page <= 1} onClick={() => setPage(1)}>First</Button>
-                <Button variant="outline" size="sm" className={cn(PAGINATION_BUTTON_CLASS, "w-9 px-0")} disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                <Button variant="outline" size="sm" className={PAGINATION_BUTTON_CLASS} disabled={page <= 1} onClick={() => setPage(1)} aria-label="First activity log page">First</Button>
+                <Button variant="outline" size="sm" className={cn(PAGINATION_BUTTON_CLASS, "w-9 px-0")} disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} aria-label="Previous activity log page">
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" className={cn(PAGINATION_BUTTON_CLASS, "w-9 px-0")} disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+                <Button variant="outline" size="sm" className={cn(PAGINATION_BUTTON_CLASS, "w-9 px-0")} disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} aria-label="Next activity log page">
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" className={PAGINATION_BUTTON_CLASS} disabled={page >= totalPages} onClick={() => setPage(totalPages)}>Last</Button>
+                <Button variant="outline" size="sm" className={PAGINATION_BUTTON_CLASS} disabled={page >= totalPages} onClick={() => setPage(totalPages)} aria-label="Last activity log page">Last</Button>
               </div>
             </div>
           )}
@@ -991,10 +995,10 @@ export default function ActivityLogs() {
       {/* Save Preset Dialog (lightweight popover) */}
       {presetDialogOpen && (
         <div
-          className="fixed inset-0 z-50 bg-background/80 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/80 p-4 backdrop-blur-sm dark:bg-black/50"
           onClick={() => setPresetDialogOpen(false)}
         >
-          <Card className="dashboard-panel w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <Card className="dashboard-panel w-full max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <BookmarkPlus className="h-4 w-4" /> Save filter preset
@@ -1010,6 +1014,7 @@ export default function ActivityLogs() {
                 value={newPresetName}
                 onChange={(e) => setNewPresetName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') savePreset(); }}
+                className={FILTER_CONTROL_CLASS}
               />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setPresetDialogOpen(false)}>Cancel</Button>
@@ -1022,7 +1027,7 @@ export default function ActivityLogs() {
 
       {/* Detail Drawer */}
       <Sheet open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-card text-card-foreground border-border">
+        <SheetContent className="w-full max-w-[calc(100vw-1rem)] overflow-y-auto border-border bg-card text-card-foreground sm:max-w-lg">
           {selectedLog && (() => {
             const cfg = getActionConfig(selectedLog.action_type);
             const href = entityHref(selectedLog.entity_type, selectedLog.entity_id);
@@ -1196,9 +1201,9 @@ function StatTile({
 }) {
   const t = STAT_TONE[tone];
   return (
-    <Card className={cn('dashboard-kpi-card group min-h-[138px] ring-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_-34px_hsl(var(--primary)/0.48)]', t.ring)}>
+    <Card className={cn('dashboard-kpi-card group min-h-[138px] ring-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_-34px_hsl(var(--primary)/0.48)] motion-reduce:transition-none motion-reduce:hover:translate-y-0', t.ring)}>
       <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r', t.bar)} />
-      <div className={cn('pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full blur-3xl transition-opacity duration-300 group-hover:opacity-90', t.glow)} />
+      <div className={cn('pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full blur-3xl transition-opacity duration-300 group-hover:opacity-90 motion-reduce:transition-none', t.glow)} />
       <CardContent className="relative flex h-full min-h-[138px] flex-col justify-between p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
@@ -1211,7 +1216,7 @@ function StatTile({
               {value}
             </div>
           </div>
-          <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm transition-transform duration-300 group-hover:scale-105', t.icon)}>{icon}</div>
+          <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100', t.icon)}>{icon}</div>
         </div>
         <div className="min-h-5 pt-3">
           {subValue && <div className="text-xs font-medium text-muted-foreground">{subValue}</div>}
@@ -1260,10 +1265,13 @@ function VirtualLogList({
   return (
     <div
       ref={parentRef}
+      role="region"
+      aria-label={variant === 'desktop' ? 'Activity log table results' : 'Activity log mobile results'}
+      tabIndex={0}
       className={cn(
-        'overflow-auto contain-strict [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]',
+        'overflow-auto contain-strict focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]',
         variant === 'desktop'
-          ? 'h-[640px] rounded-b-2xl border border-t-0 border-border/70 bg-card/35'
+          ? 'h-[640px] min-w-[760px] rounded-b-2xl border border-t-0 border-border/70 bg-card/35'
           : 'h-[640px] rounded-2xl border border-border/60 bg-card/35'
       )}
     >
@@ -1339,10 +1347,11 @@ function DesktopRow({
     <button
       type="button"
       onClick={onClick}
+      aria-label={`View activity details for ${cfg.label} by ${userLabel} on ${entityLabel}`}
       className={cn(
         'group/row w-full text-left grid gap-3 px-4 items-center',
         LEDGER_GRID_CLASS,
-        'border-b border-border/40 bg-card/20 hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors relative',
+        'relative border-b border-border/40 bg-card/20 transition-colors hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 motion-reduce:transition-none',
         compact ? 'py-2' : 'py-3'
       )}
     >
@@ -1362,7 +1371,7 @@ function DesktopRow({
       <div className="min-w-0 overflow-hidden">{badge}</div>
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-muted-foreground shrink-0 transition-colors group-hover/row:text-primary">{entityIcon}</span>
-        <div className="min-w-0">
+        <div className="min-w-0 overflow-hidden">
           <div className="text-sm font-medium truncate flex items-center gap-1.5 transition-colors group-hover/row:text-primary" title={entityLabel}>
             {entityLabel}
             {href && <ExternalLink className="h-3 w-3 shrink-0 text-primary/70" />}
@@ -1400,8 +1409,9 @@ function MobileRow({
     <button
       type="button"
       onClick={onClick}
+      aria-label={`View activity details for ${cfg.label} by ${userLabel} on ${entityLabel}`}
       className={cn(
-        'group/row w-full text-left flex gap-3 items-start hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors px-3 border-b border-border/40 bg-card/20',
+        'group/row w-full text-left flex gap-3 items-start hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors motion-reduce:transition-none px-3 border-b border-border/40 bg-card/20',
         compact ? 'py-2' : 'py-3'
       )}
     >
@@ -1414,16 +1424,16 @@ function MobileRow({
               {entityLabel}
             </span>
           </div>
-          {badge}
+          <span className="min-w-0 max-w-[46%] overflow-hidden">{badge}</span>
         </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <span className="flex min-w-0 items-center gap-1.5 truncate" title={userLabel}><User className="h-3 w-3 shrink-0" />{userLabel}</span>
-          <span className="font-mono">{format(new Date(log.created_at), 'HH:mm:ss')}</span>
+          <span className="shrink-0 font-mono">{format(new Date(log.created_at), 'HH:mm:ss')}</span>
         </div>
         {(log.entity_id || log.ip_address) && (
           <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
             <span className="min-w-0 rounded-md bg-muted/35 px-1.5 py-0.5 font-mono" title={log.entity_id || undefined}><span className="block truncate">{log.entity_id ? `${log.entity_id.slice(0, 8)}…` : '—'}</span></span>
-            <span className="shrink-0 rounded-md bg-muted/35 px-1.5 py-0.5 font-mono" title={log.ip_address || undefined}>{log.ip_address || '-'}</span>
+            <span className="max-w-[48%] shrink-0 truncate rounded-md bg-muted/35 px-1.5 py-0.5 font-mono" title={log.ip_address || undefined}>{log.ip_address || '-'}</span>
           </div>
         )}
       </div>
