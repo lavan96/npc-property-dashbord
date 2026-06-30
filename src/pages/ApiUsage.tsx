@@ -935,12 +935,12 @@ export default function ApiUsage() {
               <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredConsumptionBreakdown
                   .map(svc => (
-                    <Card key={svc.service} className="border-border/50 bg-card/80 backdrop-blur-sm">
+                    <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 backdrop-blur-sm">
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
-                            <span className="text-sm font-medium text-foreground">{formatServiceName(svc.service)}</span>
+                        <div className="flex min-w-0 items-center justify-between gap-3 mb-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
+                            <span className="min-w-0 truncate text-sm font-medium text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
                           </div>
                           <Badge variant="secondary" className="text-[10px]">{svc.topModel}</Badge>
                         </div>
@@ -1044,55 +1044,45 @@ export default function ApiUsage() {
         {/* ==================== VAPI & Voice Tab (NEW) ==================== */}
         <TabsContent value="vapi" className="space-y-4 mt-4">
           {data?.vapi && data.vapi.totalCalls > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* VAPI Summary Cards */}
-              <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-                  <CardContent className="p-4 text-center">
-                    <Phone className="h-5 w-5 mx-auto mb-2 text-pink-500" />
-                    <p className="text-2xl font-bold text-foreground">{data.vapi.totalCalls}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Total Calls</p>
-                    <div className="flex justify-center gap-3 mt-2">
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <PhoneIncoming className="h-3 w-3" /> {data.vapi.inbound}
-                      </span>
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <PhoneOutgoing className="h-3 w-3" /> {data.vapi.outbound}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-                  <CardContent className="p-4 text-center">
-                    <Clock className="h-5 w-5 mx-auto mb-2 text-blue-500" />
-                    <p className="text-2xl font-bold text-foreground">{data.vapi.totalMinutes}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Total Minutes</p>
-                    <p className="text-[10px] text-muted-foreground mt-2">
-                      ~{data.vapi.totalCalls > 0 ? Math.round(data.vapi.totalMinutes / data.vapi.totalCalls) : 0} min/call avg
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-                  <CardContent className="p-4 text-center">
-                    <DollarSign className="h-5 w-5 mx-auto mb-2 text-green-500" />
-                    <p className="text-2xl font-bold text-foreground">${data.vapi.totalCost.toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Total Cost</p>
-                    <p className="text-[10px] text-muted-foreground mt-2">
-                      ${data.vapi.avgCostPerCall.toFixed(2)}/call
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-                  <CardContent className="p-4 text-center">
-                    <CalendarDays className="h-5 w-5 mx-auto mb-2 text-orange-500" />
-                    <p className="text-2xl font-bold text-foreground">${data.projections?.projectedMonthlyVapi?.toFixed(2) || '0'}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Projected /mo</p>
-                    <p className="text-[10px] text-muted-foreground mt-2">
-                      incl. Twilio telephony
-                    </p>
-                  </CardContent>
-                </Card>
+            <>
+              <ApiUsageTabHeader
+                icon={<Phone className="h-5 w-5" />}
+                eyebrow="Voice operations"
+                title="VAPI & Voice activity"
+                description="Monitor existing voice call volume, minutes, telephony cost, and projected monthly VAPI spend for the selected date range."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
+                <Badge variant="outline" className="border-pink-500/25 bg-pink-500/10 text-pink-500">{data.vapi.totalCalls} calls</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <ApiUsageMetricCard
+                  icon={<Phone className="h-4 w-4 text-pink-500" />}
+                  label="Total Calls"
+                  value={data.vapi.totalCalls}
+                  caption={`${data.vapi.inbound} inbound / ${data.vapi.outbound} outbound`}
+                />
+                <ApiUsageMetricCard
+                  icon={<Clock className="h-4 w-4 text-blue-500" />}
+                  label="Total Minutes"
+                  value={data.vapi.totalMinutes}
+                  caption={`~${data.vapi.totalCalls > 0 ? Math.round(data.vapi.totalMinutes / data.vapi.totalCalls) : 0} min/call avg`}
+                />
+                <ApiUsageMetricCard
+                  icon={<DollarSign className="h-4 w-4 text-green-500" />}
+                  label="Voice Cost"
+                  value={`$${data.vapi.totalCost.toFixed(2)}`}
+                  caption={`$${data.vapi.avgCostPerCall.toFixed(2)}/call`}
+                />
+                <ApiUsageMetricCard
+                  icon={<CalendarDays className="h-4 w-4 text-orange-500" />}
+                  label="Projected /mo"
+                  value={`$${data.projections?.projectedMonthlyVapi?.toFixed(2) || '0'}`}
+                  caption="incl. Twilio telephony"
+                />
               </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
               {/* VAPI Call Volume + Cost Trend (Composed Chart) */}
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
@@ -1150,7 +1140,8 @@ export default function ApiUsage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            </>
           ) : (
             <ApiUsageEmptyState
               icon={<Phone className="h-7 w-7" />}
@@ -1163,38 +1154,39 @@ export default function ApiUsage() {
         {/* ==================== Budget Tab (NEW) ==================== */}
         <TabsContent value="budget" className="space-y-4 mt-4">
           {data?.projections ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Monthly Projection Summary */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-orange-500" />
-                    Projected Monthly Spend
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Based on {data.summary.period} average daily usage extrapolated to 30 days
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                    <div className="text-center p-4 rounded-lg bg-muted/30 border border-border/30">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">LLM APIs</p>
-                      <p className="text-2xl font-bold text-foreground">${data.projections.projectedMonthlyCost.toFixed(2)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">${data.projections.dailyAvgCost.toFixed(4)}/day avg</p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-muted/30 border border-border/30">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">VAPI + Twilio</p>
-                      <p className="text-2xl font-bold text-foreground">${data.projections.projectedMonthlyVapi.toFixed(2)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">Voice & telephony</p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-primary/10 border border-primary/20">
-                      <p className="text-[10px] text-primary uppercase tracking-wider mb-1 font-semibold">Total Projected</p>
-                      <p className="text-2xl font-bold text-primary">${data.projections.totalProjectedMonthly.toFixed(2)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">per month</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            <>
+              <ApiUsageTabHeader
+                icon={<DollarSign className="h-5 w-5" />}
+                eyebrow="Cost control"
+                title="Budget and projected spend"
+                description="Review existing spend projections, daily averages, voice cost exposure, and configured service budget thresholds without changing alert logic."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
+                <Badge variant="outline" className="border-amber-500/25 bg-amber-500/10 text-amber-500">Projected monthly</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <ApiUsageMetricCard
+                  icon={<Brain className="h-4 w-4 text-primary" />}
+                  label="LLM APIs"
+                  value={`$${data.projections.projectedMonthlyCost.toFixed(2)}`}
+                  caption={`$${data.projections.dailyAvgCost.toFixed(4)}/day avg`}
+                />
+                <ApiUsageMetricCard
+                  icon={<Phone className="h-4 w-4 text-pink-500" />}
+                  label="VAPI + Twilio"
+                  value={`$${data.projections.projectedMonthlyVapi.toFixed(2)}`}
+                  caption="Voice & telephony"
+                />
+                <ApiUsageMetricCard
+                  icon={<CalendarDays className="h-4 w-4 text-orange-500" />}
+                  label="Total Projected"
+                  value={`$${data.projections.totalProjectedMonthly.toFixed(2)}`}
+                  caption="per month"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
               {/* Per-Service Budget Bars */}
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
@@ -1276,7 +1268,8 @@ export default function ApiUsage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            </>
           ) : (
             <ApiUsageEmptyState
               icon={<DollarSign className="h-7 w-7" />}
@@ -1289,7 +1282,45 @@ export default function ApiUsage() {
         {/* ==================== Performance Tab ==================== */}
         <TabsContent value="performance" className="space-y-4 mt-4">
           {data && (
-            <div className="grid grid-cols-1 gap-4">
+            <>
+              <ApiUsageTabHeader
+                icon={<Clock className="h-5 w-5" />}
+                eyebrow="API monitoring"
+                title="Performance and latency"
+                description="Review existing response-time telemetry, success rates, error volume, and per-service performance without changing thresholds or chart datasets."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
+                <Badge variant="outline" className="border-border/60 bg-background/60 text-muted-foreground">{filteredHealthServices.length} services in view</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <ApiUsageMetricCard
+                  icon={<Clock className="h-4 w-4 text-primary" />}
+                  label="Avg Response"
+                  value={`${data.summary.avgResponseTime}ms`}
+                  caption="Across tracked calls"
+                />
+                <ApiUsageMetricCard
+                  icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  label="Success Rate"
+                  value={`${data.summary.successRate}%`}
+                  caption={`${data.summary.successCalls.toLocaleString()} successful`}
+                />
+                <ApiUsageMetricCard
+                  icon={<XCircle className="h-4 w-4 text-red-500" />}
+                  label="Errors"
+                  value={data.summary.errorCalls.toLocaleString()}
+                  caption="Failed health interactions"
+                />
+                <ApiUsageMetricCard
+                  icon={<Activity className="h-4 w-4 text-primary" />}
+                  label="Throughput"
+                  value={data.summary.totalCalls.toLocaleString()}
+                  caption="Total API calls"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -1320,12 +1351,12 @@ export default function ApiUsage() {
                 {filteredServiceBreakdown
                   .sort((a, b) => b.avgResponseTime - a.avgResponseTime)
                   .map(svc => (
-                    <Card key={svc.service} className="border-border/50 bg-card/80 backdrop-blur-sm">
+                    <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 backdrop-blur-sm">
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
-                            <span className="text-sm font-medium text-foreground">{formatServiceName(svc.service)}</span>
+                        <div className="flex min-w-0 items-center justify-between gap-3 mb-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
+                            <span className="min-w-0 truncate text-sm font-medium text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
                           </div>
                           <Badge variant="outline" className={svc.successRate >= 95 ? 'border-green-500/30 text-green-400 bg-green-500/10' : svc.successRate >= 80 ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}>
                             {svc.successRate}%
@@ -1349,22 +1380,66 @@ export default function ApiUsage() {
                     </Card>
                   ))}
               </div>
-            </div>
+              </div>
+            </>
           )}
         </TabsContent>
 
         {/* ==================== Services Tab ==================== */}
         <TabsContent value="services" className="space-y-4 mt-4">
           {data && (
-            <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="pb-2">
+            <>
+              <ApiUsageTabHeader
+                icon={<Server className="h-5 w-5" />}
+                eyebrow="Integration inventory"
+                title="Services and health status"
+                description="Inspect existing service names, call volume, success/error split, average response time, and health indicators from the current API usage dataset."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{filteredServiceBreakdown.length} services</Badge>
+                <Badge variant="outline" className="border-border/60 bg-background/60 text-muted-foreground">{data.summary.period}</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredServiceBreakdown.map(svc => (
+                  <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:shadow-black/20">
+                    <CardContent className="p-4">
+                      <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
+                          <span className="min-w-0 truncate text-sm font-semibold text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
+                        </div>
+                        <Badge variant="outline" className={svc.successRate >= 95 ? 'shrink-0 border-green-500/30 bg-green-500/10 text-green-400' : svc.successRate >= 80 ? 'shrink-0 border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'shrink-0 border-red-500/30 bg-red-500/10 text-red-400'}>
+                          {svc.successRate}%
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="min-w-0 rounded-xl bg-muted/25 p-2">
+                          <p className="truncate text-lg font-bold text-foreground">{svc.total}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Calls</p>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-muted/25 p-2">
+                          <p className="truncate text-lg font-bold text-foreground">{svc.avgResponseTime}ms</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg</p>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-muted/25 p-2">
+                          <p className="truncate text-lg font-bold text-destructive">{svc.errors}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Errors</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
                   Service Breakdown
                 </CardTitle>
                 <CardDescription className="text-xs">Total calls, successes, and errors per service</CardDescription>
-              </CardHeader>
-              <CardContent>
+                </CardHeader>
+                <CardContent>
                 <div className="h-[400px] sm:h-[500px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={filteredServiceBreakdown.map(s => ({ ...s, name: formatServiceName(s.service) }))} layout="vertical">
@@ -1378,8 +1453,9 @@ export default function ApiUsage() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </>
           )}
         </TabsContent>
 

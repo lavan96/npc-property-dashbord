@@ -53,14 +53,14 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
     switch (status) {
       case 'completed':
         return (
-          <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+          <Badge className="border-green-500/30 bg-green-500/15 text-green-600 shadow-sm dark:text-green-300">
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
           </Badge>
         );
       case 'failed':
         return (
-          <Badge variant="destructive">
+          <Badge variant="destructive" className="shadow-sm">
             <XCircle className="h-3 w-3 mr-1" />
             Failed
           </Badge>
@@ -68,7 +68,7 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
       case 'pending':
       case 'processing':
         return (
-          <Badge variant="outline" className="text-amber-500 border-amber-500/30">
+          <Badge variant="outline" className="border-warning/35 bg-warning/10 text-warning shadow-sm">
             <Clock className="h-3 w-3 mr-1" />
             {status === 'pending' ? 'Pending' : 'Processing'}
           </Badge>
@@ -80,68 +80,72 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[85vh] w-[95vw] sm:w-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+      <DialogContent className="flex max-h-[85vh] w-[95vw] max-w-4xl flex-col overflow-hidden rounded-3xl border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_32%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--background)/0.92))] p-0 shadow-[0_24px_80px_rgba(15,23,42,0.16)] dark:border-white/10 dark:shadow-black/40 sm:w-auto">
+        <DialogHeader className="border-b border-border/60 px-5 py-5 sm:px-6">
+          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight text-foreground">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-[0_12px_28px_hsl(var(--primary)/0.14)]">
+              <FileText className="h-5 w-5" />
+            </span>
             Auto-Generation Log
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm leading-5">
             History of automatically generated investment reports
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="min-h-0 flex-1 overscroll-contain px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
           {loading ? (
-            <div className="py-8 text-center text-muted-foreground">Loading logs...</div>
+            <div className="rounded-3xl border border-border/60 bg-background/60 py-10 text-center text-muted-foreground shadow-sm">Loading logs...</div>
           ) : logs.length === 0 ? (
-            <div className="py-12 text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="font-medium">No generation logs yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
+            <div className="rounded-3xl border border-dashed border-primary/25 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.10),transparent_38%),hsl(var(--card)/0.82)] px-4 py-14 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-border/70 bg-background/75 text-muted-foreground shadow-sm">
+                <FileText className="h-9 w-9 text-muted-foreground/60" />
+              </div>
+              <p className="font-semibold text-foreground">No generation logs yet</p>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
                 Auto-generated reports will appear here
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="min-w-0 overflow-x-auto overscroll-x-contain rounded-3xl border border-border/60 bg-background/55 shadow-sm [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[180px]">Address</TableHead>
-                    <TableHead className="hidden sm:table-cell">Switch</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="min-w-[100px]">Date</TableHead>
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="border-border/60 hover:bg-transparent">
+                    <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">Address</TableHead>
+                    <TableHead className="hidden min-w-[160px] text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:table-cell">Switch</TableHead>
+                    <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
+                    <TableHead className="min-w-[120px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="max-w-[180px] sm:max-w-[200px]">
-                        <div className="truncate text-sm">{log.listing_address}</div>
-                        <div className="sm:hidden mt-1">
+                    <TableRow key={log.id} className="border-border/50 transition-colors hover:bg-primary/5">
+                      <TableCell className="max-w-[260px] align-top">
+                        <div className="break-words text-sm font-medium leading-5 text-foreground">{log.listing_address}</div>
+                        <div className="mt-2 sm:hidden">
                           {log.switch_name ? (
-                            <Badge variant="outline" className="text-xs">{log.switch_name}</Badge>
+                            <Badge variant="outline" className="max-w-full truncate border-border/70 bg-card/70 text-xs shadow-sm">{log.switch_name}</Badge>
                           ) : null}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="hidden max-w-[180px] align-top sm:table-cell">
                         {log.switch_name ? (
-                          <Badge variant="outline">{log.switch_name}</Badge>
+                          <Badge variant="outline" className="max-w-full truncate border-border/70 bg-card/70 shadow-sm">{log.switch_name}</Badge>
                         ) : (
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
+                      <TableCell className="align-top">
+                        <div className="max-w-[260px] space-y-2">
                           {getStatusBadge(log.status)}
                           {log.error_message && (
-                            <p className="text-xs text-destructive truncate max-w-[150px] sm:max-w-[200px]">
+                            <p className="break-words rounded-2xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs leading-5 text-destructive">
                               {log.error_message}
                             </p>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                      <TableCell className="whitespace-nowrap align-top text-xs text-muted-foreground sm:text-sm">
                         {format(new Date(log.created_at), 'MMM d, HH:mm')}
                       </TableCell>
                     </TableRow>
