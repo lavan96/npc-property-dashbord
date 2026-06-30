@@ -213,72 +213,94 @@ function CdnTab() {
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
-      <h3 className="text-base sm:text-lg font-semibold">CDN & Caching</h3>
+      <DashboardThemeFrame variant="section" className="space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-2">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">CDN & Caching</h3>
+          <p className="max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">Operate cache settings and purge actions with clear separation between zone-wide and URL-specific invalidation.</p>
+        </div>
 
-      {/* Cache Settings */}
-      {settings.length > 0 && (
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-          <CardHeader className="min-w-0 pb-3 sm:pb-6">
-            <CardTitle className="text-base">Current Cache Settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
-              {settings.map((s: any) => (
-                <div key={s.id} className="flex items-center justify-between gap-2 min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
-                  <span className="text-xs sm:text-sm font-medium capitalize truncate">{s.id.replace(/_/g, ' ')}</span>
-                  <Badge variant="outline" className="flex-shrink-0 text-[11px] sm:text-xs max-w-[120px] sm:max-w-none truncate">
-                    {typeof s.value === 'object' ? JSON.stringify(s.value) : String(s.value)}
-                  </Badge>
+        {/* Cache Settings */}
+        {settings.length > 0 && (
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
+            <CardHeader className="min-w-0 pb-3 sm:pb-5">
+              <CardTitle className="text-base">Current Cache Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
+                {settings.map((s: any) => (
+                  <div key={s.id} className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
+                    <span className="min-w-0 truncate text-xs font-medium capitalize sm:text-sm">{s.id.replace(/_/g, ' ')}</span>
+                    <Badge variant="outline" className="max-w-[120px] flex-shrink-0 truncate text-[11px] sm:max-w-none sm:text-xs">
+                      {typeof s.value === 'object' ? JSON.stringify(s.value) : String(s.value)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Purge Controls */}
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+          <Card className="min-w-0 overflow-hidden border-red-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--destructive)/0.06))] shadow-[0_14px_42px_rgba(127,29,29,0.08)] dark:border-red-400/20 dark:bg-slate-950/60 dark:shadow-black/25">
+            <CardHeader className="min-w-0 pb-3 sm:pb-5">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-red-500/25 bg-red-500/10 text-red-500 dark:text-red-300">
+                  <AlertTriangle className="h-5 w-5" />
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <div className="min-w-0">
+                  <CardTitle className="text-base">Purge Everything</CardTitle>
+                  <CardDescription className="mt-1 leading-5">Clear the entire CDN cache for your zone</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-xl border border-red-500/15 bg-red-500/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                Zone-wide cache invalidation can temporarily reduce cache hit rates. Existing safeguards and permissions remain enforced.
+              </div>
+              <Button
+                variant="destructive"
+                onClick={handlePurgeAll}
+                disabled={purgeAll.loading}
+                className="w-full bg-red-600 text-white shadow-sm transition-all hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-red-600 dark:hover:bg-red-500"
+              >
+                {purgeAll.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                Purge All Cache
+              </Button>
+            </CardContent>
+          </Card>
 
-      {/* Purge Controls */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-          <CardHeader className="min-w-0 pb-3 sm:pb-6">
-            <CardTitle className="text-base">Purge Everything</CardTitle>
-            <CardDescription>Clear the entire CDN cache for your zone</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="destructive"
-              onClick={handlePurgeAll}
-              disabled={purgeAll.loading}
-              className="w-full"
-            >
-              {purgeAll.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Purge All Cache
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-          <CardHeader className="min-w-0 pb-3 sm:pb-6">
-            <CardTitle className="text-base">Purge by URL</CardTitle>
-            <CardDescription>Enter URLs to purge (one per line)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <textarea
-              className="w-full min-w-0 min-h-[96px] max-h-[42dvh] overflow-auto break-all rounded-md border border-border/70 bg-background p-2 text-sm shadow-inner outline-none resize-y focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="https://example.com/page1&#10;https://example.com/page2"
-              value={urls}
-              onChange={e => setUrls(e.target.value)}
-            />
-            <Button
-              onClick={handlePurgeUrls}
-              disabled={purgeUrls.loading || !urls.trim()}
-              className="w-full"
-            >
-              {purgeUrls.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Purge URLs
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="min-w-0 overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--primary)/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-primary/20 dark:bg-slate-950/60 dark:shadow-black/25">
+            <CardHeader className="min-w-0 pb-3 sm:pb-5">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                  <HardDrive className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <CardTitle className="text-base">Purge by URL</CardTitle>
+                  <CardDescription className="mt-1 leading-5">Enter URLs to purge (one per line)</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <textarea
+                className="w-full min-w-0 min-h-[132px] max-h-[42dvh] overflow-auto break-all rounded-xl border border-border/70 bg-background/90 p-3 text-sm leading-6 shadow-inner outline-none resize-y placeholder:text-muted-foreground/70 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/55"
+                placeholder="https://example.com/page1&#10;https://example.com/page2"
+                value={urls}
+                onChange={e => setUrls(e.target.value)}
+              />
+              <Button
+                onClick={handlePurgeUrls}
+                disabled={purgeUrls.loading || !urls.trim()}
+                className="w-full border border-amber-500/25 bg-amber-500/10 text-amber-700 shadow-sm transition-all hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:cursor-not-allowed disabled:opacity-70 dark:text-amber-200"
+              >
+                {purgeUrls.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                Purge URLs
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardThemeFrame>
     </div>
   );
 }
