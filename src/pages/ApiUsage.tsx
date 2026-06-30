@@ -176,14 +176,14 @@ const API_USAGE_HERO_FRAME =
   'flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_58%,hsl(var(--primary)/0.08))] p-5 shadow-[0_22px_70px_rgba(15,23,42,0.12)] ring-1 ring-white/35 dark:ring-white/10 dark:shadow-black/35 sm:flex-row sm:items-start sm:justify-between sm:p-6';
 
 const API_USAGE_METRIC_CARD =
-  'group min-w-0 overflow-hidden border-primary/10 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-[0_12px_36px_rgba(15,23,42,0.08)] ring-1 ring-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950/75 dark:ring-white/10 dark:shadow-black/25';
+  'min-h-full border-primary/15 motion-reduce:transition-none motion-reduce:hover:translate-y-0';
 
 const API_USAGE_TAB_TRIGGER =
   'shrink-0 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm motion-reduce:transition-none sm:px-4 sm:text-sm';
 
 
 const API_USAGE_PANEL_CARD =
-  'min-w-0 overflow-hidden border-border/50 bg-card/80 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20';
+  'min-w-0 overflow-hidden border-border/60 bg-card/80 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:bg-card/70 dark:shadow-black/20';
 
 const API_USAGE_CHART_HEIGHT =
   'min-h-0 min-w-0 overflow-hidden h-[280px] sm:h-[320px]';
@@ -217,8 +217,8 @@ interface ApiUsageMetricCardProps {
 
 function ApiUsageMetricCard({ icon, label, value, caption, className = '' }: ApiUsageMetricCardProps) {
   return (
-    <Card className={`${API_USAGE_METRIC_CARD} ${className}`}>
-      <CardContent className="flex h-full min-w-0 flex-col justify-between p-4">
+    <DashboardThemeFrame variant="premiumCard" className={`${API_USAGE_METRIC_CARD} ${className}`}>
+      <div className="flex h-full min-w-0 flex-col justify-between p-4">
         <div className="mb-3 flex min-w-0 items-center gap-2 text-muted-foreground">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 shadow-inner">
             {icon}
@@ -227,8 +227,8 @@ function ApiUsageMetricCard({ icon, label, value, caption, className = '' }: Api
         </div>
         <p className="min-w-0 truncate text-xl font-bold tracking-tight text-foreground tabular-nums">{value}</p>
         <p className="mt-1 min-w-0 truncate text-[10px] text-muted-foreground">{caption}</p>
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardThemeFrame>
   );
 }
 
@@ -307,14 +307,14 @@ interface ApiUsageInsightTileProps {
 
 function ApiUsageInsightTile({ label, value, detail, icon }: ApiUsageInsightTileProps) {
   return (
-    <div className="min-w-0 rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm shadow-black/5 transition-colors hover:border-primary/20 motion-reduce:transition-none dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+    <DashboardThemeFrame variant="card" className="min-w-0 p-4 transition-colors hover:border-primary/20 motion-reduce:transition-none">
       <div className="mb-3 flex min-w-0 items-center gap-2 text-muted-foreground">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</span>
         <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
       </div>
       <p className="min-w-0 truncate text-2xl font-bold tracking-tight text-foreground tabular-nums">{value}</p>
       <p className="mt-1 min-w-0 truncate text-xs text-muted-foreground">{detail}</p>
-    </div>
+    </DashboardThemeFrame>
   );
 }
 
