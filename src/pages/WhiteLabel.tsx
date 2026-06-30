@@ -358,7 +358,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
   };
 
   return (
-    <Card>
+    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
       <CardHeader>
         <div className="flex items-center gap-2">
           {icon}
@@ -909,18 +909,24 @@ export default function WhiteLabel() {
   }
 
   return (
-    <div className="space-y-6 px-1 sm:px-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Branding</h1>
-          <p className="text-sm text-muted-foreground">
-            Customize the dashboard appearance with your brand identity
-          </p>
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-1 pb-10 sm:px-0">
+      <div className="relative overflow-hidden rounded-[2rem] border border-primary/15 bg-gradient-to-br from-card via-card to-primary/5 p-5 shadow-xl shadow-primary/5 sm:p-6 lg:p-7">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Branding</h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Customize the dashboard appearance with your brand identity
+            </p>
+          </div>
+          <Badge variant="outline" className="min-h-10 gap-2 self-start rounded-full border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-sm shadow-primary/10 sm:self-auto">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+              <Palette className="h-3.5 w-3.5" />
+            </span>
+            White Label
+          </Badge>
         </div>
-        <Badge variant="outline" className="gap-1 self-start sm:self-auto">
-          <Palette className="h-3 w-3" />
-          White Label
-        </Badge>
       </div>
 
       <AlertDialog open={showLeavePrompt} onOpenChange={(open) => {
@@ -990,39 +996,47 @@ export default function WhiteLabel() {
         </DialogContent>
       </Dialog>
 
-      <Card className="dashboard-panel border-primary/15">
-        <CardContent className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Brand System Draft</p>
-            <p className="text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
+      <Card className="dashboard-panel overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card to-muted/20 shadow-xl shadow-primary/5">
+        <CardContent className="relative flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary/5 via-primary/35 to-primary/5" />
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">Brand System Draft</p>
+              <Badge
+                variant="outline"
+                className={hasChanges ? 'rounded-full border-warning/35 bg-warning/10 text-warning' : 'rounded-full border-success/35 bg-success/10 text-success'}
+              >
+                {hasChanges ? 'Unsaved changes' : 'In sync'}
+              </Badge>
+              {hasCriticalChecks && <Badge variant="outline" className="rounded-full border-destructive/40 bg-destructive/10 text-destructive">Critical issues</Badge>}
+              {hasInvalidAssets && <Badge variant="outline" className="rounded-full border-warning/40 bg-warning/10 text-warning">Asset validation required</Badge>}
+            </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
             {lastDraftSavedAt ? (
               <p className="mt-1 text-xs text-muted-foreground">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{hasChanges ? 'Unsaved changes' : 'In sync'}</Badge>
-            {hasCriticalChecks && <Badge variant="outline" className="border-destructive/40 text-destructive">Critical issues</Badge>}
-            {hasInvalidAssets && <Badge variant="outline" className="border-warning/40 text-warning">Asset validation required</Badge>}
-            <Button variant="outline" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
+          <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+            <Button variant="outline" className="border-border/70 bg-background/70 shadow-sm" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
               <Undo2 className="mr-2 h-4 w-4" />
               Undo last change
             </Button>
-            <Button variant="outline" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
+            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
               <Save className="mr-2 h-4 w-4" />
               Save draft
             </Button>
-            <Button variant="outline" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
+            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
               <FileText className="mr-2 h-4 w-4" />
               Save preset
             </Button>
-            <Button variant="outline" onClick={() => {
+            <Button variant="outline" className="border-border/70 bg-background/70 text-muted-foreground shadow-sm hover:text-foreground" onClick={() => {
               setDraftSettings(settings);
               draftHistoryRef.current = [];
               clearPersistedDraft();
               setLastDraftSavedAt(null);
             }} disabled={!hasChanges}>Discard</Button>
-            <Button variant="outline" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
-            <Button onClick={handleSaveBranding} disabled={!canSaveBranding}>
+            <Button variant="outline" className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm hover:bg-destructive/10 hover:text-destructive" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
+            <Button className="bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 disabled:shadow-none" onClick={handleSaveBranding} disabled={!canSaveBranding}>
               <Check className="mr-2 h-4 w-4" />
               Save brand changes
             </Button>
@@ -1054,46 +1068,58 @@ export default function WhiteLabel() {
         </Alert>
       ) : null}
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>How it works</AlertTitle>
-        <AlertDescription>
-          Drag and drop or click to upload your logo images. The background removal feature uses AI to automatically remove backgrounds. Logos are stored securely in the cloud and will persist across sessions.
-        </AlertDescription>
+      <Alert className="flex items-start gap-3 overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-lg shadow-primary/5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+          <AlertCircle className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 space-y-1">
+          <AlertTitle>How it works</AlertTitle>
+          <AlertDescription className="text-sm leading-6">
+            Drag and drop or click to upload your logo images. The background removal feature uses AI to automatically remove backgrounds. Logos are stored securely in the cloud and will persist across sessions.
+          </AlertDescription>
+        </div>
       </Alert>
 
-      <Separator />
+      <Separator className="bg-border/60" />
 
       {/* Company Name */}
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Monitor className="h-5 w-5 text-primary" />
-            <div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              <Monitor className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Company Name</CardTitle>
               <CardDescription>This will appear in the browser tab and sidebar</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              value={draftSettings.companyName}
-              onChange={(e) => updateDraftSettings({ companyName: e.target.value })}
-              placeholder="Enter company name"
-              className="sm:max-w-sm"
-            />
-            <Badge variant="outline" className="min-h-[44px] sm:min-h-0 shrink-0">Browser tab + shell brand name</Badge>
+          <div className="rounded-2xl border border-border/70 bg-background/60 p-3 shadow-inner sm:p-4">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+              <Input
+                value={draftSettings.companyName}
+                onChange={(e) => updateDraftSettings({ companyName: e.target.value })}
+                placeholder="Enter company name"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 font-medium shadow-sm focus-visible:ring-primary/30 sm:max-w-md"
+              />
+              <Badge variant="outline" className="min-h-10 w-fit max-w-full shrink-0 rounded-full border-primary/25 bg-primary/5 px-3 text-primary">
+                <span className="truncate">Browser tab + shell brand name</span>
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Color Theme */}
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-primary" />
-            <div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              <Palette className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Color Theme</CardTitle>
               <CardDescription>Customize the primary and accent colors of the dashboard</CardDescription>
             </div>
@@ -1102,13 +1128,15 @@ export default function WhiteLabel() {
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
             {/* Primary Color */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Primary Color</Label>
-              <p className="text-xs text-muted-foreground">
-                Used for buttons, links, and key UI elements
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="relative">
+            <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
+              <div className="min-w-0 space-y-1">
+                <Label className="text-sm font-medium">Primary Color</Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for buttons, links, and key UI elements
+                </p>
+              </div>
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative shrink-0 rounded-2xl border border-primary/20 bg-card p-2 shadow-sm transition-shadow hover:shadow-md">
                   <input
                     type="color"
                      value={draftSettings.primaryColor ? hslToHex(draftSettings.primaryColor) : '#D4A017'}
@@ -1116,15 +1144,15 @@ export default function WhiteLabel() {
                       const hsl = hexToHsl(e.target.value);
                        updateDraftSettings({ primaryColor: hsl });
                     }}
-                    className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
+                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent"
                     style={{ padding: 0 }}
                   />
                 </div>
-                <div className="flex-1 space-y-1">
-                  <div className="text-sm font-mono">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="w-fit max-w-full rounded-full border border-border/70 bg-card px-3 py-1 text-sm font-mono shadow-sm">
                     {draftSettings.primaryColor ? hslToHex(draftSettings.primaryColor) : '#D4A017'}
                   </div>
-                  <div className="text-xs text-muted-foreground font-mono">
+                  <div className="max-w-full break-words rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground font-mono">
                     hsl({draftSettings.primaryColor || '43 74% 49%'})
                   </div>
                 </div>
@@ -1132,6 +1160,7 @@ export default function WhiteLabel() {
                   <Button 
                     variant="ghost" 
                     size="sm"
+                    className="w-fit shrink-0"
                     onClick={() => {
                       updateDraftSettings({ primaryColor: null });
                     }}
@@ -1141,24 +1170,24 @@ export default function WhiteLabel() {
                 )}
               </div>
               {/* Preview swatches */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-1">
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'})` }}
                   title="Primary"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.8)` }}
                   title="80%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.5)` }}
                   title="50%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.2)` }}
                   title="20%"
                 />
@@ -1166,13 +1195,15 @@ export default function WhiteLabel() {
             </div>
 
             {/* Accent Color */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Accent Color</Label>
-              <p className="text-xs text-muted-foreground">
-                Used for highlights and secondary emphasis
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="relative">
+            <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
+              <div className="min-w-0 space-y-1">
+                <Label className="text-sm font-medium">Accent Color</Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for highlights and secondary emphasis
+                </p>
+              </div>
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative shrink-0 rounded-2xl border border-primary/20 bg-card p-2 shadow-sm transition-shadow hover:shadow-md">
                   <input
                     type="color"
                      value={draftSettings.accentColor ? hslToHex(draftSettings.accentColor) : '#D4A017'}
@@ -1180,15 +1211,15 @@ export default function WhiteLabel() {
                       const hsl = hexToHsl(e.target.value);
                        updateDraftSettings({ accentColor: hsl });
                     }}
-                    className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
+                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent"
                     style={{ padding: 0 }}
                   />
                 </div>
-                <div className="flex-1 space-y-1">
-                  <div className="text-sm font-mono">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="w-fit max-w-full rounded-full border border-border/70 bg-card px-3 py-1 text-sm font-mono shadow-sm">
                     {draftSettings.accentColor ? hslToHex(draftSettings.accentColor) : '#D4A017'}
                   </div>
-                  <div className="text-xs text-muted-foreground font-mono">
+                  <div className="max-w-full break-words rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground font-mono">
                     hsl({draftSettings.accentColor || '43 74% 49%'})
                   </div>
                 </div>
@@ -1196,6 +1227,7 @@ export default function WhiteLabel() {
                   <Button 
                     variant="ghost" 
                     size="sm"
+                    className="w-fit shrink-0"
                     onClick={() => {
                       updateDraftSettings({ accentColor: null });
                     }}
@@ -1205,24 +1237,24 @@ export default function WhiteLabel() {
                 )}
               </div>
               {/* Preview swatches */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-1">
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'})` }}
                   title="Accent"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.8)` }}
                   title="80%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.5)` }}
                   title="50%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.2)` }}
                   title="20%"
                 />
@@ -1233,11 +1265,13 @@ export default function WhiteLabel() {
       </Card>
 
       {/* Dark Mode */}
-      <Card>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            {currentTheme === 'dark' ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
-            <div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              {currentTheme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </div>
+            <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Dark Mode</CardTitle>
               <CardDescription>Choose the default theme for your dashboard</CardDescription>
             </div>
@@ -1256,27 +1290,27 @@ export default function WhiteLabel() {
                     metadata: { theme: option.value }
                   });
                 }}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
+                className={`flex min-w-0 flex-col items-center gap-3 rounded-2xl border p-4 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md ${
                    draftSettings.darkModeDefault === option.value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border'
+                    ? 'border-primary bg-primary/10 ring-1 ring-primary/25'
+                    : 'border-border/70 bg-background/60'
                 }`}
               >
-                <div className={`p-3 rounded-full ${
+                <div className={`rounded-2xl p-3 shadow-sm ${
                    draftSettings.darkModeDefault === option.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground'
                 }`}>
                   {option.icon}
                 </div>
-                <div className="text-center">
+                <div className="min-w-0 space-y-1 text-center">
                   <p className="font-medium text-sm">{option.label}</p>
                   <p className="text-xs text-muted-foreground">{option.description}</p>
                 </div>
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground mt-4">
+          <p className="mt-4 w-fit max-w-full rounded-full border border-border/70 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
             Runtime theme: <span className="font-medium capitalize">{currentTheme}</span>
           </p>
         </CardContent>
@@ -1325,7 +1359,7 @@ export default function WhiteLabel() {
         />
       </div>
 
-      <Card>
+      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
           <CardTitle>Live Multi-Surface Preview</CardTitle>
           <CardDescription>Review all surfaces together, then isolate auth, sidebar, or browser-tab styling before saving.</CardDescription>
@@ -1335,7 +1369,7 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
           <CardTitle>Accessibility & Brand Health</CardTitle>
           <CardDescription>Contrast and slot coverage are validated against your current draft before it can be saved globally.</CardDescription>
@@ -1381,7 +1415,7 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
           <CardTitle>Impact preview</CardTitle>
           <CardDescription>See which shared surfaces will update when this draft becomes the live brand configuration.</CardDescription>
@@ -1423,7 +1457,7 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
           <CardTitle>Preview each surface</CardTitle>
           <CardDescription>Inspect auth, sidebar, and browser-tab styling in isolation before saving.</CardDescription>
@@ -1541,7 +1575,7 @@ export default function WhiteLabel() {
       </div>
 
       {/* Email Signature Banner */}
-      <Card>
+      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
           <div className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5 text-primary" />
@@ -1565,7 +1599,7 @@ export default function WhiteLabel() {
       </Card>
 
       {/* Email Signature Body */}
-      <Card>
+      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -1696,7 +1730,7 @@ export default function WhiteLabel() {
       <Separator />
 
       {/* Reset Section */}
-      <Card className="border-destructive/50">
+      <Card className="border-destructive/50 bg-card/95 shadow-lg shadow-destructive/5">
         <CardHeader>
           <CardTitle className="text-destructive">Reset Branding</CardTitle>
           <CardDescription>Reset the current draft back to defaults before deciding whether to save it globally.</CardDescription>
