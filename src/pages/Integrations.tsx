@@ -427,6 +427,91 @@ export default function Integrations() {
     }
   };
 
+  const getIntegrationTone = (integrationId: string) => {
+    const aiTone = {
+      card: 'hover:border-violet-400/30',
+      header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(124,58,237,0.075))]',
+      icon: 'border-violet-400/20 bg-violet-500/10 text-violet-400 group-hover:border-violet-400/35 group-hover:bg-violet-500/15 group-hover:shadow-[0_16px_36px_rgba(124,58,237,0.18)]',
+      field: 'focus-within:border-violet-400/30',
+    };
+
+    const tones: Record<string, typeof aiTone> = {
+      airtable: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      vapi: {
+        card: 'hover:border-teal-400/30',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.075))]',
+        icon: 'border-teal-400/20 bg-teal-500/10 text-teal-400 group-hover:border-teal-400/35 group-hover:bg-teal-500/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
+        field: 'focus-within:border-teal-400/30',
+      },
+      gohighlevel: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      twilio: {
+        card: 'hover:border-teal-400/30',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.07))]',
+        icon: 'border-teal-400/20 bg-teal-500/10 text-teal-400 group-hover:border-teal-400/35 group-hover:bg-teal-500/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
+        field: 'focus-within:border-teal-400/30',
+      },
+      microsoft: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      make: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      cloudflare: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      openai: aiTone,
+      perplexity: aiTone,
+      anthropic: aiTone,
+      gemini: aiTone,
+      openrouter: aiTone,
+    };
+
+    return tones[integrationId] || tones.gohighlevel;
+  };
+
+  const getFieldGridClass = (integration: IntegrationConfig) => {
+    if (integration.id === 'microsoft' || integration.id === 'cloudflare') {
+      return 'grid min-w-0 gap-3 lg:grid-cols-3';
+    }
+
+    if (integration.fields.length > 1) {
+      return 'grid min-w-0 gap-3 sm:grid-cols-2';
+    }
+
+    return 'grid min-w-0 gap-3';
+  };
+
+  const getFieldSpanClass = (integrationId: string, fieldKey: string) => {
+    if (integrationId === 'make' || fieldKey.includes('WEBHOOK_URL')) {
+      return 'sm:col-span-2 lg:col-span-3';
+    }
+
+    if (integrationId === 'microsoft' && fieldKey === 'MICROSOFT_CLIENT_SECRET') {
+      return 'lg:col-span-1';
+    }
+
+    return '';
+  };
+
   const getSupabaseSecretBadge = (integrationId: string) => {
     const secretStatus = supabaseSecrets[integrationId];
 
@@ -492,16 +577,17 @@ export default function Integrations() {
 
   const renderIntegrationCard = (integration: IntegrationConfig) => {
     const status = getIntegrationStatus(integration);
+    const tone = getIntegrationTone(integration.id);
 
     return (
       <Card
         key={integration.id}
-        className="group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/30"
+        className={`group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
       >
-        <CardHeader className="border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.045))] pb-4">
+        <CardHeader className={`border-b border-border/50 pb-4 ${tone.header}`}>
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-[0_12px_30px_hsl(var(--primary)/0.14)] transition-all duration-300 group-hover:border-primary/35 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]">
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_hsl(var(--primary)/0.14)] transition-all duration-300 ${tone.icon}`}>
                 {integration.icon}
               </div>
               <div className="min-w-0 space-y-1">
@@ -520,46 +606,48 @@ export default function Integrations() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-4 sm:p-6">
-          {integration.fields.map(field => {
-            const isSecretField = field.type === 'password';
-            const isRevealed = Boolean(showPasswords[field.key]);
+          <div className={getFieldGridClass(integration)}>
+            {integration.fields.map(field => {
+              const isSecretField = field.type === 'password';
+              const isRevealed = Boolean(showPasswords[field.key]);
 
-            return (
-              <div key={field.key} className="min-w-0 space-y-2 rounded-2xl border border-border/45 bg-background/35 p-3 shadow-inner shadow-sm transition-colors focus-within:border-primary/35 focus-within:bg-background/55 sm:p-3.5">
-                <Label htmlFor={field.key} className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <span className="min-w-0 truncate">{field.label}</span>
-                  {field.required !== false && <span className="text-destructive ml-0.5">*</span>}
-                  {isSecretField && <Shield className="ml-auto h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />}
-                </Label>
-                <div className="relative min-w-0">
-                  <Input
-                    id={field.key}
-                    type={isSecretField && !isRevealed ? 'password' : 'text'}
-                    placeholder={field.placeholder}
-                    value={values[field.key] || ''}
-                    onChange={(e) => handleValueChange(field.key, e.target.value)}
-                    className={`min-w-0 truncate rounded-xl border-border/70 bg-card/80 shadow-inner shadow-sm transition-all placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/35 ${isSecretField ? 'pr-12 font-mono text-sm tracking-[0.08em]' : 'pr-3'}`}
-                  />
-                  {isSecretField && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`${isRevealed ? 'Hide' : 'Show'} ${field.label}`}
-                      className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
-                      onClick={() => togglePasswordVisibility(field.key)}
-                    >
-                      {isRevealed ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
+              return (
+                <div key={field.key} className={`min-w-0 space-y-2 rounded-2xl border border-border/45 bg-background/35 p-3 shadow-inner shadow-sm transition-colors focus-within:bg-background/55 sm:p-3.5 ${tone.field} ${getFieldSpanClass(integration.id, field.key)}`}>
+                  <Label htmlFor={field.key} className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <span className="min-w-0 truncate">{field.label}</span>
+                    {field.required !== false && <span className="text-destructive ml-0.5">*</span>}
+                    {isSecretField && <Shield className="ml-auto h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />}
+                  </Label>
+                  <div className="relative min-w-0">
+                    <Input
+                      id={field.key}
+                      type={isSecretField && !isRevealed ? 'password' : 'text'}
+                      placeholder={field.placeholder}
+                      value={values[field.key] || ''}
+                      onChange={(e) => handleValueChange(field.key, e.target.value)}
+                      className={`min-w-0 truncate rounded-xl border-border/70 bg-card/80 shadow-inner shadow-sm transition-all placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/35 ${isSecretField ? 'pr-12 font-mono text-sm tracking-[0.08em]' : 'pr-3'}`}
+                    />
+                    {isSecretField && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${isRevealed ? 'Hide' : 'Show'} ${field.label}`}
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                        onClick={() => togglePasswordVisibility(field.key)}
+                      >
+                        {isRevealed ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
 
           <div className="flex min-w-0 flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
             {integration.docsUrl && (
