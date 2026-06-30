@@ -31,3 +31,16 @@ Overview, Listings, Commercial / Industrial, Calendar, Sources, Reports, Generat
 - No API, Supabase, cache-table mapping or cache-write logic was changed.
 - No route, authentication or permission logic was changed.
 - No mock imported data, fake upload results or artificial cache records were added.
+
+## Phase 9 final QA regression review
+
+- Confirmed `/data-import` remains routed through `ModuleGuard moduleKey="data_import"`; no route, authentication or permission wiring was changed in this QA pass.
+- Confirmed the Administration sidebar and mobile sidebar still list `Data Import` at `/data-import` with `moduleKey: 'data_import'`; no sidebar grouping or navigation item was changed.
+- Confirmed `TokenBalanceBanner` still renders only when `lowBalance` and `balance` are present, and the `/data-import` branch changes only visual token classes while preserving the `openMissionControl(MISSION_CONTROL_TOPUP_URL)` Top up action.
+- Confirmed the Data Import title, subtitle, Quick Import panel, `Import Australian Suburb Directory` action, external-source helper text, Upload CSV Data form, `Select data type...` placeholder, CSV File input, Upload Data action and CSV Format Requirements panel remain present.
+- Confirmed the existing `DATA_TYPES` labels and state requirements remain unchanged for Suburb Directory, Schools Directory, ABS Census Cache, Crime Statistics Cache, Economic Data (National), Transport Data Cache, Risk Assessment Cache, Climate Data Cache and Median Rent Cache.
+- Confirmed manual upload readiness still depends on the selected data type, required state selection where applicable and CSV file presence; validation toasts for wrong file type, missing data type/file and missing state remain unchanged.
+- Confirmed the external suburb import still calls `invokeSecureFunction('import-suburb-directory')`; schools upload still calls `invokeSecureFunction('import-schools-data')`; other cache uploads still call `invokeSecureFunction('manage-data-import')`.
+- Confirmed no mock data, fake imported rows, fake success results or artificial cache records were introduced.
+- Confirmed visible long text, selected file names, helper text and CSV column strings continue to use containment classes such as `min-w-0`, `break-words`, `truncate`, `overflow-x-auto` and responsive stacking.
+- Confirmed the final QA pass made no code changes to CSV parsing, validation rules, cache mappings, external import logic, upload logic, Supabase/API calls, route logic, authentication logic, permission logic or unrelated pages.
