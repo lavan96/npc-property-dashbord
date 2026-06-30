@@ -695,139 +695,175 @@ export function DepreciationCompsAdmin() {
         
         {/* Add Comp Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Depreciation Comparable</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="max-h-[min(88vh,760px)] w-[calc(100vw-2rem)] max-w-3xl overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950/95 dark:shadow-black/45">
+            <DialogHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.9))] px-5 py-5 dark:border-white/10 sm:px-6">
+              <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight text-foreground">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                  <Plus className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 truncate">Add Depreciation Comparable</span>
+              </DialogTitle>
+              <DialogDescription className="pl-0 text-sm leading-6 text-muted-foreground sm:pl-[3.25rem]">
                 Add a new comparable property to the database
               </DialogDescription>
             </DialogHeader>
             
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase Price</Label>
-                  <Input
-                    type="number"
-                    value={newComp.purchase_price || ''}
-                    onChange={(e) => setNewComp(prev => ({ ...prev, purchase_price: parseFloat(e.target.value) || 0 }))}
-                    placeholder="750000"
-                  />
-                </div>
+            <div className="max-h-[calc(min(88vh,760px)-10.5rem)] overflow-y-auto px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
+              <div className="grid gap-5">
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Property identity</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                      <Label>Purchase Price</Label>
+                      <Input
+                        type="number"
+                        value={newComp.purchase_price || ''}
+                        onChange={(e) => setNewComp(prev => ({ ...prev, purchase_price: parseFloat(e.target.value) || 0 }))}
+                        placeholder="750000"
+                        className="bg-background/80 focus-visible:ring-primary"
+                      />
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label>Build Year</Label>
+                      <Input
+                        type="number"
+                        value={newComp.build_year || ''}
+                        onChange={(e) => setNewComp(prev => ({ ...prev, build_year: parseInt(e.target.value) || 0 }))}
+                        placeholder="2022"
+                        className="bg-background/80 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                </section>
                 
-                <div className="space-y-2">
-                  <Label>Build Year</Label>
-                  <Input
-                    type="number"
-                    value={newComp.build_year || ''}
-                    onChange={(e) => setNewComp(prev => ({ ...prev, build_year: parseInt(e.target.value) || 0 }))}
-                    placeholder="2022"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase Date Category</Label>
-                  <Select 
-                    value={newComp.purchase_date_category} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, purchase_date_category: v as PurchaseDateCategory }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PURCHASE_CATEGORY_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Classification and location</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                      <Label>Purchase Date Category</Label>
+                      <Select 
+                        value={newComp.purchase_date_category} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, purchase_date_category: v as PurchaseDateCategory }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PURCHASE_CATEGORY_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label>Property Type</Label>
+                      <Select 
+                        value={newComp.property_type} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, property_type: v as PropertyType }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  
+                    <div className="min-w-0 space-y-2">
+                      <Label>Finish Standard</Label>
+                      <Select 
+                        value={newComp.finish_standard} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, finish_standard: v as FinishStandard }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(FINISH_STANDARD_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label>Nearest City</Label>
+                      <Select 
+                        value={newComp.nearest_city} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, nearest_city: v as NearestCity }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CITY_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </section>
                 
-                <div className="space-y-2">
-                  <Label>Property Type</Label>
-                  <Select 
-                    value={newComp.property_type} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, property_type: v as PropertyType }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Finish Standard</Label>
-                  <Select 
-                    value={newComp.finish_standard} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, finish_standard: v as FinishStandard }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(FINISH_STANDARD_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Separator />
                 
-                <div className="space-y-2">
-                  <Label>Nearest City</Label>
-                  <Select 
-                    value={newComp.nearest_city} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, nearest_city: v as NearestCity }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(CITY_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <Label>Bulk Year Values (paste from spreadsheet)</Label>
-                <Textarea
-                  value={bulkYearsInput}
-                  onChange={(e) => setBulkYearsInput(e.target.value)}
-                  placeholder="Paste 20 values: DV Year 1-10, then PC Year 1-10 (tab, comma, or newline separated)"
-                  rows={4}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Format: DV1, DV2, DV3... DV10, PC1, PC2, PC3... PC10
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Notes (optional)</Label>
-                <Input
-                  value={newComp.notes || ''}
-                  onChange={(e) => setNewComp(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Source or additional info"
-                />
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Depreciation values</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bulk Year Values (paste from spreadsheet)</Label>
+                    <Textarea
+                      value={bulkYearsInput}
+                      onChange={(e) => setBulkYearsInput(e.target.value)}
+                      placeholder="Paste 20 values: DV Year 1-10, then PC Year 1-10 (tab, comma, or newline separated)"
+                      rows={4}
+                      className="min-h-28 bg-background/80 focus-visible:ring-primary"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Format: DV1, DV2, DV3... DV10, PC1, PC2, PC3... PC10
+                    </p>
+                  </div>
+                </section>
+                
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Metadata</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes (optional)</Label>
+                    <Input
+                      value={newComp.notes || ''}
+                      onChange={(e) => setNewComp(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Source or additional info"
+                      className="bg-background/80 focus-visible:ring-primary"
+                    />
+                  </div>
+                </section>
               </div>
             </div>
             
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddModal(false)}>
+            <DialogFooter className="border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-slate-950/75 sm:px-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddModal(false)}
+                className="border-primary/20 bg-background/80 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAddComp}>
+              <Button
+                onClick={handleAddComp}
+                className="bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.24)] hover:bg-primary/90 focus-visible:ring-primary"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Comparable
               </Button>
