@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import {
   Loader2, RefreshCw, Trash2, Shield, Globe, Activity,
-  BarChart3, Zap, FileCode, AlertTriangle, CheckCircle2,
+  BarChart3, Zap, FileCode, AlertTriangle, CheckCircle2, Cloud,
   Eye, TrendingUp, HardDrive, ShieldAlert, Plus
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -590,13 +590,18 @@ export default function CloudflareManagement() {
   const zoneData = zone.data?.result;
 
   return (
-    <DashboardThemeFrame variant="page" className="min-h-[calc(100dvh-5rem)] space-y-4 px-1 pb-6 sm:space-y-6 sm:px-0">
-      <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--background)/0.86)_52%,hsl(var(--primary)/0.10))] p-5 shadow-[0_22px_70px_rgba(15,23,42,0.12)] dark:shadow-black/35 sm:flex-row sm:items-start sm:justify-between sm:p-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Cloudflare</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage CDN, analytics, Workers, and firewall rules
-          </p>
+    <DashboardThemeFrame variant="page" className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-7 sm:px-0">
+      <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_52%,hsl(var(--primary)/0.10))] p-5 shadow-[0_24px_80px_rgba(15,23,42,0.14)] ring-1 ring-white/35 dark:ring-white/10 dark:shadow-black/40 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner dark:bg-primary/15 sm:h-14 sm:w-14">
+            <Cloud className="h-6 w-6 sm:h-7 sm:w-7" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Cloudflare</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+              Manage CDN, analytics, Workers, and firewall rules.
+            </p>
+          </div>
         </div>
         {zoneData && (
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -612,22 +617,21 @@ export default function CloudflareManagement() {
       </DashboardThemeFrame>
 
       <Tabs defaultValue="analytics" className="min-w-0 w-full">
-        <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto p-1.5 scrollbar-hide">
-          <TabsList className="inline-flex h-auto w-auto min-w-max bg-muted/50 p-1">
-            <TabsTrigger value="analytics" className="text-xs sm:text-sm gap-1.5">
+        <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] scrollbar-hide dark:bg-slate-950/45 dark:shadow-black/25">
+          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+            <TabsTrigger value="analytics" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <BarChart3 className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline sm:inline">Analytics</span>
-              <span className="xs:hidden sm:hidden">Stats</span>
+              <span>Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="cdn" className="text-xs sm:text-sm gap-1.5">
+            <TabsTrigger value="cdn" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <HardDrive className="h-3.5 w-3.5" />
               CDN
             </TabsTrigger>
-            <TabsTrigger value="workers" className="text-xs sm:text-sm gap-1.5">
+            <TabsTrigger value="workers" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <Zap className="h-3.5 w-3.5" />
               Workers
             </TabsTrigger>
-            <TabsTrigger value="firewall" className="text-xs sm:text-sm gap-1.5">
+            <TabsTrigger value="firewall" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <Shield className="h-3.5 w-3.5" />
               Firewall
             </TabsTrigger>
