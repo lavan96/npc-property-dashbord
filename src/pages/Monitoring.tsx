@@ -214,63 +214,74 @@ export default function Monitoring() {
       </div>
 
       {/* API Health Status */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-card/80">
-        <CardHeader className="border-b border-border/60 bg-muted/20">
-          <CardTitle className="flex min-w-0 items-center gap-2">
-            <Activity className="h-5 w-5" />
-            API Health Status
-          </CardTitle>
-          <CardDescription>
-            Service-level performance metrics from the last 7 days
-          </CardDescription>
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+        <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.30),hsl(var(--card)/0))] px-5 py-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
+              <Activity className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="min-w-0 break-words text-lg font-semibold tracking-tight">
+                API Health Status
+              </CardTitle>
+              <CardDescription className="max-w-3xl text-sm leading-6">
+                Service-level performance metrics from the last 7 days
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex min-h-40 items-center justify-center rounded-2xl border border-border/60 bg-muted/20 py-8">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : apiStats.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No API calls recorded in the last 7 days</p>
-              <p className="text-sm mt-2">Stats will appear once services are used</p>
+            <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-muted-foreground">
+              <span className="mb-4 rounded-full border border-border/70 bg-background/70 p-3 text-muted-foreground shadow-sm">
+                <Activity className="h-6 w-6" />
+              </span>
+              <p className="font-medium text-foreground">No API calls recorded in the last 7 days</p>
+              <p className="mt-2 max-w-md text-sm leading-6">Stats will appear once services are used</p>
             </div>
           ) : (
             <div className="space-y-4">
               {apiStats.map((stat) => (
-                <div key={stat.service_name} className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 dark:border-white/10 dark:bg-background/25">
+                <div key={stat.service_name} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-background/70 dark:border-white/10 dark:bg-background/25">
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {getServiceIcon(stat.service_name)}
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="shrink-0 rounded-xl border border-border/70 bg-card/80 p-2 text-muted-foreground">
+                        {getServiceIcon(stat.service_name)}
+                      </span>
                       <span className="min-w-0 break-words font-medium">{formatServiceName(stat.service_name)}</span>
                     </div>
-                    <Badge variant={getStatusColor(stat.success_rate)}>
+                    <Badge variant={getStatusColor(stat.success_rate)} className="w-fit shrink-0 whitespace-nowrap">
                       {stat.success_rate}% Success
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Total Calls</p>
-                      <p className="font-semibold">{stat.total_calls.toLocaleString()}</p>
+                  <div className="grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="min-w-0 rounded-xl border border-border/60 bg-card/55 p-3">
+                      <p className="truncate text-muted-foreground">Total Calls</p>
+                      <p className="break-words font-semibold tabular-nums">{stat.total_calls.toLocaleString()}</p>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Avg Response</p>
-                      <p className="font-semibold">{stat.avg_response_time}ms</p>
+                    <div className="min-w-0 rounded-xl border border-border/60 bg-card/55 p-3">
+                      <p className="truncate text-muted-foreground">Avg Response</p>
+                      <p className="break-words font-semibold tabular-nums">{stat.avg_response_time}ms</p>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Live Data</p>
-                      <p className="font-semibold">{stat.live_data_count}</p>
+                    <div className="min-w-0 rounded-xl border border-border/60 bg-card/55 p-3">
+                      <p className="truncate text-muted-foreground">Live Data</p>
+                      <p className="break-words font-semibold tabular-nums">{stat.live_data_count}</p>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Quality Score</p>
-                      <p className="font-semibold">{stat.data_quality_score}%</p>
+                    <div className="min-w-0 rounded-xl border border-border/60 bg-card/55 p-3">
+                      <p className="truncate text-muted-foreground">Quality Score</p>
+                      <p className="break-words font-semibold tabular-nums">{stat.data_quality_score}%</p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Success Rate</span>
-                      <span>{stat.success_rate}%</span>
+                    <div className="flex min-w-0 justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">Success Rate</span>
+                      <span className="shrink-0 tabular-nums">{stat.success_rate}%</span>
                     </div>
                     <Progress value={stat.success_rate} className="h-2" />
                   </div>
