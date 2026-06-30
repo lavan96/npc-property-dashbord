@@ -252,6 +252,8 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 const PRESETS_KEY = 'activityLogs.presets.v1';
 const DENSITY_KEY = 'activityLogs.density.v1';
 const TOOLBAR_BUTTON_CLASS = 'min-h-[44px] rounded-xl border-border/70 bg-card/70 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary/35 sm:min-h-0';
+const FILTER_CONTROL_CLASS = 'dashboard-input-control h-11 rounded-xl border-border/70 bg-card/70 text-sm shadow-sm transition-all placeholder:text-muted-foreground/70 hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25';
+const MENU_SURFACE_CLASS = 'rounded-2xl border-border/70 bg-popover/95 p-2 shadow-[0_22px_60px_hsl(var(--foreground)/0.16)] backdrop-blur-xl dark:border-white/10';
 
 // Developer note (Phase 1 scope lock): Activity Logs UI polish only.
 // Files touched: src/pages/ActivityLogs.tsx and activity-log-only TokenBalanceBanner styling.
@@ -552,15 +554,15 @@ export default function ActivityLogs() {
                 <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>Saved filter presets</DropdownMenuLabel>
+            <DropdownMenuContent align="end" sideOffset={8} collisionPadding={16} className={cn(MENU_SURFACE_CLASS, "w-[min(20rem,calc(100vw-2rem))]")}>
+              <DropdownMenuLabel className="px-2.5 py-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">Saved filter presets</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {presets.length === 0 ? (
                 <div className="px-2 py-3 text-xs text-muted-foreground">No saved presets yet.</div>
               ) : (
                 presets.map(p => (
-                  <div key={p.id} className="group flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm">
-                    <button onClick={() => applyPreset(p)} className="flex-1 text-left text-sm truncate">
+                  <div key={p.id} className="group flex items-center justify-between rounded-xl px-2.5 py-2 transition-colors hover:bg-primary/10">
+                    <button onClick={() => applyPreset(p)} className="flex-1 text-left text-sm font-medium truncate">
                       {p.name}
                       <div className="text-[10px] text-muted-foreground">
                         {p.actions.length + p.entities.length + p.users.length} filters · {p.dateRange}
@@ -576,8 +578,8 @@ export default function ActivityLogs() {
                   </div>
                 ))
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              <DropdownMenuSeparator className="my-2" />
+              <DropdownMenuItem className="rounded-xl focus:bg-primary/10"
                 onSelect={(e) => { e.preventDefault(); setPresetDialogOpen(true); }}
                 disabled={!hasActiveFilters}
               >
@@ -611,9 +613,9 @@ export default function ActivityLogs() {
                 <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={exportCSV}>Export as CSV</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportJSON}>Export as JSON (with metadata)</DropdownMenuItem>
+            <DropdownMenuContent align="end" sideOffset={8} collisionPadding={16} className={cn(MENU_SURFACE_CLASS, "w-[min(18rem,calc(100vw-2rem))]")}>
+              <DropdownMenuItem className="rounded-xl focus:bg-primary/10" onClick={exportCSV}>Export as CSV</DropdownMenuItem>
+              <DropdownMenuItem className="rounded-xl focus:bg-primary/10" onClick={exportJSON}>Export as JSON (with metadata)</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -624,7 +626,7 @@ export default function ActivityLogs() {
                 <Info className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 p-3">
+            <PopoverContent align="end" sideOffset={8} collisionPadding={16} className={cn(MENU_SURFACE_CLASS, "w-[min(18rem,calc(100vw-2rem))] p-3")}>
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 Severity legend
               </div>
@@ -648,7 +650,7 @@ export default function ActivityLogs() {
               <Button
                 variant={liveTail ? 'default' : 'outline'} size="sm"
                 onClick={() => { setLiveTail(v => !v); setNewSinceMount(0); }}
-                className={cn(TOOLBAR_BUTTON_CLASS, 'relative', liveTail && 'border-primary/50 bg-primary text-primary-foreground shadow-[0_16px_36px_hsl(var(--primary)/0.24)] hover:bg-primary-hover hover:text-primary-foreground')}
+                className={cn(TOOLBAR_BUTTON_CLASS, 'relative', liveTail && 'border-success/45 bg-primary text-primary-foreground ring-2 ring-success/20 shadow-[0_16px_36px_hsl(var(--success)/0.18)] hover:bg-primary-hover hover:text-primary-foreground')}
                 aria-pressed={liveTail}
               >
                 <Radio className={cn('h-4 w-4 mr-2', liveTail && 'animate-pulse text-success')} />
@@ -706,28 +708,30 @@ export default function ActivityLogs() {
       </div>
 
       {/* Filters */}
-      <Card className="dashboard-panel overflow-visible">
+      <Card className="dashboard-panel overflow-visible border-primary/10 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--dashboard-surface-elevated)/0.88))]">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+              <Filter className="h-4 w-4" />
+            </span>
             Filters
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
             <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search this page..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="dashboard-input-control pl-10"
+                className={cn(FILTER_CONTROL_CLASS, "pl-10")}
               />
             </div>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeKey)}>
-              <SelectTrigger className="dashboard-input-control"><SelectValue placeholder="Date range" /></SelectTrigger>
-              <SelectContent>
+              <SelectTrigger className={FILTER_CONTROL_CLASS}><SelectValue placeholder="Date range" /></SelectTrigger>
+              <SelectContent collisionPadding={16} className={MENU_SURFACE_CLASS}>
                 <SelectItem value="24h">Last 24 hours</SelectItem>
                 <SelectItem value="7d">Last 7 days</SelectItem>
                 <SelectItem value="30d">Last 30 days</SelectItem>
@@ -744,7 +748,8 @@ export default function ActivityLogs() {
               selected={actionFilter}
               onChange={setActionFilter}
               icon={<Zap className="h-4 w-4 text-muted-foreground" />}
-              width="w-[300px]"
+              className={FILTER_CONTROL_CLASS}
+              width="w-[min(300px,calc(100vw-2rem))]"
             />
 
             <SearchableMultiSelect
@@ -754,6 +759,8 @@ export default function ActivityLogs() {
               selected={entityFilter}
               onChange={setEntityFilter}
               icon={<DatabaseIcon className="h-4 w-4 text-muted-foreground" />}
+              className={FILTER_CONTROL_CLASS}
+              width="w-[min(280px,calc(100vw-2rem))]"
             />
 
             <SearchableMultiSelect
@@ -763,6 +770,8 @@ export default function ActivityLogs() {
               selected={userFilter}
               onChange={setUserFilter}
               icon={<User className="h-4 w-4 text-muted-foreground" />}
+              className={FILTER_CONTROL_CLASS}
+              width="w-[min(280px,calc(100vw-2rem))]"
             />
           </div>
 
@@ -770,12 +779,12 @@ export default function ActivityLogs() {
             <div className="flex flex-wrap items-center gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="justify-start">
+                  <Button variant="outline" size="sm" className={cn(FILTER_CONTROL_CLASS, "justify-start")}>
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     {customStart ? format(customStart, 'PP') : 'Start date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className={cn(MENU_SURFACE_CLASS, "w-auto p-0")} align="start" sideOffset={8} collisionPadding={16}>
                   <Calendar mode="single" selected={customStart} onSelect={setCustomStart}
                     initialFocus className={cn('p-3 pointer-events-auto')} />
                 </PopoverContent>
@@ -783,12 +792,12 @@ export default function ActivityLogs() {
               <span className="text-muted-foreground text-sm">to</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="justify-start">
+                  <Button variant="outline" size="sm" className={cn(FILTER_CONTROL_CLASS, "justify-start")}>
                     <CalendarIcon className="h-4 w-4 mr-2" />
                     {customEnd ? format(customEnd, 'PP') : 'End date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className={cn(MENU_SURFACE_CLASS, "w-auto p-0")} align="start" sideOffset={8} collisionPadding={16}>
                   <Calendar mode="single" selected={customEnd} onSelect={setCustomEnd}
                     initialFocus className={cn('p-3 pointer-events-auto')} />
                 </PopoverContent>
@@ -797,11 +806,11 @@ export default function ActivityLogs() {
           )}
 
           {hasActiveFilters && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/15 bg-primary/5 px-3 py-2">
               <span className="text-sm text-muted-foreground">
                 Showing {filteredLogs.length} of {total} matching events
               </span>
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-xl hover:bg-primary/10">
                 <X className="h-4 w-4 mr-1" />
                 Clear filters
               </Button>
