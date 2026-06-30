@@ -27,6 +27,7 @@ export function TokenBalanceBanner() {
   const isChecklistsPage = pathname === "/checklists";
   const isRemindersPage = pathname === "/reminders";
   const isAgreementsPage = pathname === "/agreements";
+  const isMonitoringPage = pathname === "/monitoring";
 
   if (!lowBalance || !balance) return null;
 
@@ -34,6 +35,31 @@ export function TokenBalanceBanner() {
     ? Math.round((balance.available / balance.allowance) * 100)
     : 0;
 
+
+  if (isMonitoringPage) {
+    return (
+      <Alert className="relative mx-auto w-full max-w-[1600px] overflow-hidden rounded-[1.5rem] border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.42),hsl(var(--card)/0.96)_42%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.24),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.82))] sm:px-5">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-warning/70 to-transparent" />
+        <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-warning/15 blur-3xl" />
+        <Sparkles className="h-4 w-4 text-warning" />
+        <AlertTitle className="text-sm font-semibold tracking-tight text-warning">Token balance low</AlertTitle>
+        <AlertDescription className="flex min-w-0 flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="min-w-0 max-w-3xl break-words leading-6 text-foreground/78 dark:text-foreground/82">
+            <span className="font-semibold tabular-nums text-foreground">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-primary/35 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary-hover hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.30)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (isAgreementsPage) {
     return (
