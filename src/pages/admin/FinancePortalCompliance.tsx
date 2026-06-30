@@ -177,7 +177,7 @@ export default function FinancePortalCompliance() {
           <CardDescription>Filter by partner and time window. CSV and printable PDF available after running.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Partner</label>
               <Select value={partnerId} onValueChange={setPartnerId}>

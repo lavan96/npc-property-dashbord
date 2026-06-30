@@ -210,7 +210,7 @@ export default function FinancePortalDashboard() {
         <EngagementHeader />
 
         {/* Today triage + document expiry + goals */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2"><TodayPanel /></div>
           <div className="space-y-4">
             <GoalsProgressCard />
@@ -354,7 +354,7 @@ export default function FinancePortalDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {[
                   { label: 'Next 7 days', list: settlements.d7, tone: 'danger' as const },
                   { label: '8–14 days', list: settlements.d14, tone: 'warning' as const },

@@ -164,7 +164,7 @@ export function BankRateComparisonModal({
   const modalContent = (
     <>
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 border-b">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 py-4 border-b">
           <div className="space-y-1">
             <Label className="text-xs">Loan Purpose</Label>
             <Select value={loanPurpose} onValueChange={(v: any) => setLoanPurpose(v)}>

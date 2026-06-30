@@ -1264,7 +1264,7 @@ function StaticPlanTab() {
           </div>
         </div>
         {lookup?.report && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-2">
             <div className="border rounded p-2 bg-muted/20">
               <div className="text-[10px] uppercase text-muted-foreground">Summary</div>
               <div className="text-xs font-medium">{lookup.report.property_address || '—'}</div>

@@ -49,7 +49,7 @@ export function SolutionOptionCards({ context, onApply, formatCurrency }: Soluti
             — one-click strategies ranked by projected uplift
           </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {recommendations.map(rec => (
             <button
               key={rec.id}

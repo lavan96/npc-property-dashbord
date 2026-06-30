@@ -167,7 +167,7 @@ export function CoverPageEditor({ overlay, onSave, onCancel, isSaving }: CoverPa
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {/* Left: Canvas Preview */}
       <div className="lg:col-span-2 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
