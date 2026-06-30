@@ -22,6 +22,7 @@ import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsD
 interface UsageRow {
   id: string;
   created_at: string;
+  updated_at?: string | null;
   user_id: string | null;
   function_name: string;
   kind: string;
@@ -33,6 +34,7 @@ interface UsageRow {
   status: string;
   error_message?: string | null;
   job_id?: string | null;
+  agency_id?: string | null;
 }
 
 const FN_LABEL: Record<string, string> = {
@@ -46,12 +48,12 @@ const FN_LABEL: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   const normalized = status.toLowerCase();
-  const className = normalized === "success" || normalized === "committed" || normalized === "completed"
+  const className = normalized === "success" || normalized === "committed" || normalized === "completed" || normalized.includes("commit")
     ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
     : normalized.includes("fail") || normalized.includes("cancel") || normalized === "insufficient_funds" || normalized.includes("error")
       ? "border-destructive/25 bg-destructive/10 text-destructive"
       : normalized.includes("reserve") || normalized.includes("pending") || normalized.includes("progress")
-        ? "border-primary/25 bg-primary/10 text-primary"
+        ? "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300"
         : "border-border/70 bg-muted/60 text-muted-foreground";
   return (
     <Badge variant="outline" className={cn("max-w-full whitespace-nowrap rounded-full px-2.5 py-0.5 capitalize", className)} title={status}>
@@ -286,48 +288,86 @@ export default function TokenUsageHistory() {
                 <>
                   <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background/45">
                     <div className="overflow-x-auto">
-                      <Table className="min-w-[980px] table-fixed">
+                      <Table className="min-w-[1180px] table-fixed">
                         <TableHeader>
                           <TableRow className="bg-muted/35 hover:bg-muted/35">
-                            <TableHead className="w-[120px]">When</TableHead>
-                            <TableHead className="w-[190px]">Report</TableHead>
+                            <TableHead className="w-[150px]">When</TableHead>
+                            <TableHead className="w-[210px]">Report</TableHead>
                             <TableHead className="w-[128px]">Kind</TableHead>
-                            <TableHead className="w-[220px]">Idempotency key</TableHead>
-                            <TableHead className="w-[110px] text-right">Estimated</TableHead>
-                            <TableHead className="w-[110px] text-right">Reserved</TableHead>
-                            <TableHead className="w-[110px] text-right">Used</TableHead>
-                            <TableHead className="w-[95px] text-right">Duration</TableHead>
-                            <TableHead className="w-[130px]">Status</TableHead>
+                            <TableHead className="w-[240px]">Idempotency key</TableHead>
+                            <TableHead className="w-[112px] text-right">Estimated</TableHead>
+                            <TableHead className="w-[112px] text-right">Reserved</TableHead>
+                            <TableHead className="w-[112px] text-right">Used</TableHead>
+                            <TableHead className="w-[100px] text-right">Duration</TableHead>
+                            <TableHead className="w-[135px]">Status</TableHead>
+                            <TableHead className="w-[170px]">Metadata</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {pageRows.map((r) => (
-                            <TableRow key={r.id} className="cursor-pointer transition-colors hover:bg-primary/5" onClick={() => setActiveKey(r.idempotency_key)}>
-                              <TableCell className="whitespace-nowrap text-xs text-muted-foreground" title={r.created_at}>
-                                {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
-                              </TableCell>
-                              <TableCell className="min-w-0 font-medium">
-                                <span className="block truncate" title={r.function_name}>{FN_LABEL[r.function_name] ?? r.function_name}</span>
-                                <span className="block truncate text-xs font-normal text-muted-foreground" title={r.function_name}>{r.function_name}</span>
-                              </TableCell>
-                              <TableCell className="min-w-0"><KindBadge kind={r.kind} /></TableCell>
-                              <TableCell className="min-w-0">
-                                <button
-                                  type="button"
-                                  className="block max-w-full truncate rounded-lg border border-primary/15 bg-primary/5 px-2 py-1 text-left font-mono text-xs text-primary underline-offset-4 hover:bg-primary/10 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
-                                  title={r.idempotency_key}
-                                  onClick={(e) => { e.stopPropagation(); setActiveKey(r.idempotency_key); }}
-                                >
-                                  {r.idempotency_key}
-                                </button>
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">{r.estimated_tokens.toLocaleString()}</TableCell>
-                              <TableCell className="text-right tabular-nums">{r.reserved_tokens.toLocaleString()}</TableCell>
-                              <TableCell className="text-right font-semibold tabular-nums text-primary">{r.actual_tokens.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs tabular-nums text-muted-foreground">{fmtMs(r.duration_ms)}</TableCell>
-                              <TableCell className="min-w-0"><StatusBadge status={r.status} /></TableCell>
-                            </TableRow>
-                          ))}
+                          {pageRows.map((r) => {
+                            const isOpen = activeKey === r.idempotency_key;
+                            return (
+                              <TableRow
+                                key={r.id}
+                                className={cn(
+                                  "group cursor-pointer border-l-2 border-l-transparent transition-all hover:border-l-primary/50 hover:bg-primary/5 focus-within:bg-primary/5",
+                                  isOpen && "border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.16)]",
+                                )}
+                                onClick={() => setActiveKey(r.idempotency_key)}
+                              >
+                                <TableCell className="align-top text-xs text-muted-foreground">
+                                  <div className="space-y-1">
+                                    <span className="block whitespace-nowrap font-medium text-foreground" title={r.created_at}>
+                                      {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
+                                    </span>
+                                    <span className="block truncate" title={r.created_at}>Created {new Date(r.created_at).toLocaleString()}</span>
+                                    {r.updated_at && (
+                                      <span className="block truncate" title={r.updated_at}>Updated {new Date(r.updated_at).toLocaleString()}</span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="min-w-0 align-top font-medium">
+                                  <span className="block truncate text-sm" title={r.function_name}>{FN_LABEL[r.function_name] ?? r.function_name}</span>
+                                  <span className="block truncate pt-1 text-xs font-normal text-muted-foreground" title={r.function_name}>{r.function_name}</span>
+                                </TableCell>
+                                <TableCell className="min-w-0 align-top"><KindBadge kind={r.kind} /></TableCell>
+                                <TableCell className="min-w-0 align-top">
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      "flex max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+                                      isOpen && "border-primary/45 bg-primary/15",
+                                    )}
+                                    title={r.idempotency_key}
+                                    aria-label={`Open token audit trail for ${r.idempotency_key}`}
+                                    onClick={(e) => { e.stopPropagation(); setActiveKey(r.idempotency_key); }}
+                                  >
+                                    <span className="min-w-0 truncate">{r.idempotency_key}</span>
+                                  </button>
+                                </TableCell>
+                                <TableCell className="align-top text-right tabular-nums">
+                                  <span className="font-medium text-muted-foreground">{r.estimated_tokens.toLocaleString()}</span>
+                                </TableCell>
+                                <TableCell className="align-top text-right tabular-nums">
+                                  <span className="font-semibold text-amber-700 dark:text-amber-300">{r.reserved_tokens.toLocaleString()}</span>
+                                </TableCell>
+                                <TableCell className="align-top text-right font-semibold tabular-nums">
+                                  <span className="text-emerald-700 dark:text-emerald-300">{r.actual_tokens.toLocaleString()}</span>
+                                </TableCell>
+                                <TableCell className="align-top text-right text-xs tabular-nums text-muted-foreground">
+                                  <span className="inline-flex rounded-full border border-border/60 bg-muted/45 px-2 py-1 font-medium">{fmtMs(r.duration_ms)}</span>
+                                </TableCell>
+                                <TableCell className="min-w-0 align-top"><StatusBadge status={r.status} /></TableCell>
+                                <TableCell className="min-w-0 align-top text-xs text-muted-foreground">
+                                  <div className="space-y-1">
+                                    {r.user_id && <p className="truncate" title={r.user_id}>User: {r.user_id}</p>}
+                                    {r.agency_id && <p className="truncate" title={r.agency_id}>Agency: {r.agency_id}</p>}
+                                    {r.job_id && <p className="truncate font-mono" title={r.job_id}>job: {r.job_id}</p>}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
