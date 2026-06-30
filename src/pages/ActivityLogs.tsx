@@ -254,6 +254,8 @@ const DENSITY_KEY = 'activityLogs.density.v1';
 const TOOLBAR_BUTTON_CLASS = 'min-h-[44px] rounded-xl border-border/70 bg-card/70 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary/35 sm:min-h-0';
 const FILTER_CONTROL_CLASS = 'dashboard-input-control h-11 rounded-xl border-border/70 bg-card/70 text-sm shadow-sm transition-all placeholder:text-muted-foreground/70 hover:border-primary/35 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/25';
 const MENU_SURFACE_CLASS = 'rounded-2xl border-border/70 bg-popover/95 p-2 shadow-[0_22px_60px_hsl(var(--foreground)/0.16)] backdrop-blur-xl dark:border-white/10';
+const PAGINATION_BUTTON_CLASS = 'h-9 rounded-xl border-border/70 bg-card/70 px-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 disabled:hover:translate-y-0';
+const LEDGER_GRID_CLASS = 'grid-cols-[180px_minmax(120px,150px)_minmax(150px,190px)_minmax(0,1fr)_minmax(110px,140px)]';
 
 // Developer note (Phase 1 scope lock): Activity Logs UI polish only.
 // Files touched: src/pages/ActivityLogs.tsx and activity-log-only TokenBalanceBanner styling.
@@ -820,18 +822,27 @@ export default function ActivityLogs() {
       </Card>
 
       {/* Activity */}
-      <Card className="dashboard-panel overflow-hidden">
-        <CardHeader className="border-b border-border/50 bg-muted/10">
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>
-            {loading
-              ? 'Loading...'
-              : total === 0
-                ? 'No activities'
-                : `Showing ${rangeStart}–${rangeEnd} of ${total}`}
-          </CardDescription>
+      <Card className="dashboard-panel overflow-hidden border-primary/10">
+        <CardHeader className="border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.20))]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>
+                {loading
+                  ? 'Loading...'
+                  : total === 0
+                    ? 'No activities'
+                    : `Showing ${rangeStart}–${rangeEnd} of ${total}`}
+              </CardDescription>
+            </div>
+            {!loading && total > 0 && (
+              <span className="w-fit rounded-full border border-border/70 bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+                {rangeStart}–{rangeEnd} / {total}
+              </span>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-4">
           {loading ? (
             <div className="space-y-3 p-2 h-[640px]">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -872,7 +883,7 @@ export default function ActivityLogs() {
               {/* Desktop — virtualized */}
               <div className="hidden sm:block">
                 {/* Sticky column header */}
-                <div className="sticky top-0 z-10 bg-card/95 backdrop-blur border border-border/70 rounded-t-xl grid grid-cols-[180px_140px_180px_1fr_130px] gap-3 px-4 h-12 items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider shadow-sm">
+                <div className={cn("sticky top-0 z-10 grid gap-3 rounded-t-2xl border border-border/70 bg-card/95 px-4 h-12 items-center text-xs font-semibold text-muted-foreground uppercase tracking-[0.14em] shadow-sm backdrop-blur", LEDGER_GRID_CLASS)}>
                   <div>Timestamp</div>
                   <div>User</div>
                   <div>Action</div>
@@ -894,30 +905,30 @@ export default function ActivityLogs() {
 
           {/* Pagination */}
           {!loading && total > 0 && (
-            <div className="mt-4 flex flex-col-reverse sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Rows per page</span>
                 <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                  <SelectTrigger className="dashboard-input-control h-8 w-[80px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectTrigger className={cn(FILTER_CONTROL_CLASS, "h-9 w-[84px]")}><SelectValue /></SelectTrigger>
+                  <SelectContent collisionPadding={16} className={MENU_SURFACE_CLASS}>
                     {PAGE_SIZE_OPTIONS.map(n => (
                       <SelectItem key={n} value={String(n)}>{n}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground mr-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="mr-1 text-xs font-medium text-muted-foreground">
                   Page {page} of {totalPages}
                 </span>
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>First</Button>
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                <Button variant="outline" size="sm" className={PAGINATION_BUTTON_CLASS} disabled={page <= 1} onClick={() => setPage(1)}>First</Button>
+                <Button variant="outline" size="sm" className={cn(PAGINATION_BUTTON_CLASS, "w-9 px-0")} disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+                <Button variant="outline" size="sm" className={cn(PAGINATION_BUTTON_CLASS, "w-9 px-0")} disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>Last</Button>
+                <Button variant="outline" size="sm" className={PAGINATION_BUTTON_CLASS} disabled={page >= totalPages} onClick={() => setPage(totalPages)}>Last</Button>
               </div>
             </div>
           )}
@@ -1180,9 +1191,9 @@ function VirtualLogList({
   const estimate = (idx: number) => {
     const it = items[idx];
     if (!it) return 56;
-    if (it.kind === 'header') return 34;
+    if (it.kind === 'header') return 40;
     if (variant === 'mobile') return compact ? 64 : 76;
-    return compact ? 48 : 68;
+    return compact ? 52 : 72;
   };
 
   const virtualizer = useVirtualizer({
@@ -1197,10 +1208,10 @@ function VirtualLogList({
     <div
       ref={parentRef}
       className={cn(
-        'overflow-auto contain-strict',
+        'overflow-auto contain-strict [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]',
         variant === 'desktop'
-          ? 'h-[640px] border border-t-0 border-border/70 rounded-b-xl bg-card/35 scrollbar-thin'
-          : 'h-[640px]'
+          ? 'h-[640px] rounded-b-2xl border border-t-0 border-border/70 bg-card/35'
+          : 'h-[640px] rounded-2xl border border-border/60 bg-card/35'
       )}
     >
       <div
@@ -1221,7 +1232,7 @@ function VirtualLogList({
             >
               {item.kind === 'header' ? (
                 <div className={cn(
-                  'px-4 py-2 bg-muted/35 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50',
+                  'flex items-center border-b border-border/50 bg-muted/35 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground',
                   variant === 'mobile' && 'sticky-ish'
                 )}>
                   {item.label}
@@ -1267,19 +1278,24 @@ function DesktopRow({
   onClick: () => void;
 }) {
   const href = entityHref(log.entity_type, log.entity_id);
+  const userLabel = log.username || 'Unknown';
+  const entityLabel = log.entity_name || log.entity_type.replace(/_/g, ' ');
+  const timestampTitle = format(new Date(log.created_at), 'PPpp');
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left grid grid-cols-[180px_140px_180px_1fr_130px] gap-3 px-4 items-center',
-        'border-b border-border/40 hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors relative',
+        'w-full text-left grid gap-3 px-4 items-center',
+        LEDGER_GRID_CLASS,
+        'border-b border-border/40 bg-card/20 hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors relative',
         compact ? 'py-2' : 'py-3'
       )}
     >
       <span className={cn('absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r', SEVERITY_BAR[cfg.tone])} />
-      <div className="pl-2 font-mono text-xs min-w-0">
-        <div>{format(new Date(log.created_at), 'HH:mm:ss')}</div>
+      <div className="pl-2 font-mono text-xs min-w-0" title={timestampTitle}>
+        <div className="font-semibold text-foreground">{format(new Date(log.created_at), 'HH:mm:ss')}</div>
         {!compact && (
           <div className="text-muted-foreground truncate">
             {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
@@ -1288,24 +1304,24 @@ function DesktopRow({
       </div>
       <div className="flex items-center gap-2 min-w-0">
         <User className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span className="font-medium text-sm truncate">{log.username || 'Unknown'}</span>
+        <span className="font-medium text-sm truncate" title={userLabel}>{userLabel}</span>
       </div>
-      <div>{badge}</div>
+      <div className="min-w-0">{badge}</div>
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-muted-foreground shrink-0">{entityIcon}</span>
         <div className="min-w-0">
-          <div className="text-sm font-medium truncate flex items-center gap-1.5">
-            {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+          <div className="text-sm font-medium truncate flex items-center gap-1.5" title={entityLabel}>
+            {entityLabel}
             {href && <ExternalLink className="h-3 w-3 text-muted-foreground/70 shrink-0" />}
           </div>
           {!compact && log.entity_id && (
-            <div className="text-xs text-muted-foreground font-mono truncate">
+            <div className="text-xs text-muted-foreground font-mono truncate" title={log.entity_id}>
               {log.entity_id.slice(0, 8)}…
             </div>
           )}
         </div>
       </div>
-      <div className="text-xs font-mono text-muted-foreground truncate">
+      <div className="text-xs font-mono text-muted-foreground truncate" title={log.ip_address || undefined}>
         {log.ip_address || '-'}
       </div>
     </button>
@@ -1322,12 +1338,15 @@ function MobileRow({
   entityIcon: React.ReactNode;
   onClick: () => void;
 }) {
+  const userLabel = log.username || 'Unknown';
+  const entityLabel = log.entity_name || log.entity_type.replace(/_/g, ' ');
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left flex gap-3 items-start hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors px-3 border-b border-border/40',
+        'w-full text-left flex gap-3 items-start hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors px-3 border-b border-border/40 bg-card/20',
         compact ? 'py-2' : 'py-3'
       )}
     >
@@ -1336,16 +1355,22 @@ function MobileRow({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-muted-foreground shrink-0">{entityIcon}</span>
-            <span className="font-medium text-sm truncate">
-              {log.entity_name || log.entity_type.replace(/_/g, ' ')}
+            <span className="font-medium text-sm truncate" title={entityLabel}>
+              {entityLabel}
             </span>
           </div>
           {badge}
         </div>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5"><User className="h-3 w-3" />{log.username || 'Unknown'}</span>
+          <span className="flex min-w-0 items-center gap-1.5 truncate" title={userLabel}><User className="h-3 w-3 shrink-0" />{userLabel}</span>
           <span className="font-mono">{format(new Date(log.created_at), 'HH:mm:ss')}</span>
         </div>
+        {(log.entity_id || log.ip_address) && (
+          <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+            <span className="min-w-0 truncate font-mono" title={log.entity_id || undefined}>{log.entity_id ? `${log.entity_id.slice(0, 8)}…` : '—'}</span>
+            <span className="shrink-0 truncate font-mono" title={log.ip_address || undefined}>{log.ip_address || '-'}</span>
+          </div>
+        )}
       </div>
     </button>
   );
