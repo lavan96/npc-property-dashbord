@@ -527,9 +527,8 @@ export default function Agreements() {
 
   return (
     <DashboardThemeFrame
-      as="main"
       variant="page"
-      className="flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col space-y-7 overflow-y-auto overscroll-contain px-3 py-4 text-foreground [scrollbar-color:hsl(var(--primary)/0.38)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-background/70 [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent sm:px-6 sm:py-7 lg:px-8"
+      className="flex flex-col space-y-7 px-3 py-4 text-foreground sm:px-6 sm:py-7 lg:px-8"
     >
       <DashboardThemeFrame
         as="header"
