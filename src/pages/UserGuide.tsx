@@ -1505,6 +1505,43 @@ export default function UserGuide() {
     { status: 'Expired', color: 'bg-red-500', description: 'Listing has expired and needs renewal' },
   ];
 
+  const quickTipCardClasses = [
+    'border-primary/25 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92))] shadow-primary/5',
+    'border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),hsl(var(--card)/0.92))] shadow-amber-500/5',
+    'border-blue-400/25 bg-[linear-gradient(135deg,rgba(59,130,246,0.10),hsl(var(--card)/0.92))] shadow-blue-500/5',
+    'border-emerald-400/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.10),hsl(var(--card)/0.92))] shadow-emerald-500/5',
+    'border-purple-400/25 bg-[linear-gradient(135deg,rgba(168,85,247,0.10),hsl(var(--card)/0.92))] shadow-purple-500/5',
+    'border-cyan-400/25 bg-[linear-gradient(135deg,rgba(6,182,212,0.10),hsl(var(--card)/0.92))] shadow-cyan-500/5',
+  ];
+
+  const statusGuideStyles = {
+    Active: {
+      card: 'border-emerald-400/25 bg-emerald-500/8 shadow-emerald-500/5',
+      badge: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+      ring: 'ring-emerald-500/20',
+    },
+    Pending: {
+      card: 'border-amber-400/30 bg-amber-500/10 shadow-amber-500/5',
+      badge: 'border-amber-500/40 bg-amber-500/12 text-amber-700 dark:text-amber-300',
+      ring: 'ring-amber-500/25',
+    },
+    Sold: {
+      card: 'border-blue-400/25 bg-blue-500/8 shadow-blue-500/5',
+      badge: 'border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300',
+      ring: 'ring-blue-500/20',
+    },
+    Withdrawn: {
+      card: 'border-muted-foreground/20 bg-muted/30 shadow-black/0',
+      badge: 'border-muted-foreground/25 bg-muted/45 text-muted-foreground',
+      ring: 'ring-muted-foreground/15',
+    },
+    Expired: {
+      card: 'border-red-400/25 bg-red-500/8 shadow-red-500/5',
+      badge: 'border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300',
+      ring: 'ring-red-500/20',
+    },
+  } as const;
+
   return (
     <>
     <UserGuideAssistant onNavigateToSection={handleNavigateToSection} />
@@ -1537,21 +1574,39 @@ export default function UserGuide() {
 
       {/* Quick Tips */}
       <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
-        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            Quick Tips
+        <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.18))]">
+          <CardTitle className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
+              <CheckCircle className="h-5 w-5 text-primary" />
+            </span>
+            <span className="min-w-0">Quick Tips</span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="leading-6">
             Essential tips to get the most out of your dashboard
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {quickTips.map((tip, index) => (
-              <div key={index} className="group flex min-w-0 items-start gap-3 rounded-2xl border border-border/50 bg-muted/35 p-3 transition-colors hover:border-primary/25 hover:bg-primary/5">
-                <tip.icon className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <span className="min-w-0 text-sm leading-6 text-foreground/90">{tip.text}</span>
+              <div
+                key={index}
+                className={`group relative min-w-0 overflow-hidden rounded-2xl border p-4 shadow-lg transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/55 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_20px_48px_rgba(15,23,42,0.12)] dark:hover:shadow-black/35 ${quickTipCardClasses[index]}`}
+              >
+                <div className="relative z-10 flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-background/70 text-primary shadow-sm transition-transform duration-300 group-hover:scale-105 dark:bg-slate-950/55">
+                    <tip.icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 space-y-2">
+                    <span className="block min-w-0 text-sm font-medium leading-6 text-foreground/95">{tip.text}</span>
+                    {index === 0 && (
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        <kbd className="rounded-md border border-border bg-background px-2 py-1 font-semibold text-foreground shadow-sm">⌘/Ctrl</kbd>
+                        <span>+</span>
+                        <kbd className="rounded-md border border-border bg-background px-2 py-1 font-semibold text-foreground shadow-sm">K</kbd>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -1560,24 +1615,39 @@ export default function UserGuide() {
 
       {/* Property Status Guide */}
       <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
-        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-blue-500" />
-            Property Status Guide
+        <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.06),hsl(var(--muted)/0.16))]">
+          <CardTitle className="flex min-w-0 items-center gap-3">
+            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 shadow-inner shadow-blue-500/10">
+              <AlertCircle className="h-5 w-5 text-blue-500" />
+            </span>
+            <span className="min-w-0">Property Status Guide</span>
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="leading-6">
             Understanding property status indicators throughout the dashboard
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {statusGuide.map((item, index) => (
-              <div key={index} className="flex min-w-0 flex-wrap items-center gap-3 rounded-2xl border border-border/50 bg-muted/25 p-3">
-                <div className={`h-3 w-3 flex-shrink-0 rounded-full ${item.color}`} />
-                <Badge variant="outline">{item.status}</Badge>
-                <span className="min-w-0 flex-1 text-sm leading-6 text-muted-foreground">{item.description}</span>
-              </div>
-            ))}
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {statusGuide.map((item, index) => {
+              const style = statusGuideStyles[item.status as keyof typeof statusGuideStyles];
+
+              return (
+                <div
+                  key={index}
+                  className={`flex min-w-0 flex-col gap-3 rounded-2xl border p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(15,23,42,0.10)] dark:hover:shadow-black/30 ${style.card}`}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-background/75 ring-4 dark:bg-slate-950/50 ${style.ring}`}>
+                      <span className={`h-3.5 w-3.5 rounded-full shadow-sm ${item.color}`} />
+                    </span>
+                    <Badge variant="outline" className={`min-w-0 rounded-full px-3 py-1 text-xs font-semibold ${style.badge}`}>
+                      {item.status}
+                    </Badge>
+                  </div>
+                  <span className="min-w-0 text-sm leading-6 text-muted-foreground">{item.description}</span>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
