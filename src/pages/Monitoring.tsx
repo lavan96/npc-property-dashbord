@@ -167,7 +167,7 @@ export default function Monitoring() {
 
       {/* Overview Cards */}
       <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-border/70 dark:bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
             <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Total API Calls</CardTitle>
             <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
@@ -184,7 +184,7 @@ export default function Monitoring() {
           </CardContent>
         </Card>
 
-        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-border/70 dark:bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
             <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Data Quality</CardTitle>
             <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
@@ -201,7 +201,7 @@ export default function Monitoring() {
           </CardContent>
         </Card>
 
-        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-border/70 dark:bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
             <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Cache Entries</CardTitle>
             <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
@@ -241,7 +241,7 @@ export default function Monitoring() {
       </div>
 
       {/* API Health Status */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-border/70 dark:bg-card/80 dark:ring-primary/10">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.30),hsl(var(--card)/0))] px-5 py-5">
           <div className="flex min-w-0 items-start gap-3">
             <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
@@ -289,7 +289,7 @@ export default function Monitoring() {
           ) : (
             <div className="space-y-4">
               {apiStats.map((stat) => (
-                <div key={stat.service_name} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-background/70 dark:border-white/10 dark:bg-background/25">
+                <div key={stat.service_name} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-background/70 dark:border-border/70 dark:bg-background/25">
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span className="shrink-0 rounded-xl border border-border/70 bg-card/80 p-2 text-muted-foreground">
@@ -336,7 +336,7 @@ export default function Monitoring() {
       </Card>
 
       {/* Cache Performance */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-border/70 dark:bg-card/80 dark:ring-primary/10">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.22)_42%,hsl(var(--card)/0))] px-5 py-5">
           <div className="flex min-w-0 items-start gap-3">
             <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
@@ -379,7 +379,7 @@ export default function Monitoring() {
           ) : (
             <div className="space-y-4">
               {cacheStats.map((stat) => (
-                <div key={stat.cache_type} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm ring-1 ring-transparent transition-all hover:border-primary/30 hover:bg-background/70 hover:ring-primary/10 dark:border-white/10 dark:bg-background/25">
+                <div key={stat.cache_type} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm ring-1 ring-transparent transition-all hover:border-primary/30 hover:bg-background/70 hover:ring-primary/10 dark:border-border/70 dark:bg-background/25">
                   <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span className="shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
@@ -451,7 +451,7 @@ export default function Monitoring() {
       </Card>
 
       {/* Data Quality Breakdown */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-border/70 dark:bg-card/80 dark:ring-primary/10">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--success)/0.08),hsl(var(--warning)/0.06)_44%,hsl(var(--card)/0))] px-5 py-5">
           <div className="flex min-w-0 items-start gap-3">
             <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
