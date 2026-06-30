@@ -14,7 +14,7 @@ import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, Search, Coins, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck, FileKey2, UserRound, Building2,
+  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck, FileKey2, UserRound, Building2, AlertTriangle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
@@ -86,18 +86,24 @@ export default function TokenUsageHistory() {
   const [pageSize, setPageSize] = useState(25);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [agencyDenied, setAgencyDenied] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
+    setLoadError(null);
     const { data, error } = await invokeSecureFunction<{ rows: UsageRow[]; error?: string }>(
       "list-token-usage", { scope, limit: 500 },
     );
     if (error && scope === "agency") {
+      setLoadError(typeof error === "string" ? error : "Agency-wide view requires admin permission — showing your usage instead.");
       setAgencyDenied(true);
       setScope("mine");
+    } else if (error) {
+      setLoadError(typeof error === "string" ? error : "Unable to load token usage history.");
     } else if (!error && data?.rows) {
       setRows(data.rows);
       setAgencyDenied(false);
+      setLoadError(null);
     }
     setLoading(false);
   }
@@ -125,6 +131,8 @@ export default function TokenUsageHistory() {
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * pageSize;
   const pageRows = filtered.slice(pageStart, pageStart + pageSize);
+  const isInitialLoading = loading && rows.length === 0;
+  const scopeLabel = scope === "agency" ? "Agency-wide" : "My usage";
 
   const kpis = [
     {
@@ -196,15 +204,23 @@ export default function TokenUsageHistory() {
           <DashboardThemeFrame key={label} variant="premiumCard" className={cn("p-0", `bg-gradient-to-br ${accent}`)}>
             <div className="flex min-h-[9.5rem] min-w-0 flex-col justify-between gap-5 p-5">
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className={cn("mt-3 truncate text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl", valueClass)} title={value}>{value}</p>
+                  {isInitialLoading ? (
+                    <Skeleton className="mt-3 h-10 w-32 rounded-xl sm:h-12" />
+                  ) : (
+                    <p className={cn("mt-3 truncate text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl", valueClass)} title={value}>{value}</p>
+                  )}
                 </div>
                 <div className={cn("rounded-2xl border p-2.5 shadow-sm", iconClass)}>
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
-              <p className="truncate border-t border-border/50 pt-3 text-xs text-muted-foreground" title={helper}>{helper}</p>
+              {isInitialLoading ? (
+                <Skeleton className="h-5 w-full rounded-lg" />
+              ) : (
+                <p className="truncate border-t border-border/50 pt-3 text-xs text-muted-foreground" title={helper}>{helper}</p>
+              )}
             </div>
           </DashboardThemeFrame>
         ))}
@@ -251,14 +267,52 @@ export default function TokenUsageHistory() {
             </DashboardThemeFrame>
 
             <TabsContent value={scope} className="mt-4 min-w-0 space-y-3">
+              <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-2">
+                  {scope === "agency" ? <Building2 className="h-4 w-4 shrink-0 text-primary" /> : <UserRound className="h-4 w-4 shrink-0 text-primary" />}
+                  <span className="min-w-0 truncate">
+                    Viewing scope: <span className="font-semibold text-foreground">{scopeLabel}</span>
+                  </span>
+                </div>
+                <span className="min-w-0 truncate" title={scope === "agency" ? "Agency-wide data is limited to your existing permissions." : "Showing records scoped to your authenticated user."}>
+                  {scope === "agency" ? "Agency visibility follows your existing role permissions." : "Personal usage scoped to your authenticated account."}
+                </span>
+              </div>
               {agencyDenied && (
-                <div className="rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-xs text-muted-foreground">
-                  Agency-wide view requires admin permission — showing your usage instead.
+                <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-xs text-muted-foreground">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 break-words">Agency-wide view requires admin permission — showing your usage instead.</span>
+                </div>
+              )}
+              {loadError && !agencyDenied && (
+                <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="min-w-0 break-words">{loadError}</span>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10" onClick={load} disabled={loading}>
+                    Retry
+                  </Button>
                 </div>
               )}
               {loading ? (
-                <div className="space-y-2 rounded-2xl border border-border/60 p-3">
-                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
+                <div className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-3">
+                  <div className="flex items-center justify-between gap-3 px-1">
+                    <Skeleton className="h-4 w-36 rounded-lg" />
+                    <Skeleton className="h-4 w-24 rounded-lg" />
+                  </div>
+                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+                </div>
+              ) : loadError && rows.length === 0 ? (
+                <div className="flex min-h-[16rem] items-center justify-center rounded-3xl border border-destructive/25 bg-destructive/10 px-4 py-10 text-center">
+                  <div className="mx-auto max-w-md space-y-3">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">Unable to load token usage.</p>
+                    <p className="break-words text-xs leading-5 text-destructive">{loadError}</p>
+                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={load} disabled={loading}>Retry</Button>
+                  </div>
                 </div>
               ) : rows.length === 0 ? (
                 <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_42%),hsl(var(--muted)/0.18)] px-4 py-12 text-center">
@@ -268,7 +322,7 @@ export default function TokenUsageHistory() {
                     </div>
                     <p className="text-sm font-semibold text-foreground">No usage recorded yet.</p>
                     <p className="text-xs leading-5 text-muted-foreground">
-                      Metered report generations will appear here with reserve, commit, cancel and duration details once available.
+                      {scope === "agency" ? "Agency-wide metered report generations will appear here when your permitted agency scope has usage." : "Metered report generations will appear here with reserve, commit, cancel and duration details once available."}
                     </p>
                   </div>
                 </div>

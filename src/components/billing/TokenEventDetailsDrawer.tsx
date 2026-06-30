@@ -118,6 +118,7 @@ export function TokenEventDetailsDrawer({
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [trailError, setTrailError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !idempotencyKey) return;
@@ -125,9 +126,11 @@ export function TokenEventDetailsDrawer({
     (async () => {
       setLoading(true);
       setData(null);
-      const { data: res } = await invokeSecureFunction<Payload>(
+      setTrailError(null);
+      const { data: res, error } = await invokeSecureFunction<Payload>(
         "get-token-event-trail", { idempotencyKey },
       );
+      if (!cancelled && error) setTrailError(typeof error === "string" ? error : "Unable to load the idempotency audit trail.");
       if (!cancelled && res) setData(res);
       if (!cancelled) setLoading(false);
     })();
@@ -174,6 +177,14 @@ export function TokenEventDetailsDrawer({
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : trailError ? (
+            <div className="mx-auto my-8 flex max-w-md flex-col items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 p-5 text-center">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Unable to load audit trail.</p>
+              <p className="break-words text-xs leading-5 text-destructive">{trailError}</p>
             </div>
           ) : !data ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No trail data.</p>
