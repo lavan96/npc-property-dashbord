@@ -10,10 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import {
   Loader2, RefreshCw, Trash2, Shield, Globe, Activity,
-  BarChart3, Zap, FileCode, AlertTriangle, CheckCircle2,
-  XCircle, Eye, TrendingUp, HardDrive, ShieldAlert, Plus
+  BarChart3, Zap, FileCode, AlertTriangle, CheckCircle2, Cloud,
+  Eye, TrendingUp, HardDrive, ShieldAlert, Plus
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 // ==================== TYPES ====================
 interface CloudflareState {
@@ -83,61 +84,77 @@ function AnalyticsTab() {
   ] : [];
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-base sm:text-lg font-semibold">Traffic Analytics</h3>
-        <div className="flex items-center gap-2">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">Last 24h</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={fetchAnalytics} disabled={analytics.loading}>
-            <RefreshCw className={`h-4 w-4 ${analytics.loading ? 'animate-spin' : ''}`} />
-          </Button>
+    <div className="min-w-0 space-y-4 sm:space-y-6">
+      <DashboardThemeFrame variant="section" className="space-y-4 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.08))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Traffic Analytics</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">Cloudflare request, cache, bandwidth, and threat telemetry.</p>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-background/55 p-1.5 shadow-sm dark:border-white/10 dark:bg-slate-950/40">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="h-9 w-[132px] border-border/70 bg-card/90 text-xs font-medium shadow-sm focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/70 sm:text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Last 24h</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={fetchAnalytics}
+              disabled={analytics.loading}
+              className="h-9 w-9 border-primary/20 bg-primary/5 text-primary shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary/40 disabled:opacity-70"
+              aria-label="Refresh analytics"
+            >
+              <RefreshCw className={`h-4 w-4 ${analytics.loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {analytics.error && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{analytics.error}</AlertDescription>
-        </Alert>
-      )}
+        {analytics.error && (
+          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="break-words text-sm leading-6">{analytics.error}</AlertDescription>
+          </Alert>
+        )}
 
-      {analytics.loading && !analytics.data ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : stats.length > 0 ? (
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3">
-          {stats.map(stat => (
-            <Card key={stat.label}>
-              <CardContent className="p-4 sm:pt-6 sm:px-6">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                  <div className={`${stat.color} mb-1 sm:mb-0`}>{stat.icon}</div>
-                  <div className="min-w-0">
-                    <p className="text-xl sm:text-2xl font-bold truncate">{stat.value}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground">{stat.label}</p>
+        {analytics.loading && !analytics.data ? (
+          <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-dashed border-primary/20 bg-muted/20 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : stats.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            {stats.map(stat => (
+              <Card key={stat.label} className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_12px_35px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
+                <CardContent className="p-4 sm:px-6 sm:pt-6">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                    <div className={`${stat.color} mb-1 sm:mb-0`}>{stat.icon}</div>
+                    <div className="min-w-0">
+                      <p className="text-xl sm:text-2xl font-bold truncate">{stat.value}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">{stat.label}</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : !analytics.loading && (
-        <p className="text-center text-muted-foreground py-8">No analytics data available.</p>
-      )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : !analytics.loading && (
+          <div className="flex min-h-[14rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 px-4 py-10 text-center shadow-inner dark:border-white/10 dark:bg-slate-950/30">
+            <BarChart3 className="mb-3 h-8 w-8 text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">No analytics data available.</p>
+            <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">Refresh or choose another time range when Cloudflare telemetry is available.</p>
+          </div>
+        )}
+      </DashboardThemeFrame>
 
       {/* HTTP Status breakdown */}
       {totals?.requests?.http_status && (
-        <Card>
-          <CardHeader className="pb-3 sm:pb-6">
+        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+          <CardHeader className="min-w-0 pb-3 sm:pb-6">
             <CardTitle className="text-base">HTTP Status Codes</CardTitle>
           </CardHeader>
           <CardContent>
@@ -195,19 +212,19 @@ function CdnTab() {
   const settings = cacheSettings.data?.result || [];
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
       <h3 className="text-base sm:text-lg font-semibold">CDN & Caching</h3>
 
       {/* Cache Settings */}
       {settings.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3 sm:pb-6">
+        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+          <CardHeader className="min-w-0 pb-3 sm:pb-6">
             <CardTitle className="text-base">Current Cache Settings</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
               {settings.map((s: any) => (
-                <div key={s.id} className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                <div key={s.id} className="flex items-center justify-between gap-2 min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
                   <span className="text-xs sm:text-sm font-medium capitalize truncate">{s.id.replace(/_/g, ' ')}</span>
                   <Badge variant="outline" className="flex-shrink-0 text-[11px] sm:text-xs max-w-[120px] sm:max-w-none truncate">
                     {typeof s.value === 'object' ? JSON.stringify(s.value) : String(s.value)}
@@ -221,8 +238,8 @@ function CdnTab() {
 
       {/* Purge Controls */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3 sm:pb-6">
+        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+          <CardHeader className="min-w-0 pb-3 sm:pb-6">
             <CardTitle className="text-base">Purge Everything</CardTitle>
             <CardDescription>Clear the entire CDN cache for your zone</CardDescription>
           </CardHeader>
@@ -239,14 +256,14 @@ function CdnTab() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3 sm:pb-6">
+        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+          <CardHeader className="min-w-0 pb-3 sm:pb-6">
             <CardTitle className="text-base">Purge by URL</CardTitle>
             <CardDescription>Enter URLs to purge (one per line)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <textarea
-              className="w-full min-h-[80px] p-2 rounded-md border bg-background text-sm resize-y"
+              className="w-full min-w-0 min-h-[96px] max-h-[42dvh] overflow-auto break-all rounded-md border border-border/70 bg-background p-2 text-sm shadow-inner outline-none resize-y focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="https://example.com/page1&#10;https://example.com/page2"
               value={urls}
               onChange={e => setUrls(e.target.value)}
@@ -281,7 +298,7 @@ function WorkersTab() {
   const isLoading = workers.loading || pages.loading;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
       <h3 className="text-base sm:text-lg font-semibold">Workers & Pages</h3>
 
       {isLoading && !workers.data && !pages.data ? (
@@ -291,8 +308,8 @@ function WorkersTab() {
       ) : (
         <>
           {/* Workers */}
-          <Card>
-            <CardHeader className="pb-3 sm:pb-6">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+            <CardHeader className="min-w-0 pb-3 sm:pb-6">
               <div className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-amber-400" />
                 <CardTitle className="text-base">Workers ({workersList.length})</CardTitle>
@@ -304,7 +321,7 @@ function WorkersTab() {
               ) : (
                 <div className="space-y-2">
                   {workersList.map((w: any) => (
-                    <div key={w.id} className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                    <div key={w.id} className="flex items-center justify-between gap-2 min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
                       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <FileCode className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div className="min-w-0">
@@ -325,8 +342,8 @@ function WorkersTab() {
           </Card>
 
           {/* Pages */}
-          <Card>
-            <CardHeader className="pb-3 sm:pb-6">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+            <CardHeader className="min-w-0 pb-3 sm:pb-6">
               <div className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-blue-400" />
                 <CardTitle className="text-base">Pages Projects ({pagesList.length})</CardTitle>
@@ -338,7 +355,7 @@ function WorkersTab() {
               ) : (
                 <div className="space-y-2">
                   {pagesList.map((p: any) => (
-                    <div key={p.id} className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                    <div key={p.id} className="flex items-center justify-between gap-2 min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm font-medium truncate">{p.name}</p>
                         <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
@@ -418,8 +435,8 @@ function FirewallTab() {
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <h3 className="text-base sm:text-lg font-semibold">Firewall Rules</h3>
         <Button onClick={() => setShowForm(!showForm)} size="sm">
           <Plus className="h-4 w-4 mr-1" />
@@ -428,18 +445,18 @@ function FirewallTab() {
       </div>
 
       {/* Quick presets */}
-      <Card>
-        <CardHeader className="pb-3 sm:pb-6">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+        <CardHeader className="min-w-0 pb-3 sm:pb-6">
           <CardTitle className="text-sm sm:text-base">Quick Presets (Auth Page Protection)</CardTitle>
           <CardDescription className="text-xs sm:text-sm">One-click firewall rules for your auth page</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {presets.map((preset, i) => (
-              <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+              <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
                 <div className="min-w-0">
                   <p className="text-xs sm:text-sm font-medium">{preset.label}</p>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground font-mono truncate">{preset.expression}</p>
+                  <p className="max-w-full break-words text-[11px] font-mono text-muted-foreground sm:line-clamp-2 sm:text-xs" title={preset.expression}>{preset.expression}</p>
                 </div>
                 <Button
                   size="sm"
@@ -468,8 +485,8 @@ function FirewallTab() {
 
       {/* Create form */}
       {showForm && (
-        <Card>
-          <CardHeader className="pb-3 sm:pb-6">
+        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+          <CardHeader className="min-w-0 pb-3 sm:pb-6">
             <CardTitle className="text-base">Create Firewall Rule</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -523,8 +540,8 @@ function FirewallTab() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <Card>
-          <CardHeader className="pb-3 sm:pb-6">
+        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
+          <CardHeader className="min-w-0 pb-3 sm:pb-6">
             <CardTitle className="text-base">Active Rules ({rulesList.length})</CardTitle>
           </CardHeader>
           <CardContent>
@@ -533,10 +550,10 @@ function FirewallTab() {
             ) : (
               <div className="space-y-2">
                 {rulesList.map((rule: any) => (
-                  <div key={rule.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-2.5 sm:p-3 rounded-lg border bg-muted/30">
+                  <div key={rule.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm font-medium">{rule.description || 'Untitled Rule'}</p>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground font-mono truncate">
+                      <p className="max-w-full break-words text-[11px] font-mono text-muted-foreground sm:line-clamp-2 sm:text-xs" title={rule.filter?.expression || 'N/A'}>
                         {rule.filter?.expression || 'N/A'}
                       </p>
                     </div>
@@ -589,16 +606,21 @@ export default function CloudflareManagement() {
   const zoneData = zone.data?.result;
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Cloudflare</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage CDN, analytics, Workers, and firewall rules
-          </p>
+    <DashboardThemeFrame variant="page" className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-7 sm:px-0">
+      <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_52%,hsl(var(--primary)/0.10))] p-5 shadow-[0_24px_80px_rgba(15,23,42,0.14)] ring-1 ring-white/35 dark:ring-white/10 dark:shadow-black/40 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner dark:bg-primary/15 sm:h-14 sm:w-14">
+            <Cloud className="h-6 w-6 sm:h-7 sm:w-7" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Cloudflare</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+              Manage CDN, analytics, Workers, and firewall rules.
+            </p>
+          </div>
         </div>
         {zoneData && (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               {zoneData.name}
@@ -608,44 +630,43 @@ export default function CloudflareManagement() {
             </Badge>
           </div>
         )}
-      </div>
+      </DashboardThemeFrame>
 
-      <Tabs defaultValue="analytics" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0 scrollbar-hide">
-          <TabsList className="inline-flex w-auto min-w-max">
-            <TabsTrigger value="analytics" className="text-xs sm:text-sm gap-1.5">
+      <Tabs defaultValue="analytics" className="min-w-0 w-full">
+        <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] scrollbar-hide dark:bg-slate-950/45 dark:shadow-black/25">
+          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+            <TabsTrigger value="analytics" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <BarChart3 className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline sm:inline">Analytics</span>
-              <span className="xs:hidden sm:hidden">Stats</span>
+              <span>Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="cdn" className="text-xs sm:text-sm gap-1.5">
+            <TabsTrigger value="cdn" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <HardDrive className="h-3.5 w-3.5" />
               CDN
             </TabsTrigger>
-            <TabsTrigger value="workers" className="text-xs sm:text-sm gap-1.5">
+            <TabsTrigger value="workers" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <Zap className="h-3.5 w-3.5" />
               Workers
             </TabsTrigger>
-            <TabsTrigger value="firewall" className="text-xs sm:text-sm gap-1.5">
+            <TabsTrigger value="firewall" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <Shield className="h-3.5 w-3.5" />
               Firewall
             </TabsTrigger>
           </TabsList>
-        </div>
+        </DashboardThemeFrame>
 
-        <TabsContent value="analytics" className="mt-4 sm:mt-6">
+        <TabsContent value="analytics" className="mt-4 min-w-0 sm:mt-6">
           <AnalyticsTab />
         </TabsContent>
-        <TabsContent value="cdn" className="mt-4 sm:mt-6">
+        <TabsContent value="cdn" className="mt-4 min-w-0 sm:mt-6">
           <CdnTab />
         </TabsContent>
-        <TabsContent value="workers" className="mt-4 sm:mt-6">
+        <TabsContent value="workers" className="mt-4 min-w-0 sm:mt-6">
           <WorkersTab />
         </TabsContent>
-        <TabsContent value="firewall" className="mt-4 sm:mt-6">
+        <TabsContent value="firewall" className="mt-4 min-w-0 sm:mt-6">
           <FirewallTab />
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
