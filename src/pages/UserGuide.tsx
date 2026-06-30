@@ -1628,7 +1628,7 @@ export default function UserGuide() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="space-y-6 pb-8 text-foreground selection:bg-primary/20 selection:text-foreground sm:space-y-7"
+      className="min-h-0 space-y-6 overflow-x-hidden pb-8 text-foreground selection:bg-primary/20 selection:text-foreground [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:space-y-7"
     >
       <DashboardThemeFrame
         as="header"
@@ -1657,7 +1657,7 @@ export default function UserGuide() {
         variant="toolbar"
         role="navigation"
         aria-label="User Guide quick navigation"
-        className="gap-2 overflow-x-auto border-primary/15 bg-card/70 p-2 shadow-[0_12px_34px_rgba(15,23,42,0.06)] [scrollbar-width:thin] dark:bg-slate-950/55"
+        className="min-h-0 gap-2 overflow-x-auto overscroll-x-contain border-primary/15 bg-card/70 p-2 shadow-[0_12px_34px_rgba(15,23,42,0.06)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/55"
       >
         {quickNavigationItems.map((item) => (
           <button
@@ -1672,7 +1672,7 @@ export default function UserGuide() {
       </DashboardThemeFrame>
 
       {/* Quick Tips */}
-      <Card id="quick-tips" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="quick-tips" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.18))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
@@ -1713,7 +1713,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Property Status Guide */}
-      <Card id="property-status-guide" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="property-status-guide" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.06),hsl(var(--muted)/0.16))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 shadow-inner shadow-blue-500/10">
@@ -1753,7 +1753,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Main Sections with Accordion */}
-      <Card id="feature-documentation" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="feature-documentation" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
         <CardHeader className="space-y-4 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.16))]">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">
@@ -1813,7 +1813,7 @@ export default function UserGuide() {
                         key={section.id}
                         type="button"
                         onClick={() => handleNavigateToSection(section.id)}
-                        className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                        className="min-h-9 max-w-full rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                       >
                         {section.title}
                       </button>
@@ -1821,14 +1821,19 @@ export default function UserGuide() {
                   </div>
                 </div>
               ) : (
-                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 text-sm text-muted-foreground">
-                    No documentation sections match “{documentationSearch}”.
+                <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                      <Search className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 break-words text-sm leading-6 text-muted-foreground">
+                      No documentation sections match “{documentationSearch}”.
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setDocumentationSearch('')}
-                    className="w-fit rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                    className="min-h-9 w-fit rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                   >
                     Clear search
                   </button>
@@ -1837,8 +1842,14 @@ export default function UserGuide() {
             </div>
           )}
         </CardHeader>
-        <CardContent className="bg-muted/10 p-3 sm:p-4">
-          <Accordion type="multiple" className="grid w-full gap-3">
+        <CardContent className="min-h-0 bg-muted/10 p-3 sm:p-4">
+          {sections.length === 0 ? (
+            <div className="rounded-2xl border border-border/60 bg-background/70 p-6 text-center shadow-sm dark:bg-slate-950/40">
+              <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">No documentation sections are available.</p>
+            </div>
+          ) : (
+          <Accordion type="multiple" className="grid min-w-0 w-full gap-3">
             {sections.map((section) => (
               <AccordionItem id={`section-${section.id}`} key={section.id} value={section.id} className="group/section scroll-mt-6 overflow-hidden rounded-2xl border border-border/65 bg-card/90 px-0 shadow-sm transition-all duration-200 hover:border-primary/25 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_18px_48px_rgba(15,23,42,0.10),0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-slate-950/60 dark:hover:shadow-black/20 dark:data-[state=open]:shadow-black/30">
                 <AccordionTrigger className="min-w-0 px-4 py-4 text-left transition-colors hover:bg-primary/5 hover:no-underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=open]:bg-primary/10 sm:min-h-16 sm:px-5 [&>svg]:ml-3 [&>svg]:flex-shrink-0 [&>svg]:text-primary [&>svg]:transition-transform [&>svg]:duration-200">
@@ -1855,8 +1866,8 @@ export default function UserGuide() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-                  <div className="min-w-0 border-t border-border/50 bg-background/45 px-4 py-5 sm:px-5">
-                    <div className="ml-5 min-w-0 space-y-5 border-l-2 border-primary/25 pl-4 sm:pl-6">
+                  <div className="min-h-0 min-w-0 border-t border-border/50 bg-background/45 px-3 py-5 sm:px-5">
+                    <div className="ml-2 min-w-0 space-y-5 border-l-2 border-primary/25 pl-3 sm:ml-5 sm:pl-6">
                     {section.items.map((item, itemIndex) => (
                       <article
                         key={itemIndex}
@@ -1926,7 +1937,7 @@ export default function UserGuide() {
                                   key={shortcutIndex}
                                   className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-background/65 p-3 dark:bg-slate-950/35"
                                 >
-                                  <span className="min-w-0 text-sm leading-6 text-muted-foreground">
+                                  <span className="min-w-0 break-words text-sm leading-6 text-muted-foreground">
                                     {shortcut.description}
                                   </span>
                                   <div className="flex flex-shrink-0 flex-wrap gap-1">
@@ -1955,11 +1966,12 @@ export default function UserGuide() {
               </AccordionItem>
             ))}
           </Accordion>
+          )}
         </CardContent>
       </Card>
 
       {/* Support Section */}
-      <Card id="need-help" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/20 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-primary/15 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="need-help" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/20 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-primary/15 dark:bg-slate-950/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.10),hsl(var(--muted)/0.16))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-inner shadow-primary/10">
