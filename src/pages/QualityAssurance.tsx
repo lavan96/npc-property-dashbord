@@ -435,11 +435,13 @@ export default function QualityAssurance() {
                   const hasIssues = issueSummary.total > 0;
                   
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={report.id}
-                      className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
+                      className="group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between"
                       onClick={() => setSelectedReport(report)}
                       title={report.property_address}
+                      aria-label={`View validation results for ${report.property_address}`}
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-4">
                         <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -468,12 +470,12 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
+                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
                           <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
                           <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         </div>
                         
-                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center dark:bg-slate-950/45">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
@@ -492,7 +494,7 @@ export default function QualityAssurance() {
                           </Badge>
                         )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </TabsContent>
@@ -511,11 +513,13 @@ export default function QualityAssurance() {
                   const issueSummary = getIssueSeveritySummary(report.validation_flags);
                   
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={report.id}
-                      className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
+                      className="group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between"
                       onClick={() => setSelectedReport(report)}
                       title={report.property_address}
+                      aria-label={`View validation results for ${report.property_address}`}
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-4">
                         <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -542,12 +546,12 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
+                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
                           <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
                           <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         </div>
                         
-                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center dark:bg-slate-950/45">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
@@ -559,7 +563,7 @@ export default function QualityAssurance() {
                           {getIssueSummaryLabel(issueSummary)}
                         </Badge>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </TabsContent>
@@ -574,11 +578,13 @@ export default function QualityAssurance() {
                   </div>
                 )}
                 {cleanReports.map(report => (
-                  <div
+                  <button
+                    type="button"
                     key={report.id}
-                    className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
+                    className="group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between"
                     onClick={() => setSelectedReport(report)}
                     title={report.property_address}
+                    aria-label={`View validation results for ${report.property_address}`}
                   >
                     <div className="flex min-w-0 flex-1 items-start gap-4">
                       <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -605,7 +611,7 @@ export default function QualityAssurance() {
                     </div>
                     
                     <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                      <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
+                      <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
                         <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
                         <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                       </div>
@@ -615,7 +621,7 @@ export default function QualityAssurance() {
                         Clean
                       </Badge>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </TabsContent>
             </Tabs>
