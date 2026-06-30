@@ -532,7 +532,7 @@ export function DepreciationCompsAdmin() {
                 variant="outline"
                 onClick={fetchComps}
                 disabled={loading}
-                className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary disabled:opacity-60 sm:w-auto"
+                className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -561,7 +561,10 @@ export function DepreciationCompsAdmin() {
                       {loading ? (
                         <TableRow className="hover:bg-transparent">
                           <TableCell colSpan={9} className="py-12 text-center">
-                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                            <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-background/65 p-6 text-muted-foreground shadow-inner dark:bg-slate-950/35">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                              <p className="text-sm font-medium">Loading comparables...</p>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ) : comps.length === 0 ? (
@@ -699,7 +702,7 @@ export function DepreciationCompsAdmin() {
                               {csvPreview[0].map((header, i) => (
                                 <TableHead key={i} className="max-w-[12rem] truncate whitespace-nowrap text-xs font-semibold text-foreground" title={header}>{header}</TableHead>
                               ))}
-                          </TableRow>
+                            </TableRow>
                           </TableHeader>
                           <TableBody>
                             {csvPreview.slice(1).map((row, i) => (
@@ -718,7 +721,7 @@ export function DepreciationCompsAdmin() {
                   <Button
                     onClick={handleImportCsv}
                     disabled={uploading}
-                    className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:bg-primary/90 focus-visible:ring-primary sm:w-auto"
+                    className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:bg-primary/90 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     {uploading ? (
                       <>
