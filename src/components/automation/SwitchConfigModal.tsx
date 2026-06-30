@@ -507,7 +507,7 @@ export const SwitchConfigModal = ({
             <Button variant="outline" onClick={() => onOpenChange(false)} aria-label="Cancel switch configuration" className="min-h-[44px] flex-1 border-border/70 bg-background/75 sm:min-h-0 sm:flex-initial">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="min-h-[44px] flex-1 bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] hover:bg-primary-hover sm:min-h-0 sm:flex-initial">
+            <Button onClick={handleSave} disabled={saving} aria-label={editingSwitch ? 'Update automation switch' : 'Create automation switch'} className="min-h-[44px] flex-1 bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] hover:bg-primary-hover sm:min-h-0 sm:flex-initial">
               {saving ? 'Saving...' : editingSwitch ? 'Update Switch' : 'Create Switch'}
             </Button>
           </div>

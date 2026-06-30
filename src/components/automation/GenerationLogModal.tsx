@@ -95,7 +95,7 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
 
         <ScrollArea className="min-h-0 flex-1 overscroll-contain px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
           {loading ? (
-            <div className="rounded-3xl border border-border/60 bg-background/60 py-10 text-center text-muted-foreground shadow-sm">Loading logs...</div>
+            <div className="rounded-3xl border border-border/60 bg-background/60 py-10 text-center text-muted-foreground shadow-sm" role="status" aria-live="polite">Loading logs...</div>
           ) : logs.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-primary/25 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.10),transparent_38%),hsl(var(--card)/0.82)] px-4 py-14 text-center shadow-sm">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-border/70 bg-background/75 text-muted-foreground shadow-sm">

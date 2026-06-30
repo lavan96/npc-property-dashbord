@@ -446,7 +446,7 @@ const Automation = () => {
               <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Filter Switches</h2>
             </div>
             {canEdit && (
-              <Button onClick={openCreateModal} size="sm" className="min-h-[44px] bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] transition-all hover:bg-primary-hover focus-visible:ring-primary/45 sm:size-default sm:min-h-0">
+              <Button onClick={openCreateModal} size="sm" aria-label="Create automation switch" className="min-h-[44px] bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] transition-all hover:bg-primary-hover focus-visible:ring-primary/45 sm:size-default sm:min-h-0">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Switch
               </Button>
@@ -455,7 +455,7 @@ const Automation = () => {
 
           {loading ? (
             <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/85 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-black/20">
-              <CardContent className="px-4 py-10 text-center text-muted-foreground">
+              <CardContent className="px-4 py-10 text-center text-muted-foreground" role="status" aria-live="polite">
                 Loading switches...
               </CardContent>
             </Card>
@@ -473,7 +473,7 @@ const Automation = () => {
                     </p>
                   </div>
                   {canEdit && (
-                    <Button onClick={openCreateModal} className="mt-2 min-h-[44px] bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] hover:bg-primary-hover">
+                    <Button onClick={openCreateModal} aria-label="Create automation switch from empty state" className="mt-2 min-h-[44px] bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] hover:bg-primary-hover">
                       <Plus className="h-4 w-4 mr-2" />
                       Create Switch
                     </Button>
