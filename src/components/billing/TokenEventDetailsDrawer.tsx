@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ShieldCheck, CheckCircle2, Ban, AlertTriangle, Clock3 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface AuditEvent {
   id: string;
@@ -51,12 +52,51 @@ interface Payload {
   users: Record<string, string>;
 }
 
+function eventTone(value: string | null | undefined) {
+  const normalized = String(value ?? "").toLowerCase();
+  if (normalized.includes("cancel") || normalized.includes("fail") || normalized.includes("error") || normalized === "insufficient_funds") {
+    return {
+      badge: "border-destructive/25 bg-destructive/10 text-destructive",
+      dot: "border-destructive/30 bg-destructive/15 text-destructive",
+      line: "bg-destructive/20",
+      Icon: Ban,
+    };
+  }
+  if (normalized.includes("commit") || normalized.includes("success") || normalized.includes("complete")) {
+    return {
+      badge: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      dot: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      line: "bg-emerald-500/20",
+      Icon: CheckCircle2,
+    };
+  }
+  if (normalized.includes("reserve") || normalized.includes("pending") || normalized.includes("progress")) {
+    return {
+      badge: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      dot: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      line: "bg-amber-500/20",
+      Icon: ShieldCheck,
+    };
+  }
+  return {
+    badge: "border-border/70 bg-muted/60 text-muted-foreground",
+    dot: "border-border/70 bg-muted/60 text-muted-foreground",
+    line: "bg-border/60",
+    Icon: Clock3,
+  };
+}
+
 function EventBadge({ event }: { event: string }) {
-  const v =
-    event === "reserve" ? "secondary" :
-    event === "commit" ? "default" :
-    event === "cancel" ? "destructive" : "outline";
-  return <Badge variant={v as any}>{event}</Badge>;
+  return <Badge variant="outline" className={cn("max-w-full rounded-full px-2.5 capitalize", eventTone(event).badge)} title={event}>{event}</Badge>;
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  if (!status) return null;
+  return (
+    <Badge variant="outline" className={cn("max-w-full shrink-0 truncate rounded-full capitalize", eventTone(status).badge)} title={status}>
+      {status.replace(/_/g, " ")}
+    </Badge>
+  );
 }
 
 function fmtMs(ms: number) {
@@ -104,25 +144,25 @@ export function TokenEventDetailsDrawer({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col h-[100dvh]">
-        <SheetHeader>
-          <SheetTitle>Generation Trail</SheetTitle>
-          <SheetDescription>
+      <SheetContent side="right" className="flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden border-border/70 bg-card/95 p-0 sm:max-w-2xl dark:border-white/10">
+        <SheetHeader className="min-w-0 border-b border-border/60 bg-muted/20 px-6 py-5 text-left">
+          <SheetTitle className="flex min-w-0 items-center gap-2 text-xl"><ShieldCheck className="h-5 w-5 text-primary" />Generation Trail</SheetTitle>
+          <SheetDescription className="leading-6">
             Reserve / commit / cancel events and final outcome for this idempotency key.
           </SheetDescription>
           {idempotencyKey && (
-            <div className="flex items-center gap-2 pt-1">
-              <code className="text-xs bg-muted px-2 py-1 rounded font-mono truncate flex-1" title={idempotencyKey}>
+            <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-primary/15 bg-primary/5 p-2">
+              <code className="min-w-0 flex-1 truncate rounded-xl bg-background/80 px-2.5 py-1.5 font-mono text-xs text-primary" title={idempotencyKey}>
                 {idempotencyKey}
               </code>
-              <Button size="icon" variant="outline" className="h-7 w-7 shrink-0" onClick={copy}>
+              <Button size="icon" variant="outline" className="h-7 w-7 shrink-0 rounded-lg" onClick={copy}>
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </div>
           )}
         </SheetHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6 mt-4">
+        <ScrollArea className="min-h-0 flex-1 px-6 py-5">
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
@@ -130,37 +170,35 @@ export function TokenEventDetailsDrawer({
           ) : !data ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No trail data.</p>
           ) : (
-            <div className="space-y-6 pb-8">
+            <div className="min-w-0 space-y-6 pb-8">
               {/* Outcome */}
-              <section>
-                <h3 className="text-sm font-semibold mb-2">Outcome</h3>
+              <section className="min-w-0">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />Outcome</h3>
                 {data.outcomes.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No outcome row yet.</p>
                 ) : (
                   data.outcomes.map((o) => (
-                    <div key={o.id} className="rounded-md border p-3 space-y-2 text-sm">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium">{o.function_name}</span>
-                        <Badge variant={o.status === "success" ? "default" : "destructive"}>
-                          {o.status.replace(/_/g, " ")}
-                        </Badge>
+                    <div key={o.id} className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/55 p-4 text-sm shadow-sm">
+                      <div className="flex min-w-0 items-center justify-between gap-3">
+                        <span className="min-w-0 truncate font-medium" title={o.function_name}>{o.function_name}</span>
+                        <StatusBadge status={o.status} />
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {format(new Date(o.created_at), "PPpp")}
                         {o.user_id && data.users[o.user_id] && <> · {data.users[o.user_id]}</>}
                       </div>
                       <Separator />
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                         <div><p className="text-muted-foreground">Estimated</p><p className="font-semibold tabular-nums">{o.estimated_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Reserved</p><p className="font-semibold tabular-nums">{o.reserved_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Used</p><p className="font-semibold tabular-nums">{o.actual_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Duration</p><p className="font-semibold tabular-nums">{fmtMs(o.duration_ms)}</p></div>
                       </div>
                       {o.error_message && (
-                        <p className="text-xs text-destructive">{o.error_message}</p>
+                        <p className="break-words rounded-lg bg-destructive/10 p-2 text-xs text-destructive">{o.error_message}</p>
                       )}
                       {o.job_id && (
-                        <p className="text-xs text-muted-foreground font-mono">job: {o.job_id}</p>
+                        <p className="truncate font-mono text-xs text-muted-foreground" title={o.job_id}>job: {o.job_id}</p>
                       )}
                     </div>
                   ))
@@ -168,39 +206,51 @@ export function TokenEventDetailsDrawer({
               </section>
 
               {/* Audit trail */}
-              <section>
-                <h3 className="text-sm font-semibold mb-2">
+              <section className="min-w-0">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
                   Audit events ({data.events.length})
                 </h3>
                 {data.events.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No audit events.</p>
                 ) : (
-                  <ol className="space-y-2">
-                    {data.events.map((e) => (
-                      <li key={e.id} className="rounded-md border p-3 space-y-1.5 text-xs">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <EventBadge event={e.event} />
-                            <span className="text-muted-foreground">
-                              {format(new Date(e.created_at), "MMM d, HH:mm:ss.SSS")}
+                  <ol className="relative space-y-3 before:absolute before:bottom-4 before:left-5 before:top-4 before:w-px before:bg-border/70">
+                    {data.events.map((e) => {
+                      const tone = eventTone(e.error_message ? "error" : e.event || e.status);
+                      const Icon = tone.Icon;
+                      return (
+                        <li key={e.id} className="relative grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] gap-3 text-xs">
+                          <div className="relative z-10 flex justify-center pt-3">
+                            <span className={cn("flex h-10 w-10 items-center justify-center rounded-2xl border shadow-sm", tone.dot)}>
+                              <Icon className="h-4 w-4" />
                             </span>
                           </div>
-                          {e.status && <span className="text-muted-foreground">{e.status}</span>}
-                        </div>
-                        {e.user_id && data.users[e.user_id] && (
-                          <p className="text-muted-foreground">User: {data.users[e.user_id]}</p>
-                        )}
-                        <div className="grid grid-cols-4 gap-2 pt-1">
-                          <div><p className="text-muted-foreground">Requested</p><p className="font-medium tabular-nums">{e.requested_tokens.toLocaleString()}</p></div>
-                          <div><p className="text-muted-foreground">Reserved</p><p className="font-medium tabular-nums">{e.reserved_tokens.toLocaleString()}</p></div>
-                          <div><p className="text-muted-foreground">Used</p><p className="font-medium tabular-nums">{e.used_tokens.toLocaleString()}</p></div>
-                          <div><p className="text-muted-foreground">Available</p><p className="font-medium tabular-nums">{e.available_tokens.toLocaleString()}</p></div>
-                        </div>
-                        {e.reason && <p className="text-muted-foreground">Reason: {e.reason}</p>}
-                        {e.error_message && <p className="text-destructive">{e.error_message}</p>}
-                        {e.job_id && <p className="font-mono text-muted-foreground">job: {e.job_id}</p>}
-                      </li>
-                    ))}
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-primary/5">
+                            <div className="flex min-w-0 items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <EventBadge event={e.event} />
+                                <span className="min-w-0 truncate text-muted-foreground" title={e.created_at}>
+                                  {format(new Date(e.created_at), "MMM d, HH:mm:ss.SSS")}
+                                </span>
+                              </div>
+                              <StatusBadge status={e.status} />
+                            </div>
+                            {e.user_id && data.users[e.user_id] && (
+                              <p className="truncate text-muted-foreground" title={data.users[e.user_id]}>User: {data.users[e.user_id]}</p>
+                            )}
+                            <div className="grid min-w-0 grid-cols-2 gap-2 rounded-2xl border border-border/50 bg-muted/20 p-3 sm:grid-cols-4">
+                              <div><p className="text-muted-foreground">Requested</p><p className="font-medium tabular-nums">{e.requested_tokens.toLocaleString()}</p></div>
+                              <div><p className="text-muted-foreground">Reserved</p><p className="font-medium tabular-nums text-amber-700 dark:text-amber-300">{e.reserved_tokens.toLocaleString()}</p></div>
+                              <div><p className="text-muted-foreground">Used</p><p className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">{e.used_tokens.toLocaleString()}</p></div>
+                              <div><p className="text-muted-foreground">Available</p><p className="font-medium tabular-nums">{e.available_tokens.toLocaleString()}</p></div>
+                            </div>
+                            {e.reason && <p className="break-words text-muted-foreground">Reason: {e.reason}</p>}
+                            {e.error_message && <p className="break-words rounded-xl border border-destructive/20 bg-destructive/10 p-2 text-destructive"><AlertTriangle className="mr-1 inline h-3.5 w-3.5" />{e.error_message}</p>}
+                            {e.job_id && <p className="truncate rounded-lg bg-muted/35 px-2 py-1 font-mono text-muted-foreground" title={e.job_id}>job: {e.job_id}</p>}
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ol>
                 )}
               </section>
