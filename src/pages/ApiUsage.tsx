@@ -979,27 +979,27 @@ export default function ApiUsage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[720px] table-fixed text-sm">
                       <thead>
                         <tr className="border-b border-border/50">
-                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Service</th>
-                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Model</th>
-                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tokens</th>
-                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Cost</th>
-                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                          <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</th>
+                          <th className="w-[24%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Service</th>
+                          <th className="hidden w-[24%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground sm:table-cell">Model</th>
+                          <th className="w-[13%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Tokens</th>
+                          <th className="hidden w-[13%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground md:table-cell">Cost</th>
+                          <th className="w-[12%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                          <th className="w-[14%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Time</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredUsageLogs.map(log => (
                           <tr key={log.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
-                            <td className="p-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getServiceColor(log.service) }} />
-                                <span className="text-foreground text-xs sm:text-sm">{formatServiceName(log.service)}</span>
+                            <td className="min-w-0 p-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <div className="w-2 h-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(log.service) }} />
+                                <span className="min-w-0 truncate text-xs text-foreground sm:text-sm" title={formatServiceName(log.service)}>{formatServiceName(log.service)}</span>
                               </div>
                             </td>
-                            <td className="p-3 text-muted-foreground text-xs font-mono hidden sm:table-cell">{log.model || '—'}</td>
+                            <td className="hidden min-w-0 truncate p-3 font-mono text-xs text-muted-foreground sm:table-cell" title={log.model || '—'}>{log.model || '—'}</td>
                             <td className="p-3 text-foreground text-xs font-medium">{(log.tokens || 0).toLocaleString()}</td>
                             <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{log.cost ? `$${log.cost.toFixed(4)}` : '—'}</td>
                             <td className="p-3">
@@ -1462,68 +1462,103 @@ export default function ApiUsage() {
         {/* ==================== Logs Tab ==================== */}
         <TabsContent value="logs" className="space-y-4 mt-4">
           {data && (
-            <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-primary" />
-                  Recent API Calls
-                </CardTitle>
-                <CardDescription className="text-xs">Last 50 logged health check interactions</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border/50">
-                        <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Service</th>
-                        <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Endpoint</th>
-                        <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                        <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Response</th>
-                        <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Quality</th>
-                        <th className="text-left p-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredHealthLogs.map(log => (
-                        <tr key={log.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
-                          <td className="p-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getServiceColor(log.service) }} />
-                              <span className="text-foreground text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{formatServiceName(log.service)}</span>
-                            </div>
-                          </td>
-                          <td className="p-3 text-muted-foreground text-xs font-mono hidden sm:table-cell truncate max-w-[150px]">{log.endpoint || '—'}</td>
-                          <td className="p-3">
-                            {log.status === 'success' ? (
-                              <Badge variant="outline" className="border-green-500/30 text-green-400 bg-green-500/10 text-[10px]">
-                                <CheckCircle2 className="h-3 w-3 mr-1" /> OK
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10 text-[10px]">
-                                <XCircle className="h-3 w-3 mr-1" /> Error
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{log.responseTime ? `${log.responseTime}ms` : '—'}</td>
-                          <td className="p-3 hidden lg:table-cell">
-                            <Badge variant="secondary" className="text-[10px]">{log.dataQuality || '—'}</Badge>
-                          </td>
-                          <td className="p-3 text-muted-foreground text-xs whitespace-nowrap">
-                            {new Date(log.createdAt).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}{' '}
-                            <span className="hidden sm:inline">{new Date(log.createdAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </td>
+            <>
+              <ApiUsageTabHeader
+                icon={<AlertTriangle className="h-5 w-5" />}
+                eyebrow="Operational logs"
+                title="Recent API call timeline"
+                description="Review the existing health-check log stream with preserved ordering, severity, timestamps, service names, endpoints, response times, and quality labels."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">Last 50 events</Badge>
+                <Badge variant="outline" className="border-border/60 bg-background/60 text-muted-foreground">{filteredHealthLogs.length} matching</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <ApiUsageMetricCard
+                  icon={<Activity className="h-4 w-4 text-primary" />}
+                  label="Log Entries"
+                  value={filteredHealthLogs.length.toLocaleString()}
+                  caption="Matching current filters"
+                />
+                <ApiUsageMetricCard
+                  icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  label="Successful"
+                  value={filteredHealthLogs.filter(log => log.status === 'success').length.toLocaleString()}
+                  caption="Existing success severity"
+                />
+                <ApiUsageMetricCard
+                  icon={<XCircle className="h-4 w-4 text-red-500" />}
+                  label="Errors"
+                  value={filteredHealthLogs.filter(log => log.status !== 'success').length.toLocaleString()}
+                  caption="Existing error severity"
+                />
+              </div>
+
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-primary" />
+                    Recent API Calls
+                  </CardTitle>
+                  <CardDescription className="text-xs">Last 50 logged health check interactions</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[820px] table-fixed text-sm">
+                      <thead>
+                        <tr className="border-b border-border/50 bg-muted/20">
+                          <th className="w-[20%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Service</th>
+                          <th className="hidden w-[26%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground sm:table-cell">Endpoint</th>
+                          <th className="w-[12%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                          <th className="hidden w-[12%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground md:table-cell">Response</th>
+                          <th className="hidden w-[14%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground lg:table-cell">Quality</th>
+                          <th className="w-[16%] p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Time</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {filteredHealthLogs.length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground text-sm">
-                    No API calls logged in this period
+                      </thead>
+                      <tbody>
+                        {filteredHealthLogs.map(log => (
+                          <tr key={log.id} className="border-b border-border/30 transition-colors hover:bg-muted/30">
+                            <td className="min-w-0 p-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(log.service) }} />
+                                <span className="min-w-0 truncate text-xs text-foreground sm:text-sm" title={formatServiceName(log.service)}>{formatServiceName(log.service)}</span>
+                              </div>
+                            </td>
+                            <td className="hidden min-w-0 truncate p-3 font-mono text-xs text-muted-foreground sm:table-cell" title={log.endpoint || '—'}>{log.endpoint || '—'}</td>
+                            <td className="p-3">
+                              {log.status === 'success' ? (
+                                <Badge variant="outline" className="border-green-500/30 text-green-400 bg-green-500/10 text-[10px]">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> OK
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10 text-[10px]">
+                                  <XCircle className="h-3 w-3 mr-1" /> Error
+                                </Badge>
+                              )}
+                            </td>
+                            <td className="hidden p-3 text-xs text-muted-foreground md:table-cell">{log.responseTime ? `${log.responseTime}ms` : '—'}</td>
+                            <td className="hidden min-w-0 p-3 lg:table-cell">
+                              <Badge variant="secondary" className="max-w-full truncate text-[10px]" title={log.dataQuality || '—'}>{log.dataQuality || '—'}</Badge>
+                            </td>
+                            <td className="whitespace-nowrap p-3 text-xs text-muted-foreground">
+                              {new Date(log.createdAt).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}{' '}
+                              <span className="hidden sm:inline">{new Date(log.createdAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  {filteredHealthLogs.length === 0 && (
+                    <ApiUsageEmptyState
+                      icon={<AlertTriangle className="h-7 w-7" />}
+                      title="No API calls logged in this period"
+                      description="Health check interactions matching the current filters will appear here."
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
         </TabsContent>
       </Tabs>
