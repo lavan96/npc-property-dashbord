@@ -518,79 +518,99 @@ export function DepreciationCompsAdmin() {
               </TabsList>
             </DashboardThemeFrame>
           
-          <TabsContent value="list" className="space-y-4">
+          <TabsContent value="list" className="min-w-0 space-y-4">
             {/* Actions */}
-            <div className="flex gap-2">
-              <Button onClick={() => setShowAddModal(true)}>
+            <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                onClick={() => setShowAddModal(true)}
+                className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_16px_38px_hsl(var(--primary)/0.28)] focus-visible:ring-primary sm:w-auto"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Comp
               </Button>
-              <Button variant="outline" onClick={fetchComps} disabled={loading}>
+              <Button
+                variant="outline"
+                onClick={fetchComps}
+                disabled={loading}
+                className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary disabled:opacity-60 sm:w-auto"
+              >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
             
             {/* Comps Table */}
-            <ScrollArea className="h-[400px] rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Year</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Finish</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">DV Total</TableHead>
-                    <TableHead className="text-right">PC Total</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ) : comps.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        No comparables found. Add some data to enable the calculator.
-                      </TableCell>
-                    </TableRow>
-                  ) : comps.map(comp => {
-                    const dvTotal = comp.dv_year1 + comp.dv_year2 + comp.dv_year3 + comp.dv_year4 + comp.dv_year5 +
-                                   comp.dv_year6 + comp.dv_year7 + comp.dv_year8 + comp.dv_year9 + comp.dv_year10;
-                    const pcTotal = comp.pc_year1 + comp.pc_year2 + comp.pc_year3 + comp.pc_year4 + comp.pc_year5 +
-                                   comp.pc_year6 + comp.pc_year7 + comp.pc_year8 + comp.pc_year9 + comp.pc_year10;
-                    
-                    return (
-                      <TableRow key={comp.id}>
-                        <TableCell>${formatNumberWithCommas(comp.purchase_price.toString())}</TableCell>
-                        <TableCell>{comp.build_year}</TableCell>
-                        <TableCell className="text-xs">{PROPERTY_TYPE_LABELS[comp.property_type]}</TableCell>
-                        <TableCell>{comp.finish_standard}</TableCell>
-                        <TableCell className="text-xs">{CITY_LABELS[comp.nearest_city]}</TableCell>
-                        <TableCell className="text-xs">{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</TableCell>
-                        <TableCell className="text-right">${formatNumberWithCommas(dvTotal.toString())}</TableCell>
-                        <TableCell className="text-right">${formatNumberWithCommas(pcTotal.toString())}</TableCell>
-                        <TableCell>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleDeleteComp(comp.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[0_18px_48px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/25">
+              <ScrollArea className="h-[420px]">
+                <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+                  <Table className="min-w-[980px]">
+                    <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-slate-950/90">
+                      <TableRow className="border-border/70 hover:bg-transparent dark:border-white/10">
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Price</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Year</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Type</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Finish</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">City</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Category</TableHead>
+                        <TableHead className="whitespace-nowrap text-right font-semibold text-foreground">DV Total</TableHead>
+                        <TableHead className="whitespace-nowrap text-right font-semibold text-foreground">PC Total</TableHead>
+                        <TableHead className="w-12"></TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={9} className="py-12 text-center">
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                          </TableCell>
+                        </TableRow>
+                      ) : comps.length === 0 ? (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={9} className="py-14 text-center text-muted-foreground">
+                            <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-primary/25 bg-background/65 p-6 shadow-inner dark:bg-slate-950/35">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+                                <Database className="h-5 w-5" />
+                              </div>
+                              <p className="text-sm font-medium leading-6 text-muted-foreground">
+                                No comparables found. Add some data to enable the calculator.
+                              </p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : comps.map(comp => {
+                        const dvTotal = comp.dv_year1 + comp.dv_year2 + comp.dv_year3 + comp.dv_year4 + comp.dv_year5 +
+                                       comp.dv_year6 + comp.dv_year7 + comp.dv_year8 + comp.dv_year9 + comp.dv_year10;
+                        const pcTotal = comp.pc_year1 + comp.pc_year2 + comp.pc_year3 + comp.pc_year4 + comp.pc_year5 +
+                                       comp.pc_year6 + comp.pc_year7 + comp.pc_year8 + comp.pc_year9 + comp.pc_year10;
+                        
+                        return (
+                          <TableRow key={comp.id} className="border-border/60 transition-colors hover:bg-primary/5 dark:border-white/10">
+                            <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">${formatNumberWithCommas(comp.purchase_price.toString())}</TableCell>
+                            <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">{comp.build_year}</TableCell>
+                            <TableCell className="max-w-[9rem] truncate text-xs text-foreground" title={PROPERTY_TYPE_LABELS[comp.property_type]}>{PROPERTY_TYPE_LABELS[comp.property_type]}</TableCell>
+                            <TableCell className="max-w-[7rem] truncate text-muted-foreground" title={comp.finish_standard}>{comp.finish_standard}</TableCell>
+                            <TableCell className="max-w-[11rem] truncate text-xs text-foreground" title={CITY_LABELS[comp.nearest_city]}>{CITY_LABELS[comp.nearest_city]}</TableCell>
+                            <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}>{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">${formatNumberWithCommas(dvTotal.toString())}</TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">${formatNumberWithCommas(pcTotal.toString())}</TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleDeleteComp(comp.id)}
+                                className="hover:bg-destructive/10 focus-visible:ring-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </div>
           </TabsContent>
           
           <TabsContent value="import" className="space-y-4">
