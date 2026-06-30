@@ -368,6 +368,8 @@ export default function ErrorLogs() {
           onClick={fetchErrors}
           disabled={isLoading}
           variant="outline"
+          aria-label={isLoading ? 'Refreshing error logs' : 'Refresh error logs'}
+          aria-busy={isLoading}
           className="w-full shrink-0 rounded-full border-primary/25 bg-background/70 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:translate-y-0 disabled:opacity-60 sm:w-auto"
         >
           {isLoading ? (
@@ -480,6 +482,7 @@ export default function ErrorLogs() {
               <div className="relative min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  aria-label="Search errors"
                   placeholder="Search errors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -489,7 +492,7 @@ export default function ErrorLogs() {
             </div>
 
             <Select value={selectedSource} onValueChange={(v) => setSelectedSource(v as ErrorSource | 'all')}>
-              <SelectTrigger className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+              <SelectTrigger aria-label="Filter error logs by source" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
                 <SelectValue placeholder="All Sources" />
               </SelectTrigger>
               <SelectContent className="max-h-72 min-w-[190px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
@@ -503,7 +506,7 @@ export default function ErrorLogs() {
             </Select>
 
             <Select value={selectedSeverity} onValueChange={(v) => setSelectedSeverity(v as ErrorSeverity | 'all')}>
-              <SelectTrigger className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+              <SelectTrigger aria-label="Filter error logs by severity" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
                 <SelectValue placeholder="All Severities" />
               </SelectTrigger>
               <SelectContent className="max-h-72 min-w-[160px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
@@ -515,7 +518,7 @@ export default function ErrorLogs() {
             </Select>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as '24h' | '7d' | '30d')}>
-              <SelectTrigger className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+              <SelectTrigger aria-label="Filter error logs by date range" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-72 min-w-[145px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
@@ -539,8 +542,8 @@ export default function ErrorLogs() {
 
       {/* Error Tabs by Source */}
       <Tabs defaultValue="all" className="min-w-0">
-        <TabsList className="h-auto w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto rounded-[1.35rem] border border-primary/15 bg-card/80 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
-          <TabsTrigger value="all" className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
+        <TabsList aria-label="Filter error logs by source category" className="h-auto w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto rounded-[1.35rem] border border-primary/15 bg-card/80 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+          <TabsTrigger value="all" aria-label={`Show all error logs (${filteredErrors.length})`} className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
             All
             <Badge variant="secondary" className="ml-1 rounded-full bg-background/80 px-2 text-foreground data-[state=active]:bg-primary-foreground/20">{filteredErrors.length}</Badge>
           </TabsTrigger>
@@ -549,7 +552,7 @@ export default function ErrorLogs() {
             if (count === 0) return null;
             const Icon = config.icon;
             return (
-              <TabsTrigger key={key} value={key} className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
+              <TabsTrigger key={key} value={key} aria-label={`Show ${config.label} error logs (${count})`} className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
                 <Icon className={`h-4 w-4 ${config.color}`} />
                 {config.label}
                 <Badge variant="secondary" className="ml-1 rounded-full bg-background/80 px-2 text-foreground">{count}</Badge>
@@ -589,7 +592,8 @@ export default function ErrorLogs() {
 
 function ErrorStatsSkeleton() {
   return (
-    <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,13.5rem),1fr))] gap-4" aria-label="Loading error summary">
+    <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,13.5rem),1fr))] gap-4" role="status" aria-busy="true" aria-label="Loading error summary">
+      <span className="sr-only">Loading error summary</span>
       {Array.from({ length: 5 }).map((_, index) => (
         <Card key={index} className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10">
           <CardContent className="space-y-4 p-6">
@@ -608,7 +612,7 @@ function ErrorStatsSkeleton() {
 
 function ErrorStatePanel({ title, description, onRefresh, isRefreshing }: { title: string; description: string; onRefresh: () => void; isRefreshing: boolean }) {
   return (
-    <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-destructive/30 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.08))] shadow-[0_16px_48px_rgba(239,68,68,0.08)] ring-1 ring-border/40 dark:ring-white/10">
+    <Card role="alert" aria-live="assertive" className="min-w-0 overflow-hidden rounded-[1.5rem] border-destructive/30 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.08))] shadow-[0_16px_48px_rgba(239,68,68,0.08)] ring-1 ring-border/40 dark:ring-white/10">
       <CardContent className="flex min-w-0 flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
@@ -624,6 +628,8 @@ function ErrorStatePanel({ title, description, onRefresh, isRefreshing }: { titl
           variant="outline"
           onClick={onRefresh}
           disabled={isRefreshing}
+          aria-label={isRefreshing ? 'Refreshing error logs after fetch failure' : 'Refresh error logs after fetch failure'}
+          aria-busy={isRefreshing}
           className="w-full shrink-0 rounded-full border-destructive/25 bg-background/80 hover:bg-destructive/10 hover:text-foreground sm:w-auto"
         >
           {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -636,7 +642,8 @@ function ErrorStatePanel({ title, description, onRefresh, isRefreshing }: { titl
 
 function ErrorListSkeleton() {
   return (
-    <div className="space-y-3" aria-label="Loading error records">
+    <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading error records">
+      <span className="sr-only">Loading error records</span>
       {Array.from({ length: 3 }).map((_, index) => (
         <Card key={index} className="min-w-0 overflow-hidden rounded-[1.35rem] border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10">
           <CardContent className="p-5">
@@ -748,6 +755,8 @@ function ErrorCard({
 
   const entityLink = getEntityLink();
   const canRetry = error.entityType === 'investment_report' && error.entityId;
+  const rowLabel = `${severityConfig.label} ${sourceConfig.label} error ${error.errorCode}: ${error.errorMessage}`;
+  const contextLabel = error.entityLabel ? ` for ${error.entityLabel}` : '';
   const severityRowClass =
     error.severity === 'critical'
       ? 'border-red-500/40 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--destructive)/0.08))] shadow-[0_18px_52px_rgba(239,68,68,0.08)]'
@@ -770,7 +779,7 @@ function ErrorCard({
     <Collapsible open={isExpanded} onOpenChange={onToggle} className="min-w-0">
       <Card className={`group min-w-0 overflow-hidden rounded-[1.35rem] border ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_22px_64px_rgba(15,23,42,0.12)] dark:ring-white/10 dark:shadow-black/25 ${severityRowClass}`}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer px-4 py-4 transition-colors hover:bg-background/35 sm:px-5">
+          <CardHeader aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${rowLabel}`} className="cursor-pointer px-4 py-4 transition-colors hover:bg-background/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-5">
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex min-w-0 flex-1 items-start gap-3">
                 <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-background/70 shadow-sm dark:border-white/10 dark:bg-slate-950/55 ${sourceConfig.color}`}>
@@ -812,6 +821,8 @@ function ErrorCard({
                     className="min-w-0 flex-1 gap-1 rounded-full border-warning/40 bg-warning/10 px-3 font-semibold text-warning shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-warning/55 hover:bg-warning/15 hover:text-warning focus-visible:ring-2 focus-visible:ring-warning/40 disabled:translate-y-0 disabled:opacity-60 sm:flex-none"
                     onClick={handleRetry}
                     disabled={isRetrying}
+                    aria-label={`${isRetrying ? 'Retrying' : 'Retry'} report generation${contextLabel}`}
+                    aria-busy={isRetrying}
                   >
                     <RefreshCw className={`h-4 w-4 shrink-0 ${isRetrying ? 'animate-spin' : ''}`} />
                     <span className="truncate">{isRetrying ? 'Retrying...' : 'Retry'}</span>
@@ -819,13 +830,13 @@ function ErrorCard({
                 )}
                 {entityLink && (
                   <Link to={entityLink} onClick={(e) => e.stopPropagation()} className="min-w-0 flex-1 sm:flex-none">
-                    <Button variant="ghost" size="sm" className="w-full min-w-0 gap-1 rounded-full px-3 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/35">
+                    <Button variant="ghost" size="sm" aria-label={`View diagnostics${contextLabel || ` for ${error.errorCode}`}`} className="w-full min-w-0 gap-1 rounded-full px-3 text-muted-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/35">
                       <ExternalLink className="h-4 w-4 shrink-0" />
                       <span className="truncate">View</span>
                     </Button>
                   </Link>
                 )}
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-foreground dark:border-white/10 dark:bg-slate-950/45">
+                <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-foreground dark:border-white/10 dark:bg-slate-950/45">
                   {isExpanded ? (
                     <ChevronUp className="h-5 w-5" />
                   ) : (
