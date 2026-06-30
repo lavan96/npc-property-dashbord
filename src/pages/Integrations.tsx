@@ -403,25 +403,56 @@ export default function Integrations() {
   };
 
   const getStatusBadge = (status: string) => {
+    const baseBadgeClass = 'max-w-full gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
+
     switch (status) {
       case 'configured':
         return (
-          <Badge variant="default" className="bg-green-500/20 text-green-400 border-green-500/30">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Configured
+          <Badge variant="outline" className={`${baseBadgeClass} border-emerald-400/30 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300`}>
+            <CheckCircle2 className="h-3 w-3 shrink-0" />
+            <span className="truncate">Configured</span>
+          </Badge>
+        );
+      case 'connected':
+        return (
+          <Badge variant="outline" className={`${baseBadgeClass} border-emerald-400/30 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300`}>
+            <CheckCircle2 className="h-3 w-3 shrink-0" />
+            <span className="truncate">Connected</span>
           </Badge>
         );
       case 'partial':
         return (
-          <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-            <XCircle className="h-3 w-3 mr-1" />
-            Incomplete
+          <Badge variant="outline" className={`${baseBadgeClass} border-amber-400/35 bg-amber-500/10 text-amber-600 dark:text-amber-300`}>
+            <AlertCircle className="h-3 w-3 shrink-0" />
+            <span className="truncate">Incomplete</span>
+          </Badge>
+        );
+      case 'pending':
+        return (
+          <Badge variant="outline" className={`${baseBadgeClass} border-amber-400/35 bg-amber-500/10 text-amber-600 dark:text-amber-300`}>
+            <AlertCircle className="h-3 w-3 shrink-0" />
+            <span className="truncate">Pending</span>
+          </Badge>
+        );
+      case 'error':
+      case 'invalid':
+      case 'failed':
+        return (
+          <Badge variant="outline" className={`${baseBadgeClass} border-destructive/35 bg-destructive/10 text-destructive`}>
+            <XCircle className="h-3 w-3 shrink-0" />
+            <span className="truncate">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+          </Badge>
+        );
+      case 'roadmap':
+        return (
+          <Badge variant="outline" className={`${baseBadgeClass} border-border/70 bg-muted/50 text-muted-foreground`}>
+            <span className="truncate">Roadmap</span>
           </Badge>
         );
       default:
         return (
-          <Badge variant="outline" className="text-muted-foreground">
-            Not Configured
+          <Badge variant="outline" className={`${baseBadgeClass} border-border/70 bg-muted/45 text-muted-foreground`}>
+            <span className="truncate">Not Configured</span>
           </Badge>
         );
     }
@@ -522,9 +553,9 @@ export default function Integrations() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/30 text-xs">
-                <Cloud className="h-3 w-3 mr-1" />
-                Supabase
+              <Badge variant="outline" className="max-w-full gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold leading-none text-emerald-500 shadow-sm dark:text-emerald-300">
+                <Cloud className="h-3 w-3 shrink-0" />
+                <span className="truncate">Supabase</span>
               </Badge>
             </TooltipTrigger>
             <TooltipContent>
@@ -543,9 +574,9 @@ export default function Integrations() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/30 text-xs">
-                <Cloud className="h-3 w-3 mr-1" />
-                Partial
+              <Badge variant="outline" className="max-w-full gap-1 rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold leading-none text-amber-600 shadow-sm dark:text-amber-300">
+                <Cloud className="h-3 w-3 shrink-0" />
+                <span className="truncate">Partial</span>
               </Badge>
             </TooltipTrigger>
             <TooltipContent>
@@ -569,9 +600,16 @@ export default function Integrations() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <DashboardThemeFrame
+        as="main"
+        variant="page"
+        className="flex min-h-[50vh] items-center justify-center rounded-[2rem] bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-6"
+      >
+        <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-card/80 px-5 py-4 text-sm font-medium text-muted-foreground shadow-xl shadow-sm dark:shadow-black/25">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          Loading integrations
+        </div>
+      </DashboardThemeFrame>
     );
   }
 
@@ -795,8 +833,11 @@ export default function Integrations() {
               .filter(i => getIntegrationStatus(i) === 'configured')
               .map(renderIntegrationCard)}
             {integrations.filter(i => getIntegrationStatus(i) === 'configured').length === 0 && (
-              <div className="rounded-3xl border border-dashed border-border/70 bg-card/55 px-6 py-12 text-center text-muted-foreground xl:col-span-2">
-                No integrations have been fully configured yet.
+              <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.78),hsl(var(--muted)/0.24))] px-6 py-12 text-center text-muted-foreground shadow-inner shadow-sm xl:col-span-2">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <p className="max-w-md text-sm font-medium">No integrations have been fully configured yet.</p>
               </div>
             )}
           </div>
