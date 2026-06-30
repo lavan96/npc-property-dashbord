@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { ValidationFlagsDisplay } from "@/components/reports/ValidationFlagsDisplay";
 import { DataQualityIndicator } from "@/components/reports/DataQualityIndicator";
-import { Loader2, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText } from "lucide-react";
+import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
+import { Loader2, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import type { ValidationFlag, DataSources } from "@/types/validation";
 import type { Json } from "@/integrations/supabase/types";
@@ -157,26 +158,70 @@ export default function QualityAssurance() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <DashboardThemeFrame
+        variant="page"
+        className="space-y-6 p-4 sm:p-6 lg:p-8"
+      >
+        <DashboardThemeFrame
+          variant="section"
+          className="flex min-h-[18rem] items-center justify-center"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="rounded-full border border-primary/20 bg-primary/10 p-3 shadow-sm shadow-primary/10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">Loading quality assurance data...</p>
+          </div>
+        </DashboardThemeFrame>
+      </DashboardThemeFrame>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Quality Assurance Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              Monitor report quality, validation issues, and data accuracy
-            </p>
+    <DashboardThemeFrame
+      variant="page"
+      className="space-y-6 p-4 sm:p-6 lg:p-8"
+    >
+        <DashboardThemeFrame
+          as="header"
+          variant="hero"
+          className="border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_30%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--dashboard-surface-elevated)/0.86))] shadow-[0_20px_58px_hsl(var(--primary)/0.10)]"
+        >
+          <div className="flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_16px_32px_hsl(var(--primary)/0.16)]">
+                <div className="absolute inset-x-2 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+                <ShieldCheck className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <div className="min-w-0 space-y-2">
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary))]" />
+                  <span className="truncate">Validation control centre</span>
+                </div>
+                <div className="space-y-1">
+                  <h1 className="break-words text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                    Quality Assurance Dashboard
+                  </h1>
+                  <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                    Monitor report quality, validation issues, and data accuracy
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              variant="outline"
+              className="w-full shrink-0 rounded-full border-primary/25 bg-card/80 px-5 font-semibold shadow-sm shadow-primary/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 md:w-auto"
+              aria-label="Refresh quality assurance dashboard"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
-          <Button onClick={handleRefresh} disabled={refreshing} variant="outline">
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        </DashboardThemeFrame>
 
         {/* Metrics Overview */}
         {metrics && (
@@ -258,20 +303,49 @@ export default function QualityAssurance() {
         )}
 
         {/* Reports List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Reports</CardTitle>
-            <CardDescription>
-              Click on a report to view detailed validation results
-            </CardDescription>
+        <Card className="relative min-w-0 overflow-hidden rounded-[1.75rem] border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(180deg,hsl(var(--card)),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_20px_54px_hsl(var(--primary)/0.09)]">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+          <CardHeader className="gap-4 border-b border-border/60 pb-5">
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 space-y-1.5">
+                <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  <span className="truncate">Report validation queue</span>
+                </div>
+                <CardTitle className="break-words text-2xl tracking-tight">Recent Reports</CardTitle>
+                <CardDescription className="max-w-2xl leading-6">
+                  Click on a report to view detailed validation results
+                </CardDescription>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-background/55 px-4 py-3 text-xs leading-5 text-muted-foreground shadow-sm">
+                Filter the queue by validation outcome without changing report data or QA logic.
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="all">
-              <TabsList>
-                <TabsTrigger value="all">All Reports</TabsTrigger>
-                <TabsTrigger value="issues">With Issues</TabsTrigger>
-                <TabsTrigger value="clean">Clean</TabsTrigger>
-              </TabsList>
+          <CardContent className="min-w-0 p-4 sm:p-6">
+            <Tabs defaultValue="all" className="min-w-0">
+              <div className="-mx-1 overflow-x-auto px-1 pb-1">
+                <TabsList className="h-auto min-w-max justify-start gap-1 rounded-full border border-border/70 bg-background/70 p-1 shadow-inner shadow-black/5 dark:bg-slate-950/40">
+                  <TabsTrigger
+                    value="all"
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    All Reports
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="issues"
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    With Issues
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="clean"
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    Clean
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="all" className="space-y-3 mt-4">
                 {reports.map(report => {
@@ -400,6 +474,6 @@ export default function QualityAssurance() {
             qualityScore={calculateReportQualityScore(selectedReport.validation_flags)}
           />
         )}
-      </div>
+      </DashboardThemeFrame>
     );
   }
