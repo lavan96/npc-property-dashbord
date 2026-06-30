@@ -389,57 +389,67 @@ export default function Monitoring() {
       </Card>
 
       {/* Data Quality Breakdown */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-card/80">
-        <CardHeader className="border-b border-border/60 bg-muted/20">
-          <CardTitle className="flex min-w-0 items-center gap-2">
-            <BarChart3 className="h-5 w-5" />
-            Data Quality Breakdown
-          </CardTitle>
-          <CardDescription>
-            Live vs estimated data across all services
-          </CardDescription>
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+        <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--success)/0.08),hsl(var(--warning)/0.06)_44%,hsl(var(--card)/0))] px-5 py-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
+              <BarChart3 className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="min-w-0 break-words text-lg font-semibold tracking-tight">
+                Data Quality Breakdown
+              </CardTitle>
+              <CardDescription className="max-w-3xl text-sm leading-6">
+                Live vs estimated data across all services
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="p-5">
+          <div className="space-y-5">
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="min-w-0 rounded-2xl border border-success/25 bg-success/10 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Live Data</span>
-                  <CheckCircle2 className="h-4 w-4 text-success" />
+              <div className="min-w-0 overflow-hidden rounded-2xl border border-success/25 bg-[linear-gradient(145deg,hsl(var(--success)/0.12),hsl(var(--card)/0.72))] p-4 shadow-sm ring-1 ring-success/10">
+                <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-sm font-medium text-success">Live Data</span>
+                  <span className="shrink-0 rounded-xl border border-success/25 bg-success/10 p-2 text-success">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </span>
                 </div>
-                <p className="text-2xl font-bold">{totalLiveData.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="break-words text-3xl font-bold tabular-nums text-foreground">{totalLiveData.toLocaleString()}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   From official sources
                 </p>
               </div>
 
-              <div className="min-w-0 rounded-2xl border border-warning/25 bg-warning/10 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Estimated Data</span>
-                  <Zap className="h-4 w-4 text-warning" />
+              <div className="min-w-0 overflow-hidden rounded-2xl border border-warning/25 bg-[linear-gradient(145deg,hsl(var(--warning)/0.12),hsl(var(--card)/0.72))] p-4 shadow-sm ring-1 ring-warning/10">
+                <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-sm font-medium text-warning">Estimated Data</span>
+                  <span className="shrink-0 rounded-xl border border-warning/25 bg-warning/10 p-2 text-warning">
+                    <Zap className="h-4 w-4" />
+                  </span>
                 </div>
-                <p className="text-2xl font-bold">{totalEstimatedData.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="break-words text-3xl font-bold tabular-nums text-foreground">{totalEstimatedData.toLocaleString()}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   Statistical estimates
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Overall Data Quality</span>
-                <span className="font-semibold">{overallDataQuality}% Live</span>
+            <div className="rounded-2xl border border-border/60 bg-card/55 p-4 shadow-sm">
+              <div className="mb-3 flex min-w-0 flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <span className="min-w-0 break-words font-medium">Overall Data Quality</span>
+                <span className="shrink-0 font-semibold tabular-nums text-primary">{overallDataQuality}% Live</span>
               </div>
-              <Progress value={Number(overallDataQuality)} className="h-3" />
+              <Progress value={Number(overallDataQuality)} className="h-3 bg-muted [&>div]:bg-primary" />
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Footer */}
-      <div className="min-w-0 rounded-2xl border border-border/60 bg-card/60 p-4 text-center text-sm text-muted-foreground shadow-sm">
-        <p>Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
-        <p className="mt-1">Data updates in real-time as services are used</p>
+      <div className="mx-auto flex min-w-0 max-w-xl flex-col items-center rounded-2xl border border-border/60 bg-card/55 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+        <p className="min-w-0 break-words tabular-nums">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
+        <p className="mt-1 min-w-0 break-words leading-5">Data updates in real-time as services are used</p>
       </div>
     </DashboardThemeFrame>
   );
