@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -181,6 +181,19 @@ const API_USAGE_METRIC_CARD =
 const API_USAGE_TAB_TRIGGER =
   'shrink-0 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm';
 
+const API_USAGE_CHART_TOOLTIP_STYLE: CSSProperties = {
+  backgroundColor: 'hsl(var(--card))',
+  border: '1px solid hsl(var(--border))',
+  borderRadius: '12px',
+  boxShadow: '0 14px 40px hsl(var(--foreground) / 0.10)',
+  color: 'hsl(var(--foreground))',
+  fontSize: '12px',
+};
+
+const API_USAGE_CHART_LABEL_STYLE: CSSProperties = {
+  color: 'hsl(var(--foreground))',
+};
+
 interface ApiUsageMetricCardProps {
   icon: ReactNode;
   label: string;
@@ -199,10 +212,29 @@ function ApiUsageMetricCard({ icon, label, value, caption, className = '' }: Api
           </span>
           <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
         </div>
-        <p className="min-w-0 truncate text-xl font-bold tracking-tight text-foreground">{value}</p>
+        <p className="min-w-0 truncate text-xl font-bold tracking-tight text-foreground tabular-nums">{value}</p>
         <p className="mt-1 min-w-0 truncate text-[10px] text-muted-foreground">{caption}</p>
       </CardContent>
     </Card>
+  );
+}
+
+
+interface ApiUsageStatusBadgeProps {
+  status: string;
+}
+
+function ApiUsageStatusBadge({ status }: ApiUsageStatusBadgeProps) {
+  const isSuccess = status === 'success';
+
+  return isSuccess ? (
+    <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-[10px] text-green-400">
+      <CheckCircle2 className="h-3 w-3 mr-1" /> OK
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
+      <XCircle className="h-3 w-3 mr-1" /> Error
+    </Badge>
   );
 }
 
@@ -267,7 +299,7 @@ function ApiUsageInsightTile({ label, value, detail, icon }: ApiUsageInsightTile
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</span>
         <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
       </div>
-      <p className="min-w-0 truncate text-2xl font-bold tracking-tight text-foreground">{value}</p>
+      <p className="min-w-0 truncate text-2xl font-bold tracking-tight text-foreground tabular-nums">{value}</p>
       <p className="mt-1 min-w-0 truncate text-xs text-muted-foreground">{detail}</p>
     </div>
   );
@@ -710,7 +742,7 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} labelStyle={API_USAGE_CHART_LABEL_STYLE} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         {filteredHealthServices.map(svc => (
                           <Area key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stackId="1" stroke={getServiceColor(svc)} fill={`url(#gradient-${svc})`} strokeWidth={2} />
@@ -737,7 +769,7 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} labelStyle={API_USAGE_CHART_LABEL_STYLE} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         <Bar dataKey="success" name="Success" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} stackId="a" />
                         <Bar dataKey="errors" name="Errors" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} stackId="a" />
@@ -763,7 +795,7 @@ export default function ApiUsage() {
                         <Pie data={donutData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
                           {donutData.map((entry) => (<Cell key={entry.service} fill={getServiceColor(entry.service)} />))}
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -786,7 +818,7 @@ export default function ApiUsage() {
                         <Pie data={qualityData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
                           {qualityData.map((_, idx) => (<Cell key={idx} fill={QUALITY_COLORS[idx % QUALITY_COLORS.length]} />))}
                         </Pie>
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -863,7 +895,7 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} labelStyle={API_USAGE_CHART_LABEL_STYLE} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         {filteredConsumptionServices.map(svc => (
                           <Area key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stackId="1" stroke={getServiceColor(svc)} fill={`url(#tok-gradient-${svc})`} strokeWidth={2} />
@@ -896,7 +928,7 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => `$${v}`} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} formatter={(v: any) => [`$${Number(v).toFixed(4)}`, 'Cost']} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} formatter={(v: any) => [`$${Number(v).toFixed(4)}`, 'Cost']} />
                         <Area type="monotone" dataKey="cost" stroke="hsl(142, 71%, 45%)" fill="url(#costGradient)" strokeWidth={2} />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -921,7 +953,7 @@ export default function ApiUsage() {
                           <Pie data={modelDonutData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
                             {modelDonutData.map((_, idx) => (<Cell key={idx} fill={MODEL_COLORS[idx % MODEL_COLORS.length]} />))}
                           </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
+                          <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
@@ -1000,18 +1032,10 @@ export default function ApiUsage() {
                               </div>
                             </td>
                             <td className="hidden min-w-0 truncate p-3 font-mono text-xs text-muted-foreground sm:table-cell" title={log.model || '—'}>{log.model || '—'}</td>
-                            <td className="p-3 text-foreground text-xs font-medium">{(log.tokens || 0).toLocaleString()}</td>
-                            <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{log.cost ? `$${log.cost.toFixed(4)}` : '—'}</td>
+                            <td className="p-3 text-xs font-medium text-foreground tabular-nums">{(log.tokens || 0).toLocaleString()}</td>
+                            <td className="hidden p-3 text-xs text-muted-foreground tabular-nums md:table-cell">{log.cost ? `$${log.cost.toFixed(4)}` : '—'}</td>
                             <td className="p-3">
-                              {log.status === 'success' ? (
-                                <Badge variant="outline" className="border-green-500/30 text-green-400 bg-green-500/10 text-[10px]">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" /> OK
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10 text-[10px]">
-                                  <XCircle className="h-3 w-3 mr-1" /> Error
-                                </Badge>
-                              )}
+                              <ApiUsageStatusBadge status={log.status} />
                             </td>
                             <td className="p-3 text-muted-foreground text-xs whitespace-nowrap">
                               {new Date(log.createdAt).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })}{' '}
@@ -1101,7 +1125,7 @@ export default function ApiUsage() {
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                         <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => `$${v}`} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         <Bar yAxisId="left" dataKey="calls" name="Calls" fill="hsl(328, 73%, 56%)" radius={[4, 4, 0, 0]} opacity={0.7} />
                         <Line yAxisId="right" type="monotone" dataKey="cost" name="Cost ($)" stroke="hsl(142, 71%, 45%)" strokeWidth={2} dot={false} />
@@ -1133,7 +1157,7 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} unit=" min" />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} formatter={(v: any) => [`${v} min`, 'Minutes']} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} formatter={(v: any) => [`${v} min`, 'Minutes']} />
                         <Area type="monotone" dataKey="minutes" stroke="hsl(262, 83%, 58%)" fill="url(#minutesGradient)" strokeWidth={2} />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -1336,7 +1360,7 @@ export default function ApiUsage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                         <XAxis dataKey="date" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={v => v.slice(5)} />
                         <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} unit="ms" />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                        <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} labelStyle={API_USAGE_CHART_LABEL_STYLE} />
                         <Legend wrapperStyle={{ fontSize: '11px' }} />
                         {filteredHealthServices.map(svc => (
                           <Line key={svc} type="monotone" dataKey={svc} name={formatServiceName(svc)} stroke={getServiceColor(svc)} strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
@@ -1446,7 +1470,7 @@ export default function ApiUsage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                       <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
                       <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} width={120} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                      <Tooltip contentStyle={API_USAGE_CHART_TOOLTIP_STYLE} labelStyle={API_USAGE_CHART_LABEL_STYLE} />
                       <Legend wrapperStyle={{ fontSize: '11px' }} />
                       <Bar dataKey="success" name="Success" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} stackId="a" />
                       <Bar dataKey="errors" name="Errors" fill="hsl(0, 84%, 60%)" radius={[0, 4, 4, 0]} stackId="a" />
@@ -1526,17 +1550,9 @@ export default function ApiUsage() {
                             </td>
                             <td className="hidden min-w-0 truncate p-3 font-mono text-xs text-muted-foreground sm:table-cell" title={log.endpoint || '—'}>{log.endpoint || '—'}</td>
                             <td className="p-3">
-                              {log.status === 'success' ? (
-                                <Badge variant="outline" className="border-green-500/30 text-green-400 bg-green-500/10 text-[10px]">
-                                  <CheckCircle2 className="h-3 w-3 mr-1" /> OK
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10 text-[10px]">
-                                  <XCircle className="h-3 w-3 mr-1" /> Error
-                                </Badge>
-                              )}
+                              <ApiUsageStatusBadge status={log.status} />
                             </td>
-                            <td className="hidden p-3 text-xs text-muted-foreground md:table-cell">{log.responseTime ? `${log.responseTime}ms` : '—'}</td>
+                            <td className="hidden p-3 text-xs text-muted-foreground tabular-nums md:table-cell">{log.responseTime ? `${log.responseTime}ms` : '—'}</td>
                             <td className="hidden min-w-0 p-3 lg:table-cell">
                               <Badge variant="secondary" className="max-w-full truncate text-[10px]" title={log.dataQuality || '—'}>{log.dataQuality || '—'}</Badge>
                             </td>
