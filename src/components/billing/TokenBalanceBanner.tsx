@@ -28,12 +28,42 @@ export function TokenBalanceBanner() {
   const isRemindersPage = pathname === "/reminders";
   const isAgreementsPage = pathname === "/agreements";
   const isMonitoringPage = pathname === "/monitoring";
+  const isDataImportPage = pathname === "/data-import";
 
   if (!lowBalance || !balance) return null;
 
   const pct = balance.allowance > 0
     ? Math.round((balance.available / balance.allowance) * 100)
     : 0;
+
+  if (isDataImportPage) {
+    return (
+      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-[1.5rem] border-amber-300/45 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.36),hsl(var(--card)/0.96)_44%,hsl(var(--dashboard-surface-elevated)/0.88))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-amber-300/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.78))] dark:shadow-black/30 sm:px-5">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/80 to-transparent" />
+        <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-amber-300/18 blur-3xl" />
+        <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
+        <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-amber-300/45 bg-amber-400/15 text-amber-700 shadow-sm dark:text-amber-200">
+          <AlertTriangle className="h-4 w-4" />
+        </span>
+        <AlertTitle className="min-w-0 text-sm font-semibold tracking-tight text-amber-900 dark:text-amber-100">Token balance low</AlertTitle>
+        <AlertDescription className="flex min-w-0 flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="min-w-0 max-w-3xl break-words leading-6 text-amber-950/78 dark:text-amber-50/82">
+            <span className="font-semibold tabular-nums text-amber-950 dark:text-amber-50">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            aria-label="Top up token balance"
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-amber-300/70 bg-amber-400 px-5 font-semibold text-amber-950 shadow-[0_12px_30px_hsl(var(--warning)/0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-300 hover:text-amber-950 hover:shadow-[0_18px_42px_hsl(var(--warning)/0.30)] focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60 dark:border-amber-200/45 dark:bg-amber-300 dark:hover:bg-amber-200 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
 
   if (isMonitoringPage) {
