@@ -156,6 +156,47 @@ export default function QualityAssurance() {
     return Math.max(0, score);
   };
 
+  const getValidationFlags = (flags: Json): ValidationFlag[] => {
+    return Array.isArray(flags) ? (flags as unknown as ValidationFlag[]) : [];
+  };
+
+  const getIssueSeveritySummary = (flags: Json) => {
+    const validationFlags = getValidationFlags(flags);
+
+    return {
+      total: validationFlags.length,
+      critical: validationFlags.filter(flag => flag.severity === 'critical').length,
+      high: validationFlags.filter(flag => flag.severity === 'high').length,
+      medium: validationFlags.filter(flag => flag.severity === 'medium').length,
+    };
+  };
+
+  const getIssueBadgeClass = (summary: ReturnType<typeof getIssueSeveritySummary>): string => {
+    if (summary.critical > 0) {
+      return 'border-destructive/40 bg-destructive text-destructive-foreground shadow-[0_10px_24px_hsl(var(--destructive)/0.18)]';
+    }
+
+    if (summary.high > 0 || summary.medium > 0) {
+      return 'border-amber-300/60 bg-amber-100 text-amber-900 shadow-[0_10px_24px_hsl(43_74%_49%/0.15)] dark:border-amber-400/35 dark:bg-amber-400/15 dark:text-amber-100';
+    }
+
+    return 'border-border/70 bg-background/75 text-muted-foreground';
+  };
+
+  const getIssueSummaryLabel = (summary: ReturnType<typeof getIssueSeveritySummary>): string => {
+    if (summary.critical > 0) return `${summary.total} issue${summary.total === 1 ? '' : 's'} • ${summary.critical} critical`;
+    if (summary.high > 0) return `${summary.total} issue${summary.total === 1 ? '' : 's'} • ${summary.high} high`;
+    if (summary.medium > 0) return `${summary.total} issue${summary.total === 1 ? '' : 's'} • ${summary.medium} medium`;
+    return `${summary.total} issue${summary.total === 1 ? '' : 's'}`;
+  };
+
+  const reportsWithValidationIssues = reports.filter(r =>
+    Array.isArray(r.validation_flags) && (r.validation_flags as unknown as ValidationFlag[]).length > 0
+  );
+  const cleanReports = reports.filter(r =>
+    !Array.isArray(r.validation_flags) || (r.validation_flags as unknown as ValidationFlag[]).length === 0
+  );
+
   if (loading) {
     return (
       <DashboardThemeFrame
@@ -348,9 +389,15 @@ export default function QualityAssurance() {
               </div>
 
               <TabsContent value="all" className="space-y-3 mt-4">
+                {reports.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground">
+                    No recent reports are available yet. Validation results will appear here when reports are generated.
+                  </div>
+                )}
                 {reports.map(report => {
                   const qualityScore = calculateReportQualityScore(report.validation_flags);
-                  const hasIssues = Array.isArray(report.validation_flags) && (report.validation_flags as unknown as ValidationFlag[]).length > 0;
+                  const issueSummary = getIssueSeveritySummary(report.validation_flags);
+                  const hasIssues = issueSummary.total > 0;
                   
                   return (
                     <div
@@ -386,7 +433,10 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
+                          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
+                          <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        </div>
                         
                         <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
@@ -396,12 +446,12 @@ export default function QualityAssurance() {
                         </div>
 
                         {hasIssues ? (
-                          <Badge variant="destructive" className="gap-1">
+                          <Badge variant="outline" className={`gap-1 rounded-full px-3 py-1.5 ${getIssueBadgeClass(issueSummary)}`}>
                             <AlertTriangle className="h-3 w-3" />
-                            {(report.validation_flags as unknown as ValidationFlag[]).length}
+                            {getIssueSummaryLabel(issueSummary)}
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="gap-1">
+                          <Badge variant="secondary" className="gap-1 rounded-full border border-emerald-300/45 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
                             <CheckCircle className="h-3 w-3" />
                             Clean
                           </Badge>
@@ -413,8 +463,14 @@ export default function QualityAssurance() {
               </TabsContent>
 
               <TabsContent value="issues" className="space-y-3 mt-4">
-                {reports.filter(r => Array.isArray(r.validation_flags) && (r.validation_flags as unknown as ValidationFlag[]).length > 0).map(report => {
+                {reportsWithValidationIssues.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground">
+                    No reports with validation issues are available in the current data set.
+                  </div>
+                )}
+                {reportsWithValidationIssues.map(report => {
                   const qualityScore = calculateReportQualityScore(report.validation_flags);
+                  const issueSummary = getIssueSeveritySummary(report.validation_flags);
                   
                   return (
                     <div
@@ -448,7 +504,10 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
+                          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
+                          <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        </div>
                         
                         <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
@@ -457,9 +516,9 @@ export default function QualityAssurance() {
                           <div className="text-xs text-muted-foreground">Score</div>
                         </div>
 
-                        <Badge variant="destructive" className="gap-1">
+                        <Badge variant="outline" className={`gap-1 rounded-full px-3 py-1.5 ${getIssueBadgeClass(issueSummary)}`}>
                           <AlertTriangle className="h-3 w-3" />
-                          {(report.validation_flags as unknown as ValidationFlag[]).length}
+                          {getIssueSummaryLabel(issueSummary)}
                         </Badge>
                       </div>
                     </div>
@@ -468,7 +527,12 @@ export default function QualityAssurance() {
               </TabsContent>
 
               <TabsContent value="clean" className="space-y-3 mt-4">
-                {reports.filter(r => !Array.isArray(r.validation_flags) || (r.validation_flags as unknown as ValidationFlag[]).length === 0).map(report => (
+                {cleanReports.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground">
+                    No clean reports are available in the current data set.
+                  </div>
+                )}
+                {cleanReports.map(report => (
                   <div
                     key={report.id}
                     className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
@@ -500,9 +564,12 @@ export default function QualityAssurance() {
                     </div>
                     
                     <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                      <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                      <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
+                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                      </div>
                       
-                      <Badge variant="secondary" className="gap-1">
+                      <Badge variant="secondary" className="gap-1 rounded-full border border-emerald-300/45 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
                         <CheckCircle className="h-3 w-3" />
                         Clean
                       </Badge>
