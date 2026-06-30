@@ -10,6 +10,7 @@ import { DataQualityIndicator } from "@/components/reports/DataQualityIndicator"
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { Loader2, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { ValidationFlag, DataSources } from "@/types/validation";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -438,10 +439,14 @@ export default function QualityAssurance() {
                     <button
                       type="button"
                       key={report.id}
-                      className="group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between"
+                      className={cn(
+                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                        selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
+                      )}
                       onClick={() => setSelectedReport(report)}
                       title={report.property_address}
                       aria-label={`View validation results for ${report.property_address}`}
+                      aria-pressed={selectedReport?.id === report.id}
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-4">
                         <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -516,10 +521,14 @@ export default function QualityAssurance() {
                     <button
                       type="button"
                       key={report.id}
-                      className="group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between"
+                      className={cn(
+                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                        selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
+                      )}
                       onClick={() => setSelectedReport(report)}
                       title={report.property_address}
                       aria-label={`View validation results for ${report.property_address}`}
+                      aria-pressed={selectedReport?.id === report.id}
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-4">
                         <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -581,10 +590,14 @@ export default function QualityAssurance() {
                   <button
                     type="button"
                     key={report.id}
-                    className="group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between"
+                    className={cn(
+                      "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                      selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
+                    )}
                     onClick={() => setSelectedReport(report)}
                     title={report.property_address}
                     aria-label={`View validation results for ${report.property_address}`}
+                    aria-pressed={selectedReport?.id === report.id}
                   >
                     <div className="flex min-w-0 flex-1 items-start gap-4">
                       <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
