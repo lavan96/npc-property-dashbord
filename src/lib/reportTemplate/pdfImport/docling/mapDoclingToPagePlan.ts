@@ -82,7 +82,11 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
         : isFormula ? 'Times, "Times New Roman", serif'
         : (block.style?.fontFamily ?? 'Helvetica'),
       fontSize: block.style?.fontSize ?? 11,
-      fontWeight: (block.style?.fontWeight === 'bold' ? 'bold' : 'normal') as 'normal' | 'bold',
+      // Phase 6E — preserve a numeric weight grade (e.g. 300/600 derived from the
+      // source font name) instead of collapsing every weight to bold/normal.
+      fontWeight: (typeof block.style?.fontWeight === 'number'
+        ? block.style.fontWeight
+        : block.style?.fontWeight === 'bold' ? 'bold' : 'normal') as number | 'normal' | 'bold',
       fontStyle: isFormula ? 'italic' : (block.style?.fontStyle ?? 'normal'),
       color: block.style?.color ?? '#111111',
       align: (block.style?.textAlign ?? 'left') as TextOverlay['align'],
@@ -240,7 +244,11 @@ function pagePlanForPage(
     background: {
       color: '#FFFFFF',
       imageUrl: opts.mode === 'semantic' ? '' : (raster?.dataUrl ?? page.image_uri ?? ''),
-      opacity: opts.mode === 'pixel-perfect' ? 1 : opts.mode === 'hybrid' ? 0.85 : 0,
+      // Phase 6B — hybrid demotes the raster to a faint reference underlay (was
+      // 0.85, which let the flat raster dominate and ghost the overlays); the
+      // reconstruction now leads, with the raster as a dim alignment backdrop.
+      // pixel-perfect keeps the full raster; semantic has none.
+      opacity: opts.mode === 'pixel-perfect' ? 1 : opts.mode === 'hybrid' ? 0.5 : 0,
       // Full-page source raster must fill the exact page box, never crop/stretch.
       ...(opts.mode === 'semantic' ? {} : { imageFit: 'fill' as const }),
     },
