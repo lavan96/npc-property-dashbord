@@ -299,6 +299,10 @@ export function renderOverlay(overlay: Overlay, ctx: ResolveContext): string {
           `stroke="${pStroke}"`,
           p.strokeWidth != null ? `stroke-width="${p.strokeWidth}"` : '',
           p.fillRule ? `fill-rule="${p.fillRule}"` : '',
+          // Phase 6E — stroke styling (dashed rules, rounded caps/joins).
+          p.strokeDasharray ? `stroke-dasharray="${esc(String(p.strokeDasharray))}"` : '',
+          p.strokeLinecap ? `stroke-linecap="${esc(String(p.strokeLinecap))}"` : '',
+          p.strokeLinejoin ? `stroke-linejoin="${esc(String(p.strokeLinejoin))}"` : '',
           p.opacity != null ? `opacity="${p.opacity}"` : '',
         ].filter(Boolean).join(' ');
         return `<path ${attrs}/>`;

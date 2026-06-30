@@ -151,6 +151,10 @@ export interface DoclingVectorPath {
   strokeWidth?: number;                        // pt
   fillRule?: 'nonzero' | 'evenodd';
   opacity?: number;
+  /** Phase 6E — stroke styling from the fitz drawing dict. */
+  strokeDasharray?: string;                    // e.g. "3 2" (omitted = solid)
+  strokeLinecap?: 'butt' | 'round' | 'square';
+  strokeLinejoin?: 'miter' | 'round' | 'bevel';
 }
 
 export interface DoclingVectorItem {
