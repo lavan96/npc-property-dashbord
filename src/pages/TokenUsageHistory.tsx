@@ -417,6 +417,7 @@ export default function TokenUsageHistory() {
         idempotencyKey={activeKey}
         open={!!activeKey}
         onOpenChange={(o) => !o && setActiveKey(null)}
+        premiumTimeline
       />
     </DashboardThemeFrame>
   );
