@@ -28,7 +28,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
             className="min-w-0 rounded-2xl px-3 py-2.5 text-xs font-semibold capitalize text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25 sm:text-sm"
             value={surface}
           >
-            <span className="truncate">{surface}</span>
+            <span className="block min-w-0 truncate">{surface}</span>
           </TabsTrigger>
         ))}
       </TabsList>
@@ -63,7 +63,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
               <div className="flex min-w-0 flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">Executive workspace</p>
-                  <p className="text-xs text-muted-foreground">Surface, controls, and actions respond to your selected brand tokens.</p>
+                  <p className="break-words text-xs text-muted-foreground">Surface, controls, and actions respond to your selected brand tokens.</p>
                 </div>
                 <Badge className="w-fit shrink-0 rounded-full border border-primary/30 bg-primary px-3 text-primary-foreground shadow-md shadow-primary/25">Primary</Badge>
               </div>
@@ -118,13 +118,13 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
                 <div className="flex min-w-0 items-center gap-3">
                   <BrandLogo slot="auth" className="h-10 max-w-[180px] shrink-0 object-contain" fallbackClassName="h-10 w-10 shrink-0" />
                   <div className="min-w-0">
-                    <p className="font-semibold text-foreground">Finance Portal</p>
+                    <p className="truncate font-semibold text-foreground">Finance Portal</p>
                     <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Partner access</p>
                   </div>
                 </div>
-                <p className="mt-4 max-w-md text-sm text-muted-foreground">Previewing partner-facing auth and shell surfaces with your current brand tokens.</p>
+                <p className="mt-4 max-w-md break-words text-sm text-muted-foreground">Previewing partner-facing auth and shell surfaces with your current brand tokens.</p>
               </div>
-              <button className="w-fit shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/30">Primary action</button>
+              <button className="w-fit max-w-full shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/30"><span className="block truncate">Primary action</span></button>
             </div>
           </div>
         </div>
@@ -144,7 +144,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
                 <p className="truncate text-xs text-muted-foreground">Browser tab + favicon auto-fill preview</p>
               </div>
             </div>
-            <div className="mt-4 min-w-0 rounded-2xl border border-border/60 bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
+            <div className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
                <div className="mb-2"><BrandMark settings={settings} slot="sidebar-icon" className="h-4 w-4 object-contain" fallbackClassName="h-4 w-4 rounded" /></div>
               The favicon slot falls back to your sidebar icon or primary logo if a dedicated favicon has not been uploaded yet.
             </div>

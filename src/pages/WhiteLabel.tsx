@@ -392,7 +392,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
               <Button 
                 variant="outline"
                 size="sm" 
-                className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0"
+                className="min-h-10 min-w-0 border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessing}
               >
@@ -402,7 +402,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
               <Button 
                 variant="outline"
                 size="sm" 
-                className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0"
+                className="min-h-10 min-w-0 border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0"
                 onClick={handleRemove}
                 disabled={isProcessing}
               >
@@ -581,7 +581,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
             <Button 
               variant="outline" 
               size="sm" 
-              className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0"
+              className="min-h-10 min-w-0 border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0"
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing}
             >
@@ -591,7 +591,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
             <Button 
               variant="outline" 
               size="sm" 
-              className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0"
+              className="min-h-10 min-w-0 border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0"
               onClick={handleRemove}
               disabled={isProcessing}
             >
@@ -941,7 +941,7 @@ export default function WhiteLabel() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 px-1 pb-10 sm:px-0">
+    <div className="mx-auto w-full max-w-7xl space-y-8 overflow-x-hidden px-1 pb-10 sm:px-0">
       <div className="relative overflow-hidden rounded-[2rem] border border-primary/15 bg-gradient-to-br from-card via-card to-primary/5 p-5 shadow-xl shadow-primary/5 sm:p-6 lg:p-7">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
@@ -968,7 +968,7 @@ export default function WhiteLabel() {
         }
         setShowLeavePrompt(true);
       }}>
-        <AlertDialogContent className="border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
+        <AlertDialogContent className="max-h-[min(90vh,720px)] overflow-y-auto border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved brand changes?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -983,7 +983,7 @@ export default function WhiteLabel() {
       </AlertDialog>
 
       <AlertDialog open={showResetPrompt} onOpenChange={setShowResetPrompt}>
-        <AlertDialogContent className="border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
+        <AlertDialogContent className="max-h-[min(90vh,720px)] overflow-y-auto border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
           <AlertDialogHeader>
             <AlertDialogTitle>Reset this draft to defaults?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1003,7 +1003,7 @@ export default function WhiteLabel() {
       </AlertDialog>
 
       <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
-        <DialogContent className="border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
+        <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
           <DialogHeader>
             <DialogTitle>Save brand preset</DialogTitle>
             <DialogDescription>
@@ -1049,27 +1049,27 @@ export default function WhiteLabel() {
               <p className="mt-1 w-fit max-w-full rounded-full border border-success/25 bg-success/5 px-3 py-1 text-xs text-success shadow-sm shadow-success/10">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
             ) : null}
           </div>
-          <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
-            <Button variant="outline" className="border-border/70 bg-background/70 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:text-primary hover:shadow-md focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+            <Button variant="outline" className="min-h-10 min-w-0 border-border/70 bg-background/70 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:text-primary hover:shadow-md focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
               <Undo2 className="mr-2 h-4 w-4" />
               Undo last change
             </Button>
-            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
+            <Button variant="outline" className="min-h-10 min-w-0 border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
               <Save className="mr-2 h-4 w-4" />
               Save draft
             </Button>
-            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
+            <Button variant="outline" className="min-h-10 min-w-0 border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
               <FileText className="mr-2 h-4 w-4" />
               Save preset
             </Button>
-            <Button variant="outline" className="border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted/40 hover:text-foreground hover:shadow-md focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={() => {
+            <Button variant="outline" className="min-h-10 min-w-0 border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted/40 hover:text-foreground hover:shadow-md focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={() => {
               setDraftSettings(settings);
               draftHistoryRef.current = [];
               clearPersistedDraft();
               setLastDraftSavedAt(null);
             }} disabled={!hasChanges}>Discard</Button>
-            <Button variant="outline" className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
-            <Button className="bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/30 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 focus-visible:ring-primary/50 disabled:hover:translate-y-0 disabled:shadow-none" onClick={handleSaveBranding} disabled={!canSaveBranding}>
+            <Button variant="outline" className="min-h-10 min-w-0 border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
+            <Button className="min-h-10 min-w-0 bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/30 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 focus-visible:ring-primary/50 disabled:hover:translate-y-0 disabled:shadow-none" onClick={handleSaveBranding} disabled={!canSaveBranding}>
               <Check className="mr-2 h-4 w-4" />
               Save brand changes
             </Button>
@@ -1082,10 +1082,10 @@ export default function WhiteLabel() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle className="text-warning">Saved local draft available</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>
+            <span className="min-w-0 break-words">
               Restore the draft you saved locally on {new Date(availablePersistedDraft.savedAt).toLocaleString()} without changing the current live brand settings.
             </span>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => {
                 clearPersistedDraft();
                 setAvailablePersistedDraft(null);
@@ -1124,11 +1124,11 @@ export default function WhiteLabel() {
             </div>
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Company Name</CardTitle>
-              <CardDescription>This will appear in the browser tab and sidebar</CardDescription>
+              <CardDescription className="break-words">This will appear in the browser tab and sidebar</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           <div className="rounded-2xl border border-border/70 bg-background/60 p-3 shadow-inner sm:p-4">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
               <Input
@@ -1154,7 +1154,7 @@ export default function WhiteLabel() {
             </div>
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Color Theme</CardTitle>
-              <CardDescription>Customize the primary and accent colors of the dashboard</CardDescription>
+              <CardDescription className="break-words">Customize the primary and accent colors of the dashboard</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1306,7 +1306,7 @@ export default function WhiteLabel() {
             </div>
             <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Dark Mode</CardTitle>
-              <CardDescription>Choose the default theme for your dashboard</CardDescription>
+              <CardDescription className="break-words">Choose the default theme for your dashboard</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1338,7 +1338,7 @@ export default function WhiteLabel() {
                 </div>
                 <div className="min-w-0 space-y-1 text-center">
                   <p className="font-medium text-sm">{option.label}</p>
-                  <p className="text-xs text-muted-foreground">{option.description}</p>
+                  <p className="break-words text-xs text-muted-foreground">{option.description}</p>
                 </div>
               </button>
             ))}
@@ -1350,7 +1350,7 @@ export default function WhiteLabel() {
       </Card>
 
       {/* Logo Upload Cards */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
         <LogoUploadCard
           title="Auth Page Logo"
           description="Displayed prominently on the login page (recommended: wide format)"
@@ -1496,8 +1496,8 @@ export default function WhiteLabel() {
               <div className="grid gap-3">
                 {savedPresets.map((preset) => (
                   <div key={preset.id} className="dashboard-section-band flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{preset.name}</p>
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-semibold text-foreground">{preset.name}</p>
                       <p className="text-xs text-muted-foreground">Saved {new Date(preset.savedAt).toLocaleString()}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -1520,9 +1520,9 @@ export default function WhiteLabel() {
         <CardContent className="p-4 sm:p-6">
           <Tabs value={activeSurfacePreview} onValueChange={(value) => setActiveSurfacePreview(value as SurfacePreview)} className="min-w-0 space-y-5">
             <TabsList className="grid h-auto w-full min-w-0 grid-cols-1 gap-2 rounded-[1.35rem] border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-3">
-              <TabsTrigger className="min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="auth">Auth</TabsTrigger>
-              <TabsTrigger className="min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="sidebar">Sidebar</TabsTrigger>
-              <TabsTrigger className="min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="browser"><span className="truncate">Browser tab</span></TabsTrigger>
+              <TabsTrigger className="min-h-10 min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="auth">Auth</TabsTrigger>
+              <TabsTrigger className="min-h-10 min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="sidebar">Sidebar</TabsTrigger>
+              <TabsTrigger className="min-h-10 min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="browser"><span className="block min-w-0 truncate">Browser tab</span></TabsTrigger>
             </TabsList>
 
             <TabsContent value="auth" className="space-y-3">
@@ -1568,7 +1568,7 @@ export default function WhiteLabel() {
                   <div className="space-y-2 p-3">
                     {['Overview', 'Clients', 'Pipeline'].map((item, index) => (
                       <div key={item} className={`min-w-0 rounded-xl px-3 py-2.5 text-sm shadow-sm ${index === 0 ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sidebar-primary/15' : 'bg-sidebar-accent/10 text-sidebar-foreground/80'}`}>
-                        <span className="truncate">{item}</span>
+                        <span className="block min-w-0 truncate">{item}</span>
                       </div>
                     ))}
                   </div>
@@ -1600,7 +1600,7 @@ export default function WhiteLabel() {
                     {getBrandAssetSrc(draftSettings, 'favicon') ? (
                       <img src={getBrandAssetSrc(draftSettings, 'favicon') || ''} alt="Favicon preview" className="h-8 w-8 shrink-0 rounded-lg object-contain drop-shadow-sm" />
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Globe className="h-4 w-4" />
                       </div>
                     )}
@@ -1620,7 +1620,7 @@ export default function WhiteLabel() {
 
       {/* Email Signature Configuration */}
       <div className="min-w-0 space-y-2 rounded-[1.75rem] border border-border/70 bg-card/80 p-5 shadow-lg shadow-background/5 ring-1 ring-primary/5">
-        <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+        <h2 className="flex min-w-0 flex-wrap items-center gap-2 text-2xl font-bold tracking-tight">
           <Mail className="h-6 w-6 text-primary" />
           Email Copilot Signature
         </h2>
@@ -1636,7 +1636,7 @@ export default function WhiteLabel() {
             <ImageIcon className="h-5 w-5 text-primary" />
             <div>
               <CardTitle className="text-lg">Signature Banner</CardTitle>
-              <CardDescription>Upload a banner image to display at the top of your email signature</CardDescription>
+              <CardDescription className="break-words">Upload a banner image to display at the top of your email signature</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1660,7 +1660,7 @@ export default function WhiteLabel() {
             <FileText className="h-5 w-5 text-primary" />
             <div>
               <CardTitle className="text-lg">Signature Details</CardTitle>
-              <CardDescription>Configure the contact information and text that appears in your email signature</CardDescription>
+              <CardDescription className="break-words">Configure the contact information and text that appears in your email signature</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1753,7 +1753,7 @@ export default function WhiteLabel() {
               placeholder="Legal disclaimer text..."
               rows={4}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="break-words text-xs text-muted-foreground">
               This text will appear at the bottom of your email signature as a legal disclaimer
             </p>
           </div>
@@ -1795,7 +1795,7 @@ export default function WhiteLabel() {
       <Card className="overflow-hidden border-destructive/50 bg-card/95 shadow-xl shadow-destructive/10 ring-1 ring-destructive/10">
         <CardHeader className="border-b border-destructive/20 bg-destructive/5">
           <CardTitle className="text-destructive">Reset Branding</CardTitle>
-          <CardDescription>Reset the current draft back to defaults before deciding whether to save it globally.</CardDescription>
+          <CardDescription className="break-words">Reset the current draft back to defaults before deciding whether to save it globally.</CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Button 

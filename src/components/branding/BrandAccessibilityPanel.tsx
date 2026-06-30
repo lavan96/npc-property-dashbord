@@ -50,7 +50,7 @@ export function BrandAccessibilityPanel({ checks }: BrandAccessibilityPanelProps
                   <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">{check.detail}</p>
                 </div>
               </div>
-              <Badge variant="outline" className={cn('w-fit shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]', meta.badge)}>{meta.label}</Badge>
+              <Badge variant="outline" className={cn('w-fit max-w-full shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]', meta.badge)}>{meta.label}</Badge>
             </div>
           </div>
         );
