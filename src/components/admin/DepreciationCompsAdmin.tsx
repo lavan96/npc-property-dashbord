@@ -585,14 +585,36 @@ export function DepreciationCompsAdmin() {
                         
                         return (
                           <TableRow key={comp.id} className="border-border/60 transition-colors hover:bg-primary/5 dark:border-white/10">
-                            <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">${formatNumberWithCommas(comp.purchase_price.toString())}</TableCell>
-                            <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">{comp.build_year}</TableCell>
-                            <TableCell className="max-w-[9rem] truncate text-xs text-foreground" title={PROPERTY_TYPE_LABELS[comp.property_type]}>{PROPERTY_TYPE_LABELS[comp.property_type]}</TableCell>
-                            <TableCell className="max-w-[7rem] truncate text-muted-foreground" title={comp.finish_standard}>{comp.finish_standard}</TableCell>
-                            <TableCell className="max-w-[11rem] truncate text-xs text-foreground" title={CITY_LABELS[comp.nearest_city]}>{CITY_LABELS[comp.nearest_city]}</TableCell>
-                            <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}>{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</TableCell>
-                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">${formatNumberWithCommas(dvTotal.toString())}</TableCell>
-                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">${formatNumberWithCommas(pcTotal.toString())}</TableCell>
+                            <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">
+                              ${formatNumberWithCommas(comp.purchase_price.toString())}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
+                              {comp.build_year}
+                            </TableCell>
+                            <TableCell className="max-w-[9rem] truncate text-xs text-foreground" title={PROPERTY_TYPE_LABELS[comp.property_type]}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 font-medium text-primary">
+                                <span className="truncate">{PROPERTY_TYPE_LABELS[comp.property_type]}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[7rem] truncate text-muted-foreground" title={comp.finish_standard}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                                <span className="truncate">{comp.finish_standard}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[11rem] truncate text-xs text-foreground" title={CITY_LABELS[comp.nearest_city]}>
+                              {CITY_LABELS[comp.nearest_city]}
+                            </TableCell>
+                            <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-200">
+                                <span className="truncate">{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
+                              <span className="text-primary">${formatNumberWithCommas(dvTotal.toString())}</span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
+                              <span className="text-emerald-700 dark:text-emerald-300">${formatNumberWithCommas(pcTotal.toString())}</span>
+                            </TableCell>
                             <TableCell className="text-right">
                               <Button 
                                 variant="ghost" 
@@ -613,21 +635,36 @@ export function DepreciationCompsAdmin() {
             </div>
           </TabsContent>
           
-          <TabsContent value="import" className="space-y-4">
+          <TabsContent value="import" className="min-w-0 space-y-4">
             {/* CSV Import */}
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleExportTemplate}>
+            <div className="min-w-0 space-y-4">
+              <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">CSV import workspace</p>
+                  <p className="text-xs leading-5 text-muted-foreground">Use the template before importing comparable records.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleExportTemplate}
+                  className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary sm:w-auto"
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
               </div>
               
-              <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                <Label htmlFor="csv-upload" className="cursor-pointer">
-                  <span className="text-primary hover:underline">Click to upload</span>
-                  <span className="text-muted-foreground"> or drag and drop a CSV file</span>
+              <div className="group rounded-3xl border border-dashed border-primary/30 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72))] p-1 shadow-[0_18px_48px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/50 hover:shadow-[0_22px_58px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.16),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.66),hsl(var(--background)/0.46))] dark:shadow-black/25">
+                <Label
+                  htmlFor="csv-upload"
+                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/35 sm:px-6"
+                >
+                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                    <FileSpreadsheet className="h-8 w-8" />
+                  </span>
+                  <span className="max-w-xl text-base font-semibold leading-7">
+                    <span className="text-primary underline-offset-4 group-hover:underline">Click to upload</span>
+                    <span className="text-muted-foreground"> or drag and drop a CSV file</span>
+                  </span>
                 </Label>
                 <Input
                   id="csv-upload"
@@ -639,42 +676,50 @@ export function DepreciationCompsAdmin() {
               </div>
               
               {csvError && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="overflow-hidden rounded-2xl border-destructive/30 bg-destructive/10 text-destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{csvError}</AlertDescription>
+                  <AlertDescription className="break-words leading-6">{csvError}</AlertDescription>
                 </Alert>
               )}
               
               {csvPreview.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Preview (first 5 rows):</h4>
-                    <Badge variant="secondary">
+                <div className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/25">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="font-medium text-foreground">Preview (first 5 rows):</h4>
+                    <Badge variant="secondary" className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary">
                       {csvFullData.length - 1} total rows found
                     </Badge>
                   </div>
-                  <ScrollArea className="h-[200px] rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {csvPreview[0].map((header, i) => (
-                            <TableHead key={i} className="text-xs">{header}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {csvPreview.slice(1).map((row, i) => (
-                          <TableRow key={i}>
-                            {row.map((cell, j) => (
-                              <TableCell key={j} className="text-xs">{cell}</TableCell>
-                            ))}
+                  <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 dark:border-white/10">
+                    <ScrollArea className="h-[220px]">
+                      <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+                        <Table className="min-w-[760px]">
+                          <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-slate-950/90">
+                            <TableRow className="hover:bg-transparent">
+                              {csvPreview[0].map((header, i) => (
+                                <TableHead key={i} className="max-w-[12rem] truncate whitespace-nowrap text-xs font-semibold text-foreground" title={header}>{header}</TableHead>
+                              ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
+                          </TableHeader>
+                          <TableBody>
+                            {csvPreview.slice(1).map((row, i) => (
+                              <TableRow key={i} className="border-border/60 hover:bg-primary/5 dark:border-white/10">
+                                {row.map((cell, j) => (
+                                  <TableCell key={j} className="max-w-[12rem] truncate text-xs text-muted-foreground" title={cell}>{cell}</TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </div>
                   
-                  <Button onClick={handleImportCsv} disabled={uploading}>
+                  <Button
+                    onClick={handleImportCsv}
+                    disabled={uploading}
+                    className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:bg-primary/90 focus-visible:ring-primary sm:w-auto"
+                  >
                     {uploading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -695,139 +740,175 @@ export function DepreciationCompsAdmin() {
         
         {/* Add Comp Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Depreciation Comparable</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="max-h-[min(88vh,760px)] w-[calc(100vw-2rem)] max-w-3xl overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950/95 dark:shadow-black/45">
+            <DialogHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.9))] px-5 py-5 dark:border-white/10 sm:px-6">
+              <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight text-foreground">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                  <Plus className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 truncate">Add Depreciation Comparable</span>
+              </DialogTitle>
+              <DialogDescription className="pl-0 text-sm leading-6 text-muted-foreground sm:pl-[3.25rem]">
                 Add a new comparable property to the database
               </DialogDescription>
             </DialogHeader>
             
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase Price</Label>
-                  <Input
-                    type="number"
-                    value={newComp.purchase_price || ''}
-                    onChange={(e) => setNewComp(prev => ({ ...prev, purchase_price: parseFloat(e.target.value) || 0 }))}
-                    placeholder="750000"
-                  />
-                </div>
+            <div className="max-h-[calc(min(88vh,760px)-10.5rem)] overflow-y-auto px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
+              <div className="grid gap-5">
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Property identity</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                      <Label>Purchase Price</Label>
+                      <Input
+                        type="number"
+                        value={newComp.purchase_price || ''}
+                        onChange={(e) => setNewComp(prev => ({ ...prev, purchase_price: parseFloat(e.target.value) || 0 }))}
+                        placeholder="750000"
+                        className="bg-background/80 focus-visible:ring-primary"
+                      />
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label>Build Year</Label>
+                      <Input
+                        type="number"
+                        value={newComp.build_year || ''}
+                        onChange={(e) => setNewComp(prev => ({ ...prev, build_year: parseInt(e.target.value) || 0 }))}
+                        placeholder="2022"
+                        className="bg-background/80 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                </section>
                 
-                <div className="space-y-2">
-                  <Label>Build Year</Label>
-                  <Input
-                    type="number"
-                    value={newComp.build_year || ''}
-                    onChange={(e) => setNewComp(prev => ({ ...prev, build_year: parseInt(e.target.value) || 0 }))}
-                    placeholder="2022"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase Date Category</Label>
-                  <Select 
-                    value={newComp.purchase_date_category} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, purchase_date_category: v as PurchaseDateCategory }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PURCHASE_CATEGORY_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Classification and location</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                      <Label>Purchase Date Category</Label>
+                      <Select 
+                        value={newComp.purchase_date_category} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, purchase_date_category: v as PurchaseDateCategory }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PURCHASE_CATEGORY_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label>Property Type</Label>
+                      <Select 
+                        value={newComp.property_type} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, property_type: v as PropertyType }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  
+                    <div className="min-w-0 space-y-2">
+                      <Label>Finish Standard</Label>
+                      <Select 
+                        value={newComp.finish_standard} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, finish_standard: v as FinishStandard }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(FINISH_STANDARD_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label>Nearest City</Label>
+                      <Select 
+                        value={newComp.nearest_city} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, nearest_city: v as NearestCity }))}
+                      >
+                        <SelectTrigger className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CITY_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </section>
                 
-                <div className="space-y-2">
-                  <Label>Property Type</Label>
-                  <Select 
-                    value={newComp.property_type} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, property_type: v as PropertyType }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Finish Standard</Label>
-                  <Select 
-                    value={newComp.finish_standard} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, finish_standard: v as FinishStandard }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(FINISH_STANDARD_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Separator />
                 
-                <div className="space-y-2">
-                  <Label>Nearest City</Label>
-                  <Select 
-                    value={newComp.nearest_city} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, nearest_city: v as NearestCity }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(CITY_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <Label>Bulk Year Values (paste from spreadsheet)</Label>
-                <Textarea
-                  value={bulkYearsInput}
-                  onChange={(e) => setBulkYearsInput(e.target.value)}
-                  placeholder="Paste 20 values: DV Year 1-10, then PC Year 1-10 (tab, comma, or newline separated)"
-                  rows={4}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Format: DV1, DV2, DV3... DV10, PC1, PC2, PC3... PC10
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Notes (optional)</Label>
-                <Input
-                  value={newComp.notes || ''}
-                  onChange={(e) => setNewComp(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Source or additional info"
-                />
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Depreciation values</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Bulk Year Values (paste from spreadsheet)</Label>
+                    <Textarea
+                      value={bulkYearsInput}
+                      onChange={(e) => setBulkYearsInput(e.target.value)}
+                      placeholder="Paste 20 values: DV Year 1-10, then PC Year 1-10 (tab, comma, or newline separated)"
+                      rows={4}
+                      className="min-h-28 bg-background/80 focus-visible:ring-primary"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Format: DV1, DV2, DV3... DV10, PC1, PC2, PC3... PC10
+                    </p>
+                  </div>
+                </section>
+                
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Metadata</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Notes (optional)</Label>
+                    <Input
+                      value={newComp.notes || ''}
+                      onChange={(e) => setNewComp(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Source or additional info"
+                      className="bg-background/80 focus-visible:ring-primary"
+                    />
+                  </div>
+                </section>
               </div>
             </div>
             
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddModal(false)}>
+            <DialogFooter className="border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-slate-950/75 sm:px-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddModal(false)}
+                className="border-primary/20 bg-background/80 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAddComp}>
+              <Button
+                onClick={handleAddComp}
+                className="bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.24)] hover:bg-primary/90 focus-visible:ring-primary"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Comparable
               </Button>
