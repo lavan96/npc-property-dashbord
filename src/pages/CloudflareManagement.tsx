@@ -85,55 +85,71 @@ function AnalyticsTab() {
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-base sm:text-lg font-semibold">Traffic Analytics</h3>
-        <div className="flex items-center gap-2">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">Last 24h</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={fetchAnalytics} disabled={analytics.loading}>
-            <RefreshCw className={`h-4 w-4 ${analytics.loading ? 'animate-spin' : ''}`} />
-          </Button>
+      <DashboardThemeFrame variant="section" className="space-y-4 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.08))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Traffic Analytics</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">Cloudflare request, cache, bandwidth, and threat telemetry.</p>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-2xl border border-border/60 bg-background/55 p-1.5 shadow-sm dark:border-white/10 dark:bg-slate-950/40">
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="h-9 w-[132px] border-border/70 bg-card/90 text-xs font-medium shadow-sm focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/70 sm:text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Last 24h</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={fetchAnalytics}
+              disabled={analytics.loading}
+              className="h-9 w-9 border-primary/20 bg-primary/5 text-primary shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary/40 disabled:opacity-70"
+              aria-label="Refresh analytics"
+            >
+              <RefreshCw className={`h-4 w-4 ${analytics.loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {analytics.error && (
-        <Alert variant="destructive" className="min-w-0 overflow-hidden">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="break-words">{analytics.error}</AlertDescription>
-        </Alert>
-      )}
+        {analytics.error && (
+          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="break-words text-sm leading-6">{analytics.error}</AlertDescription>
+          </Alert>
+        )}
 
-      {analytics.loading && !analytics.data ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : stats.length > 0 ? (
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3">
-          {stats.map(stat => (
-            <Card key={stat.label} className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-              <CardContent className="p-4 sm:pt-6 sm:px-6">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                  <div className={`${stat.color} mb-1 sm:mb-0`}>{stat.icon}</div>
-                  <div className="min-w-0">
-                    <p className="text-xl sm:text-2xl font-bold truncate">{stat.value}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground">{stat.label}</p>
+        {analytics.loading && !analytics.data ? (
+          <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-dashed border-primary/20 bg-muted/20 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : stats.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            {stats.map(stat => (
+              <Card key={stat.label} className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_12px_35px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
+                <CardContent className="p-4 sm:px-6 sm:pt-6">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                    <div className={`${stat.color} mb-1 sm:mb-0`}>{stat.icon}</div>
+                    <div className="min-w-0">
+                      <p className="text-xl sm:text-2xl font-bold truncate">{stat.value}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">{stat.label}</p>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : !analytics.loading && (
-        <p className="text-center text-muted-foreground py-8">No analytics data available.</p>
-      )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : !analytics.loading && (
+          <div className="flex min-h-[14rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 px-4 py-10 text-center shadow-inner dark:border-white/10 dark:bg-slate-950/30">
+            <BarChart3 className="mb-3 h-8 w-8 text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">No analytics data available.</p>
+            <p className="mt-1 max-w-md text-xs leading-5 text-muted-foreground">Refresh or choose another time range when Cloudflare telemetry is available.</p>
+          </div>
+        )}
+      </DashboardThemeFrame>
 
       {/* HTTP Status breakdown */}
       {totals?.requests?.http_status && (
