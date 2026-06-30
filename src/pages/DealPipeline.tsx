@@ -55,8 +55,8 @@ const premiumScrollbarClass =
   "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950/80 [&::-webkit-scrollbar-thumb]:bg-amber-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/75";
 
 const pipelineTabContentClass = cn(
-  "mt-4 min-h-0 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-border dark:border-white/10 bg-background dark:bg-zinc-950/35 p-2 shadow-inner sm:p-4",
-  "data-[state=active]:flex data-[state=active]:max-h-none data-[state=active]:flex-col md:data-[state=active]:max-h-[min(72dvh,calc(100dvh-12rem))]",
+  "mt-4 rounded-[1.25rem] border border-border dark:border-white/10 bg-background dark:bg-zinc-950/35 p-2 shadow-inner sm:p-4",
+  "data-[state=active]:flex data-[state=active]:flex-col",
   premiumScrollbarClass,
 );
 
@@ -114,7 +114,7 @@ export default function DealPipeline() {
 
   if (error) {
     return (
-      <DashboardThemeFrame as="main" variant="page" className="max-w-[1800px] space-y-4 p-3 sm:p-6">
+      <DashboardThemeFrame variant="page" className="space-y-4 p-3 sm:p-6">
         <div className="flex items-center gap-2 sm:gap-3">
           <TrendingUp className="h-5 w-5 shrink-0 text-amber-300 sm:h-6 sm:w-6" />
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
@@ -132,7 +132,7 @@ export default function DealPipeline() {
   }
 
   return (
-    <DashboardThemeFrame as="main" variant="page" className={cn("deal-pipeline-polish relative flex max-h-[calc(100dvh-1rem)] min-h-0 max-w-[1800px] flex-col space-y-5 overflow-y-auto rounded-[2rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
+    <DashboardThemeFrame variant="page" className={cn("deal-pipeline-polish relative flex flex-col space-y-5 rounded-[2rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
@@ -200,7 +200,7 @@ export default function DealPipeline() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="relative flex min-h-0 flex-col rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
+        className="relative flex flex-col rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
       >
         <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-100/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
