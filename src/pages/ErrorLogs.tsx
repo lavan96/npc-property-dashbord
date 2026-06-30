@@ -739,50 +739,79 @@ function ErrorCard({
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <CardContent className="pt-0 space-y-4">
-            <div className="border-t pt-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Details</h4>
-                  <dl className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Source:</dt>
-                      <dd>{sourceConfig.label}</dd>
+          <CardContent className="space-y-4 px-4 pb-5 pt-0 sm:px-5">
+            <div className="min-w-0 border-t border-border/60 pt-4 dark:border-white/10">
+              <div className="grid min-w-0 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="min-w-0 rounded-2xl border border-border/60 bg-background/55 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                  <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
+                    <h4 className="min-w-0 truncate text-sm font-semibold text-foreground">Error Summary</h4>
+                    <Badge variant={severityConfig.variant} className="shrink-0 rounded-full px-2.5 py-1">
+                      {severityConfig.label}
+                    </Badge>
+                  </div>
+                  <dl className="space-y-2 text-sm">
+                    <div className="grid min-w-0 gap-1 sm:grid-cols-[8rem_1fr] sm:items-start">
+                      <dt className="text-muted-foreground">Code:</dt>
+                      <dd className="min-w-0 font-mono text-xs text-foreground" title={error.errorCode}>
+                        <span className="block truncate">{error.errorCode}</span>
+                      </dd>
                     </div>
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Time:</dt>
-                      <dd>{format(error.createdAt, 'PPpp')}</dd>
+                    <div className="grid min-w-0 gap-1 sm:grid-cols-[8rem_1fr] sm:items-start">
+                      <dt className="text-muted-foreground">Message:</dt>
+                      <dd className="min-w-0 break-words text-foreground">{error.errorMessage}</dd>
                     </div>
-                    {error.entityId && (
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Entity ID:</dt>
-                        <dd className="font-mono text-xs">{error.entityId.slice(0, 8)}...</dd>
+                    {error.entityLabel && (
+                      <div className="grid min-w-0 gap-1 sm:grid-cols-[8rem_1fr] sm:items-start">
+                        <dt className="text-muted-foreground">Context:</dt>
+                        <dd className="min-w-0 break-words text-muted-foreground">{error.entityLabel}</dd>
                       </div>
                     )}
                   </dl>
                 </div>
 
-                {error.metadata && Object.keys(error.metadata).length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Metadata</h4>
-                    <dl className="space-y-1 text-sm">
-                      {Object.entries(error.metadata).map(([key, value]) => (
-                        value && (
-                          <div key={key} className="flex justify-between">
-                            <dt className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</dt>
-                            <dd className="truncate max-w-[150px]">{String(value)}</dd>
-                          </div>
-                        )
-                      ))}
-                    </dl>
-                  </div>
-                )}
+                <div className="min-w-0 rounded-2xl border border-border/60 bg-background/55 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                  <h4 className="mb-3 text-sm font-semibold text-foreground">Source & Context</h4>
+                  <dl className="space-y-2 text-sm">
+                    <div className="grid min-w-0 gap-1 sm:grid-cols-[7rem_1fr] sm:items-start">
+                      <dt className="text-muted-foreground">Source:</dt>
+                      <dd className="min-w-0 truncate text-foreground">{sourceConfig.label}</dd>
+                    </div>
+                    <div className="grid min-w-0 gap-1 sm:grid-cols-[7rem_1fr] sm:items-start">
+                      <dt className="text-muted-foreground">Time:</dt>
+                      <dd className="min-w-0 break-words text-foreground">{format(error.createdAt, 'PPpp')}</dd>
+                    </div>
+                    {error.entityId && (
+                      <div className="grid min-w-0 gap-1 sm:grid-cols-[7rem_1fr] sm:items-start">
+                        <dt className="text-muted-foreground">Entity ID:</dt>
+                        <dd className="min-w-0 font-mono text-xs text-foreground" title={error.entityId}>
+                          <span className="block truncate">{error.entityId.slice(0, 8)}...</span>
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
               </div>
 
+              {error.metadata && Object.keys(error.metadata).length > 0 && (
+                <div className="mt-4 min-w-0 rounded-2xl border border-border/60 bg-background/55 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                  <h4 className="mb-3 text-sm font-semibold text-foreground">Technical Metadata</h4>
+                  <dl className="grid min-w-0 gap-2 text-sm md:grid-cols-2">
+                    {Object.entries(error.metadata).map(([key, value]) => (
+                      value && (
+                        <div key={key} className="grid min-w-0 gap-1 rounded-xl border border-border/50 bg-card/60 p-3 dark:border-white/10 dark:bg-slate-950/35">
+                          <dt className="text-xs capitalize text-muted-foreground">{key.replace(/([A-Z])/g, ' $1').trim()}:</dt>
+                          <dd className="min-w-0 break-words font-mono text-xs text-foreground" title={String(value)}>{String(value)}</dd>
+                        </div>
+                      )
+                    ))}
+                  </dl>
+                </div>
+              )}
+
               {error.rawError && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Raw Error</h4>
-                  <pre className="bg-muted p-3 rounded-md text-xs overflow-x-auto whitespace-pre-wrap break-all max-h-40">
+                <div className="mt-4 min-w-0 rounded-2xl border border-border/60 bg-background/55 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                  <h4 className="mb-3 text-sm font-semibold text-foreground">Diagnostic Details</h4>
+                  <pre className="max-h-48 min-w-0 overflow-auto rounded-xl border border-border/60 bg-muted/70 p-3 text-xs leading-5 text-foreground [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 whitespace-pre-wrap break-all">
                     {error.rawError}
                   </pre>
                 </div>
