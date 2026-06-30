@@ -18,6 +18,7 @@ import {
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface APIHealthStat {
@@ -174,7 +175,11 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCalls.toLocaleString()}</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold tabular-nums text-foreground">{totalCalls.toLocaleString()}</div>
+            )}
             <p className="text-xs text-muted-foreground">Last 7 days</p>
           </CardContent>
         </Card>
@@ -187,7 +192,11 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums text-foreground">{overallDataQuality}%</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold tabular-nums text-foreground">{overallDataQuality}%</div>
+            )}
             <p className="text-xs text-muted-foreground">Live data ratio</p>
           </CardContent>
         </Card>
@@ -200,8 +209,16 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCacheEntries.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">{totalLiveCached} live records</p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold tabular-nums text-foreground">{totalCacheEntries.toLocaleString()}</div>
+            )}
+            {isLoading ? (
+              <Skeleton className="mt-1 h-3 w-20 rounded" />
+            ) : (
+              <p className="text-xs text-muted-foreground">{totalLiveCached} live records</p>
+            )}
           </CardContent>
         </Card>
 
@@ -213,7 +230,11 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">Healthy</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-28 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold text-success">Healthy</div>
+            )}
             <p className="text-xs text-muted-foreground">All services operational</p>
           </CardContent>
         </Card>
@@ -238,8 +259,24 @@ export default function Monitoring() {
         </CardHeader>
         <CardContent className="p-5">
           {isLoading ? (
-            <div className="flex min-h-40 items-center justify-center rounded-2xl border border-border/60 bg-muted/20 py-8">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="space-y-4">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-xl" />
+                      <Skeleton className="h-5 w-40 rounded-lg" />
+                    </div>
+                    <Skeleton className="h-7 w-24 rounded-full" />
+                  </div>
+                  <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((__, metricIndex) => (
+                      <Skeleton key={metricIndex} className="h-16 rounded-xl" />
+                    ))}
+                  </div>
+                  <Skeleton className="h-2.5 rounded-full" />
+                </div>
+              ))}
             </div>
           ) : apiStats.length === 0 ? (
             <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-muted-foreground">
@@ -317,8 +354,27 @@ export default function Monitoring() {
         </CardHeader>
         <CardContent className="p-5">
           {isLoading ? (
-            <div className="flex min-h-40 items-center justify-center rounded-2xl border border-border/60 bg-muted/20 py-8">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-xl" />
+                      <Skeleton className="h-5 w-44 rounded-lg" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-7 w-24 rounded-full" />
+                      <Skeleton className="h-7 w-20 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {Array.from({ length: 4 }).map((__, metricIndex) => (
+                      <Skeleton key={metricIndex} className="h-16 rounded-xl" />
+                    ))}
+                  </div>
+                  <Skeleton className="h-12 rounded-xl" />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-4">
@@ -413,6 +469,16 @@ export default function Monitoring() {
         </CardHeader>
         <CardContent className="p-5">
           <div className="space-y-5">
+            {isLoading ? (
+              <>
+                <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Skeleton className="h-32 rounded-2xl" />
+                  <Skeleton className="h-32 rounded-2xl" />
+                </div>
+                <Skeleton className="h-24 rounded-2xl" />
+              </>
+            ) : (
+              <>
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0 overflow-hidden rounded-2xl border border-success/25 bg-[linear-gradient(145deg,hsl(var(--success)/0.12),hsl(var(--card)/0.72))] p-4 shadow-sm ring-1 ring-success/10">
                 <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
@@ -448,6 +514,8 @@ export default function Monitoring() {
               </div>
               <Progress value={Number(overallDataQuality)} className="h-3 bg-muted/70 [&>div]:bg-primary" />
             </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
