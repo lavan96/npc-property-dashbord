@@ -355,23 +355,40 @@ export default function QualityAssurance() {
                   return (
                     <div
                       key={report.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
                       onClick={() => setSelectedReport(report)}
+                      title={report.property_address}
                     >
-                      <div className="flex items-center gap-4 flex-1">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="font-medium">{report.property_address}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(report.created_at).toLocaleString()} • v{report.calculation_version || '1.0.0'}
+                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                        <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <div className="min-w-0 break-words font-semibold leading-6 text-foreground">{report.property_address}</div>
+                            {report.status && (
+                              <Badge variant="outline" className="shrink-0 rounded-full border-border/70 bg-background/70 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                {report.status}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                            <span className="break-words">{new Date(report.created_at).toLocaleString()}</span>
+                            <span className="text-border" aria-hidden="true">•</span>
+                            <span className="font-medium text-muted-foreground">v{report.calculation_version || '1.0.0'}</span>
+                          </div>
+                          <div className="text-sm leading-6 text-muted-foreground">
+                            {hasIssues
+                              ? `${(report.validation_flags as unknown as ValidationFlag[]).length} validation issue${(report.validation_flags as unknown as ValidationFlag[]).length === 1 ? '' : 's'} detected`
+                              : 'No validation issues recorded'}
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3">
+                      <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
                         <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         
-                        <div className="text-center min-w-[60px]">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
@@ -402,23 +419,38 @@ export default function QualityAssurance() {
                   return (
                     <div
                       key={report.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
                       onClick={() => setSelectedReport(report)}
+                      title={report.property_address}
                     >
-                      <div className="flex items-center gap-4 flex-1">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="font-medium">{report.property_address}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(report.created_at).toLocaleString()}
+                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                        <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <div className="min-w-0 break-words font-semibold leading-6 text-foreground">{report.property_address}</div>
+                            {report.status && (
+                              <Badge variant="outline" className="shrink-0 rounded-full border-border/70 bg-background/70 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                {report.status}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                            <span className="break-words">{new Date(report.created_at).toLocaleString()}</span>
+                            <span className="text-border" aria-hidden="true">•</span>
+                            <span className="font-medium text-muted-foreground">v{report.calculation_version || '1.0.0'}</span>
+                          </div>
+                          <div className="text-sm leading-6 text-muted-foreground">
+                            {(report.validation_flags as unknown as ValidationFlag[]).length} validation issue{(report.validation_flags as unknown as ValidationFlag[]).length === 1 ? '' : 's'} detected
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3">
+                      <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
                         <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         
-                        <div className="text-center min-w-[60px]">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
@@ -439,20 +471,35 @@ export default function QualityAssurance() {
                 {reports.filter(r => !Array.isArray(r.validation_flags) || (r.validation_flags as unknown as ValidationFlag[]).length === 0).map(report => (
                   <div
                     key={report.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                    className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
                     onClick={() => setSelectedReport(report)}
+                    title={report.property_address}
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <div className="flex-1">
-                        <div className="font-medium">{report.property_address}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {new Date(report.created_at).toLocaleString()}
+                    <div className="flex min-w-0 flex-1 items-start gap-4">
+                      <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <div className="min-w-0 break-words font-semibold leading-6 text-foreground">{report.property_address}</div>
+                          {report.status && (
+                            <Badge variant="outline" className="shrink-0 rounded-full border-border/70 bg-background/70 text-[11px] uppercase tracking-wide text-muted-foreground">
+                              {report.status}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                          <span className="break-words">{new Date(report.created_at).toLocaleString()}</span>
+                          <span className="text-border" aria-hidden="true">•</span>
+                          <span className="font-medium text-muted-foreground">v{report.calculation_version || '1.0.0'}</span>
+                        </div>
+                        <div className="text-sm leading-6 text-muted-foreground">
+                          No validation issues recorded
                         </div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
                       <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                       
                       <Badge variant="secondary" className="gap-1">
@@ -469,10 +516,38 @@ export default function QualityAssurance() {
 
         {/* Selected Report Details */}
         {selectedReport && (
-          <ValidationFlagsDisplay
-            flags={(selectedReport.validation_flags as unknown as ValidationFlag[]) || []}
-            qualityScore={calculateReportQualityScore(selectedReport.validation_flags)}
-          />
+          <Card className="relative min-w-0 overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--dashboard-surface-elevated)/0.76))] shadow-[0_18px_44px_hsl(var(--primary)/0.08)]">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+            <CardHeader className="gap-3 border-b border-border/60">
+              <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="break-words text-xl tracking-tight">Detailed Validation Results</CardTitle>
+                  <CardDescription className="break-words leading-6">
+                    {selectedReport.property_address}
+                  </CardDescription>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  {selectedReport.status && (
+                    <Badge variant="outline" className="rounded-full border-border/70 bg-background/70 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {selectedReport.status}
+                    </Badge>
+                  )}
+                  <Badge variant="secondary" className="rounded-full">
+                    v{selectedReport.calculation_version || '1.0.0'}
+                  </Badge>
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {new Date(selectedReport.created_at).toLocaleString()}
+              </div>
+            </CardHeader>
+            <CardContent className="min-w-0 p-4 sm:p-6">
+              <ValidationFlagsDisplay
+                flags={(selectedReport.validation_flags as unknown as ValidationFlag[]) || []}
+                qualityScore={calculateReportQualityScore(selectedReport.validation_flags)}
+              />
+            </CardContent>
+          </Card>
         )}
       </DashboardThemeFrame>
     );
