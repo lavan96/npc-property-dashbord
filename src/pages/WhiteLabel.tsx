@@ -413,6 +413,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
           </div>
         ) : (
           <div 
+            aria-label={`Upload ${title}`}
             className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
               isDragOver 
                 ? 'scale-[1.01] border-primary bg-primary/10'
@@ -602,6 +603,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
         </div>
       ) : (
         <div 
+          aria-label="Upload signature banner"
           className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
             isDragOver 
               ? 'scale-[1.01] border-primary bg-primary/10' 
@@ -956,7 +958,7 @@ export default function WhiteLabel() {
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
               <Palette className="h-3.5 w-3.5" />
             </span>
-            White Label
+            <span className="truncate">White Label</span>
           </Badge>
         </div>
       </div>
@@ -1015,7 +1017,7 @@ export default function WhiteLabel() {
               <Label htmlFor="brand-preset-name">Preset name</Label>
               <Input
                 id="brand-preset-name"
-                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={presetName}
                 onChange={(event) => setPresetName(event.target.value)}
                 placeholder="e.g. Premium dark gold"
@@ -1044,7 +1046,7 @@ export default function WhiteLabel() {
               {hasCriticalChecks && <Badge variant="outline" className="rounded-full border-destructive/40 bg-destructive/10 px-3 py-1 text-destructive shadow-sm shadow-destructive/10">Critical issues</Badge>}
               {hasInvalidAssets && <Badge variant="outline" className="rounded-full border-warning/40 bg-warning/10 px-3 py-1 text-warning shadow-sm shadow-warning/10">Asset validation required</Badge>}
             </div>
-            <p className="max-w-2xl text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
+            <p className="max-w-2xl break-words text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
             {lastDraftSavedAt ? (
               <p className="mt-1 w-fit max-w-full rounded-full border border-success/25 bg-success/5 px-3 py-1 text-xs text-success shadow-sm shadow-success/10">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
             ) : null}
@@ -1172,6 +1174,7 @@ export default function WhiteLabel() {
                 <div className="relative shrink-0 rounded-2xl border border-primary/20 bg-card p-2 shadow-sm transition-shadow hover:shadow-md">
                   <input
                     type="color"
+                    aria-label="Primary color picker"
                      value={draftSettings.primaryColor ? hslToHex(draftSettings.primaryColor) : '#D4A017'}
                     onChange={(e) => {
                       const hsl = hexToHsl(e.target.value);
@@ -1239,6 +1242,7 @@ export default function WhiteLabel() {
                 <div className="relative shrink-0 rounded-2xl border border-primary/20 bg-card p-2 shadow-sm transition-shadow hover:shadow-md">
                   <input
                     type="color"
+                    aria-label="Accent color picker"
                      value={draftSettings.accentColor ? hslToHex(draftSettings.accentColor) : '#D4A017'}
                     onChange={(e) => {
                       const hsl = hexToHsl(e.target.value);
@@ -1670,7 +1674,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-name">Name</Label>
               <Input
                 id="sig-name"
-                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.name}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, name: e.target.value } 
@@ -1682,7 +1686,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-title">Title / Role</Label>
               <Input
                 id="sig-title"
-                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.title}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, title: e.target.value } 
@@ -1694,7 +1698,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-phone">Phone Number</Label>
               <Input
                 id="sig-phone"
-                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.phone}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, phone: e.target.value } 
@@ -1707,7 +1711,7 @@ export default function WhiteLabel() {
               <Input
                 id="sig-email"
                 type="email"
-                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.email}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, email: e.target.value } 
@@ -1719,7 +1723,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-website">Website</Label>
               <Input
                 id="sig-website"
-                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.website}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, website: e.target.value } 
@@ -1731,7 +1735,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-address">Address</Label>
               <Input
                 id="sig-address"
-                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.address}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, address: e.target.value } 
@@ -1745,7 +1749,7 @@ export default function WhiteLabel() {
             <Label htmlFor="sig-disclaimer">Disclaimer / Legal Text</Label>
             <Textarea
               id="sig-disclaimer"
-              className="min-h-32 resize-y overflow-auto break-words"
+              className="min-h-32 min-w-0 resize-y overflow-auto break-words leading-6 focus-visible:ring-primary/40"
               value={draftSettings.emailSignature.disclaimer}
               onChange={(e) => updateDraftSettings({ 
                 emailSignature: { ...draftSettings.emailSignature, disclaimer: e.target.value } 
@@ -1800,7 +1804,7 @@ export default function WhiteLabel() {
         <CardContent className="p-4 sm:p-6">
           <Button 
             variant="destructive" 
-            className="shadow-lg shadow-destructive/20" 
+            className="min-h-10 shadow-lg shadow-destructive/20 focus-visible:ring-destructive/40" 
             onClick={() => setShowResetPrompt(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
