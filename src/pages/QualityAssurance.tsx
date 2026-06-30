@@ -10,6 +10,7 @@ import { DataQualityIndicator } from "@/components/reports/DataQualityIndicator"
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { Loader2, RefreshCw, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { ValidationFlag, DataSources } from "@/types/validation";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -39,15 +40,17 @@ export default function QualityAssurance() {
   const [metrics, setMetrics] = useState<QAMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<QAReport | null>(null);
 
   useEffect(() => {
     loadQAData();
   }, []);
 
-  const loadQAData = async () => {
+  const loadQAData = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
+      setErrorMessage(null);
 
       // Fetch reports with validation data via edge function
       const { data, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
@@ -125,6 +128,7 @@ export default function QualityAssurance() {
 
     } catch (error) {
       console.error('Error loading QA data:', error);
+      setErrorMessage('Failed to load quality assurance data');
       toast.error('Failed to load quality assurance data');
     } finally {
       setLoading(false);
@@ -134,7 +138,7 @@ export default function QualityAssurance() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadQAData();
+    loadQAData(false);
   };
 
   const getQualityScoreColor = (score: number): string => {
@@ -155,6 +159,47 @@ export default function QualityAssurance() {
     });
     return Math.max(0, score);
   };
+
+  const getValidationFlags = (flags: Json): ValidationFlag[] => {
+    return Array.isArray(flags) ? (flags as unknown as ValidationFlag[]) : [];
+  };
+
+  const getIssueSeveritySummary = (flags: Json) => {
+    const validationFlags = getValidationFlags(flags);
+
+    return {
+      total: validationFlags.length,
+      critical: validationFlags.filter(flag => flag.severity === 'critical').length,
+      high: validationFlags.filter(flag => flag.severity === 'high').length,
+      medium: validationFlags.filter(flag => flag.severity === 'medium').length,
+    };
+  };
+
+  const getIssueBadgeClass = (summary: ReturnType<typeof getIssueSeveritySummary>): string => {
+    if (summary.critical > 0) {
+      return 'border-destructive/40 bg-destructive text-destructive-foreground shadow-[0_10px_24px_hsl(var(--destructive)/0.18)]';
+    }
+
+    if (summary.high > 0 || summary.medium > 0) {
+      return 'border-amber-300/60 bg-amber-100 text-amber-900 shadow-[0_10px_24px_hsl(43_74%_49%/0.15)] dark:border-amber-400/35 dark:bg-amber-400/15 dark:text-amber-100';
+    }
+
+    return 'border-border/70 bg-background/75 text-muted-foreground';
+  };
+
+  const getIssueSummaryLabel = (summary: ReturnType<typeof getIssueSeveritySummary>): string => {
+    if (summary.critical > 0) return `${summary.total} issue${summary.total === 1 ? '' : 's'} • ${summary.critical} critical`;
+    if (summary.high > 0) return `${summary.total} issue${summary.total === 1 ? '' : 's'} • ${summary.high} high`;
+    if (summary.medium > 0) return `${summary.total} issue${summary.total === 1 ? '' : 's'} • ${summary.medium} medium`;
+    return `${summary.total} issue${summary.total === 1 ? '' : 's'}`;
+  };
+
+  const reportsWithValidationIssues = reports.filter(r =>
+    Array.isArray(r.validation_flags) && (r.validation_flags as unknown as ValidationFlag[]).length > 0
+  );
+  const cleanReports = reports.filter(r =>
+    !Array.isArray(r.validation_flags) || (r.validation_flags as unknown as ValidationFlag[]).length === 0
+  );
 
   if (loading) {
     return (
@@ -216,12 +261,41 @@ export default function QualityAssurance() {
               variant="outline"
               className="w-full shrink-0 rounded-full border-primary/25 bg-card/80 px-5 font-semibold shadow-sm shadow-primary/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 md:w-auto"
               aria-label="Refresh quality assurance dashboard"
+              aria-busy={refreshing}
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
         </DashboardThemeFrame>
+
+        {errorMessage && (
+          <Card className="min-w-0 overflow-hidden rounded-2xl border-destructive/35 bg-destructive/5 shadow-sm">
+            <CardContent className="flex min-w-0 flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="shrink-0 rounded-full border border-destructive/25 bg-destructive/10 p-2 text-destructive">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <div className="font-semibold text-destructive">{errorMessage}</div>
+                  <p className="break-words text-sm leading-6 text-muted-foreground">
+                    Refresh the dashboard to retry loading report validation results. Existing errors are shown here instead of being hidden.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                variant="outline"
+                className="w-full shrink-0 rounded-full border-destructive/30 bg-background/70 font-semibold text-destructive hover:bg-destructive/10 sm:w-auto"
+                aria-busy={refreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Metrics Overview */}
         {metrics && (
@@ -348,16 +422,31 @@ export default function QualityAssurance() {
               </div>
 
               <TabsContent value="all" className="space-y-3 mt-4">
+                {reports.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground">
+                      <FileText className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <p>No recent reports are available yet. Validation results will appear here when reports are generated.</p>
+                  </div>
+                )}
                 {reports.map(report => {
                   const qualityScore = calculateReportQualityScore(report.validation_flags);
-                  const hasIssues = Array.isArray(report.validation_flags) && (report.validation_flags as unknown as ValidationFlag[]).length > 0;
+                  const issueSummary = getIssueSeveritySummary(report.validation_flags);
+                  const hasIssues = issueSummary.total > 0;
                   
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={report.id}
-                      className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
+                      className={cn(
+                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                        selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
+                      )}
                       onClick={() => setSelectedReport(report)}
                       title={report.property_address}
+                      aria-label={`View validation results for ${report.property_address}`}
+                      aria-pressed={selectedReport?.id === report.id}
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-4">
                         <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -386,9 +475,12 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
+                          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
+                          <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        </div>
                         
-                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center dark:bg-slate-950/45">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
@@ -396,32 +488,47 @@ export default function QualityAssurance() {
                         </div>
 
                         {hasIssues ? (
-                          <Badge variant="destructive" className="gap-1">
+                          <Badge variant="outline" className={`gap-1 rounded-full px-3 py-1.5 ${getIssueBadgeClass(issueSummary)}`}>
                             <AlertTriangle className="h-3 w-3" />
-                            {(report.validation_flags as unknown as ValidationFlag[]).length}
+                            {getIssueSummaryLabel(issueSummary)}
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="gap-1">
+                          <Badge variant="secondary" className="gap-1 rounded-full border border-emerald-300/45 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
                             <CheckCircle className="h-3 w-3" />
                             Clean
                           </Badge>
                         )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </TabsContent>
 
               <TabsContent value="issues" className="space-y-3 mt-4">
-                {reports.filter(r => Array.isArray(r.validation_flags) && (r.validation_flags as unknown as ValidationFlag[]).length > 0).map(report => {
+                {reportsWithValidationIssues.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/35 bg-amber-100/60 text-amber-700 dark:bg-amber-400/10 dark:text-amber-200">
+                      <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <p>No reports with validation issues are available in the current data set.</p>
+                  </div>
+                )}
+                {reportsWithValidationIssues.map(report => {
                   const qualityScore = calculateReportQualityScore(report.validation_flags);
+                  const issueSummary = getIssueSeveritySummary(report.validation_flags);
                   
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={report.id}
-                      className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
+                      className={cn(
+                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                        selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
+                      )}
                       onClick={() => setSelectedReport(report)}
                       title={report.property_address}
+                      aria-label={`View validation results for ${report.property_address}`}
+                      aria-pressed={selectedReport?.id === report.id}
                     >
                       <div className="flex min-w-0 flex-1 items-start gap-4">
                         <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -448,32 +555,49 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
+                          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
+                          <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                        </div>
                         
-                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center dark:bg-slate-950/45">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
                           <div className="text-xs text-muted-foreground">Score</div>
                         </div>
 
-                        <Badge variant="destructive" className="gap-1">
+                        <Badge variant="outline" className={`gap-1 rounded-full px-3 py-1.5 ${getIssueBadgeClass(issueSummary)}`}>
                           <AlertTriangle className="h-3 w-3" />
-                          {(report.validation_flags as unknown as ValidationFlag[]).length}
+                          {getIssueSummaryLabel(issueSummary)}
                         </Badge>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </TabsContent>
 
               <TabsContent value="clean" className="space-y-3 mt-4">
-                {reports.filter(r => !Array.isArray(r.validation_flags) || (r.validation_flags as unknown as ValidationFlag[]).length === 0).map(report => (
-                  <div
+                {cleanReports.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+                      <CheckCircle className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <p>No clean reports are available in the current data set.</p>
+                  </div>
+                )}
+                {cleanReports.map(report => (
+                  <button
+                    type="button"
                     key={report.id}
-                    className="group flex min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] lg:flex-row lg:items-center lg:justify-between"
+                    className={cn(
+                      "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                      selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
+                    )}
                     onClick={() => setSelectedReport(report)}
                     title={report.property_address}
+                    aria-label={`View validation results for ${report.property_address}`}
+                    aria-pressed={selectedReport?.id === report.id}
                   >
                     <div className="flex min-w-0 flex-1 items-start gap-4">
                       <div className="shrink-0 rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
@@ -500,14 +624,17 @@ export default function QualityAssurance() {
                     </div>
                     
                     <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                      <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                      <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
+                        <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
+                      </div>
                       
-                      <Badge variant="secondary" className="gap-1">
+                      <Badge variant="secondary" className="gap-1 rounded-full border border-emerald-300/45 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
                         <CheckCircle className="h-3 w-3" />
                         Clean
                       </Badge>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </TabsContent>
             </Tabs>
