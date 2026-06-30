@@ -142,10 +142,10 @@ export default function QualityAssurance() {
   };
 
   const getQualityScoreColor = (score: number): string => {
-    if (score >= 90) return 'text-green-600 dark:text-green-400';
-    if (score >= 75) return 'text-blue-600 dark:text-blue-400';
-    if (score >= 60) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (score >= 90) return 'text-success';
+    if (score >= 75) return 'text-info';
+    if (score >= 60) return 'text-warning';
+    return 'text-destructive';
   };
 
   const calculateReportQualityScore = (flags: Json): number => {
@@ -181,7 +181,7 @@ export default function QualityAssurance() {
     }
 
     if (summary.high > 0 || summary.medium > 0) {
-      return 'border-amber-300/60 bg-amber-100 text-amber-900 shadow-[0_10px_24px_hsl(43_74%_49%/0.15)] dark:border-amber-400/35 dark:bg-amber-400/15 dark:text-amber-100';
+      return 'border-warning/30 bg-warning-light/70 text-warning shadow-[0_10px_24px_hsl(var(--warning)/0.15)]';
     }
 
     return 'border-border/70 bg-background/75 text-muted-foreground';
@@ -327,14 +327,14 @@ export default function QualityAssurance() {
                 <div className="flex items-center gap-1 mt-1">
                   {metrics.qualityTrend === 'up' && (
                     <>
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                      <span className="text-xs text-green-600">Improving</span>
+                      <TrendingUp className="h-4 w-4 text-success" />
+                      <span className="text-xs text-success">Improving</span>
                     </>
                   )}
                   {metrics.qualityTrend === 'down' && (
                     <>
-                      <TrendingDown className="h-4 w-4 text-red-600" />
-                      <span className="text-xs text-red-600">Declining</span>
+                      <TrendingDown className="h-4 w-4 text-destructive" />
+                      <span className="text-xs text-destructive">Declining</span>
                     </>
                   )}
                   {metrics.qualityTrend === 'stable' && (
@@ -399,7 +399,7 @@ export default function QualityAssurance() {
           <CardContent className="min-w-0 p-4 sm:p-6">
             <Tabs defaultValue="all" className="min-w-0">
               <div className="-mx-1 overflow-x-auto px-1 pb-1">
-                <TabsList className="h-auto min-w-max justify-start gap-1 rounded-full border border-border/70 bg-background/70 p-1 shadow-inner shadow-black/5 dark:bg-slate-950/40">
+                <TabsList className="h-auto min-w-max justify-start gap-1 rounded-full border border-border/70 bg-background/70 p-1 shadow-inner shadow-black/5 dark:bg-card/50">
                   <TabsTrigger
                     value="all"
                     className="rounded-full px-4 py-2 text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -440,7 +440,7 @@ export default function QualityAssurance() {
                       type="button"
                       key={report.id}
                       className={cn(
-                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-row lg:items-center lg:justify-between",
                         selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
                       )}
                       onClick={() => setSelectedReport(report)}
@@ -475,12 +475,12 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
+                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
                           <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
                           <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         </div>
                         
-                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center dark:bg-slate-950/45">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
@@ -493,7 +493,7 @@ export default function QualityAssurance() {
                             {getIssueSummaryLabel(issueSummary)}
                           </Badge>
                         ) : (
-                          <Badge variant="secondary" className="gap-1 rounded-full border border-emerald-300/45 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
+                          <Badge variant="secondary" className="gap-1 rounded-full border border-success/25 bg-success-light/70 text-success">
                             <CheckCircle className="h-3 w-3" />
                             Clean
                           </Badge>
@@ -507,7 +507,7 @@ export default function QualityAssurance() {
               <TabsContent value="issues" className="space-y-3 mt-4">
                 {reportsWithValidationIssues.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
-                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/35 bg-amber-100/60 text-amber-700 dark:bg-amber-400/10 dark:text-amber-200">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-warning/30 bg-warning-light/70 text-warning">
                       <AlertTriangle className="h-5 w-5" aria-hidden="true" />
                     </div>
                     <p>No reports with validation issues are available in the current data set.</p>
@@ -522,7 +522,7 @@ export default function QualityAssurance() {
                       type="button"
                       key={report.id}
                       className={cn(
-                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                        "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-row lg:items-center lg:justify-between",
                         selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
                       )}
                       onClick={() => setSelectedReport(report)}
@@ -555,12 +555,12 @@ export default function QualityAssurance() {
                       </div>
                       
                       <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
+                        <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
                           <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
                           <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                         </div>
                         
-                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center dark:bg-slate-950/45">
+                        <div className="min-w-[68px] rounded-2xl border border-border/60 bg-background/70 px-3 py-2 text-center">
                           <div className={`text-lg font-bold ${getQualityScoreColor(qualityScore)}`}>
                             {qualityScore}
                           </div>
@@ -580,7 +580,7 @@ export default function QualityAssurance() {
               <TabsContent value="clean" className="space-y-3 mt-4">
                 {cleanReports.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
-                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-success/25 bg-success-light/70 text-success">
                       <CheckCircle className="h-5 w-5" aria-hidden="true" />
                     </div>
                     <p>No clean reports are available in the current data set.</p>
@@ -591,7 +591,7 @@ export default function QualityAssurance() {
                     type="button"
                     key={report.id}
                     className={cn(
-                      "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/45 lg:flex-row lg:items-center lg:justify-between",
+                      "group flex w-full min-w-0 cursor-pointer flex-col gap-4 rounded-2xl border border-border/70 bg-card/72 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_16px_34px_hsl(var(--primary)/0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:flex-row lg:items-center lg:justify-between",
                       selectedReport?.id === report.id && "border-primary/45 bg-primary/10 shadow-[0_18px_40px_hsl(var(--primary)/0.14)] ring-1 ring-primary/20"
                     )}
                     onClick={() => setSelectedReport(report)}
@@ -624,12 +624,12 @@ export default function QualityAssurance() {
                     </div>
                     
                     <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
-                      <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2 dark:bg-slate-950/45">
+                      <div className="min-w-0 rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
                         <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data accuracy</div>
                         <DataQualityIndicator dataSources={report.data_sources as unknown as DataSources} inline />
                       </div>
                       
-                      <Badge variant="secondary" className="gap-1 rounded-full border border-emerald-300/45 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
+                      <Badge variant="secondary" className="gap-1 rounded-full border border-success/25 bg-success-light/70 text-success">
                         <CheckCircle className="h-3 w-3" />
                         Clean
                       </Badge>
