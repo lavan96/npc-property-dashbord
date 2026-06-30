@@ -898,6 +898,9 @@ function OverlayPreview({
             stroke={p.stroke ? previewCssColor(p.stroke, tokenColors, 'none') : 'none'}
             strokeWidth={p.strokeWidth ?? 0}
             fillRule={p.fillRule || 'nonzero'}
+            strokeDasharray={p.strokeDasharray || undefined}
+            strokeLinecap={p.strokeLinecap || undefined}
+            strokeLinejoin={p.strokeLinejoin || undefined}
             opacity={p.opacity ?? 1}
           />
         ))}

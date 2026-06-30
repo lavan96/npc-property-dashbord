@@ -82,7 +82,11 @@ function blockToOverlay(block: RawImportBlock, locked: boolean): Overlay | null 
         : isFormula ? 'Times, "Times New Roman", serif'
         : (block.style?.fontFamily ?? 'Helvetica'),
       fontSize: block.style?.fontSize ?? 11,
-      fontWeight: (block.style?.fontWeight === 'bold' ? 'bold' : 'normal') as 'normal' | 'bold',
+      // Phase 6E — preserve a numeric weight grade (e.g. 300/600 derived from the
+      // source font name) instead of collapsing every weight to bold/normal.
+      fontWeight: (typeof block.style?.fontWeight === 'number'
+        ? block.style.fontWeight
+        : block.style?.fontWeight === 'bold' ? 'bold' : 'normal') as number | 'normal' | 'bold',
       fontStyle: isFormula ? 'italic' : (block.style?.fontStyle ?? 'normal'),
       color: block.style?.color ?? '#111111',
       align: (block.style?.textAlign ?? 'left') as TextOverlay['align'],
