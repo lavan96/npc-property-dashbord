@@ -48,6 +48,23 @@ describe('ingestion fidelity metrics', () => {
     expect(report.warnings.map((warning) => warning.code)).toEqual(['native_coverage_low', 'raster_fallback_high']);
   });
 
+  it('counts only the genuinely-uncovered area as raster fallback (full-page trace behind overlays)', () => {
+    // Mirrors the real raster-backed import: a full-page fallback raster trace sits
+    // behind native overlays. The metric must reflect the area the raster *actually*
+    // backs (the part not reconstructed), not the whole page.
+    const report = buildCdirFidelityReport(doc([
+      { id: 'bg_fallback', kind: 'image', src: 'data:image/png;base64,a', fallbackRaster: true, bounds: { x: 0, y: 0, width: 100, height: 100 } },
+      { id: 'text_1', kind: 'text', text: 'Reconstructed', bounds: { x: 0, y: 0, width: 100, height: 60 }, fontSize: 10 },
+    ]));
+
+    // 60% of the page is natively reconstructed on top of the full-page raster.
+    expect(report.nativeCoverage).toBe(0.6);
+    // The raster only genuinely backs the remaining 40% — NOT 1.0 (the old artifact).
+    expect(report.rasterFallbackCoverage).toBe(0.4);
+    // The full-page trace layer is still present (kept for visual QA / underlay).
+    expect(report.fallbackRasterLayerCount).toBe(1);
+  });
+
   it('penalizes copy drift and position drift', () => {
     const report = buildCdirFidelityReport(doc([
       { id: 'text_1', kind: 'text', text: 'Wrong copy', bounds: { x: 20, y: 0, width: 50, height: 10 }, fontSize: 10 },
