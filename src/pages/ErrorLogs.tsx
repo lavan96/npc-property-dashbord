@@ -400,15 +400,15 @@ export default function ErrorLogs() {
             </CardContent>
           </Card>
 
-          <Card className="group min-w-0 overflow-hidden rounded-2xl border-red-500/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-red-500/35 dark:border-red-500/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-destructive/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-destructive/35 dark:border-destructive/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Critical</CardTitle>
-              <span className="rounded-xl border border-red-500/25 bg-red-500/10 p-2 text-red-500">
+              <span className="rounded-xl border border-destructive/25 bg-destructive/10 p-2 text-destructive">
                 <XCircle className="h-4 w-4" />
               </span>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold tracking-tight text-red-500">{stats.critical}</div>
+              <div className="text-3xl font-bold tracking-tight text-destructive">{stats.critical}</div>
               <p className="mt-1 truncate text-xs text-muted-foreground">Require immediate attention</p>
             </CardContent>
           </Card>
@@ -447,7 +447,7 @@ export default function ErrorLogs() {
                   <TrendingDown className="h-4 w-4" />
                 </span>
               ) : stats.trend === 'up' ? (
-                <span className="rounded-xl border border-red-500/25 bg-red-500/10 p-2 text-red-500">
+                <span className="rounded-xl border border-destructive/25 bg-destructive/10 p-2 text-destructive">
                   <TrendingDown className="h-4 w-4 rotate-180" />
                 </span>
               ) : (
