@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { SwitchConfigModal } from '@/components/automation/SwitchConfigModal';
 import { GenerationLogModal } from '@/components/automation/GenerationLogModal';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface AutoReportSwitch {
   id: string;
@@ -273,42 +274,65 @@ const Automation = () => {
 
   return (
     <>
-      <div className="space-y-6">
+      <DashboardThemeFrame
+        variant="page"
+        className="space-y-6 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.92))] p-3 pb-8 text-foreground sm:p-5 lg:p-6"
+      >
         {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Auto-Generation Switchbot</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Configure automated investment report generation for incoming listings
-            </p>
+        <DashboardThemeFrame
+          as="header"
+          variant="hero"
+          className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_54%,hsl(var(--muted)/0.34))] shadow-[0_22px_70px_rgba(15,23,42,0.10)] dark:shadow-black/30 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
+              <Zap className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Auto-Generation Switchbot</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Configure automated investment report generation for incoming listings
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setLogModalOpen(true)} size="sm" className="sm:size-default">
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setLogModalOpen(true)}
+              size="sm"
+              className="min-h-[44px] border-border/70 bg-background/80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-foreground focus-visible:ring-primary/45 sm:size-default"
+            >
               <History className="h-4 w-4 mr-2" />
               View Log
             </Button>
           </div>
-        </div>
+        </DashboardThemeFrame>
 
         {/* Airtable Sync Controls */}
-        <Card className="border-blue-500/30 bg-blue-500/5">
-          <CardContent className="py-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-blue-500/20 shrink-0">
-                  <Zap className="h-4 w-4 text-blue-500" />
+        <Card className="relative overflow-hidden rounded-3xl border border-blue-500/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--info)/0.14),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--info)/0.06))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-blue-300/20 dark:ring-white/10 dark:shadow-black/25">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-500/15 text-blue-500 shadow-[0_12px_30px_hsl(var(--info)/0.14)] dark:text-blue-300">
+                  <Zap className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="font-medium text-sm">Airtable Sync</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sync new listings from Airtable and auto-generate reports based on your switch criteria.
-                  </p>
+                <div className="min-w-0 space-y-2">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold tracking-tight text-foreground">Airtable Sync</p>
+                    <p className="max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
+                      Sync new listings from Airtable and auto-generate reports based on your switch criteria.
+                    </p>
+                  </div>
                   {syncStats && (
-                    <div className="flex flex-wrap gap-2 mt-2 text-xs">
-                      <Badge variant="outline">{syncStats.total} processed</Badge>
-                      <Badge variant="secondary">{syncStats.generated} reports generated</Badge>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
+                      <Badge variant="outline" className="border-blue-400/30 bg-background/70 text-foreground shadow-sm">
+                        {syncStats.total} processed
+                      </Badge>
+                      <Badge variant="secondary" className="bg-primary/10 text-foreground shadow-sm">
+                        {syncStats.generated} reports generated
+                      </Badge>
                       {syncStats.lastSync && (
-                        <span className="text-muted-foreground">
+                        <span className="min-w-0 truncate rounded-full border border-border/60 bg-background/55 px-2.5 py-1 text-muted-foreground">
                           Last: {new Date(syncStats.lastSync).toLocaleDateString()}
                         </span>
                       )}
@@ -316,20 +340,20 @@ const Automation = () => {
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:shrink-0">
+              <div className="flex w-full min-w-0 flex-wrap gap-2 sm:w-auto sm:flex-nowrap lg:shrink-0">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
                       variant="outline" 
                       size="sm"
                       disabled={clearing || !syncStats?.total}
-                      className="text-destructive hover:text-destructive min-h-[44px] sm:min-h-0"
+                      className="min-h-[44px] flex-1 border-destructive/25 bg-background/70 text-destructive shadow-sm transition-all hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/35 sm:min-h-0 sm:flex-none"
                     >
                       <XCircle className={`h-4 w-4 mr-1 ${clearing ? 'animate-spin' : ''}`} />
                       {clearing ? 'Clearing...' : 'Clear Queue'}
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="w-[95vw] sm:w-auto">
+                  <AlertDialogContent className="w-[95vw] rounded-2xl border-destructive/20 sm:w-auto">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Clear Stuck Reports?</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -339,7 +363,7 @@ const Automation = () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={clearQueue} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction onClick={clearQueue} className="bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90">
                         Clear Queue
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -350,16 +374,16 @@ const Automation = () => {
                   size="sm"
                   onClick={() => runSync(true)}
                   disabled={syncing || !masterEnabled}
-                  className="min-h-[44px] sm:min-h-0"
+                  className="min-h-[44px] flex-1 border-warning/30 bg-warning/10 text-foreground shadow-sm transition-all hover:border-warning/45 hover:bg-warning/15 focus-visible:ring-warning/40 sm:min-h-0 sm:flex-none"
                 >
-                  <Eye className="h-4 w-4 mr-1" />
+                  <Eye className="h-4 w-4 mr-1 text-warning" />
                   Dry Run
                 </Button>
                 <Button 
                   size="sm"
                   onClick={() => runSync(false)}
                   disabled={syncing || !masterEnabled}
-                  className="min-h-[44px] sm:min-h-0"
+                  className="min-h-[44px] flex-1 bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.20)] transition-all hover:bg-primary-hover focus-visible:ring-primary/45 sm:min-h-0 sm:flex-none"
                 >
                   <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? 'Syncing...' : 'Sync Now'}
@@ -370,16 +394,16 @@ const Automation = () => {
         </Card>
 
         {/* Master Switch Card */}
-        <Card className={masterEnabled ? 'border-green-500/50 bg-green-500/5' : 'border-muted'}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${masterEnabled ? 'bg-green-500/20' : 'bg-muted'}`}>
-                  <Zap className={`h-5 w-5 ${masterEnabled ? 'text-green-500' : 'text-muted-foreground'}`} />
+        <Card className={masterEnabled ? 'relative overflow-hidden rounded-3xl border-green-500/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--success)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--success)/0.08))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-green-300/20 dark:ring-white/10 dark:shadow-black/25' : 'relative overflow-hidden rounded-3xl border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--muted)/0.42),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.88)_58%,hsl(var(--muted)/0.18))] shadow-[0_18px_52px_rgba(15,23,42,0.07)] ring-1 ring-white/45 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25'}>
+          <CardHeader className="pb-4">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/60 text-muted-foreground'}`}>
+                  <Zap className="h-6 w-6" />
                 </div>
-                <div>
-                  <CardTitle className="text-xl">Master Switch</CardTitle>
-                  <CardDescription>
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="text-xl tracking-tight text-foreground">Master Switch</CardTitle>
+                  <CardDescription className="max-w-2xl text-sm leading-5">
                     {masterEnabled 
                       ? `Active with ${enabledSwitchesCount} enabled switch${enabledSwitchesCount !== 1 ? 'es' : ''}`
                       : 'All auto-generation is currently disabled'
@@ -387,24 +411,24 @@ const Automation = () => {
                   </CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-sm font-medium ${masterEnabled ? 'text-green-500' : 'text-muted-foreground'}`}>
+              <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/65 px-3 py-2 shadow-sm sm:justify-end">
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.18em] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/70 text-muted-foreground'}`}>
                   {masterEnabled ? 'ON' : 'OFF'}
                 </span>
                 <Switch 
                   checked={masterEnabled} 
                   onCheckedChange={toggleMaster}
                   disabled={masterLoading}
-                  className="data-[state=checked]:bg-green-500"
+                  className="data-[state=checked]:bg-green-500 focus-visible:ring-green-500/40"
                 />
               </div>
             </div>
           </CardHeader>
           {!masterEnabled && switches.some(s => s.is_enabled) && (
             <CardContent className="pt-0">
-              <div className="flex items-center gap-2 text-amber-500 text-sm">
-                <AlertTriangle className="h-4 w-4" />
-                <span>You have enabled switches but the master switch is off. No reports will be auto-generated.</span>
+              <div className="flex items-start gap-3 rounded-2xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-foreground shadow-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <span className="leading-5 text-muted-foreground">You have enabled switches but the master switch is off. No reports will be auto-generated.</span>
               </div>
             </CardContent>
           )}
@@ -517,7 +541,7 @@ const Automation = () => {
             </div>
           )}
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       <SwitchConfigModal
         open={configModalOpen}
