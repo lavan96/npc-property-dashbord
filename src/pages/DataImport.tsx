@@ -27,7 +27,7 @@ import {
   AlertCircle,
   Loader2,
   ShieldCheck,
-  Workflow,
+  Globe2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
@@ -463,36 +463,62 @@ export default function DataImport() {
       </DashboardThemeFrame>
 
       {/* Quick Import Section */}
-      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-card/80 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
-        <CardHeader className="border-b border-border/50 bg-muted/20">
-          <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Database className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 break-words">
-              Quick Import from External Sources
-            </span>
-          </CardTitle>
+      <Card className="relative min-w-0 overflow-hidden rounded-[1.5rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.08))] shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-primary/20 dark:bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--primary)/0.10))] dark:shadow-black/30">
+        <div className="pointer-events-none absolute -right-14 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute left-8 top-0 h-px w-2/3 bg-gradient-to-r from-primary/45 via-primary/20 to-transparent" />
+        <CardHeader className="relative border-b border-primary/15 bg-background/35">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                <Database className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 break-words">
+                Quick Import from External Sources
+              </span>
+            </CardTitle>
+            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Trusted external source</span>
+            </div>
+          </div>
           <CardDescription className="break-words">
             Import data directly from trusted external sources
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-dashed border-primary/25 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background text-primary shadow-sm">
-                <Workflow className="h-4 w-4" />
+        <CardContent className="relative p-4 sm:p-6">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="min-w-0 rounded-2xl border border-dashed border-primary/25 bg-background/55 p-4 shadow-inner">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary shadow-sm">
+                  <Globe2 className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    Australian suburb directory cache
+                  </p>
+                  <p className="min-w-0 text-xs leading-5 text-muted-foreground">
+                    ~18,500 suburbs from matthewproctor.com (community-sourced
+                    postcode database)
+                  </p>
+                  <div className="flex min-w-0 flex-wrap gap-2 text-[11px] font-medium text-muted-foreground">
+                    <span className="max-w-full rounded-full border border-border/60 bg-card/80 px-2.5 py-1">
+                      Source import
+                    </span>
+                    <span className="max-w-full rounded-full border border-border/60 bg-card/80 px-2.5 py-1">
+                      Cache-table population
+                    </span>
+                    <span className="max-w-full rounded-full border border-border/60 bg-card/80 px-2.5 py-1">
+                      No local file required
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p className="min-w-0 text-xs leading-5 text-muted-foreground">
-                ~18,500 suburbs from matthewproctor.com (community-sourced
-                postcode database)
-              </p>
             </div>
             <Button
               onClick={handleImportSuburbDirectory}
               disabled={importingSuburbs}
               variant="outline"
-              className="min-w-0 shrink-0 rounded-full border-primary/30 bg-background/80 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/50 sm:w-auto"
+              className="min-w-0 shrink-0 rounded-full border-primary/35 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)] focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:shadow-none lg:min-w-[18rem]"
             >
               {importingSuburbs ? (
                 <>
