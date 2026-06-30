@@ -10,12 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
-  Settings2, 
-  Database, 
-  Phone, 
-  Mail, 
-  Brain, 
+import {
+  Settings2,
+  Database,
+  Phone,
+  Mail,
+  Brain,
   Webhook,
   Eye,
   EyeOff,
@@ -208,7 +208,7 @@ export default function Integrations() {
     setLoadingSecrets(true);
     try {
       const { data, error } = await invokeSecureFunction('check-integration-secrets', {});
-      
+
       if (error) {
         console.error('Error checking Supabase secrets:', error);
         return;
@@ -241,14 +241,14 @@ export default function Integrations() {
       if (data?.records) {
         const loadedValues: Record<string, string> = {};
         const loadedKeys = new Set<string>();
-        
+
         data.records.forEach((config: any) => {
           loadedValues[config.key_name] = config.key_value || '';
           if (config.key_value) {
             loadedKeys.add(config.key_name);
           }
         });
-        
+
         setValues(loadedValues);
         setSavedKeys(loadedKeys);
       }
@@ -277,7 +277,7 @@ export default function Integrations() {
       // Save each field for this integration
       for (const field of integration.fields) {
         const value = values[field.key] || '';
-        
+
         const { error } = await invokeSecureFunction('manage-templates', {
           operation: 'upsert',
           table: 'integration_configs',
@@ -396,7 +396,7 @@ export default function Integrations() {
   const getIntegrationStatus = (integration: IntegrationConfig) => {
     const requiredFields = integration.fields.filter(f => f.required !== false);
     const configuredFields = requiredFields.filter(f => savedKeys.has(f.key));
-    
+
     if (configuredFields.length === 0) return 'not_configured';
     if (configuredFields.length === requiredFields.length) return 'configured';
     return 'partial';
@@ -429,9 +429,9 @@ export default function Integrations() {
 
   const getSupabaseSecretBadge = (integrationId: string) => {
     const secretStatus = supabaseSecrets[integrationId];
-    
+
     if (!secretStatus) return null;
-    
+
     if (secretStatus.configured) {
       return (
         <TooltipProvider>
@@ -478,7 +478,7 @@ export default function Integrations() {
         </TooltipProvider>
       );
     }
-    
+
     return null;
   };
 
@@ -489,6 +489,124 @@ export default function Integrations() {
       </div>
     );
   }
+
+  const renderIntegrationCard = (integration: IntegrationConfig) => {
+    const status = getIntegrationStatus(integration);
+
+    return (
+      <Card
+        key={integration.id}
+        className="group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/30"
+      >
+        <CardHeader className="border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.045))] pb-4">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-[0_12px_30px_hsl(var(--primary)/0.14)] transition-all duration-300 group-hover:border-primary/35 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]">
+                {integration.icon}
+              </div>
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="break-words text-lg font-semibold leading-tight tracking-tight text-foreground">
+                  {integration.name}
+                </CardTitle>
+                <CardDescription className="max-w-full break-words text-sm leading-5 text-muted-foreground">
+                  {integration.description}
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-row flex-wrap items-center gap-1.5 sm:max-w-[45%] sm:justify-end">
+              {getStatusBadge(status)}
+              {getSupabaseSecretBadge(integration.id)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          {integration.fields.map(field => (
+            <div key={field.key} className="min-w-0 space-y-2">
+              <Label htmlFor={field.key} className="text-sm font-medium text-foreground">
+                {field.label}
+                {field.required !== false && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              <div className="relative min-w-0">
+                <Input
+                  id={field.key}
+                  type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
+                  placeholder={field.placeholder}
+                  value={values[field.key] || ''}
+                  onChange={(e) => handleValueChange(field.key, e.target.value)}
+                  className="min-w-0 truncate border-border/70 bg-background/70 pr-10 shadow-inner shadow-sm transition-all focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/35"
+                />
+                {field.type === 'password' && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => togglePasswordVisibility(field.key)}
+                  >
+                    {showPasswords[field.key] ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          <div className="flex min-w-0 flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            {integration.docsUrl && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-center rounded-xl text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary sm:w-auto"
+                onClick={() => window.open(integration.docsUrl, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Docs
+              </Button>
+            )}
+            <div className="flex min-w-0 gap-2 sm:ml-auto">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncToSupabase(integration.id)}
+                      disabled={syncingToSupabase === integration.id || saving === integration.id}
+                      className="shrink-0 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
+                    >
+                      {syncingToSupabase === integration.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sync to Supabase Secrets</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button
+                onClick={() => saveIntegration(integration.id)}
+                disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
+                className="min-w-0 flex-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.20)] transition-all hover:bg-primary-hover hover:shadow-[0_16px_34px_hsl(var(--primary)/0.24)] sm:flex-none"
+              >
+                {saving === integration.id ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Save
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <DashboardThemeFrame
@@ -534,20 +652,20 @@ export default function Integrations() {
         <Alert className="border-yellow-500/50 bg-yellow-500/10">
           <AlertCircle className="h-4 w-4 text-yellow-500" />
           <AlertDescription className="text-sm">
-            <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets, 
+            <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets,
             add a <code className="bg-muted px-1 rounded">SUPABASE_ACCESS_TOKEN</code> secret in your{' '}
-            <a 
-              href="https://supabase.com/dashboard/project/dduzbchuswwbefdunfct/settings/functions" 
-              target="_blank" 
+            <a
+              href="https://supabase.com/dashboard/project/dduzbchuswwbefdunfct/settings/functions"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-primary underline"
             >
               Supabase dashboard
-            </a>. 
+            </a>.
             Get your token from{' '}
-            <a 
-              href="https://supabase.com/dashboard/account/tokens" 
-              target="_blank" 
+            <a
+              href="https://supabase.com/dashboard/account/tokens"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-primary underline"
             >
@@ -572,115 +690,7 @@ export default function Integrations() {
 
         <TabsContent value="all" className="mt-5 sm:mt-6">
           <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
-            {integrations.map(integration => {
-              const status = getIntegrationStatus(integration);
-              return (
-                <Card key={integration.id} className="bg-card border-border">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                          {integration.icon}
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg">{integration.name}</CardTitle>
-                          <CardDescription className="text-sm mt-0.5">
-                            {integration.description}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1.5 items-end">
-                        {getStatusBadge(status)}
-                        {getSupabaseSecretBadge(integration.id)}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {integration.fields.map(field => (
-                      <div key={field.key} className="space-y-2">
-                        <Label htmlFor={field.key} className="text-sm">
-                          {field.label}
-                          {field.required !== false && <span className="text-destructive ml-1">*</span>}
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id={field.key}
-                            type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
-                            placeholder={field.placeholder}
-                            value={values[field.key] || ''}
-                            onChange={(e) => handleValueChange(field.key, e.target.value)}
-                            className="pr-10"
-                          />
-                          {field.type === 'password' && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                              onClick={() => togglePasswordVisibility(field.key)}
-                            >
-                              {showPasswords[field.key] ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2">
-                      {integration.docsUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-foreground"
-                          onClick={() => window.open(integration.docsUrl, '_blank')}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Docs
-                        </Button>
-                      )}
-                      <div className="flex gap-2 ml-auto">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => syncToSupabase(integration.id)}
-                                disabled={syncingToSupabase === integration.id || saving === integration.id}
-                              >
-                                {syncingToSupabase === integration.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Upload className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Sync to Supabase Secrets</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <Button
-                          onClick={() => saveIntegration(integration.id)}
-                          disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
-                        >
-                          {saving === integration.id ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                          )}
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {integrations.map(renderIntegrationCard)}
           </div>
         </TabsContent>
 
@@ -688,114 +698,7 @@ export default function Integrations() {
           <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
             {integrations
               .filter(i => getIntegrationStatus(i) === 'configured')
-              .map(integration => {
-                const status = getIntegrationStatus(integration);
-                return (
-                  <Card key={integration.id} className="bg-card border-border">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                            {integration.icon}
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{integration.name}</CardTitle>
-                            <CardDescription className="text-sm mt-0.5">
-                              {integration.description}
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-1.5 items-end">
-                          {getStatusBadge(status)}
-                          {getSupabaseSecretBadge(integration.id)}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {integration.fields.map(field => (
-                        <div key={field.key} className="space-y-2">
-                          <Label htmlFor={field.key} className="text-sm">
-                            {field.label}
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              id={field.key}
-                              type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
-                              placeholder={field.placeholder}
-                              value={values[field.key] || ''}
-                              onChange={(e) => handleValueChange(field.key, e.target.value)}
-                              className="pr-10"
-                            />
-                            {field.type === 'password' && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                                onClick={() => togglePasswordVisibility(field.key)}
-                              >
-                                {showPasswords[field.key] ? (
-                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <Eye className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="flex items-center justify-between pt-2 gap-2">
-                        {integration.docsUrl && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={() => window.open(integration.docsUrl, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Docs
-                          </Button>
-                        )}
-                        <div className="flex gap-2 ml-auto">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => syncToSupabase(integration.id)}
-                                  disabled={syncingToSupabase === integration.id || saving === integration.id}
-                                >
-                                  {syncingToSupabase === integration.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Sync to Supabase Secrets</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <Button
-                            onClick={() => saveIntegration(integration.id)}
-                            disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
-                          >
-                            {saving === integration.id ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Save className="h-4 w-4 mr-2" />
-                            )}
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              .map(renderIntegrationCard)}
             {integrations.filter(i => getIntegrationStatus(i) === 'configured').length === 0 && (
               <div className="rounded-3xl border border-dashed border-border/70 bg-card/55 px-6 py-12 text-center text-muted-foreground xl:col-span-2">
                 No integrations have been fully configured yet.
@@ -808,115 +711,7 @@ export default function Integrations() {
           <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
             {integrations
               .filter(i => getIntegrationStatus(i) !== 'configured')
-              .map(integration => {
-                const status = getIntegrationStatus(integration);
-                return (
-                  <Card key={integration.id} className="bg-card border-border">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                            {integration.icon}
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{integration.name}</CardTitle>
-                            <CardDescription className="text-sm mt-0.5">
-                              {integration.description}
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-1.5 items-end">
-                          {getStatusBadge(status)}
-                          {getSupabaseSecretBadge(integration.id)}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {integration.fields.map(field => (
-                        <div key={field.key} className="space-y-2">
-                          <Label htmlFor={field.key} className="text-sm">
-                            {field.label}
-                            {field.required !== false && <span className="text-destructive ml-1">*</span>}
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              id={field.key}
-                              type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
-                              placeholder={field.placeholder}
-                              value={values[field.key] || ''}
-                              onChange={(e) => handleValueChange(field.key, e.target.value)}
-                              className="pr-10"
-                            />
-                            {field.type === 'password' && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                                onClick={() => togglePasswordVisibility(field.key)}
-                              >
-                                {showPasswords[field.key] ? (
-                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <Eye className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="flex items-center justify-between pt-2 gap-2">
-                        {integration.docsUrl && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={() => window.open(integration.docsUrl, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Docs
-                          </Button>
-                        )}
-                        <div className="flex gap-2 ml-auto">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => syncToSupabase(integration.id)}
-                                  disabled={syncingToSupabase === integration.id || saving === integration.id}
-                                >
-                                  {syncingToSupabase === integration.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Sync to Supabase Secrets</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <Button
-                            onClick={() => saveIntegration(integration.id)}
-                            disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
-                          >
-                            {saving === integration.id ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Save className="h-4 w-4 mr-2" />
-                            )}
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              .map(renderIntegrationCard)}
           </div>
         </TabsContent>
 
