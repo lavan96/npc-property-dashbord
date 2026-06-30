@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { 
   Upload, 
   Plus, 
@@ -467,166 +468,268 @@ export function DepreciationCompsAdmin() {
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Depreciation Comparables Database
-            </CardTitle>
-            <CardDescription>
-              Manage the comparable properties dataset used for depreciation estimates
-            </CardDescription>
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      aria-labelledby="depreciation-comps-title"
+      className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-6 sm:px-0"
+    >
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/90 shadow-sm ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10">
+        <CardHeader className="relative overflow-hidden border-b border-border/60 bg-card/70 px-4 py-5 dark:border-white/10 sm:px-6 lg:px-7">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,hsl(var(--primary)/0.10),transparent_36%,hsl(var(--background)/0.22))]" />
+          <div className="relative flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                <Database className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <CardTitle id="depreciation-comps-title" className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                  Depreciation Comparables Database
+                </CardTitle>
+                <CardDescription className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                  Manage the comparable properties dataset used for depreciation estimates.
+                </CardDescription>
+              </div>
+            </div>
+            <Badge
+              variant="secondary"
+              className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary shadow-sm"
+            >
+              {comps.length} records
+            </Badge>
           </div>
-          <Badge variant="secondary">{comps.length} records</Badge>
-        </div>
-      </CardHeader>
+        </CardHeader>
       
-      <CardContent className="space-y-6">
-        <Tabs defaultValue="list">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="list">View Data</TabsTrigger>
-            <TabsTrigger value="import">Import Data</TabsTrigger>
-          </TabsList>
+        <CardContent className="min-w-0 space-y-6 p-4 sm:p-6 lg:p-7">
+          <Tabs defaultValue="list" className="min-w-0 space-y-5" aria-label="Depreciation comparables workspace">
+            <DashboardThemeFrame variant="toolbar" className="overflow-x-auto border-primary/15 bg-background/65 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/40 dark:shadow-black/25">
+              <TabsList className="grid min-w-[18rem] flex-1 grid-cols-2 rounded-xl bg-muted/45 p-1 sm:min-w-0">
+                <TabsTrigger
+                  value="list"
+                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+                >
+                  View Data
+                </TabsTrigger>
+                <TabsTrigger
+                  value="import"
+                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+                >
+                  Import Data
+                </TabsTrigger>
+              </TabsList>
+            </DashboardThemeFrame>
           
-          <TabsContent value="list" className="space-y-4">
+          <TabsContent value="list" className="min-w-0 space-y-4">
             {/* Actions */}
-            <div className="flex gap-2">
-              <Button onClick={() => setShowAddModal(true)}>
+            <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                onClick={() => setShowAddModal(true)}
+                aria-label="Add depreciation comparable"
+                className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_16px_38px_hsl(var(--primary)/0.28)] focus-visible:ring-primary motion-reduce:transition-none sm:w-auto"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Comp
               </Button>
-              <Button variant="outline" onClick={fetchComps} disabled={loading}>
+              <Button
+                variant="outline"
+                onClick={fetchComps}
+                disabled={loading}
+                aria-label="Refresh depreciation comparables"
+                className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:w-auto"
+              >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
             
             {/* Comps Table */}
-            <ScrollArea className="h-[400px] rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Year</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Finish</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">DV Total</TableHead>
-                    <TableHead className="text-right">PC Total</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ) : comps.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                        No comparables found. Add some data to enable the calculator.
-                      </TableCell>
-                    </TableRow>
-                  ) : comps.map(comp => {
-                    const dvTotal = comp.dv_year1 + comp.dv_year2 + comp.dv_year3 + comp.dv_year4 + comp.dv_year5 +
-                                   comp.dv_year6 + comp.dv_year7 + comp.dv_year8 + comp.dv_year9 + comp.dv_year10;
-                    const pcTotal = comp.pc_year1 + comp.pc_year2 + comp.pc_year3 + comp.pc_year4 + comp.pc_year5 +
-                                   comp.pc_year6 + comp.pc_year7 + comp.pc_year8 + comp.pc_year9 + comp.pc_year10;
-                    
-                    return (
-                      <TableRow key={comp.id}>
-                        <TableCell>${formatNumberWithCommas(comp.purchase_price.toString())}</TableCell>
-                        <TableCell>{comp.build_year}</TableCell>
-                        <TableCell className="text-xs">{PROPERTY_TYPE_LABELS[comp.property_type]}</TableCell>
-                        <TableCell>{comp.finish_standard}</TableCell>
-                        <TableCell className="text-xs">{CITY_LABELS[comp.nearest_city]}</TableCell>
-                        <TableCell className="text-xs">{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</TableCell>
-                        <TableCell className="text-right">${formatNumberWithCommas(dvTotal.toString())}</TableCell>
-                        <TableCell className="text-right">${formatNumberWithCommas(pcTotal.toString())}</TableCell>
-                        <TableCell>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleDeleteComp(comp.id)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
+            <DashboardThemeFrame variant="card" className="min-w-0 overflow-hidden">
+              <ScrollArea className="h-[420px]">
+                <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+                  <Table className="min-w-[980px]">
+                    <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-slate-950/90">
+                      <TableRow className="border-border/70 hover:bg-transparent dark:border-white/10">
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Price</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Year</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Type</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Finish</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">City</TableHead>
+                        <TableHead className="whitespace-nowrap font-semibold text-foreground">Category</TableHead>
+                        <TableHead className="whitespace-nowrap text-right font-semibold text-foreground">DV Total</TableHead>
+                        <TableHead className="whitespace-nowrap text-right font-semibold text-foreground">PC Total</TableHead>
+                        <TableHead className="w-12"></TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={9} className="py-12 text-center">
+                            <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-background/65 p-6 text-muted-foreground shadow-inner dark:bg-slate-950/35" role="status" aria-live="polite">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                              <p className="text-sm font-medium">Loading comparables...</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : comps.length === 0 ? (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={9} className="py-14 text-center text-muted-foreground">
+                            <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-primary/25 bg-background/65 p-6 shadow-inner dark:bg-slate-950/35">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+                                <Database className="h-5 w-5" />
+                              </div>
+                              <p className="text-sm font-medium leading-6 text-muted-foreground">
+                                No comparables found. Add some data to enable the calculator.
+                              </p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : comps.map(comp => {
+                        const dvTotal = comp.dv_year1 + comp.dv_year2 + comp.dv_year3 + comp.dv_year4 + comp.dv_year5 +
+                                       comp.dv_year6 + comp.dv_year7 + comp.dv_year8 + comp.dv_year9 + comp.dv_year10;
+                        const pcTotal = comp.pc_year1 + comp.pc_year2 + comp.pc_year3 + comp.pc_year4 + comp.pc_year5 +
+                                       comp.pc_year6 + comp.pc_year7 + comp.pc_year8 + comp.pc_year9 + comp.pc_year10;
+                        
+                        return (
+                          <TableRow key={comp.id} className="border-border/60 transition-colors hover:bg-primary/5 dark:border-white/10">
+                            <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">
+                              ${formatNumberWithCommas(comp.purchase_price.toString())}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
+                              {comp.build_year}
+                            </TableCell>
+                            <TableCell className="max-w-[9rem] truncate text-xs text-foreground" title={PROPERTY_TYPE_LABELS[comp.property_type]}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 font-medium text-primary">
+                                <span className="truncate">{PROPERTY_TYPE_LABELS[comp.property_type]}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[7rem] truncate text-muted-foreground" title={comp.finish_standard}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                                <span className="truncate">{comp.finish_standard}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[11rem] truncate text-xs text-foreground" title={CITY_LABELS[comp.nearest_city]}>
+                              {CITY_LABELS[comp.nearest_city]}
+                            </TableCell>
+                            <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-200">
+                                <span className="truncate">{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
+                              <span className="text-primary">${formatNumberWithCommas(dvTotal.toString())}</span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
+                              <span className="text-emerald-700 dark:text-emerald-300">${formatNumberWithCommas(pcTotal.toString())}</span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleDeleteComp(comp.id)}
+                                aria-label="Delete comparable"
+                                className="hover:bg-destructive/10 focus-visible:ring-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </DashboardThemeFrame>
           </TabsContent>
           
-          <TabsContent value="import" className="space-y-4">
+          <TabsContent value="import" className="min-w-0 space-y-4">
             {/* CSV Import */}
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleExportTemplate}>
+            <div className="min-w-0 space-y-4">
+              <DashboardThemeFrame variant="toolbar" className="min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">CSV import workspace</p>
+                  <p className="text-xs leading-5 text-muted-foreground">Use the template before importing comparable records.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleExportTemplate}
+                  aria-label="Download depreciation comps CSV template"
+                  className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary motion-reduce:transition-none sm:w-auto"
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
-              </div>
+              </DashboardThemeFrame>
               
-              <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                <Label htmlFor="csv-upload" className="cursor-pointer">
-                  <span className="text-primary hover:underline">Click to upload</span>
-                  <span className="text-muted-foreground"> or drag and drop a CSV file</span>
+              <DashboardThemeFrame variant="sectionAccent" className="group border-dashed p-1 transition-all duration-200 hover:border-primary/50 motion-reduce:transition-none">
+                <Label
+                  htmlFor="csv-upload"
+                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/35 motion-reduce:transition-none sm:px-6"
+                >
+                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                    <FileSpreadsheet className="h-8 w-8" />
+                  </span>
+                  <span id="csv-upload-help" className="max-w-xl text-base font-semibold leading-7">
+                    <span className="text-primary underline-offset-4 group-hover:underline">Click to upload</span>
+                    <span className="text-muted-foreground"> or drag and drop a CSV file</span>
+                  </span>
                 </Label>
                 <Input
                   id="csv-upload"
                   type="file"
                   accept=".csv"
                   onChange={handleFileUpload}
-                  className="hidden"
+                  aria-describedby="csv-upload-help"
+                  className="sr-only"
                 />
-              </div>
+              </DashboardThemeFrame>
               
               {csvError && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="overflow-hidden rounded-2xl border-destructive/30 bg-destructive/10 text-destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{csvError}</AlertDescription>
+                  <AlertDescription className="break-words leading-6">{csvError}</AlertDescription>
                 </Alert>
               )}
               
               {csvPreview.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Preview (first 5 rows):</h4>
-                    <Badge variant="secondary">
+                <DashboardThemeFrame variant="card" className="space-y-4 p-4">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="font-medium text-foreground">Preview (first 5 rows):</h4>
+                    <Badge variant="secondary" className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary">
                       {csvFullData.length - 1} total rows found
                     </Badge>
                   </div>
-                  <ScrollArea className="h-[200px] rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {csvPreview[0].map((header, i) => (
-                            <TableHead key={i} className="text-xs">{header}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {csvPreview.slice(1).map((row, i) => (
-                          <TableRow key={i}>
-                            {row.map((cell, j) => (
-                              <TableCell key={j} className="text-xs">{cell}</TableCell>
+                  <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 dark:border-white/10">
+                    <ScrollArea className="h-[220px]">
+                      <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+                        <Table className="min-w-[760px]">
+                          <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-slate-950/90">
+                            <TableRow className="hover:bg-transparent">
+                              {csvPreview[0].map((header, i) => (
+                                <TableHead key={i} className="max-w-[12rem] truncate whitespace-nowrap text-xs font-semibold text-foreground" title={header}>{header}</TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {csvPreview.slice(1).map((row, i) => (
+                              <TableRow key={i} className="border-border/60 hover:bg-primary/5 dark:border-white/10">
+                                {row.map((cell, j) => (
+                                  <TableCell key={j} className="max-w-[12rem] truncate text-xs text-muted-foreground" title={cell}>{cell}</TableCell>
+                                ))}
+                              </TableRow>
                             ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </div>
                   
-                  <Button onClick={handleImportCsv} disabled={uploading}>
+                  <Button
+                    onClick={handleImportCsv}
+                    disabled={uploading}
+                    aria-label={`Import all ${csvFullData.length - 1} depreciation comparable records`}
+                    className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:bg-primary/90 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  >
                     {uploading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -639,7 +742,7 @@ export function DepreciationCompsAdmin() {
                       </>
                     )}
                   </Button>
-                </div>
+                </DashboardThemeFrame>
               )}
             </div>
           </TabsContent>
@@ -647,146 +750,187 @@ export function DepreciationCompsAdmin() {
         
         {/* Add Comp Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Depreciation Comparable</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="max-h-[min(88vh,760px)] w-[calc(100vw-2rem)] max-w-3xl overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950/95 dark:shadow-black/45">
+            <DialogHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.9))] px-5 py-5 dark:border-white/10 sm:px-6">
+              <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight text-foreground">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                  <Plus className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 truncate">Add Depreciation Comparable</span>
+              </DialogTitle>
+              <DialogDescription className="pl-0 text-sm leading-6 text-muted-foreground sm:pl-[3.25rem]">
                 Add a new comparable property to the database
               </DialogDescription>
             </DialogHeader>
             
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase Price</Label>
-                  <Input
-                    type="number"
-                    value={newComp.purchase_price || ''}
-                    onChange={(e) => setNewComp(prev => ({ ...prev, purchase_price: parseFloat(e.target.value) || 0 }))}
-                    placeholder="750000"
-                  />
-                </div>
+            <div className="max-h-[calc(min(88vh,760px)-10.5rem)] overflow-y-auto px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
+              <div className="grid gap-5">
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Property identity</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                      <Label htmlFor="depreciation-comp-purchase-price">Purchase Price</Label>
+                      <Input
+                        id="depreciation-comp-purchase-price"
+                        type="number"
+                        value={newComp.purchase_price || ''}
+                        onChange={(e) => setNewComp(prev => ({ ...prev, purchase_price: parseFloat(e.target.value) || 0 }))}
+                        placeholder="750000"
+                        className="bg-background/80 focus-visible:ring-primary"
+                      />
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label htmlFor="depreciation-comp-build-year">Build Year</Label>
+                      <Input
+                        id="depreciation-comp-build-year"
+                        type="number"
+                        value={newComp.build_year || ''}
+                        onChange={(e) => setNewComp(prev => ({ ...prev, build_year: parseInt(e.target.value) || 0 }))}
+                        placeholder="2022"
+                        className="bg-background/80 focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+                </section>
                 
-                <div className="space-y-2">
-                  <Label>Build Year</Label>
-                  <Input
-                    type="number"
-                    value={newComp.build_year || ''}
-                    onChange={(e) => setNewComp(prev => ({ ...prev, build_year: parseInt(e.target.value) || 0 }))}
-                    placeholder="2022"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase Date Category</Label>
-                  <Select 
-                    value={newComp.purchase_date_category} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, purchase_date_category: v as PurchaseDateCategory }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PURCHASE_CATEGORY_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Classification and location</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                      <Label htmlFor="depreciation-comp-purchase-date-category">Purchase Date Category</Label>
+                      <Select 
+                        value={newComp.purchase_date_category} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, purchase_date_category: v as PurchaseDateCategory }))}
+                      >
+                        <SelectTrigger id="depreciation-comp-purchase-date-category" className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PURCHASE_CATEGORY_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label htmlFor="depreciation-comp-property-type">Property Type</Label>
+                      <Select 
+                        value={newComp.property_type} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, property_type: v as PropertyType }))}
+                      >
+                        <SelectTrigger id="depreciation-comp-property-type" className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  
+                    <div className="min-w-0 space-y-2">
+                      <Label htmlFor="depreciation-comp-finish-standard">Finish Standard</Label>
+                      <Select 
+                        value={newComp.finish_standard} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, finish_standard: v as FinishStandard }))}
+                      >
+                        <SelectTrigger id="depreciation-comp-finish-standard" className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(FINISH_STANDARD_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="min-w-0 space-y-2">
+                      <Label htmlFor="depreciation-comp-nearest-city">Nearest City</Label>
+                      <Select 
+                        value={newComp.nearest_city} 
+                        onValueChange={(v) => setNewComp(prev => ({ ...prev, nearest_city: v as NearestCity }))}
+                      >
+                        <SelectTrigger id="depreciation-comp-nearest-city" className="bg-background/80 focus:ring-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(CITY_LABELS).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </section>
                 
-                <div className="space-y-2">
-                  <Label>Property Type</Label>
-                  <Select 
-                    value={newComp.property_type} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, property_type: v as PropertyType }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Finish Standard</Label>
-                  <Select 
-                    value={newComp.finish_standard} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, finish_standard: v as FinishStandard }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(FINISH_STANDARD_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Separator />
                 
-                <div className="space-y-2">
-                  <Label>Nearest City</Label>
-                  <Select 
-                    value={newComp.nearest_city} 
-                    onValueChange={(v) => setNewComp(prev => ({ ...prev, nearest_city: v as NearestCity }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(CITY_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <Label>Bulk Year Values (paste from spreadsheet)</Label>
-                <Textarea
-                  value={bulkYearsInput}
-                  onChange={(e) => setBulkYearsInput(e.target.value)}
-                  placeholder="Paste 20 values: DV Year 1-10, then PC Year 1-10 (tab, comma, or newline separated)"
-                  rows={4}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Format: DV1, DV2, DV3... DV10, PC1, PC2, PC3... PC10
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Notes (optional)</Label>
-                <Input
-                  value={newComp.notes || ''}
-                  onChange={(e) => setNewComp(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Source or additional info"
-                />
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Depreciation values</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="depreciation-comp-bulk-years">Bulk Year Values (paste from spreadsheet)</Label>
+                    <Textarea
+                      id="depreciation-comp-bulk-years"
+                      value={bulkYearsInput}
+                      onChange={(e) => setBulkYearsInput(e.target.value)}
+                      placeholder="Paste 20 values: DV Year 1-10, then PC Year 1-10 (tab, comma, or newline separated)"
+                      rows={4}
+                      className="min-h-28 bg-background/80 focus-visible:ring-primary"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Format: DV1, DV2, DV3... DV10, PC1, PC2, PC3... PC10
+                    </p>
+                  </div>
+                </section>
+                
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="mb-4 min-w-0">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Metadata</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="depreciation-comp-notes">Notes (optional)</Label>
+                    <Input
+                      id="depreciation-comp-notes"
+                      value={newComp.notes || ''}
+                      onChange={(e) => setNewComp(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Source or additional info"
+                      className="bg-background/80 focus-visible:ring-primary"
+                    />
+                  </div>
+                </section>
               </div>
             </div>
             
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddModal(false)}>
+            <DialogFooter className="border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-slate-950/75 sm:px-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddModal(false)}
+                className="border-primary/20 bg-background/80 transition-colors hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary motion-reduce:transition-none"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAddComp}>
+              <Button
+                onClick={handleAddComp}
+                className="bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.24)] transition-colors hover:bg-primary/90 focus-visible:ring-primary motion-reduce:transition-none"
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Comparable
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </DashboardThemeFrame>
   );
 }
