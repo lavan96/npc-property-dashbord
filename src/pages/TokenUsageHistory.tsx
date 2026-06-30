@@ -14,7 +14,7 @@ import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, Search, Coins, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck, FileKey2,
+  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck, FileKey2, UserRound, Building2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
@@ -208,32 +208,40 @@ export default function TokenUsageHistory() {
         ))}
       </div>
 
-      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/80 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/70 dark:shadow-black/30">
-        <CardHeader className="border-b border-border/60 bg-muted/20">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Clock3 className="h-5 w-5 text-primary" />
-                Activity
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/85 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-white/40 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
+        <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-1.5">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-xl tracking-tight">
+                <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
+                  <Clock3 className="h-5 w-5" />
+                </span>
+                <span className="truncate">Activity</span>
               </CardTitle>
-              <CardDescription className="mt-1">
+              <CardDescription className="max-w-3xl text-sm leading-6 text-muted-foreground">
                 Click an idempotency key to see the full reserve / commit / cancel trail.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="min-w-0 space-y-4 p-4 sm:p-5">
+        <CardContent className="min-w-0 space-y-5 p-4 sm:p-6">
           <Tabs value={scope} onValueChange={(v) => setScope(v as any)}>
-            <DashboardThemeFrame variant="toolbar" className="min-w-0 justify-between gap-3 p-2.5">
-              <TabsList className="grid w-full grid-cols-2 rounded-xl bg-muted/70 sm:w-auto">
-                <TabsTrigger value="mine" className="min-w-0 px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">My usage</TabsTrigger>
-                <TabsTrigger value="agency" className="min-w-0 px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Agency-wide</TabsTrigger>
+            <DashboardThemeFrame variant="toolbar" className="min-w-0 items-stretch justify-between gap-3 border-primary/10 bg-muted/25 p-2.5 sm:items-center">
+              <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl border border-border/60 bg-background/70 p-1 shadow-inner sm:w-auto">
+                <TabsTrigger value="mine" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                  <UserRound className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">My usage</span>
+                </TabsTrigger>
+                <TabsTrigger value="agency" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                  <Building2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Agency-wide</span>
+                </TabsTrigger>
               </TabsList>
-              <div className="relative min-w-0 flex-1 sm:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <div className="group relative min-w-0 flex-1 sm:max-w-md">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
-                  className="min-w-0 rounded-xl border-border/70 bg-background/80 pl-9 focus-visible:ring-primary/30"
-                  placeholder="Search by kind, function, status…"
+                  className="min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all placeholder:text-muted-foreground/75 hover:border-primary/25 hover:bg-background focus-visible:border-primary/45 focus-visible:ring-primary/30"
+                  placeholder="Search by kind, function, status..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -250,10 +258,29 @@ export default function TokenUsageHistory() {
                 <div className="space-y-2 rounded-2xl border border-border/60 p-3">
                   {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
                 </div>
+              ) : rows.length === 0 ? (
+                <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_42%),hsl(var(--muted)/0.18)] px-4 py-12 text-center">
+                  <div className="mx-auto max-w-sm space-y-3">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                      <Coins className="h-7 w-7" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">No usage recorded yet.</p>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      Metered report generations will appear here with reserve, commit, cancel and duration details once available.
+                    </p>
+                  </div>
+                </div>
               ) : filtered.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-12 text-center">
-                  <Coins className="mx-auto mb-3 h-9 w-9 text-muted-foreground/70" />
-                  <p className="text-sm font-medium text-muted-foreground">No usage recorded yet.</p>
+                <div className="flex min-h-[16rem] items-center justify-center rounded-3xl border border-dashed border-primary/20 bg-primary/5 px-4 py-10 text-center">
+                  <div className="mx-auto max-w-md space-y-3">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                      <Search className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">No matching usage records.</p>
+                    <p className="break-words text-xs leading-5 text-muted-foreground">
+                      No token usage records match “{search.trim()}”. Adjust the search by kind, function, status or idempotency key.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <>
