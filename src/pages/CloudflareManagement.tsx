@@ -129,7 +129,7 @@ function AnalyticsTab() {
         ) : stats.length > 0 ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {stats.map(stat => (
-              <Card key={stat.label} className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_12px_35px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
+              <Card key={stat.label} className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_12px_35px_rgba(15,23,42,0.07)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
                 <CardContent className="p-4 sm:px-6 sm:pt-6">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
                     <div className={`${stat.color} mb-1 sm:mb-0`}>{stat.icon}</div>
@@ -219,9 +219,16 @@ function CdnTab() {
           <p className="max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">Operate cache settings and purge actions with clear separation between zone-wide and URL-specific invalidation.</p>
         </div>
 
+        {cacheSettings.error && (
+          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="break-words text-sm leading-6">{cacheSettings.error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Cache Settings */}
         {settings.length > 0 && (
-          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_12px_35px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_12px_35px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-primary/20 hover:shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
             <CardHeader className="min-w-0 pb-3 sm:pb-5">
               <CardTitle className="text-base">Current Cache Settings</CardTitle>
             </CardHeader>
@@ -242,7 +249,7 @@ function CdnTab() {
 
         {/* Purge Controls */}
         <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-          <Card className="min-w-0 overflow-hidden border-red-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--destructive)/0.06))] shadow-[0_14px_42px_rgba(127,29,29,0.08)] dark:border-red-400/20 dark:bg-slate-950/60 dark:shadow-black/25">
+          <Card className="min-w-0 overflow-hidden border-red-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--destructive)/0.06))] shadow-[0_14px_42px_rgba(127,29,29,0.08)] transition-all duration-200 hover:border-red-500/35 hover:shadow-[0_18px_48px_rgba(127,29,29,0.12)] dark:border-red-400/20 dark:bg-slate-950/60 dark:shadow-black/25">
             <CardHeader className="min-w-0 pb-3 sm:pb-5">
               <div className="flex min-w-0 items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-red-500/25 bg-red-500/10 text-red-500 dark:text-red-300">
@@ -258,11 +265,17 @@ function CdnTab() {
               <div className="rounded-xl border border-red-500/15 bg-red-500/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
                 Zone-wide cache invalidation can temporarily reduce cache hit rates. Existing safeguards and permissions remain enforced.
               </div>
+              {purgeAll.error && (
+                <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="break-words text-sm leading-6">{purgeAll.error}</AlertDescription>
+                </Alert>
+              )}
               <Button
                 variant="destructive"
                 onClick={handlePurgeAll}
                 disabled={purgeAll.loading}
-                className="w-full bg-red-600 text-white shadow-sm transition-all hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-red-600 dark:hover:bg-red-500"
+                className="w-full bg-red-600 text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 dark:bg-red-600 dark:hover:bg-red-500"
               >
                 {purgeAll.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
                 Purge All Cache
@@ -270,7 +283,7 @@ function CdnTab() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--primary)/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-primary/20 dark:bg-slate-950/60 dark:shadow-black/25">
+          <Card className="min-w-0 overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--primary)/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/30 hover:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:border-primary/20 dark:bg-slate-950/60 dark:shadow-black/25">
             <CardHeader className="min-w-0 pb-3 sm:pb-5">
               <div className="flex min-w-0 items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
@@ -289,10 +302,16 @@ function CdnTab() {
                 value={urls}
                 onChange={e => setUrls(e.target.value)}
               />
+              {purgeUrls.error && (
+                <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="break-words text-sm leading-6">{purgeUrls.error}</AlertDescription>
+                </Alert>
+              )}
               <Button
                 onClick={handlePurgeUrls}
                 disabled={purgeUrls.loading || !urls.trim()}
-                className="w-full border border-amber-500/25 bg-amber-500/10 text-amber-700 shadow-sm transition-all hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:cursor-not-allowed disabled:opacity-70 dark:text-amber-200"
+                className="w-full border border-amber-500/25 bg-amber-500/10 text-amber-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 dark:text-amber-200"
               >
                 {purgeUrls.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
                 Purge URLs
@@ -326,6 +345,13 @@ function WorkersTab() {
           <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Workers & Pages</h3>
           <p className="max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">Deployment visibility for edge compute scripts and Pages projects connected to Cloudflare.</p>
         </div>
+
+        {(workers.error || pages.error) && (
+          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="break-words text-sm leading-6">{workers.error || pages.error}</AlertDescription>
+          </Alert>
+        )}
 
         {isLoading && !workers.data && !pages.data ? (
           <div className="flex min-h-[16rem] items-center justify-center rounded-2xl border border-dashed border-primary/20 bg-muted/20 py-12">
@@ -494,15 +520,22 @@ function FirewallTab() {
           <Button
             onClick={() => setShowForm(!showForm)}
             size="sm"
-            className="border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-primary"
+            className="border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-primary"
           >
             <Plus className="h-4 w-4 mr-1" />
             New Rule
           </Button>
         </div>
 
+        {(rules.error || createRule.error || deleteRule.error) && (
+          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="break-words text-sm leading-6">{rules.error || createRule.error || deleteRule.error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Quick presets */}
-        <Card className="min-w-0 overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--primary)/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-primary/20 dark:bg-slate-950/60 dark:shadow-black/25">
+        <Card className="min-w-0 overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--primary)/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/30 hover:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:border-primary/20 dark:bg-slate-950/60 dark:shadow-black/25">
           <CardHeader className="min-w-0 pb-3 sm:pb-5">
             <div className="flex min-w-0 items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
@@ -530,7 +563,7 @@ function FirewallTab() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-shrink-0 self-end border-primary/20 bg-primary/5 text-primary shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40 sm:self-auto"
+                    className="flex-shrink-0 self-end border-primary/20 bg-primary/5 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 sm:self-auto"
                     onClick={async () => {
                       const result = await createRule.execute('create_firewall_rule', {
                         expression: preset.expression,
@@ -597,7 +630,7 @@ function FirewallTab() {
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button variant="outline" onClick={() => setShowForm(false)} className="w-full border-border/70 bg-background/70 sm:w-auto">Cancel</Button>
-                <Button onClick={handleCreate} disabled={createRule.loading} className="w-full border border-primary/25 bg-primary/15 text-primary shadow-sm hover:bg-primary/20 focus-visible:ring-primary/40 sm:w-auto">
+                <Button onClick={handleCreate} disabled={createRule.loading} className="w-full border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/20 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 sm:w-auto">
                   {createRule.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
                   Create Rule
                 </Button>
@@ -653,6 +686,7 @@ function FirewallTab() {
                           className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/40"
                           onClick={() => handleDelete(rule.id)}
                           disabled={deleteRule.loading}
+                          aria-label="Delete firewall rule"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -701,6 +735,14 @@ export default function CloudflareManagement() {
             </p>
           </div>
         </div>
+        {zone.loading && !zoneData && (
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Checking zone
+            </Badge>
+          </div>
+        )}
         {zoneData && (
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/30">
