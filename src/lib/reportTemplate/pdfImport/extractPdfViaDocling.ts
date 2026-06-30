@@ -25,6 +25,7 @@ import { mapDoclingToPagePlan, type DoclingPlanMode } from './docling/mapDocling
 import { buildDoclingExpectations } from './docling/buildDoclingExpectations';
 import { buildEmbeddedFontFace, type FontFaceEntry } from './fontFaceBuilder';
 import { fontLookupKey, resolveSourceFontFamily, lookupEmbeddedFamily } from './fontResolver';
+import { recommendFidelityMode } from './recommendFidelityMode';
 import type {
   DoclingDocument,
   DoclingRasterByPage,
@@ -775,6 +776,7 @@ export async function extractPdfViaDocling(
       (acc, p) => acc + p.overlays.filter((o) => o.type === 'text').length, 0);
     const images = plan.pages.reduce(
       (acc, p) => acc + p.overlays.filter((o) => o.type === 'image').length, 0);
+    const recommendation = recommendFidelityMode(doclingDoc);
 
     return {
       template: {
@@ -806,6 +808,8 @@ export async function extractPdfViaDocling(
           return Array.from(out);
         })(),
       },
+      recommendedMode: recommendation.mode,
+      recommendedModeReason: recommendation.reason,
     };
   } catch (err) {
     const message = (err as Error).message ?? String(err);
