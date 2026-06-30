@@ -309,24 +309,30 @@ const Automation = () => {
         </DashboardThemeFrame>
 
         {/* Airtable Sync Controls */}
-        <Card className="overflow-hidden rounded-2xl border border-blue-500/25 bg-[linear-gradient(135deg,hsl(var(--info)/0.08),hsl(var(--card)/0.92))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:shadow-black/20">
-          <CardContent className="py-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-blue-500/20 shrink-0">
-                  <Zap className="h-4 w-4 text-blue-500" />
+        <Card className="relative overflow-hidden rounded-3xl border border-blue-500/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--info)/0.14),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--info)/0.06))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-blue-300/20 dark:ring-white/10 dark:shadow-black/25">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-500/15 text-blue-500 shadow-[0_12px_30px_hsl(var(--info)/0.14)] dark:text-blue-300">
+                  <Zap className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="font-medium text-sm">Airtable Sync</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sync new listings from Airtable and auto-generate reports based on your switch criteria.
-                  </p>
+                <div className="min-w-0 space-y-2">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold tracking-tight text-foreground">Airtable Sync</p>
+                    <p className="max-w-2xl text-xs leading-5 text-muted-foreground sm:text-sm">
+                      Sync new listings from Airtable and auto-generate reports based on your switch criteria.
+                    </p>
+                  </div>
                   {syncStats && (
-                    <div className="flex flex-wrap gap-2 mt-2 text-xs">
-                      <Badge variant="outline">{syncStats.total} processed</Badge>
-                      <Badge variant="secondary">{syncStats.generated} reports generated</Badge>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
+                      <Badge variant="outline" className="border-blue-400/30 bg-background/70 text-foreground shadow-sm">
+                        {syncStats.total} processed
+                      </Badge>
+                      <Badge variant="secondary" className="bg-primary/10 text-foreground shadow-sm">
+                        {syncStats.generated} reports generated
+                      </Badge>
                       {syncStats.lastSync && (
-                        <span className="text-muted-foreground">
+                        <span className="min-w-0 truncate rounded-full border border-border/60 bg-background/55 px-2.5 py-1 text-muted-foreground">
                           Last: {new Date(syncStats.lastSync).toLocaleDateString()}
                         </span>
                       )}
@@ -334,20 +340,20 @@ const Automation = () => {
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:shrink-0">
+              <div className="flex w-full min-w-0 flex-wrap gap-2 sm:w-auto sm:flex-nowrap lg:shrink-0">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button 
                       variant="outline" 
                       size="sm"
                       disabled={clearing || !syncStats?.total}
-                      className="text-destructive hover:text-destructive min-h-[44px] sm:min-h-0"
+                      className="min-h-[44px] flex-1 border-destructive/25 bg-background/70 text-destructive shadow-sm transition-all hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/35 sm:min-h-0 sm:flex-none"
                     >
                       <XCircle className={`h-4 w-4 mr-1 ${clearing ? 'animate-spin' : ''}`} />
                       {clearing ? 'Clearing...' : 'Clear Queue'}
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="w-[95vw] sm:w-auto">
+                  <AlertDialogContent className="w-[95vw] rounded-2xl border-destructive/20 sm:w-auto">
                     <AlertDialogHeader>
                       <AlertDialogTitle>Clear Stuck Reports?</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -357,7 +363,7 @@ const Automation = () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={clearQueue} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction onClick={clearQueue} className="bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90">
                         Clear Queue
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -368,16 +374,16 @@ const Automation = () => {
                   size="sm"
                   onClick={() => runSync(true)}
                   disabled={syncing || !masterEnabled}
-                  className="min-h-[44px] sm:min-h-0"
+                  className="min-h-[44px] flex-1 border-warning/30 bg-warning/10 text-foreground shadow-sm transition-all hover:border-warning/45 hover:bg-warning/15 focus-visible:ring-warning/40 sm:min-h-0 sm:flex-none"
                 >
-                  <Eye className="h-4 w-4 mr-1" />
+                  <Eye className="h-4 w-4 mr-1 text-warning" />
                   Dry Run
                 </Button>
                 <Button 
                   size="sm"
                   onClick={() => runSync(false)}
                   disabled={syncing || !masterEnabled}
-                  className="min-h-[44px] sm:min-h-0"
+                  className="min-h-[44px] flex-1 bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.20)] transition-all hover:bg-primary-hover focus-visible:ring-primary/45 sm:min-h-0 sm:flex-none"
                 >
                   <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? 'Syncing...' : 'Sync Now'}
