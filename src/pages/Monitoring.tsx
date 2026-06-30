@@ -142,7 +142,7 @@ export default function Monitoring() {
   const totalLiveCached = cacheStats.reduce((sum, stat) => sum + stat.live_data, 0);
 
   return (
-    <DashboardThemeFrame variant="page" className="space-y-6 pb-6">
+    <DashboardThemeFrame variant="page" className="space-y-6 pb-6" aria-busy={isLoading}>
       {/* Header */}
       <DashboardThemeFrame
         as="header"
@@ -521,7 +521,7 @@ export default function Monitoring() {
       </Card>
 
       {/* Footer */}
-      <div className="mx-auto flex min-w-0 max-w-xl flex-col items-center rounded-2xl border border-border/60 bg-card/55 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+      <div aria-live="polite" className="mx-auto flex min-w-0 max-w-xl flex-col items-center rounded-2xl border border-border/60 bg-card/55 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
         <p className="min-w-0 break-words tabular-nums">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
         <p className="mt-1 min-w-0 break-words leading-5">Data updates in real-time as services are used</p>
       </div>
