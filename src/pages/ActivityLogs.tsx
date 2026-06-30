@@ -248,6 +248,7 @@ function entityHref(entityType: string, entityId: string | null): string | null 
 
 type DateRangeKey = 'all' | '24h' | '7d' | '30d' | 'custom';
 type Density = 'compact' | 'comfortable';
+type ExportState = 'idle' | 'working' | 'success' | 'error';
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 const PRESETS_KEY = 'activityLogs.presets.v1';
 const DENSITY_KEY = 'activityLogs.density.v1';
@@ -314,6 +315,9 @@ export default function ActivityLogs() {
   const [presets, setPresets] = useState<FilterPreset[]>(() => loadPresets());
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [liveTailError, setLiveTailError] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<ExportState>('idle');
 
   // Live tail
   const [liveTail, setLiveTail] = useState(false);
@@ -352,9 +356,15 @@ export default function ActivityLogs() {
     });
 
     if (result.error) {
-      if (!silent) toast.error(result.error);
-      if (!silent) { setLogs([]); setUniqueUsers([]); setTotal(0); setStats(null); }
+      if (silent) setLiveTailError(result.error);
+      if (!silent) {
+        setLoadError(result.error);
+        toast.error(result.error);
+        setLogs([]); setUniqueUsers([]); setTotal(0); setStats(null);
+      }
     } else {
+      setLoadError(null);
+      setLiveTailError(null);
       // Detect new events for live tail badge
       const newTopId = result.logs[0]?.id ?? null;
       if (silent && prevTopIdRef.current && newTopId && newTopId !== prevTopIdRef.current) {
@@ -462,27 +472,46 @@ export default function ActivityLogs() {
     URL.revokeObjectURL(url);
   };
 
+  const markExportState = (state: ExportState) => {
+    setExportState(state);
+    if (state !== 'working') window.setTimeout(() => setExportState('idle'), 2200);
+  };
+
   const exportCSV = () => {
-    const csv = [
-      ['Timestamp', 'User', 'Action', 'Entity Type', 'Entity Name', 'Entity ID', 'IP Address'].join(','),
-      ...filteredLogs.map(log => [
-        log.created_at,
-        log.username || 'Unknown',
-        log.action_type,
-        log.entity_type,
-        log.entity_name || '',
-        log.entity_id || '',
-        log.ip_address || '',
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')),
-    ].join('\n');
-    downloadBlob(csv, 'text/csv', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    toast.success(`Exported ${filteredLogs.length} rows to CSV`);
+    markExportState('working');
+    try {
+      const csv = [
+        ['Timestamp', 'User', 'Action', 'Entity Type', 'Entity Name', 'Entity ID', 'IP Address'].join(','),
+        ...filteredLogs.map(log => [
+          log.created_at,
+          log.username || 'Unknown',
+          log.action_type,
+          log.entity_type,
+          log.entity_name || '',
+          log.entity_id || '',
+          log.ip_address || '',
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')),
+      ].join('\n');
+      downloadBlob(csv, 'text/csv', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      markExportState('success');
+      toast.success(`Exported ${filteredLogs.length} rows to CSV`);
+    } catch (error) {
+      markExportState('error');
+      toast.error(error instanceof Error ? error.message : 'Failed to export CSV');
+    }
   };
 
   const exportJSON = () => {
-    const json = JSON.stringify(filteredLogs, null, 2);
-    downloadBlob(json, 'application/json', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.json`);
-    toast.success(`Exported ${filteredLogs.length} rows to JSON`);
+    markExportState('working');
+    try {
+      const json = JSON.stringify(filteredLogs, null, 2);
+      downloadBlob(json, 'application/json', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.json`);
+      markExportState('success');
+      toast.success(`Exported ${filteredLogs.length} rows to JSON`);
+    } catch (error) {
+      markExportState('error');
+      toast.error(error instanceof Error ? error.message : 'Failed to export JSON');
+    }
   };
 
   // Presets
@@ -610,8 +639,8 @@ export default function ActivityLogs() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
+                <Download className={cn('h-4 w-4 mr-2', exportState === 'working' && 'animate-pulse')} />
+                {exportState === 'working' ? 'Exporting' : exportState === 'success' ? 'Exported' : exportState === 'error' ? 'Export failed' : 'Export'}
                 <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
@@ -655,9 +684,14 @@ export default function ActivityLogs() {
                 className={cn(TOOLBAR_BUTTON_CLASS, 'relative', liveTail && 'border-success/45 bg-primary text-primary-foreground ring-2 ring-success/20 shadow-[0_16px_36px_hsl(var(--success)/0.18)] hover:bg-primary-hover hover:text-primary-foreground')}
                 aria-pressed={liveTail}
               >
-                <Radio className={cn('h-4 w-4 mr-2', liveTail && 'animate-pulse text-success')} />
-                {liveTail ? 'Live' : 'Live tail'}
-                {liveTail && newSinceMount > 0 && (
+                <Radio className={cn('h-4 w-4 mr-2', liveTail && !liveTailError && 'animate-pulse text-success', liveTailError && 'text-destructive')} />
+                {liveTailError ? 'Live issue' : liveTail ? 'Live' : 'Live tail'}
+                {liveTailError && (
+                  <span className="ml-1.5 text-[10px] rounded-full bg-destructive/10 text-destructive px-1.5 py-0.5">
+                    !
+                  </span>
+                )}
+                {liveTail && !liveTailError && newSinceMount > 0 && (
                   <span className="ml-1.5 text-[10px] rounded-full bg-success/20 text-success px-1.5 py-0.5">
                     +{newSinceMount}
                   </span>
@@ -666,7 +700,9 @@ export default function ActivityLogs() {
             </TooltipTrigger>
             <TooltipContent>
               {liveTail
-                ? `Polling every 10s${lastTickAt ? ` · last @ ${format(lastTickAt, 'HH:mm:ss')}` : ''}${page > 1 ? ' (paused — not page 1)' : ''}`
+                ? liveTailError
+                  ? `Live tail refresh failed: ${liveTailError}`
+                  : `Polling every 10s${lastTickAt ? ` · last @ ${format(lastTickAt, 'HH:mm:ss')}` : ''}${page > 1 ? ' (paused — not page 1)' : ''}`
                 : 'Auto-refresh page 1 every 10s'}
             </TooltipContent>
           </Tooltip>
@@ -844,10 +880,10 @@ export default function ActivityLogs() {
         </CardHeader>
         <CardContent className="p-3 sm:p-4">
           {loading ? (
-            <div className="space-y-3 p-2 h-[640px]">
+            <div className="h-[640px] space-y-3 rounded-2xl border border-border/50 bg-card/35 p-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <Skeleton className="h-10 w-10 rounded-2xl" />
                   <div className="space-y-2 flex-1">
                     <Skeleton className="h-4 w-[260px]" />
                     <Skeleton className="h-3 w-[180px]" />
@@ -855,10 +891,27 @@ export default function ActivityLogs() {
                 </div>
               ))}
             </div>
+          ) : loadError ? (
+            <div className="flex h-[640px] flex-col items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/5 px-6 py-12 text-center">
+              <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+              <p className="font-semibold text-destructive">Unable to load activity logs</p>
+              <p className="mt-2 max-w-xl text-sm text-muted-foreground">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={() => loadLogs(false)} className="mt-4 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} />
+                Retry
+              </Button>
+            </div>
           ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground h-[640px] flex flex-col items-center justify-center">
+            <div className="text-center py-12 text-muted-foreground h-[640px] flex flex-col items-center justify-center rounded-2xl border border-border/50 bg-card/35 px-6">
               <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="font-medium">No activity logs found</p>
+              <p className="font-medium text-foreground">{searchTerm ? 'No results match this page search' : 'No activity logs found'}</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                {searchTerm
+                  ? 'Try a different search term or clear filters to review the current audit page.'
+                  : hasActiveFilters
+                    ? 'No activity logs match the selected filters.'
+                    : 'Activity will appear here when audit events are available.'}
+              </p>
               {hasActiveFilters && (
                 <Button variant="link" size="sm" onClick={clearFilters} className="mt-2">
                   Clear filters
