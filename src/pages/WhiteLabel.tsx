@@ -392,7 +392,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
               <Button 
                 variant="outline"
                 size="sm" 
-                className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary"
+                className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessing}
               >
@@ -402,7 +402,7 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
               <Button 
                 variant="outline"
                 size="sm" 
-                className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm hover:bg-destructive/10 hover:text-destructive"
+                className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0"
                 onClick={handleRemove}
                 disabled={isProcessing}
               >
@@ -581,7 +581,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
             <Button 
               variant="outline" 
               size="sm" 
-              className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary"
+              className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0"
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing}
             >
@@ -591,7 +591,7 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
             <Button 
               variant="outline" 
               size="sm" 
-              className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm hover:bg-destructive/10 hover:text-destructive"
+              className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0"
               onClick={handleRemove}
               disabled={isProcessing}
             >
@@ -931,8 +931,11 @@ export default function WhiteLabel() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex h-64 items-center justify-center">
+        <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-border/70 bg-card/95 px-5 py-4 text-muted-foreground shadow-xl shadow-background/10 ring-1 ring-primary/5">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm font-medium">Loading branding settings...</span>
+        </div>
       </div>
     );
   }
@@ -949,7 +952,7 @@ export default function WhiteLabel() {
               Customize the dashboard appearance with your brand identity
             </p>
           </div>
-          <Badge variant="outline" className="min-h-10 gap-2 self-start rounded-full border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-sm shadow-primary/10 sm:self-auto">
+          <Badge variant="outline" className="min-h-10 max-w-full gap-2 self-start rounded-full border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-sm shadow-primary/10 ring-1 ring-primary/10 sm:self-auto">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
               <Palette className="h-3.5 w-3.5" />
             </span>
@@ -965,7 +968,7 @@ export default function WhiteLabel() {
         }
         setShowLeavePrompt(true);
       }}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved brand changes?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -980,7 +983,7 @@ export default function WhiteLabel() {
       </AlertDialog>
 
       <AlertDialog open={showResetPrompt} onOpenChange={setShowResetPrompt}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
           <AlertDialogHeader>
             <AlertDialogTitle>Reset this draft to defaults?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1000,7 +1003,7 @@ export default function WhiteLabel() {
       </AlertDialog>
 
       <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
-        <DialogContent>
+        <DialogContent className="border-border/70 bg-card/95 shadow-2xl ring-1 ring-primary/10">
           <DialogHeader>
             <DialogTitle>Save brand preset</DialogTitle>
             <DialogDescription>
@@ -1012,6 +1015,7 @@ export default function WhiteLabel() {
               <Label htmlFor="brand-preset-name">Preset name</Label>
               <Input
                 id="brand-preset-name"
+                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={presetName}
                 onChange={(event) => setPresetName(event.target.value)}
                 placeholder="e.g. Premium dark gold"
@@ -1019,8 +1023,8 @@ export default function WhiteLabel() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPresetDialog(false)}>Cancel</Button>
-            <Button onClick={handleSavePreset}>Save preset</Button>
+            <Button variant="outline" className="transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/40" onClick={() => setShowPresetDialog(false)}>Cancel</Button>
+            <Button className="bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90 focus-visible:ring-primary/40" onClick={handleSavePreset}>Save preset</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1033,39 +1037,39 @@ export default function WhiteLabel() {
               <p className="text-sm font-semibold text-foreground">Brand System Draft</p>
               <Badge
                 variant="outline"
-                className={hasChanges ? 'rounded-full border-warning/35 bg-warning/10 text-warning' : 'rounded-full border-success/35 bg-success/10 text-success'}
+                className={hasChanges ? 'rounded-full border-warning/35 bg-warning/10 px-3 py-1 text-warning shadow-sm shadow-warning/10' : 'rounded-full border-success/35 bg-success/10 px-3 py-1 text-success shadow-sm shadow-success/10'}
               >
                 {hasChanges ? 'Unsaved changes' : 'In sync'}
               </Badge>
-              {hasCriticalChecks && <Badge variant="outline" className="rounded-full border-destructive/40 bg-destructive/10 text-destructive">Critical issues</Badge>}
-              {hasInvalidAssets && <Badge variant="outline" className="rounded-full border-warning/40 bg-warning/10 text-warning">Asset validation required</Badge>}
+              {hasCriticalChecks && <Badge variant="outline" className="rounded-full border-destructive/40 bg-destructive/10 px-3 py-1 text-destructive shadow-sm shadow-destructive/10">Critical issues</Badge>}
+              {hasInvalidAssets && <Badge variant="outline" className="rounded-full border-warning/40 bg-warning/10 px-3 py-1 text-warning shadow-sm shadow-warning/10">Asset validation required</Badge>}
             </div>
             <p className="max-w-2xl text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
             {lastDraftSavedAt ? (
-              <p className="mt-1 text-xs text-muted-foreground">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
+              <p className="mt-1 w-fit max-w-full rounded-full border border-success/25 bg-success/5 px-3 py-1 text-xs text-success shadow-sm shadow-success/10">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
             ) : null}
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
-            <Button variant="outline" className="border-border/70 bg-background/70 shadow-sm" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
+            <Button variant="outline" className="border-border/70 bg-background/70 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:text-primary hover:shadow-md focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={handleUndoLastChange} disabled={!canUndoLastChange || !canEditWhiteLabel}>
               <Undo2 className="mr-2 h-4 w-4" />
               Undo last change
             </Button>
-            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
+            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={handleSaveDraft} disabled={!canEditWhiteLabel}>
               <Save className="mr-2 h-4 w-4" />
               Save draft
             </Button>
-            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
+            <Button variant="outline" className="border-primary/25 bg-primary/5 text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary hover:shadow-md hover:shadow-primary/10 focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={() => setShowPresetDialog(true)} disabled={!canEditWhiteLabel}>
               <FileText className="mr-2 h-4 w-4" />
               Save preset
             </Button>
-            <Button variant="outline" className="border-border/70 bg-background/70 text-muted-foreground shadow-sm hover:text-foreground" onClick={() => {
+            <Button variant="outline" className="border-border/70 bg-background/70 text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:bg-muted/40 hover:text-foreground hover:shadow-md focus-visible:ring-primary/40 disabled:hover:translate-y-0" onClick={() => {
               setDraftSettings(settings);
               draftHistoryRef.current = [];
               clearPersistedDraft();
               setLastDraftSavedAt(null);
             }} disabled={!hasChanges}>Discard</Button>
-            <Button variant="outline" className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm hover:bg-destructive/10 hover:text-destructive" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
-            <Button className="bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 disabled:shadow-none" onClick={handleSaveBranding} disabled={!canSaveBranding}>
+            <Button variant="outline" className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm transition-all hover:-translate-y-0.5 hover:bg-destructive/10 hover:text-destructive hover:shadow-md hover:shadow-destructive/10 focus-visible:ring-destructive/40 disabled:hover:translate-y-0" onClick={() => setShowResetPrompt(true)} disabled={!canEditWhiteLabel}>Reset to defaults</Button>
+            <Button className="bg-primary text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/30 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 focus-visible:ring-primary/50 disabled:hover:translate-y-0 disabled:shadow-none" onClick={handleSaveBranding} disabled={!canSaveBranding}>
               <Check className="mr-2 h-4 w-4" />
               Save brand changes
             </Button>
@@ -1074,9 +1078,9 @@ export default function WhiteLabel() {
       </Card>
 
       {availablePersistedDraft ? (
-        <Alert>
+        <Alert className="overflow-hidden border-warning/30 bg-warning/5 shadow-lg shadow-warning/10 ring-1 ring-warning/10">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Saved local draft available</AlertTitle>
+          <AlertTitle className="text-warning">Saved local draft available</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
               Restore the draft you saved locally on {new Date(availablePersistedDraft.savedAt).toLocaleString()} without changing the current live brand settings.
@@ -1173,7 +1177,7 @@ export default function WhiteLabel() {
                       const hsl = hexToHsl(e.target.value);
                        updateDraftSettings({ primaryColor: hsl });
                     }}
-                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent"
+                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     style={{ padding: 0 }}
                   />
                 </div>
@@ -1189,7 +1193,7 @@ export default function WhiteLabel() {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    className="w-fit shrink-0"
+                    className="w-fit shrink-0 text-muted-foreground transition-all hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/40"
                     onClick={() => {
                       updateDraftSettings({ primaryColor: null });
                     }}
@@ -1240,7 +1244,7 @@ export default function WhiteLabel() {
                       const hsl = hexToHsl(e.target.value);
                        updateDraftSettings({ accentColor: hsl });
                     }}
-                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent"
+                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                     style={{ padding: 0 }}
                   />
                 </div>
@@ -1256,7 +1260,7 @@ export default function WhiteLabel() {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    className="w-fit shrink-0"
+                    className="w-fit shrink-0 text-muted-foreground transition-all hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/40"
                     onClick={() => {
                       updateDraftSettings({ accentColor: null });
                     }}
@@ -1319,9 +1323,9 @@ export default function WhiteLabel() {
                     metadata: { theme: option.value }
                   });
                 }}
-                className={`flex min-w-0 flex-col items-center gap-3 rounded-2xl border p-4 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md ${
+                className={`flex min-w-0 flex-col items-center gap-3 rounded-2xl border p-4 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                    draftSettings.darkModeDefault === option.value
-                    ? 'border-primary bg-primary/10 ring-1 ring-primary/25'
+                    ? 'border-primary bg-primary/10 shadow-primary/10 ring-1 ring-primary/25'
                     : 'border-border/70 bg-background/60'
                 }`}
               >
@@ -1666,6 +1670,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-name">Name</Label>
               <Input
                 id="sig-name"
+                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.name}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, name: e.target.value } 
@@ -1677,6 +1682,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-title">Title / Role</Label>
               <Input
                 id="sig-title"
+                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.title}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, title: e.target.value } 
@@ -1688,6 +1694,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-phone">Phone Number</Label>
               <Input
                 id="sig-phone"
+                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.phone}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, phone: e.target.value } 
@@ -1700,6 +1707,7 @@ export default function WhiteLabel() {
               <Input
                 id="sig-email"
                 type="email"
+                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.email}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, email: e.target.value } 
@@ -1711,6 +1719,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-website">Website</Label>
               <Input
                 id="sig-website"
+                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.website}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, website: e.target.value } 
@@ -1722,6 +1731,7 @@ export default function WhiteLabel() {
               <Label htmlFor="sig-address">Address</Label>
               <Input
                 id="sig-address"
+                className="min-h-11 border-border/80 bg-card/90 shadow-sm focus-visible:ring-primary/40"
                 value={draftSettings.emailSignature.address}
                 onChange={(e) => updateDraftSettings({ 
                   emailSignature: { ...draftSettings.emailSignature, address: e.target.value } 
