@@ -1664,7 +1664,7 @@ export default function UserGuide() {
             key={item.label}
             type="button"
             onClick={() => handleQuickNavigation(item)}
-            className="min-w-max rounded-full border border-border/70 bg-background/75 px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/55"
+            className="min-h-10 min-w-max rounded-full border border-border/70 bg-background/85 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-foreground hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/55"
           >
             {item.label}
           </button>
@@ -1689,10 +1689,10 @@ export default function UserGuide() {
             {quickTips.map((tip, index) => (
               <div
                 key={index}
-                className={`group relative min-w-0 overflow-hidden rounded-2xl border p-4 shadow-lg transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/55 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_20px_48px_rgba(15,23,42,0.12)] dark:hover:shadow-black/35 ${quickTipCardClasses[index]}`}
+                className={`group relative min-w-0 overflow-hidden rounded-2xl border p-4 shadow-lg transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/65 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_48px_rgba(15,23,42,0.12),0_0_0_1px_hsl(var(--primary)/0.10)] dark:hover:shadow-black/35 ${quickTipCardClasses[index]}`}
               >
                 <div className="relative z-10 flex min-w-0 items-start gap-3">
-                  <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-background/70 text-primary shadow-sm transition-transform duration-300 group-hover:scale-105 dark:bg-slate-950/55">
+                  <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-background/85 text-primary shadow-sm shadow-primary/5 transition-transform duration-300 group-hover:scale-105 dark:bg-slate-950/55">
                     <tip.icon className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 space-y-2">
@@ -1733,13 +1733,14 @@ export default function UserGuide() {
               return (
                 <div
                   key={index}
-                  className={`flex min-w-0 flex-col gap-3 rounded-2xl border p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(15,23,42,0.10)] dark:hover:shadow-black/30 ${style.card}`}
+                  aria-label={`${item.status}: ${item.description}`}
+                  className={`flex min-w-0 flex-col gap-3 rounded-2xl border p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_44px_rgba(15,23,42,0.10),0_0_0_1px_hsl(var(--primary)/0.08)] dark:hover:shadow-black/30 ${style.card}`}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-background/75 ring-4 dark:bg-slate-950/50 ${style.ring}`}>
                       <span className={`h-3.5 w-3.5 rounded-full shadow-sm ${item.color}`} />
                     </span>
-                    <Badge variant="outline" className={`min-w-0 rounded-full px-3 py-1 text-xs font-semibold ${style.badge}`}>
+                    <Badge variant="outline" className={`min-w-0 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${style.badge}`}>
                       {item.status}
                     </Badge>
                   </div>
@@ -1766,7 +1767,7 @@ export default function UserGuide() {
                 Click on any section to expand and view detailed documentation
               </CardDescription>
             </div>
-            <Badge variant="outline" className="w-fit rounded-full border-primary/25 bg-primary/10 px-3 py-1 text-primary">
+            <Badge variant="outline" className="w-fit rounded-full border-primary/30 bg-primary/10 px-3 py-1 text-primary shadow-sm shadow-primary/10">
               {sections.length} sections
             </Badge>
           </div>
@@ -1777,16 +1778,17 @@ export default function UserGuide() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
+                aria-label="Search feature documentation"
                 value={documentationSearch}
                 onChange={(event) => setDocumentationSearch(event.target.value)}
                 placeholder="Search feature documentation"
-                className="h-11 w-full min-w-0 rounded-2xl border border-border/70 bg-background/80 pl-10 pr-10 text-sm text-foreground shadow-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:bg-slate-950/55"
+                className="h-11 w-full min-w-0 rounded-2xl border border-border/75 bg-background/90 pl-10 pr-10 text-sm text-foreground shadow-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/45 focus:ring-2 focus:ring-primary/25 dark:bg-slate-950/60"
               />
               {documentationSearch && (
                 <button
                   type="button"
                   onClick={() => setDocumentationSearch('')}
-                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                   aria-label="Clear feature documentation search"
                 >
                   <X className="h-4 w-4" />
@@ -1838,8 +1840,8 @@ export default function UserGuide() {
         <CardContent className="bg-muted/10 p-3 sm:p-4">
           <Accordion type="multiple" className="grid w-full gap-3">
             {sections.map((section) => (
-              <AccordionItem id={`section-${section.id}`} key={section.id} value={section.id} className="group/section scroll-mt-6 overflow-hidden rounded-2xl border border-border/60 bg-card/80 px-0 shadow-sm transition-all duration-200 data-[state=open]:border-primary/30 data-[state=open]:shadow-[0_18px_48px_rgba(15,23,42,0.10)] dark:bg-slate-950/55 dark:data-[state=open]:shadow-black/30">
-                <AccordionTrigger className="min-w-0 px-4 py-4 text-left transition-colors hover:bg-primary/5 hover:no-underline focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=open]:bg-primary/8 sm:px-5 [&>svg]:ml-3 [&>svg]:flex-shrink-0 [&>svg]:text-primary [&>svg]:transition-transform [&>svg]:duration-200">
+              <AccordionItem id={`section-${section.id}`} key={section.id} value={section.id} className="group/section scroll-mt-6 overflow-hidden rounded-2xl border border-border/65 bg-card/90 px-0 shadow-sm transition-all duration-200 hover:border-primary/25 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_18px_48px_rgba(15,23,42,0.10),0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-slate-950/60 dark:hover:shadow-black/20 dark:data-[state=open]:shadow-black/30">
+                <AccordionTrigger className="min-w-0 px-4 py-4 text-left transition-colors hover:bg-primary/5 hover:no-underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=open]:bg-primary/10 sm:min-h-16 sm:px-5 [&>svg]:ml-3 [&>svg]:flex-shrink-0 [&>svg]:text-primary [&>svg]:transition-transform [&>svg]:duration-200">
                   <div className="flex min-w-0 items-center gap-3 pr-2">
                     <div className="flex-shrink-0 rounded-xl border border-primary/15 bg-primary/10 p-2 transition-colors group-data-[state=open]/section:border-primary/30 group-data-[state=open]/section:bg-primary/15">
                       <section.icon className="h-5 w-5 text-primary" />
@@ -1858,10 +1860,10 @@ export default function UserGuide() {
                     {section.items.map((item, itemIndex) => (
                       <article
                         key={itemIndex}
-                        className="min-w-0 overflow-hidden rounded-2xl border border-border/55 bg-card/80 shadow-[0_12px_34px_rgba(15,23,42,0.06)] ring-1 ring-white/40 dark:border-white/10 dark:bg-slate-950/45 dark:ring-white/5"
+                        className="min-w-0 overflow-hidden rounded-2xl border border-border/65 bg-card/95 shadow-[0_12px_34px_rgba(15,23,42,0.06)] ring-1 ring-white/60 dark:border-white/10 dark:bg-slate-950/50 dark:ring-white/5"
                       >
                         <div className="flex min-w-0 items-start gap-3 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.075),transparent_58%)] p-4 sm:p-5">
-                          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-xs font-semibold text-primary shadow-inner shadow-primary/10">
+                          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-xs font-semibold text-primary shadow-inner shadow-primary/10">
                             {itemIndex + 1}
                           </span>
                           <div className="min-w-0 space-y-1.5">
@@ -1877,7 +1879,7 @@ export default function UserGuide() {
                             <ul className="grid min-w-0 gap-2 sm:grid-cols-2">
                               {item.features.map((feature, featureIndex) => (
                                 <li key={featureIndex} className="flex min-w-0 items-start gap-2.5 rounded-xl bg-background/55 p-2.5 text-sm leading-6 text-foreground/90 dark:bg-slate-950/35">
-                                  <CheckCircle className="mt-1 h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
+                                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-500" />
                                   <span className="min-w-0 break-words">{feature}</span>
                                 </li>
                               ))}
@@ -1891,7 +1893,7 @@ export default function UserGuide() {
                             <ol className="space-y-2.5">
                               {item.steps.map((step, stepIndex) => (
                                 <li key={stepIndex} className="flex min-w-0 items-start gap-3 rounded-xl bg-background/60 p-3 text-sm dark:bg-slate-950/35">
-                                  <span className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/20">
+                                  <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/25">
                                     {stepIndex + 1}
                                   </span>
                                   <span className="min-w-0 break-words leading-7 text-foreground/90">{step}</span>
@@ -1974,7 +1976,7 @@ export default function UserGuide() {
             {needHelpItems.map((item) => (
               <li
                 key={item.text}
-                className="group flex min-w-0 items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4 text-sm shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_14px_34px_rgba(15,23,42,0.08)] dark:bg-slate-950/35 dark:hover:shadow-black/25"
+                className="group flex min-w-0 items-start gap-3 rounded-2xl border border-border/65 bg-background/80 p-4 text-sm shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-[0_14px_34px_rgba(15,23,42,0.08),0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-slate-950/40 dark:hover:shadow-black/25"
               >
                 <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border shadow-inner ${item.className}`}>
                   <item.icon className="h-5 w-5" />
