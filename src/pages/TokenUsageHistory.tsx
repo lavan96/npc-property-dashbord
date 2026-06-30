@@ -14,7 +14,7 @@ import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, Search, Coins, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck, FileKey2, UserRound, Building2,
+  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck, FileKey2, UserRound, Building2, AlertTriangle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
@@ -76,6 +76,7 @@ function fmtMs(ms: number) {
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const PREMIUM_SCROLLBAR = "[scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:bg-transparent";
 
 export default function TokenUsageHistory() {
   const [scope, setScope] = useState<"mine" | "agency">("mine");
@@ -86,18 +87,24 @@ export default function TokenUsageHistory() {
   const [pageSize, setPageSize] = useState(25);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [agencyDenied, setAgencyDenied] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
+    setLoadError(null);
     const { data, error } = await invokeSecureFunction<{ rows: UsageRow[]; error?: string }>(
       "list-token-usage", { scope, limit: 500 },
     );
     if (error && scope === "agency") {
+      setLoadError(typeof error === "string" ? error : "Agency-wide view requires admin permission — showing your usage instead.");
       setAgencyDenied(true);
       setScope("mine");
+    } else if (error) {
+      setLoadError(typeof error === "string" ? error : "Unable to load token usage history.");
     } else if (!error && data?.rows) {
       setRows(data.rows);
       setAgencyDenied(false);
+      setLoadError(null);
     }
     setLoading(false);
   }
@@ -125,6 +132,8 @@ export default function TokenUsageHistory() {
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * pageSize;
   const pageRows = filtered.slice(pageStart, pageStart + pageSize);
+  const isInitialLoading = loading && rows.length === 0;
+  const scopeLabel = scope === "agency" ? "Agency-wide" : "My usage";
 
   const kpis = [
     {
@@ -157,7 +166,7 @@ export default function TokenUsageHistory() {
   ];
 
   return (
-    <DashboardThemeFrame variant="page" className="min-h-[calc(100vh-5rem)] space-y-7 p-3 sm:p-5 lg:p-6">
+    <DashboardThemeFrame variant="page" className="min-h-[calc(100vh-5rem)] min-w-0 overflow-x-hidden space-y-7 p-3 sm:p-5 lg:p-6">
       <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--background))_55%,hsl(var(--primary)/0.10))] p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-7">
         <div className="flex min-w-0 items-start gap-4">
           <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
@@ -184,7 +193,7 @@ export default function TokenUsageHistory() {
           variant="outline"
           size="sm"
           disabled={loading}
-          className="w-full shrink-0 rounded-xl border-primary/25 bg-background/75 px-4 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/30 sm:w-auto"
+          className="min-h-10 w-full shrink-0 rounded-xl border-primary/25 bg-background/85 px-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
         >
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
@@ -193,24 +202,32 @@ export default function TokenUsageHistory() {
 
       <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
         {kpis.map(({ label, value, icon: Icon, helper, accent, iconClass, valueClass }) => (
-          <DashboardThemeFrame key={label} variant="premiumCard" className={cn("p-0", `bg-gradient-to-br ${accent}`)}>
+          <DashboardThemeFrame key={label} variant="premiumCard" className={cn("group p-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_20px_55px_rgba(15,23,42,0.12)] dark:hover:shadow-[0_20px_55px_rgba(0,0,0,0.34)]", `bg-gradient-to-br ${accent}`)}>
             <div className="flex min-h-[9.5rem] min-w-0 flex-col justify-between gap-5 p-5">
               <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                  <p className={cn("mt-3 truncate text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl", valueClass)} title={value}>{value}</p>
+                  {isInitialLoading ? (
+                    <Skeleton className="mt-3 h-10 w-32 rounded-xl sm:h-12" />
+                  ) : (
+                    <p className={cn("mt-3 truncate text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl", valueClass)} title={value}>{value}</p>
+                  )}
                 </div>
-                <div className={cn("rounded-2xl border p-2.5 shadow-sm", iconClass)}>
+                <div className={cn("rounded-2xl border p-2.5 shadow-sm transition-all duration-200 group-hover:scale-105 group-hover:shadow-[0_0_0_4px_hsl(var(--primary)/0.08)]", iconClass)}>
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
-              <p className="truncate border-t border-border/50 pt-3 text-xs text-muted-foreground" title={helper}>{helper}</p>
+              {isInitialLoading ? (
+                <Skeleton className="h-5 w-full rounded-lg" />
+              ) : (
+                <p className="truncate border-t border-border/50 pt-3 text-xs text-muted-foreground" title={helper}>{helper}</p>
+              )}
             </div>
           </DashboardThemeFrame>
         ))}
       </div>
 
-      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/85 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-white/40 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-1.5">
@@ -230,11 +247,11 @@ export default function TokenUsageHistory() {
           <Tabs value={scope} onValueChange={(v) => setScope(v as any)}>
             <DashboardThemeFrame variant="toolbar" className="min-w-0 items-stretch justify-between gap-3 border-primary/10 bg-muted/25 p-2.5 sm:items-center">
               <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl border border-border/60 bg-background/70 p-1 shadow-inner sm:w-auto">
-                <TabsTrigger value="mine" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="mine" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.18)]">
                   <UserRound className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">My usage</span>
                 </TabsTrigger>
-                <TabsTrigger value="agency" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                <TabsTrigger value="agency" className="min-w-0 gap-2 rounded-xl px-3 py-2 text-muted-foreground transition-all duration-200 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/35 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.18)]">
                   <Building2 className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">Agency-wide</span>
                 </TabsTrigger>
@@ -242,8 +259,9 @@ export default function TokenUsageHistory() {
               <div className="group relative min-w-0 flex-1 sm:max-w-md">
                 <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
                 <Input
-                  className="min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all placeholder:text-muted-foreground/75 hover:border-primary/25 hover:bg-background focus-visible:border-primary/45 focus-visible:ring-primary/30"
+                  className="min-h-10 min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/30 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
                   placeholder="Search by kind, function, status..."
+                  aria-label="Search token usage by kind, function, status, or idempotency key"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -251,24 +269,63 @@ export default function TokenUsageHistory() {
             </DashboardThemeFrame>
 
             <TabsContent value={scope} className="mt-4 min-w-0 space-y-3">
+              <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-2">
+                  {scope === "agency" ? <Building2 className="h-4 w-4 shrink-0 text-primary" /> : <UserRound className="h-4 w-4 shrink-0 text-primary" />}
+                  <span className="min-w-0 truncate">
+                    Viewing scope: <span className="font-semibold text-foreground">{scopeLabel}</span>
+                  </span>
+                </div>
+                <span className="min-w-0 truncate" title={scope === "agency" ? "Agency-wide data is limited to your existing permissions." : "Showing records scoped to your authenticated user."}>
+                  {scope === "agency" ? "Agency visibility follows your existing role permissions." : "Personal usage scoped to your authenticated account."}
+                </span>
+              </div>
               {agencyDenied && (
-                <div className="rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-xs text-muted-foreground">
-                  Agency-wide view requires admin permission — showing your usage instead.
+                <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-xs text-muted-foreground">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 break-words">Agency-wide view requires admin permission — showing your usage instead.</span>
+                </div>
+              )}
+              {loadError && !agencyDenied && (
+                <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span className="min-w-0 break-words">{loadError}</span>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10" onClick={load} disabled={loading}>
+                    Retry
+                  </Button>
                 </div>
               )}
               {loading ? (
-                <div className="space-y-2 rounded-2xl border border-border/60 p-3">
-                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
+                <div className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-3">
+                  <div className="flex items-center justify-between gap-3 px-1">
+                    <Skeleton className="h-4 w-36 rounded-lg" />
+                    <Skeleton className="h-4 w-24 rounded-lg" />
+                  </div>
+                  {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+                </div>
+              ) : loadError && rows.length === 0 ? (
+                <div className="flex min-h-[16rem] items-center justify-center rounded-3xl border border-destructive/25 bg-destructive/10 px-4 py-10 text-center">
+                  <div className="mx-auto max-w-md space-y-3">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">Unable to load token usage.</p>
+                    <p className="break-words text-xs leading-5 text-destructive">{loadError}</p>
+                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={load} disabled={loading}>Retry</Button>
+                  </div>
                 </div>
               ) : rows.length === 0 ? (
                 <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_42%),hsl(var(--muted)/0.18)] px-4 py-12 text-center">
                   <div className="mx-auto max-w-sm space-y-3">
+                    <div className="mx-auto w-fit rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-primary">Audit ready</div>
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
                       <Coins className="h-7 w-7" />
                     </div>
                     <p className="text-sm font-semibold text-foreground">No usage recorded yet.</p>
                     <p className="text-xs leading-5 text-muted-foreground">
-                      Metered report generations will appear here with reserve, commit, cancel and duration details once available.
+                      {scope === "agency" ? "Agency-wide metered report generations will appear here when your permitted agency scope has usage." : "Metered report generations will appear here with reserve, commit, cancel and duration details once available."}
                     </p>
                   </div>
                 </div>
@@ -287,8 +344,8 @@ export default function TokenUsageHistory() {
               ) : (
                 <>
                   <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background/45">
-                    <div className="overflow-x-auto">
-                      <Table className="min-w-[1180px] table-fixed">
+                    <div className={cn("overflow-x-auto overscroll-x-contain", PREMIUM_SCROLLBAR)}>
+                      <Table className="min-w-[1180px] table-fixed" aria-label="Token usage records">
                         <TableHeader>
                           <TableRow className="bg-muted/35 hover:bg-muted/35">
                             <TableHead className="w-[150px]">When</TableHead>
@@ -310,7 +367,7 @@ export default function TokenUsageHistory() {
                               <TableRow
                                 key={r.id}
                                 className={cn(
-                                  "group cursor-pointer border-l-2 border-l-transparent transition-all hover:border-l-primary/50 hover:bg-primary/5 focus-within:bg-primary/5",
+                                  "group cursor-pointer border-l-2 border-l-transparent transition-all duration-200 hover:border-l-primary/60 hover:bg-primary/5 hover:shadow-[inset_4px_0_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/5",
                                   isOpen && "border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.16)]",
                                 )}
                                 onClick={() => setActiveKey(r.idempotency_key)}
@@ -335,7 +392,7 @@ export default function TokenUsageHistory() {
                                   <button
                                     type="button"
                                     className={cn(
-                                      "flex max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all hover:border-primary/35 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35",
+                                      "flex min-h-9 max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all duration-200 hover:-translate-y-px hover:border-primary/45 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10),0_10px_22px_hsl(var(--primary)/0.12)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2",
                                       isOpen && "border-primary/45 bg-primary/15",
                                     )}
                                     title={r.idempotency_key}
@@ -355,7 +412,7 @@ export default function TokenUsageHistory() {
                                   <span className="text-emerald-700 dark:text-emerald-300">{r.actual_tokens.toLocaleString()}</span>
                                 </TableCell>
                                 <TableCell className="align-top text-right text-xs tabular-nums text-muted-foreground">
-                                  <span className="inline-flex rounded-full border border-border/60 bg-muted/45 px-2 py-1 font-medium">{fmtMs(r.duration_ms)}</span>
+                                  <span className="inline-flex rounded-full border border-border/60 bg-muted/45 px-2 py-1 font-medium shadow-sm">{fmtMs(r.duration_ms)}</span>
                                 </TableCell>
                                 <TableCell className="min-w-0 align-top"><StatusBadge status={r.status} /></TableCell>
                                 <TableCell className="min-w-0 align-top text-xs text-muted-foreground">
@@ -377,7 +434,7 @@ export default function TokenUsageHistory() {
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span>Rows per page</span>
                       <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                        <SelectTrigger className="h-8 w-[80px] rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 w-[84px] rounded-xl" aria-label="Rows per page"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {PAGE_SIZE_OPTIONS.map((n) => (
                             <SelectItem key={n} value={String(n)}>{n}</SelectItem>
@@ -389,19 +446,19 @@ export default function TokenUsageHistory() {
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage === 1} onClick={() => setPage(1)}>
+                      <Button aria-label="First page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage === 1} onClick={() => setPage(1)}>
                         <ChevronsLeft className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                      <Button aria-label="Previous page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <span className="px-2 text-xs tabular-nums text-muted-foreground">
                         Page {safePage} / {totalPages}
                       </span>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                      <Button aria-label="Next page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
                         <ChevronRight className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}>
+                      <Button aria-label="Last page" variant="outline" size="icon" className="h-9 w-9 rounded-xl" disabled={safePage >= totalPages} onClick={() => setPage(totalPages)}>
                         <ChevronsRight className="h-4 w-4" />
                       </Button>
                     </div>
@@ -417,6 +474,7 @@ export default function TokenUsageHistory() {
         idempotencyKey={activeKey}
         open={!!activeKey}
         onOpenChange={(o) => !o && setActiveKey(null)}
+        premiumTimeline
       />
     </DashboardThemeFrame>
   );
