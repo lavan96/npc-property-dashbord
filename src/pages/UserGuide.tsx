@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -49,6 +49,7 @@ import {
   Mic,
   Sparkles,
   Webhook,
+  X,
 } from 'lucide-react';
 import { UserGuideAssistant } from '@/components/user-guide/UserGuideAssistant';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
@@ -1542,6 +1543,58 @@ export default function UserGuide() {
     },
   } as const;
 
+  const [documentationSearch, setDocumentationSearch] = useState('');
+
+  const normalizedDocumentationSearch = documentationSearch.trim().toLowerCase();
+
+  const documentationSearchResults = useMemo(() => {
+    if (!normalizedDocumentationSearch) {
+      return [];
+    }
+
+    return sections.filter((section) => {
+      const searchableText = [
+        section.title,
+        section.description,
+        ...section.items.flatMap((item) => [
+          item.title,
+          item.description,
+          ...(item.features ?? []),
+          ...(item.steps ?? []),
+          ...(item.tips ?? []),
+          ...(item.shortcuts?.flatMap((shortcut) => [shortcut.description, ...shortcut.keys]) ?? []),
+        ]),
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedDocumentationSearch);
+    });
+  }, [normalizedDocumentationSearch, sections]);
+
+  const quickNavigationItems = [
+    { label: 'Quick Tips', targetId: 'quick-tips' },
+    { label: 'Property Status Guide', targetId: 'property-status-guide' },
+    { label: 'Feature Documentation', targetId: 'feature-documentation' },
+    { label: 'Getting Started', sectionId: 'getting-started' },
+    { label: 'Client Management', sectionId: 'client-management' },
+    { label: 'Need Help', targetId: 'need-help' },
+    { label: 'Troubleshooting', sectionId: 'troubleshooting' },
+    { label: 'Keyboard Shortcuts', sectionId: 'keyboard-shortcuts' },
+    { label: 'API Usage & Costs', sectionId: 'api-usage' },
+  ];
+
+  const handleQuickNavigation = useCallback((item: { targetId?: string; sectionId?: string }) => {
+    if (item.sectionId) {
+      handleNavigateToSection(item.sectionId);
+      return;
+    }
+
+    if (item.targetId) {
+      document.getElementById(item.targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [handleNavigateToSection]);
+
   return (
     <>
     <UserGuideAssistant onNavigateToSection={handleNavigateToSection} />
@@ -1572,8 +1625,27 @@ export default function UserGuide() {
         </div>
       </DashboardThemeFrame>
 
+      <DashboardThemeFrame
+        as="section"
+        variant="toolbar"
+        role="navigation"
+        aria-label="User Guide quick navigation"
+        className="gap-2 overflow-x-auto border-primary/15 bg-card/70 p-2 shadow-[0_12px_34px_rgba(15,23,42,0.06)] [scrollbar-width:thin] dark:bg-slate-950/55"
+      >
+        {quickNavigationItems.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => handleQuickNavigation(item)}
+            className="min-w-max rounded-full border border-border/70 bg-background/75 px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/55"
+          >
+            {item.label}
+          </button>
+        ))}
+      </DashboardThemeFrame>
+
       {/* Quick Tips */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="quick-tips" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.18))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
@@ -1614,7 +1686,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Property Status Guide */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="property-status-guide" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.06),hsl(var(--muted)/0.16))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 shadow-inner shadow-blue-500/10">
@@ -1653,23 +1725,96 @@ export default function UserGuide() {
       </Card>
 
       {/* Main Sections with Accordion */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
-        <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            Feature Documentation
-          </CardTitle>
-          <CardDescription>
-            Click on any section to expand and view detailed documentation
-          </CardDescription>
+      <Card id="feature-documentation" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+        <CardHeader className="space-y-4 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.16))]">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <CardTitle className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
+                  <FileText className="h-5 w-5 text-primary" />
+                </span>
+                <span className="min-w-0">Feature Documentation</span>
+              </CardTitle>
+              <CardDescription className="leading-6">
+                Click on any section to expand and view detailed documentation
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="w-fit rounded-full border-primary/25 bg-primary/10 px-3 py-1 text-primary">
+              {sections.length} sections
+            </Badge>
+          </div>
+
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="relative min-w-0">
+              <span className="sr-only">Search feature documentation</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                value={documentationSearch}
+                onChange={(event) => setDocumentationSearch(event.target.value)}
+                placeholder="Search feature documentation"
+                className="h-11 w-full min-w-0 rounded-2xl border border-border/70 bg-background/80 pl-10 pr-10 text-sm text-foreground shadow-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:bg-slate-950/55"
+              />
+              {documentationSearch && (
+                <button
+                  type="button"
+                  onClick={() => setDocumentationSearch('')}
+                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                  aria-label="Clear feature documentation search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </label>
+            <div className="flex min-w-0 items-center rounded-2xl border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground dark:bg-slate-950/40">
+              Full documentation list stays visible while search shows jump results.
+            </div>
+          </div>
+
+          {normalizedDocumentationSearch && (
+            <div className="rounded-2xl border border-border/60 bg-background/60 p-3 dark:bg-slate-950/45">
+              {documentationSearchResults.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    Matching sections
+                  </div>
+                  <div className="flex min-w-0 flex-wrap gap-2">
+                    {documentationSearchResults.map((section) => (
+                      <button
+                        key={section.id}
+                        type="button"
+                        onClick={() => handleNavigateToSection(section.id)}
+                        className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                      >
+                        {section.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 text-sm text-muted-foreground">
+                    No documentation sections match “{documentationSearch}”.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDocumentationSearch('')}
+                    className="w-fit rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+                  >
+                    Clear search
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </CardHeader>
-        <CardContent className="p-0">
-          <Accordion type="multiple" className="w-full divide-y divide-border/50">
+        <CardContent className="bg-muted/10 p-3 sm:p-4">
+          <Accordion type="multiple" className="grid w-full gap-3">
             {sections.map((section) => (
-              <AccordionItem key={section.id} value={section.id} className="border-0 px-4 sm:px-6">
-                <AccordionTrigger className="min-w-0 py-5 text-left hover:no-underline focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background [&>svg]:ml-3 [&>svg]:flex-shrink-0">
+              <AccordionItem id={`section-${section.id}`} key={section.id} value={section.id} className="group/section scroll-mt-6 overflow-hidden rounded-2xl border border-border/60 bg-card/80 px-0 shadow-sm transition-all duration-200 data-[state=open]:border-primary/30 data-[state=open]:shadow-[0_18px_48px_rgba(15,23,42,0.10)] dark:bg-slate-950/55 dark:data-[state=open]:shadow-black/30">
+                <AccordionTrigger className="min-w-0 px-4 py-4 text-left transition-colors hover:bg-primary/5 hover:no-underline focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=open]:bg-primary/8 sm:px-5 [&>svg]:ml-3 [&>svg]:flex-shrink-0 [&>svg]:text-primary [&>svg]:transition-transform [&>svg]:duration-200">
                   <div className="flex min-w-0 items-center gap-3 pr-2">
-                    <div className="flex-shrink-0 rounded-xl border border-primary/15 bg-primary/10 p-2">
+                    <div className="flex-shrink-0 rounded-xl border border-primary/15 bg-primary/10 p-2 transition-colors group-data-[state=open]/section:border-primary/30 group-data-[state=open]/section:bg-primary/15">
                       <section.icon className="h-5 w-5 text-primary" />
                     </div>
                     <div className="min-w-0 text-left">
@@ -1680,8 +1825,9 @@ export default function UserGuide() {
                     </div>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="ml-5 min-w-0 space-y-6 border-l-2 border-primary/20 py-4 pl-4 sm:pl-6">
+                <AccordionContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                  <div className="min-w-0 border-t border-border/50 bg-background/45 px-4 py-5 sm:px-5">
+                    <div className="ml-5 min-w-0 space-y-6 border-l-2 border-primary/25 pl-4 sm:pl-6">
                     {section.items.map((item, itemIndex) => (
                       <div key={itemIndex} className="min-w-0 space-y-3 rounded-2xl bg-muted/15 p-4 ring-1 ring-border/40">
                         <div>
@@ -1764,6 +1910,7 @@ export default function UserGuide() {
                         {itemIndex < section.items.length - 1 && <Separator className="my-4" />}
                       </div>
                     ))}
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -1773,7 +1920,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Support Section */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="need-help" className="scroll-mt-6 overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-muted/20">
           <CardTitle className="flex items-center gap-2">
             <Headphones className="h-5 w-5 text-primary" />
