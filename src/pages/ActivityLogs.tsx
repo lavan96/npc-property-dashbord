@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { useSecureActivityLogs, ActivityLog, ActivityStats } from '@/hooks/useSecureActivityLogs';
 import { SearchableMultiSelect, MSOption } from '@/components/shared/SearchableMultiSelect';
 import { format, formatDistanceToNow, startOfDay, endOfDay, subDays, isToday, isYesterday } from 'date-fns';
@@ -250,6 +251,10 @@ type Density = 'compact' | 'comfortable';
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 const PRESETS_KEY = 'activityLogs.presets.v1';
 const DENSITY_KEY = 'activityLogs.density.v1';
+
+// Developer note (Phase 1 scope lock): Activity Logs UI polish only.
+// Files touched: src/pages/ActivityLogs.tsx. Data fetching, audit log filters, export, live-tail, pagination,
+// permissions, routing, and backend contracts are preserved without behavioural changes.
 
 interface FilterPreset {
   id: string;
@@ -525,14 +530,14 @@ export default function ActivityLogs() {
 
   return (
     <TooltipProvider delayDuration={200}>
-    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+    <DashboardThemeFrame variant="page" className="space-y-4 sm:space-y-6 p-3 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Logs</h1>
           <p className="text-sm text-muted-foreground">Track all user actions and system events</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <DashboardThemeFrame variant="toolbar" className="shrink-0 justify-start sm:justify-end">
           {/* Presets */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -664,8 +669,8 @@ export default function ActivityLogs() {
             <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
             Refresh
           </Button>
-        </div>
-      </div>
+        </DashboardThemeFrame>
+      </DashboardThemeFrame>
 
       {/* Quick Stats Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -699,7 +704,7 @@ export default function ActivityLogs() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="dashboard-panel overflow-visible">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Filter className="h-5 w-5" />
@@ -714,12 +719,12 @@ export default function ActivityLogs() {
                 placeholder="Search this page..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="dashboard-input-control pl-10"
               />
             </div>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRangeKey)}>
-              <SelectTrigger><SelectValue placeholder="Date range" /></SelectTrigger>
+              <SelectTrigger className="dashboard-input-control"><SelectValue placeholder="Date range" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="24h">Last 24 hours</SelectItem>
                 <SelectItem value="7d">Last 7 days</SelectItem>
@@ -804,8 +809,8 @@ export default function ActivityLogs() {
       </Card>
 
       {/* Activity */}
-      <Card>
-        <CardHeader>
+      <Card className="dashboard-panel overflow-hidden">
+        <CardHeader className="border-b border-border/50 bg-muted/10">
           <CardTitle>Recent Activity</CardTitle>
           <CardDescription>
             {loading
@@ -856,7 +861,7 @@ export default function ActivityLogs() {
               {/* Desktop — virtualized */}
               <div className="hidden sm:block">
                 {/* Sticky column header */}
-                <div className="sticky top-0 z-10 bg-card/95 backdrop-blur border border-border/60 rounded-t-md grid grid-cols-[180px_140px_180px_1fr_130px] gap-3 px-4 h-12 items-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="sticky top-0 z-10 bg-card/95 backdrop-blur border border-border/70 rounded-t-xl grid grid-cols-[180px_140px_180px_1fr_130px] gap-3 px-4 h-12 items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider shadow-sm">
                   <div>Timestamp</div>
                   <div>User</div>
                   <div>Action</div>
@@ -882,7 +887,7 @@ export default function ActivityLogs() {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Rows per page</span>
                 <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                  <SelectTrigger className="h-8 w-[80px]"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="dashboard-input-control h-8 w-[80px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PAGE_SIZE_OPTIONS.map(n => (
                       <SelectItem key={n} value={String(n)}>{n}</SelectItem>
@@ -911,10 +916,10 @@ export default function ActivityLogs() {
       {/* Save Preset Dialog (lightweight popover) */}
       {presetDialogOpen && (
         <div
-          className="fixed inset-0 z-50 bg-background dark:bg-black/40 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-background/80 dark:bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setPresetDialogOpen(false)}
         >
-          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <Card className="dashboard-panel w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <BookmarkPlus className="h-4 w-4" /> Save filter preset
@@ -942,7 +947,7 @@ export default function ActivityLogs() {
 
       {/* Detail Drawer */}
       <Sheet open={!!selectedLog} onOpenChange={(o) => !o && setSelectedLog(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-card text-card-foreground border-border">
           {selectedLog && (() => {
             const cfg = getActionConfig(selectedLog.action_type);
             const href = entityHref(selectedLog.entity_type, selectedLog.entity_id);
@@ -1036,7 +1041,7 @@ export default function ActivityLogs() {
           })()}
         </SheetContent>
       </Sheet>
-    </div>
+    </DashboardThemeFrame>
     </TooltipProvider>
   );
 }
@@ -1086,7 +1091,7 @@ function StatTile({
 }) {
   const t = STAT_TONE[tone];
   return (
-    <Card className={cn('relative overflow-hidden border-border/60 ring-1', t.ring)}>
+    <Card className={cn('dashboard-kpi-card ring-1 transition-transform duration-200 hover:-translate-y-0.5', t.ring)}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -1149,7 +1154,7 @@ function VirtualLogList({
       className={cn(
         'overflow-auto contain-strict',
         variant === 'desktop'
-          ? 'h-[640px] border border-t-0 border-border/60 rounded-b-md bg-card/40'
+          ? 'h-[640px] border border-t-0 border-border/70 rounded-b-xl bg-card/35 scrollbar-thin'
           : 'h-[640px]'
       )}
     >
@@ -1171,7 +1176,7 @@ function VirtualLogList({
             >
               {item.kind === 'header' ? (
                 <div className={cn(
-                  'px-4 py-2 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/40',
+                  'px-4 py-2 bg-muted/35 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50',
                   variant === 'mobile' && 'sticky-ish'
                 )}>
                   {item.label}
@@ -1223,7 +1228,7 @@ function DesktopRow({
       onClick={onClick}
       className={cn(
         'w-full text-left grid grid-cols-[180px_140px_180px_1fr_130px] gap-3 px-4 items-center',
-        'border-b border-border/40 hover:bg-muted/35 transition-colors relative',
+        'border-b border-border/40 hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors relative',
         compact ? 'py-2' : 'py-3'
       )}
     >
@@ -1277,7 +1282,7 @@ function MobileRow({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left flex gap-3 items-start hover:bg-muted/40 transition-colors px-3 border-b border-border/40',
+        'w-full text-left flex gap-3 items-start hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors px-3 border-b border-border/40',
         compact ? 'py-2' : 'py-3'
       )}
     >
