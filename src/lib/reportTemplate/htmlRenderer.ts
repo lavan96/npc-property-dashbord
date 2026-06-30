@@ -413,6 +413,7 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
 
   let bgStyle = '';
   const bgImages: string[] = [];
+  const bgSizes: string[] = [];
   if (page.background?.color) {
     const c = resolveBindableColor(page.background.color, ctxBase, '#FFFFFF');
     bgStyle += `background-color:${c};`;
@@ -429,24 +430,39 @@ function renderPage(page: Page, ctxBase: ResolveContext, pageIndex: number, temp
       ? `radial-gradient(circle, ${stops})`
       : `linear-gradient(${gradient.angle ?? 180}deg, ${stops})`;
     bgImages.push(grad);
+    bgSizes.push('100% 100%');
   }
   if (page.background?.imageUrl) {
     const url = resolveBindable(page.background.imageUrl, ctxBase);
     if (url) {
-      bgImages.push(`url('${url}')`);
       // Full-page source rasters set imageFit:'fill' so the reference exactly
       // covers the page box (no aspect-ratio crop/stretch). Decorative images
       // keep the historical 'cover' default.
       const fit = (page.background as any)?.imageFit;
       const size = fit === 'fill' ? '100% 100%' : fit === 'contain' ? 'contain' : 'cover';
-      bgStyle += `background-size:${size};background-position:center;background-repeat:no-repeat;`;
+      // Phase 6B — page.background.opacity dims the raster *reference* so the
+      // reconstructed overlays lead visually. CSS background-image has no own
+      // opacity, and element opacity would dim foreground content too — so veil
+      // the raster with white at (1 - opacity) alpha layered ON TOP of it (the
+      // page background is white). Renders identically on the canvas and in the
+      // WeasyPrint export (multi-layer background-image + background-size).
+      const rawOpacity = (page.background as any)?.opacity;
+      const op = typeof rawOpacity === 'number' && Number.isFinite(rawOpacity)
+        ? Math.max(0, Math.min(1, rawOpacity))
+        : 1;
+      if (op < 1) {
+        const veil = (1 - op).toFixed(3);
+        bgImages.push(`linear-gradient(rgba(255,255,255,${veil}),rgba(255,255,255,${veil}))`);
+        bgSizes.push('100% 100%');
+      }
+      bgImages.push(`url('${url}')`);
+      bgSizes.push(size);
+      bgStyle += `background-position:center;background-repeat:no-repeat;`;
     }
   }
-  if (bgImages.length) bgStyle += `background-image:${bgImages.join(', ')};`;
-  if ((page.background as any)?.opacity !== undefined) {
-    // Render opacity by mixing into bg-color; safer than container opacity which
-    // would dim all child content.
-    // Best-effort: leave color as-is; designers can pick a transparent hex/RGBA.
+  if (bgImages.length) {
+    bgStyle += `background-image:${bgImages.join(', ')};`;
+    if (bgSizes.length) bgStyle += `background-size:${bgSizes.join(', ')};`;
   }
 
   const blocks: string[] = [];

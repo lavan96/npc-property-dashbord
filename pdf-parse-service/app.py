@@ -96,7 +96,7 @@ LOG = logging.getLogger("pdf-parse-service")
 SERVICE_TOKEN = os.environ.get("PDF_PARSE_SERVICE_TOKEN", "").strip()
 SERVICE_TOKEN_NEXT = os.environ.get("PDF_PARSE_SERVICE_TOKEN_NEXT", "").strip()
 SERVICE_TOKENS = {t for t in (SERVICE_TOKEN, SERVICE_TOKEN_NEXT) if t}
-ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest+phase4j-capability-activation+phase2-fitz-vectors-typography+phase3-fonts"
+ENGINE_VERSION = "docling-2.14.0+phaseD+waveD+option3+waveG-chunked+phase1-plan-router+phase3-raster-manifest+phase4j-capability-activation+phase2-fitz-vectors-typography+phase3-fonts+phase6e-stroke-style"
 DOCLING_CAPABILITY_ACTIVATION_VERSION = "docling-capability-activation-v1"
 MAX_PDF_BYTES = int(os.environ.get("DOCLING_MAX_PDF_MB", "75")) * 1024 * 1024
 # Phase 3 raster artifact config.
@@ -669,6 +669,39 @@ def _drawing_to_svg_path(drawing: dict) -> str:
     return " ".join(parts)
 
 
+_LINE_CAP_MAP = {0: "butt", 1: "round", 2: "square"}
+_LINE_JOIN_MAP = {0: "miter", 1: "round", 2: "bevel"}
+
+
+def _coerce_enum_index(value) -> Optional[int]:
+    """fitz exposes lineCap/lineJoin as an int, or (older builds) a tuple of ints."""
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else None
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    return None
+
+
+def _dash_to_svg(dashes) -> Optional[str]:
+    """Convert fitz PDF dash notation (e.g. '[3 2] 0') to an SVG dasharray ('3 2').
+    Returns None for solid lines ('[] 0', empty, or an all-zero dash array)."""
+    if not dashes or not isinstance(dashes, str):
+        return None
+    m = re.search(r"\[(.*?)\]", dashes)
+    inner = (m.group(1) if m else dashes).strip()
+    if not inner:
+        return None
+    nums = [p for p in inner.replace(",", " ").split() if p]
+    try:
+        if not nums or not any(float(n) > 0 for n in nums):
+            return None
+    except ValueError:
+        return None
+    return " ".join(nums)
+
+
 def _page_vectors(page) -> list[dict]:
     """Extract vector drawings for one fitz page → DoclingVectorItem-shaped dicts."""
     out: list[dict] = []
@@ -699,6 +732,17 @@ def _page_vectors(page) -> list[dict]:
         if stroke:
             path["stroke"] = stroke
             path["strokeWidth"] = float(d.get("width") or 1.0)
+            # Phase 6E — stroke styling (dashed rules, rounded caps/joins). Emit
+            # only non-default values to keep the JSON lean.
+            dash = _dash_to_svg(d.get("dashes"))
+            if dash:
+                path["strokeDasharray"] = dash
+            cap = _coerce_enum_index(d.get("lineCap"))
+            if cap is not None and cap in _LINE_CAP_MAP and cap != 0:
+                path["strokeLinecap"] = _LINE_CAP_MAP[cap]
+            join = _coerce_enum_index(d.get("lineJoin"))
+            if join is not None and join in _LINE_JOIN_MAP and join != 0:
+                path["strokeLinejoin"] = _LINE_JOIN_MAP[join]
         if d.get("even_odd"):
             path["fillRule"] = "evenodd"
         opacity = d.get("fill_opacity")
