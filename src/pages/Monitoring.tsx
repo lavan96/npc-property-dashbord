@@ -230,7 +230,11 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">Healthy</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-28 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold text-success">Healthy</div>
+            )}
             <p className="text-xs text-muted-foreground">All services operational</p>
           </CardContent>
         </Card>
