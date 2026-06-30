@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Check, AlertTriangle, CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { Copy, Check, AlertTriangle, CheckCircle2, Clock3, XCircle, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
