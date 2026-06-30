@@ -585,14 +585,36 @@ export function DepreciationCompsAdmin() {
                         
                         return (
                           <TableRow key={comp.id} className="border-border/60 transition-colors hover:bg-primary/5 dark:border-white/10">
-                            <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">${formatNumberWithCommas(comp.purchase_price.toString())}</TableCell>
-                            <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">{comp.build_year}</TableCell>
-                            <TableCell className="max-w-[9rem] truncate text-xs text-foreground" title={PROPERTY_TYPE_LABELS[comp.property_type]}>{PROPERTY_TYPE_LABELS[comp.property_type]}</TableCell>
-                            <TableCell className="max-w-[7rem] truncate text-muted-foreground" title={comp.finish_standard}>{comp.finish_standard}</TableCell>
-                            <TableCell className="max-w-[11rem] truncate text-xs text-foreground" title={CITY_LABELS[comp.nearest_city]}>{CITY_LABELS[comp.nearest_city]}</TableCell>
-                            <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}>{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</TableCell>
-                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">${formatNumberWithCommas(dvTotal.toString())}</TableCell>
-                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">${formatNumberWithCommas(pcTotal.toString())}</TableCell>
+                            <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">
+                              ${formatNumberWithCommas(comp.purchase_price.toString())}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap tabular-nums text-muted-foreground">
+                              {comp.build_year}
+                            </TableCell>
+                            <TableCell className="max-w-[9rem] truncate text-xs text-foreground" title={PROPERTY_TYPE_LABELS[comp.property_type]}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 font-medium text-primary">
+                                <span className="truncate">{PROPERTY_TYPE_LABELS[comp.property_type]}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[7rem] truncate text-muted-foreground" title={comp.finish_standard}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-border/70 bg-muted/45 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                                <span className="truncate">{comp.finish_standard}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-w-[11rem] truncate text-xs text-foreground" title={CITY_LABELS[comp.nearest_city]}>
+                              {CITY_LABELS[comp.nearest_city]}
+                            </TableCell>
+                            <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}>
+                              <span className="inline-flex max-w-full items-center rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-200">
+                                <span className="truncate">{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
+                              <span className="text-primary">${formatNumberWithCommas(dvTotal.toString())}</span>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
+                              <span className="text-emerald-700 dark:text-emerald-300">${formatNumberWithCommas(pcTotal.toString())}</span>
+                            </TableCell>
                             <TableCell className="text-right">
                               <Button 
                                 variant="ghost" 
@@ -603,7 +625,7 @@ export function DepreciationCompsAdmin() {
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </TableCell>
-                            </TableRow>
+                          </TableRow>
                         );
                       })}
                     </TableBody>
