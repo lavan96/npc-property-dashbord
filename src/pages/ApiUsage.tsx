@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { MultiSelectFilter } from '@/components/api-usage/MultiSelectFilter';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import {
   Activity,
   BarChart3,
@@ -164,6 +165,15 @@ interface ApiUsageData {
   vapi?: VapiData;
   projections?: ProjectionsData;
 }
+
+
+// Phase 1 scope lock: API Usage UI shell only. Data fetching, filters,
+// calculations, status mappings, tabs, and refresh/date behaviour are preserved.
+const API_USAGE_PAGE_FRAME =
+  'min-h-[calc(100dvh-5rem)] space-y-4 px-1 pb-6 sm:space-y-6 sm:px-0';
+
+const API_USAGE_HERO_FRAME =
+  'flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_58%,hsl(var(--primary)/0.08))] p-5 shadow-[0_22px_70px_rgba(15,23,42,0.12)] ring-1 ring-white/35 dark:ring-white/10 dark:shadow-black/35 sm:flex-row sm:items-start sm:justify-between sm:p-6';
 
 const BUDGET_LIMITS: Record<string, number> = {
   openai: 50,
@@ -387,15 +397,16 @@ export default function ApiUsage() {
   ];
   const QUALITY_COLORS = ['hsl(142, 71%, 45%)', 'hsl(45, 93%, 47%)', 'hsl(0, 84%, 60%)', 'hsl(217, 91%, 60%)'];
 
+
   if (loading) {
     return (
-      <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <DashboardThemeFrame variant="page" className={API_USAGE_PAGE_FRAME}>
+        <DashboardThemeFrame as="header" variant="hero" className={API_USAGE_HERO_FRAME}>
           <div>
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-64 mt-2" />
           </div>
-        </div>
+        </DashboardThemeFrame>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           {[...Array(5)].map((_, i) => (
             <Card key={i}><CardContent className="p-4 sm:p-6"><Skeleton className="h-16" /></CardContent></Card>
@@ -406,21 +417,21 @@ export default function ApiUsage() {
             <Card key={i}><CardContent className="p-4 sm:p-6"><Skeleton className="h-64" /></CardContent></Card>
           ))}
         </div>
-      </div>
+      </DashboardThemeFrame>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
+    <DashboardThemeFrame variant="page" className={API_USAGE_PAGE_FRAME}>
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">API Usage & Costs</h1>
+      <DashboardThemeFrame as="header" variant="hero" className={API_USAGE_HERO_FRAME}>
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl sm:text-3xl font-bold text-foreground tracking-tight">API Usage & Costs</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Monitor health, tokens, VAPI calls, and projected costs across all integrations
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 self-start sm:justify-end">
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-[130px] min-h-[40px]">
               <SelectValue />
@@ -437,7 +448,7 @@ export default function ApiUsage() {
             <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Multi-Select Filters */}
       {data && (
@@ -1287,6 +1298,6 @@ export default function ApiUsage() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
