@@ -84,8 +84,8 @@ function AnalyticsTab() {
   ] : [];
 
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-6">
-      <DashboardThemeFrame variant="section" className="space-y-4 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.08))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+    <div className="min-h-0 min-w-0 space-y-4 sm:space-y-6">
+      <DashboardThemeFrame variant="section" className="min-h-0 space-y-4 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.08))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Traffic Analytics</h3>
@@ -116,7 +116,7 @@ function AnalyticsTab() {
         </div>
 
         {analytics.error && (
-          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+          <Alert role="alert" variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="break-words text-sm leading-6">{analytics.error}</AlertDescription>
           </Alert>
@@ -212,15 +212,15 @@ function CdnTab() {
   const settings = cacheSettings.data?.result || [];
 
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-6">
-      <DashboardThemeFrame variant="section" className="space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+    <div className="min-h-0 min-w-0 space-y-4 sm:space-y-6">
+      <DashboardThemeFrame variant="section" className="min-h-0 space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
         <div className="flex min-w-0 flex-col gap-2">
           <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">CDN & Caching</h3>
           <p className="max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">Operate cache settings and purge actions with clear separation between zone-wide and URL-specific invalidation.</p>
         </div>
 
         {cacheSettings.error && (
-          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+          <Alert role="alert" variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="break-words text-sm leading-6">{cacheSettings.error}</AlertDescription>
           </Alert>
@@ -266,7 +266,7 @@ function CdnTab() {
                 Zone-wide cache invalidation can temporarily reduce cache hit rates. Existing safeguards and permissions remain enforced.
               </div>
               {purgeAll.error && (
-                <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+                <Alert role="alert" variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription className="break-words text-sm leading-6">{purgeAll.error}</AlertDescription>
                 </Alert>
@@ -275,7 +275,7 @@ function CdnTab() {
                 variant="destructive"
                 onClick={handlePurgeAll}
                 disabled={purgeAll.loading}
-                className="w-full bg-red-600 text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 dark:bg-red-600 dark:hover:bg-red-500"
+                className="min-h-10 w-full bg-red-600 text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500/50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 dark:bg-red-600 dark:hover:bg-red-500"
               >
                 {purgeAll.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
                 Purge All Cache
@@ -297,13 +297,14 @@ function CdnTab() {
             </CardHeader>
             <CardContent className="space-y-3">
               <textarea
-                className="w-full min-w-0 min-h-[132px] max-h-[42dvh] overflow-auto break-all rounded-xl border border-border/70 bg-background/90 p-3 text-sm leading-6 shadow-inner outline-none resize-y placeholder:text-muted-foreground/70 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/55"
+                aria-label="URLs to purge"
+                className="w-full min-w-0 min-h-[132px] max-h-[42dvh] overflow-auto break-all rounded-xl border border-border/70 bg-background/90 p-3 text-sm leading-6 shadow-inner outline-none resize-y placeholder:text-muted-foreground/70 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/55 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]"
                 placeholder="https://example.com/page1&#10;https://example.com/page2"
                 value={urls}
                 onChange={e => setUrls(e.target.value)}
               />
               {purgeUrls.error && (
-                <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+                <Alert role="alert" variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription className="break-words text-sm leading-6">{purgeUrls.error}</AlertDescription>
                 </Alert>
@@ -311,7 +312,7 @@ function CdnTab() {
               <Button
                 onClick={handlePurgeUrls}
                 disabled={purgeUrls.loading || !urls.trim()}
-                className="w-full border border-amber-500/25 bg-amber-500/10 text-amber-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 dark:text-amber-200"
+                className="min-h-10 w-full border border-amber-500/25 bg-amber-500/10 text-amber-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-500/20 focus-visible:ring-2 focus-visible:ring-amber-500/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 dark:text-amber-200"
               >
                 {purgeUrls.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
                 Purge URLs
@@ -339,15 +340,15 @@ function WorkersTab() {
   const isLoading = workers.loading || pages.loading;
 
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-6">
-      <DashboardThemeFrame variant="section" className="space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+    <div className="min-h-0 min-w-0 space-y-4 sm:space-y-6">
+      <DashboardThemeFrame variant="section" className="min-h-0 space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
         <div className="flex min-w-0 flex-col gap-2">
           <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Workers & Pages</h3>
           <p className="max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">Deployment visibility for edge compute scripts and Pages projects connected to Cloudflare.</p>
         </div>
 
         {(workers.error || pages.error) && (
-          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+          <Alert role="alert" variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="break-words text-sm leading-6">{workers.error || pages.error}</AlertDescription>
           </Alert>
@@ -510,8 +511,8 @@ function FirewallTab() {
   ];
 
   return (
-    <div className="min-w-0 space-y-4 sm:space-y-6">
-      <DashboardThemeFrame variant="section" className="space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+    <div className="min-h-0 min-w-0 space-y-4 sm:space-y-6">
+      <DashboardThemeFrame variant="section" className="min-h-0 space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Firewall Rules</h3>
@@ -520,7 +521,7 @@ function FirewallTab() {
           <Button
             onClick={() => setShowForm(!showForm)}
             size="sm"
-            className="border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-primary"
+            className="min-h-9 border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-primary"
           >
             <Plus className="h-4 w-4 mr-1" />
             New Rule
@@ -528,7 +529,7 @@ function FirewallTab() {
         </div>
 
         {(rules.error || createRule.error || deleteRule.error) && (
-          <Alert variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
+          <Alert role="alert" variant="destructive" className="min-w-0 overflow-hidden border-red-500/30 bg-red-500/10 text-red-700 shadow-sm dark:text-red-200">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="break-words text-sm leading-6">{rules.error || createRule.error || deleteRule.error}</AlertDescription>
           </Alert>
@@ -557,13 +558,13 @@ function FirewallTab() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-foreground sm:text-sm">{preset.label}</p>
-                      <p className="mt-1 max-w-full break-words rounded-lg border border-border/50 bg-muted/35 px-2 py-1.5 font-mono text-[11px] leading-5 text-muted-foreground sm:line-clamp-2 sm:text-xs dark:border-white/10" title={preset.expression}>{preset.expression}</p>
+                      <p className="mt-1 max-w-full break-words rounded-lg border border-border/50 bg-muted/35 px-2 py-1.5 font-mono text-[11px] leading-5 text-muted-foreground select-text sm:line-clamp-2 sm:text-xs dark:border-white/10" title={preset.expression}>{preset.expression}</p>
                     </div>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-shrink-0 self-end border-primary/20 bg-primary/5 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 sm:self-auto"
+                    className="min-h-9 flex-shrink-0 self-end border-primary/20 bg-primary/5 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 sm:self-auto"
                     onClick={async () => {
                       const result = await createRule.execute('create_firewall_rule', {
                         expression: preset.expression,
@@ -596,6 +597,7 @@ function FirewallTab() {
                 <div className="space-y-2">
                   <Label>Description</Label>
                   <Input
+                    aria-label="Description"
                     placeholder="e.g. Block auth page from bots"
                     value={newRule.description}
                     onChange={e => setNewRule(r => ({ ...r, description: e.target.value }))}
@@ -629,8 +631,8 @@ function FirewallTab() {
                 />
               </div>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <Button variant="outline" onClick={() => setShowForm(false)} className="w-full border-border/70 bg-background/70 sm:w-auto">Cancel</Button>
-                <Button onClick={handleCreate} disabled={createRule.loading} className="w-full border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/20 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 sm:w-auto">
+                <Button variant="outline" onClick={() => setShowForm(false)} className="min-h-10 w-full border-border/70 bg-background/70 sm:w-auto">Cancel</Button>
+                <Button onClick={handleCreate} disabled={createRule.loading} className="min-h-10 w-full border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/20 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70 sm:w-auto">
                   {createRule.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
                   Create Rule
                 </Button>
@@ -666,8 +668,8 @@ function FirewallTab() {
                   {rulesList.map((rule: any) => (
                     <div key={rule.id} className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 bg-background/55 p-3 shadow-sm transition-colors hover:border-primary/25 hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-slate-950/35">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-foreground sm:text-sm">{rule.description || 'Untitled Rule'}</p>
-                        <p className="mt-1 max-w-full break-words rounded-lg border border-border/50 bg-muted/35 px-2 py-1.5 font-mono text-[11px] leading-5 text-muted-foreground sm:line-clamp-2 sm:text-xs dark:border-white/10" title={rule.filter?.expression || 'N/A'}>
+                        <p className="truncate text-xs font-medium text-foreground sm:text-sm" title={rule.description || 'Untitled Rule'}>{rule.description || 'Untitled Rule'}</p>
+                        <p className="mt-1 max-w-full break-words rounded-lg border border-border/50 bg-muted/35 px-2 py-1.5 font-mono text-[11px] leading-5 text-muted-foreground select-text sm:line-clamp-2 sm:text-xs dark:border-white/10" title={rule.filter?.expression || 'N/A'}>
                           {rule.filter?.expression || 'N/A'}
                         </p>
                       </div>
@@ -722,7 +724,7 @@ export default function CloudflareManagement() {
   const zoneData = zone.data?.result;
 
   return (
-    <DashboardThemeFrame variant="page" className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-7 sm:px-0">
+    <DashboardThemeFrame variant="page" className="min-h-[calc(100dvh-5rem)] min-w-0 space-y-5 px-1 pb-6 sm:space-y-7 sm:px-0">
       <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_top_right,hsl(var(--primary)/0.12),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_52%,hsl(var(--primary)/0.10))] p-5 shadow-[0_24px_80px_rgba(15,23,42,0.14)] ring-1 ring-white/35 dark:ring-white/10 dark:shadow-black/40 sm:flex-row sm:items-start sm:justify-between sm:p-6">
         <div className="flex min-w-0 items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner dark:bg-primary/15 sm:h-14 sm:w-14">
@@ -757,21 +759,21 @@ export default function CloudflareManagement() {
       </DashboardThemeFrame>
 
       <Tabs defaultValue="analytics" className="min-w-0 w-full">
-        <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] scrollbar-hide dark:bg-slate-950/45 dark:shadow-black/25">
+        <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/45 dark:shadow-black/25">
           <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
-            <TabsTrigger value="analytics" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
+            <TabsTrigger value="analytics" className="gap-1.5 min-h-10 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <BarChart3 className="h-3.5 w-3.5" />
               <span>Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="cdn" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
+            <TabsTrigger value="cdn" className="gap-1.5 min-h-10 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <HardDrive className="h-3.5 w-3.5" />
               CDN
             </TabsTrigger>
-            <TabsTrigger value="workers" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
+            <TabsTrigger value="workers" className="gap-1.5 min-h-10 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <Zap className="h-3.5 w-3.5" />
               Workers
             </TabsTrigger>
-            <TabsTrigger value="firewall" className="gap-1.5 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
+            <TabsTrigger value="firewall" className="gap-1.5 min-h-10 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm">
               <Shield className="h-3.5 w-3.5" />
               Firewall
             </TabsTrigger>
