@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { MultiSelectFilter } from '@/components/api-usage/MultiSelectFilter';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import {
   Activity,
   BarChart3,
@@ -163,6 +164,66 @@ interface ApiUsageData {
   consumption?: ConsumptionData;
   vapi?: VapiData;
   projections?: ProjectionsData;
+}
+
+
+// Phase 1 scope lock: API Usage UI shell only. Data fetching, filters,
+// calculations, status mappings, tabs, and refresh/date behaviour are preserved.
+const API_USAGE_PAGE_FRAME =
+  'min-h-[calc(100dvh-5rem)] space-y-4 px-1 pb-6 sm:space-y-6 sm:px-0';
+
+const API_USAGE_HERO_FRAME =
+  'flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_58%,hsl(var(--primary)/0.08))] p-5 shadow-[0_22px_70px_rgba(15,23,42,0.12)] ring-1 ring-white/35 dark:ring-white/10 dark:shadow-black/35 sm:flex-row sm:items-start sm:justify-between sm:p-6';
+
+const API_USAGE_METRIC_CARD =
+  'group min-w-0 overflow-hidden border-primary/10 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-[0_12px_36px_rgba(15,23,42,0.08)] ring-1 ring-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-950/75 dark:ring-white/10 dark:shadow-black/25';
+
+const API_USAGE_TAB_TRIGGER =
+  'shrink-0 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm';
+
+interface ApiUsageMetricCardProps {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  caption: ReactNode;
+  className?: string;
+}
+
+function ApiUsageMetricCard({ icon, label, value, caption, className = '' }: ApiUsageMetricCardProps) {
+  return (
+    <Card className={`${API_USAGE_METRIC_CARD} ${className}`}>
+      <CardContent className="flex h-full min-w-0 flex-col justify-between p-4">
+        <div className="mb-3 flex min-w-0 items-center gap-2 text-muted-foreground">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 shadow-inner">
+            {icon}
+          </span>
+          <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
+        </div>
+        <p className="min-w-0 truncate text-xl font-bold tracking-tight text-foreground">{value}</p>
+        <p className="mt-1 min-w-0 truncate text-[10px] text-muted-foreground">{caption}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface ApiUsageEmptyStateProps {
+  icon: ReactNode;
+  title: string;
+  description: string;
+}
+
+function ApiUsageEmptyState({ icon, title, description }: ApiUsageEmptyStateProps) {
+  return (
+    <DashboardThemeFrame variant="section" className="flex min-h-[18rem] items-center justify-center p-8 text-center">
+      <div className="mx-auto max-w-md text-muted-foreground">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary shadow-inner">
+          {icon}
+        </div>
+        <p className="text-lg font-semibold text-foreground">{title}</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+    </DashboardThemeFrame>
+  );
 }
 
 const BUDGET_LIMITS: Record<string, number> = {
@@ -387,40 +448,47 @@ export default function ApiUsage() {
   ];
   const QUALITY_COLORS = ['hsl(142, 71%, 45%)', 'hsl(45, 93%, 47%)', 'hsl(0, 84%, 60%)', 'hsl(217, 91%, 60%)'];
 
+
   if (loading) {
     return (
-      <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64 mt-2" />
+      <DashboardThemeFrame variant="page" className={API_USAGE_PAGE_FRAME}>
+        <DashboardThemeFrame as="header" variant="hero" className={API_USAGE_HERO_FRAME}>
+          <div className="min-w-0 space-y-3">
+            <Skeleton className="h-8 w-56 rounded-xl" />
+            <Skeleton className="h-4 w-full max-w-xl rounded-xl" />
           </div>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="flex min-w-0 flex-wrap gap-2">
+            <Skeleton className="h-10 w-[130px] rounded-xl" />
+            <Skeleton className="h-10 w-28 rounded-xl" />
+          </div>
+        </DashboardThemeFrame>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
           {[...Array(5)].map((_, i) => (
-            <Card key={i}><CardContent className="p-4 sm:p-6"><Skeleton className="h-16" /></CardContent></Card>
+            <Card key={i} className={API_USAGE_METRIC_CARD}>
+              <CardContent className="p-4"><Skeleton className="h-20 rounded-xl" /></CardContent>
+            </Card>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {[...Array(4)].map((_, i) => (
-            <Card key={i}><CardContent className="p-4 sm:p-6"><Skeleton className="h-64" /></CardContent></Card>
+            <DashboardThemeFrame key={i} variant="chartCard" className="p-4 sm:p-6"><Skeleton className="h-64 rounded-xl" /></DashboardThemeFrame>
           ))}
         </div>
-      </div>
+      </DashboardThemeFrame>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
+    <DashboardThemeFrame variant="page" className={API_USAGE_PAGE_FRAME}>
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">API Usage & Costs</h1>
+      <DashboardThemeFrame as="header" variant="hero" className={API_USAGE_HERO_FRAME}>
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl sm:text-3xl font-bold text-foreground tracking-tight">API Usage & Costs</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Monitor health, tokens, VAPI calls, and projected costs across all integrations
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 self-start sm:justify-end">
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-[130px] min-h-[40px]">
               <SelectValue />
@@ -437,12 +505,12 @@ export default function ApiUsage() {
             <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Multi-Select Filters */}
       {data && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mr-1">Filters:</span>
+        <DashboardThemeFrame variant="toolbar" className="min-w-0 border-primary/10 bg-card/70 shadow-[0_12px_36px_rgba(15,23,42,0.06)] dark:bg-slate-950/35">
+          <span className="mr-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"><Filter className="h-3.5 w-3.5" />Filters:</span>
           <MultiSelectFilter
             label="Services"
             options={serviceFilterOptions}
@@ -476,87 +544,58 @@ export default function ApiUsage() {
               <X className="h-3 w-3" /> Clear all
             </Button>
           )}
-        </div>
+        </DashboardThemeFrame>
       )}
 
       {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">API Calls</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{data.summary.totalCalls.toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{data.summary.successRate}% success</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Phone className="h-4 w-4 text-pink-500" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">VAPI Calls</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{data.vapi?.totalCalls || 0}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{data.vapi?.totalMinutes || 0} min</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <Hash className="h-4 w-4 text-primary" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">LLM Tokens</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">
-                {data.consumption ? (data.consumption.summary.totalTokens / 1000).toFixed(1) + 'k' : '—'}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {data.consumption ? `${data.consumption.summary.totalRequests} calls` : 'No data'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <DollarSign className="h-4 w-4 text-green-500" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">Total Spend</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">${totalCombinedCost.toFixed(2)}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{data.summary.period}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 bg-card/80 backdrop-blur-sm col-span-2 sm:col-span-1">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                <CalendarDays className="h-4 w-4 text-orange-500" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">Projected /mo</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">
-                ${data.projections?.totalProjectedMonthly?.toFixed(2) || '0.00'}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Based on {data.summary.period} avg
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+          <ApiUsageMetricCard
+            icon={<Zap className="h-4 w-4 text-primary" />}
+            label="API Calls"
+            value={data.summary.totalCalls.toLocaleString()}
+            caption={`${data.summary.successRate}% success`}
+          />
+          <ApiUsageMetricCard
+            icon={<Phone className="h-4 w-4 text-pink-500" />}
+            label="VAPI Calls"
+            value={data.vapi?.totalCalls || 0}
+            caption={`${data.vapi?.totalMinutes || 0} min`}
+          />
+          <ApiUsageMetricCard
+            icon={<Hash className="h-4 w-4 text-primary" />}
+            label="LLM Tokens"
+            value={data.consumption ? (data.consumption.summary.totalTokens / 1000).toFixed(1) + 'k' : '—'}
+            caption={data.consumption ? `${data.consumption.summary.totalRequests} calls` : 'No data'}
+          />
+          <ApiUsageMetricCard
+            icon={<DollarSign className="h-4 w-4 text-green-500" />}
+            label="Total Spend"
+            value={`$${totalCombinedCost.toFixed(2)}`}
+            caption={data.summary.period}
+          />
+          <ApiUsageMetricCard
+            icon={<CalendarDays className="h-4 w-4 text-orange-500" />}
+            label="Projected /mo"
+            value={`$${data.projections?.totalProjectedMonthly?.toFixed(2) || '0.00'}`}
+            caption={`Based on ${data.summary.period} avg`}
+            className="col-span-2 sm:col-span-1"
+          />
         </div>
       )}
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-muted/50 overflow-x-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="consumption">LLM Costs</TabsTrigger>
-          <TabsTrigger value="vapi">VAPI & Voice</TabsTrigger>
-          <TabsTrigger value="budget">Budget</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="logs">Logs</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
+        <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:bg-slate-950/45 dark:shadow-black/25">
+          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+            <TabsTrigger value="overview" className={API_USAGE_TAB_TRIGGER}>Overview</TabsTrigger>
+            <TabsTrigger value="consumption" className={API_USAGE_TAB_TRIGGER}>LLM Costs</TabsTrigger>
+            <TabsTrigger value="vapi" className={API_USAGE_TAB_TRIGGER}>VAPI & Voice</TabsTrigger>
+            <TabsTrigger value="budget" className={API_USAGE_TAB_TRIGGER}>Budget</TabsTrigger>
+            <TabsTrigger value="performance" className={API_USAGE_TAB_TRIGGER}>Performance</TabsTrigger>
+            <TabsTrigger value="services" className={API_USAGE_TAB_TRIGGER}>Services</TabsTrigger>
+            <TabsTrigger value="logs" className={API_USAGE_TAB_TRIGGER}>Logs</TabsTrigger>
+          </TabsList>
+        </DashboardThemeFrame>
 
         {/* ==================== Overview Tab ==================== */}
         <TabsContent value="overview" className="space-y-4 mt-4">
@@ -869,11 +908,11 @@ export default function ApiUsage() {
             </div>
           )}
           {!data?.consumption && (
-            <div className="p-12 text-center text-muted-foreground">
-              <Brain className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-lg font-medium">No consumption data available</p>
-              <p className="text-sm mt-1">Token and cost tracking will populate as API calls are made.</p>
-            </div>
+            <ApiUsageEmptyState
+              icon={<Brain className="h-7 w-7" />}
+              title="No consumption data available"
+              description="Token and cost tracking will populate as API calls are made."
+            />
           )}
         </TabsContent>
 
@@ -988,11 +1027,11 @@ export default function ApiUsage() {
               </Card>
             </div>
           ) : (
-            <div className="p-12 text-center text-muted-foreground">
-              <Phone className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-lg font-medium">No VAPI call data yet</p>
-              <p className="text-sm mt-1">Call logs will appear here as voice calls are made through VAPI.</p>
-            </div>
+            <ApiUsageEmptyState
+              icon={<Phone className="h-7 w-7" />}
+              title="No VAPI call data yet"
+              description="Call logs will appear here as voice calls are made through VAPI."
+            />
           )}
         </TabsContent>
 
@@ -1114,11 +1153,11 @@ export default function ApiUsage() {
               </Card>
             </div>
           ) : (
-            <div className="p-12 text-center text-muted-foreground">
-              <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-lg font-medium">No budget data available</p>
-              <p className="text-sm mt-1">Cost projections will appear as usage data accumulates.</p>
-            </div>
+            <ApiUsageEmptyState
+              icon={<DollarSign className="h-7 w-7" />}
+              title="No budget data available"
+              description="Cost projections will appear as usage data accumulates."
+            />
           )}
         </TabsContent>
 
@@ -1287,6 +1326,6 @@ export default function ApiUsage() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
