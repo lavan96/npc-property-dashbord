@@ -402,6 +402,37 @@ export default function Integrations() {
     return 'partial';
   };
 
+  const getCredentialTrustSummary = (integration: IntegrationConfig) => {
+    const requiredFields = integration.fields.filter(f => f.required !== false);
+    const configuredRequiredFields = requiredFields.filter(f => savedKeys.has(f.key));
+    const status = getIntegrationStatus(integration);
+
+    if (status === 'configured') {
+      return {
+        className: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
+        iconClassName: 'text-emerald-500 dark:text-emerald-300',
+        label: 'Required credentials saved',
+        detail: `${configuredRequiredFields.length}/${requiredFields.length} required fields configured`,
+      };
+    }
+
+    if (status === 'partial') {
+      return {
+        className: 'border-amber-400/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+        iconClassName: 'text-amber-600 dark:text-amber-300',
+        label: 'Partial setup',
+        detail: `${configuredRequiredFields.length}/${requiredFields.length} required fields configured`,
+      };
+    }
+
+    return {
+      className: 'border-border/60 bg-muted/35 text-muted-foreground',
+      iconClassName: 'text-muted-foreground',
+      label: 'Credentials not saved yet',
+      detail: `${configuredRequiredFields.length}/${requiredFields.length} required fields configured`,
+    };
+  };
+
   const getStatusBadge = (status: string) => {
     const baseBadgeClass = 'max-w-full gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
 
@@ -558,9 +589,9 @@ export default function Integrations() {
                 <span className="truncate">Supabase</span>
               </Badge>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">Configured in Supabase secrets:</p>
-              <ul className="text-xs mt-1">
+            <TooltipContent className="max-w-xs rounded-xl border-border/70 bg-popover/95 p-3 shadow-xl">
+              <p className="text-xs font-semibold">Configured in Supabase secrets:</p>
+              <ul className="mt-1 max-h-44 overflow-y-auto text-xs [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
                 {secretStatus.configuredSecrets.map(s => (
                   <li key={s} className="text-green-400">✓ {s}</li>
                 ))}
@@ -579,9 +610,9 @@ export default function Integrations() {
                 <span className="truncate">Partial</span>
               </Badge>
             </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">Supabase secrets status:</p>
-              <ul className="text-xs mt-1">
+            <TooltipContent className="max-w-xs rounded-xl border-border/70 bg-popover/95 p-3 shadow-xl">
+              <p className="text-xs font-semibold">Supabase secrets status:</p>
+              <ul className="mt-1 max-h-44 overflow-y-auto text-xs [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
                 {secretStatus.configuredSecrets.map(s => (
                   <li key={s} className="text-green-400">✓ {s}</li>
                 ))}
@@ -616,6 +647,7 @@ export default function Integrations() {
   const renderIntegrationCard = (integration: IntegrationConfig) => {
     const status = getIntegrationStatus(integration);
     const tone = getIntegrationTone(integration.id);
+    const trustSummary = getCredentialTrustSummary(integration);
 
     return (
       <Card
@@ -685,6 +717,14 @@ export default function Integrations() {
                 </div>
               );
             })}
+          </div>
+
+          <div className={`flex min-w-0 items-start gap-3 rounded-2xl border px-3 py-2.5 text-xs shadow-inner shadow-sm ${trustSummary.className}`}>
+            <Shield className={`mt-0.5 h-4 w-4 shrink-0 ${trustSummary.iconClassName}`} aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="font-semibold leading-5">{trustSummary.label}</p>
+              <p className="truncate leading-5 opacity-85">{trustSummary.detail}</p>
+            </div>
           </div>
 
           <div className="flex min-w-0 flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
@@ -770,7 +810,8 @@ export default function Integrations() {
           size="sm"
           onClick={checkSupabaseSecrets}
           disabled={loadingSecrets}
-          className="min-h-[44px] shrink-0 gap-2 self-start rounded-xl border-primary/25 bg-background/70 px-4 font-semibold text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_22px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/45 sm:self-center"
+          aria-label="Refresh Supabase integration secret status"
+          className="min-h-[44px] shrink-0 gap-2 self-start rounded-xl border-primary/25 bg-background/70 px-4 font-semibold text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_22px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/45 disabled:cursor-not-allowed disabled:opacity-65 sm:self-center"
         >
           {loadingSecrets ? (
             <Loader2 className="h-4 w-4 animate-spin" />
