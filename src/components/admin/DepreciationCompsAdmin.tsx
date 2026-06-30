@@ -603,7 +603,7 @@ export function DepreciationCompsAdmin() {
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </TableCell>
-                          </TableRow>
+                            </TableRow>
                         );
                       })}
                     </TableBody>
@@ -613,21 +613,36 @@ export function DepreciationCompsAdmin() {
             </div>
           </TabsContent>
           
-          <TabsContent value="import" className="space-y-4">
+          <TabsContent value="import" className="min-w-0 space-y-4">
             {/* CSV Import */}
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleExportTemplate}>
+            <div className="min-w-0 space-y-4">
+              <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">CSV import workspace</p>
+                  <p className="text-xs leading-5 text-muted-foreground">Use the template before importing comparable records.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleExportTemplate}
+                  className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary sm:w-auto"
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
               </div>
               
-              <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                <FileSpreadsheet className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                <Label htmlFor="csv-upload" className="cursor-pointer">
-                  <span className="text-primary hover:underline">Click to upload</span>
-                  <span className="text-muted-foreground"> or drag and drop a CSV file</span>
+              <div className="group rounded-3xl border border-dashed border-primary/30 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72))] p-1 shadow-[0_18px_48px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/50 hover:shadow-[0_22px_58px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.16),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.66),hsl(var(--background)/0.46))] dark:shadow-black/25">
+                <Label
+                  htmlFor="csv-upload"
+                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/35 sm:px-6"
+                >
+                  <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
+                    <FileSpreadsheet className="h-8 w-8" />
+                  </span>
+                  <span className="max-w-xl text-base font-semibold leading-7">
+                    <span className="text-primary underline-offset-4 group-hover:underline">Click to upload</span>
+                    <span className="text-muted-foreground"> or drag and drop a CSV file</span>
+                  </span>
                 </Label>
                 <Input
                   id="csv-upload"
@@ -639,42 +654,50 @@ export function DepreciationCompsAdmin() {
               </div>
               
               {csvError && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="overflow-hidden rounded-2xl border-destructive/30 bg-destructive/10 text-destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{csvError}</AlertDescription>
+                  <AlertDescription className="break-words leading-6">{csvError}</AlertDescription>
                 </Alert>
               )}
               
               {csvPreview.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Preview (first 5 rows):</h4>
-                    <Badge variant="secondary">
+                <div className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/25">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="font-medium text-foreground">Preview (first 5 rows):</h4>
+                    <Badge variant="secondary" className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary">
                       {csvFullData.length - 1} total rows found
                     </Badge>
                   </div>
-                  <ScrollArea className="h-[200px] rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {csvPreview[0].map((header, i) => (
-                            <TableHead key={i} className="text-xs">{header}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {csvPreview.slice(1).map((row, i) => (
-                          <TableRow key={i}>
-                            {row.map((cell, j) => (
-                              <TableCell key={j} className="text-xs">{cell}</TableCell>
-                            ))}
+                  <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 dark:border-white/10">
+                    <ScrollArea className="h-[220px]">
+                      <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+                        <Table className="min-w-[760px]">
+                          <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-slate-950/90">
+                            <TableRow className="hover:bg-transparent">
+                              {csvPreview[0].map((header, i) => (
+                                <TableHead key={i} className="max-w-[12rem] truncate whitespace-nowrap text-xs font-semibold text-foreground" title={header}>{header}</TableHead>
+                              ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
+                          </TableHeader>
+                          <TableBody>
+                            {csvPreview.slice(1).map((row, i) => (
+                              <TableRow key={i} className="border-border/60 hover:bg-primary/5 dark:border-white/10">
+                                {row.map((cell, j) => (
+                                  <TableCell key={j} className="max-w-[12rem] truncate text-xs text-muted-foreground" title={cell}>{cell}</TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </div>
                   
-                  <Button onClick={handleImportCsv} disabled={uploading}>
+                  <Button
+                    onClick={handleImportCsv}
+                    disabled={uploading}
+                    className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:bg-primary/90 focus-visible:ring-primary sm:w-auto"
+                  >
                     {uploading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
