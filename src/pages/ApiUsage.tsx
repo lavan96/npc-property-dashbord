@@ -226,6 +226,53 @@ function ApiUsageEmptyState({ icon, title, description }: ApiUsageEmptyStateProp
   );
 }
 
+
+interface ApiUsageTabHeaderProps {
+  icon: ReactNode;
+  eyebrow: string;
+  title: string;
+  description: string;
+  children?: ReactNode;
+}
+
+function ApiUsageTabHeader({ icon, eyebrow, title, description, children }: ApiUsageTabHeaderProps) {
+  return (
+    <DashboardThemeFrame variant="sectionAccent" className="flex min-w-0 flex-col gap-4 border-primary/20 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-inner">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
+          <h2 className="mt-1 break-words text-lg font-semibold tracking-tight text-foreground sm:text-xl">{title}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {children && <div className="flex min-w-0 flex-wrap gap-2 sm:justify-end">{children}</div>}
+    </DashboardThemeFrame>
+  );
+}
+
+interface ApiUsageInsightTileProps {
+  label: string;
+  value: ReactNode;
+  detail: ReactNode;
+  icon: ReactNode;
+}
+
+function ApiUsageInsightTile({ label, value, detail, icon }: ApiUsageInsightTileProps) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+      <div className="mb-3 flex min-w-0 items-center gap-2 text-muted-foreground">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</span>
+        <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
+      </div>
+      <p className="min-w-0 truncate text-2xl font-bold tracking-tight text-foreground">{value}</p>
+      <p className="mt-1 min-w-0 truncate text-xs text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
 const BUDGET_LIMITS: Record<string, number> = {
   openai: 50,
   perplexity: 30,
@@ -600,7 +647,45 @@ export default function ApiUsage() {
         {/* ==================== Overview Tab ==================== */}
         <TabsContent value="overview" className="space-y-4 mt-4">
           {data && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <>
+              <ApiUsageTabHeader
+                icon={<Activity className="h-5 w-5" />}
+                eyebrow="Executive snapshot"
+                title="API operations overview"
+                description="A consolidated operational view of live API calls, service health, LLM usage, VAPI activity, projected spend, and recent telemetry for the selected date range."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
+                <Badge variant="outline" className="border-border/60 bg-background/60 text-muted-foreground">{filteredHealthServices.length} services in view</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <ApiUsageInsightTile
+                  icon={<CheckCircle2 className="h-4 w-4" />}
+                  label="Reliability"
+                  value={`${data.summary.successRate}%`}
+                  detail={`${data.summary.successCalls.toLocaleString()} successful / ${data.summary.errorCalls.toLocaleString()} errors`}
+                />
+                <ApiUsageInsightTile
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Response time"
+                  value={`${data.summary.avgResponseTime}ms`}
+                  detail="Average response across tracked calls"
+                />
+                <ApiUsageInsightTile
+                  icon={<Brain className="h-4 w-4" />}
+                  label="LLM usage"
+                  value={data.consumption ? (data.consumption.summary.totalTokens / 1000).toFixed(1) + 'k' : '—'}
+                  detail={data.consumption ? `${data.consumption.summary.totalRequests} calls tracked` : 'No consumption data'}
+                />
+                <ApiUsageInsightTile
+                  icon={<DollarSign className="h-4 w-4" />}
+                  label="Projected monthly"
+                  value={`$${data.projections?.totalProjectedMonthly?.toFixed(2) || '0.00'}`}
+                  detail={`Based on ${data.summary.period} average`}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Call Volume Area Chart */}
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-2">
@@ -707,14 +792,53 @@ export default function ApiUsage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            </>
           )}
         </TabsContent>
 
         {/* ==================== LLM Costs Tab ==================== */}
         <TabsContent value="consumption" className="space-y-4 mt-4">
           {data?.consumption && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <>
+              <ApiUsageTabHeader
+                icon={<Brain className="h-5 w-5" />}
+                eyebrow="LLM consumption"
+                title="Token and provider cost workspace"
+                description="Track existing LLM request volume, token consumption, model distribution, and estimated spend without changing token accounting or cost calculations."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
+                <Badge variant="outline" className="border-border/60 bg-background/60 text-muted-foreground">{filteredConsumptionServices.length} LLM services</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <ApiUsageMetricCard
+                  icon={<Activity className="h-4 w-4 text-primary" />}
+                  label="LLM Requests"
+                  value={data.consumption.summary.totalRequests.toLocaleString()}
+                  caption="Tracked API calls"
+                />
+                <ApiUsageMetricCard
+                  icon={<Hash className="h-4 w-4 text-primary" />}
+                  label="Total Tokens"
+                  value={(data.consumption.summary.totalTokens / 1000).toFixed(1) + 'k'}
+                  caption="Prompt + completion"
+                />
+                <ApiUsageMetricCard
+                  icon={<Coins className="h-4 w-4 text-primary" />}
+                  label="LLM Cost"
+                  value={`$${data.consumption.summary.totalCost.toFixed(4)}`}
+                  caption="Existing estimate"
+                />
+                <ApiUsageMetricCard
+                  icon={<Server className="h-4 w-4 text-primary" />}
+                  label="Active Services"
+                  value={data.consumption.summary.activeServices}
+                  caption="Consumption sources"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Token Usage Stacked Area */}
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
                 <CardHeader className="pb-2">
@@ -905,7 +1029,8 @@ export default function ApiUsage() {
                   )}
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            </>
           )}
           {!data?.consumption && (
             <ApiUsageEmptyState
