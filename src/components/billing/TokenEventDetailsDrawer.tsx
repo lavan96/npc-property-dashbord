@@ -150,7 +150,7 @@ export function TokenEventDetailsDrawer({
                         {o.user_id && data.users[o.user_id] && <> · {data.users[o.user_id]}</>}
                       </div>
                       <Separator />
-                      <div className="grid grid-cols-4 gap-3 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                         <div><p className="text-muted-foreground">Estimated</p><p className="font-semibold tabular-nums">{o.estimated_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Reserved</p><p className="font-semibold tabular-nums">{o.reserved_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Used</p><p className="font-semibold tabular-nums">{o.actual_tokens.toLocaleString()}</p></div>
