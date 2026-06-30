@@ -18,6 +18,7 @@ import {
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface APIHealthStat {
@@ -117,6 +118,12 @@ export default function Monitoring() {
     return 'destructive';
   };
 
+  const getStatusProgressClass = (successRate: number) => {
+    if (successRate >= 95) return 'h-2.5 bg-muted/70 [&>div]:bg-success';
+    if (successRate >= 80) return 'h-2.5 bg-muted/70 [&>div]:bg-warning';
+    return 'h-2.5 bg-muted/70 [&>div]:bg-destructive';
+  };
+
   const formatServiceName = (name: string) => {
     return name
       .split('-')
@@ -135,7 +142,7 @@ export default function Monitoring() {
   const totalLiveCached = cacheStats.reduce((sum, stat) => sum + stat.live_data, 0);
 
   return (
-    <DashboardThemeFrame variant="page" className="space-y-6 pb-6">
+    <DashboardThemeFrame variant="page" className="space-y-6 pb-6" aria-busy={isLoading}>
       {/* Header */}
       <DashboardThemeFrame
         as="header"
@@ -148,7 +155,7 @@ export default function Monitoring() {
             Real-time API health and cache performance
           </p>
         </div>
-        <Button onClick={fetchStats} disabled={isLoading} variant="outline" className="min-w-0 shrink-0 border-primary/30 bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary focus-visible:ring-primary/40">
+        <Button aria-label="Refresh monitoring data" onClick={fetchStats} disabled={isLoading} variant="outline" className="min-w-0 w-full shrink-0 rounded-full border-primary/30 bg-primary/10 px-5 font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/15 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.16)] focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60 sm:w-auto">
           {isLoading ? (
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -159,8 +166,8 @@ export default function Monitoring() {
       </DashboardThemeFrame>
 
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-border/70 dark:bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
             <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Total API Calls</CardTitle>
             <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
@@ -168,12 +175,16 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCalls.toLocaleString()}</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold tabular-nums text-foreground">{totalCalls.toLocaleString()}</div>
+            )}
             <p className="text-xs text-muted-foreground">Last 7 days</p>
           </CardContent>
         </Card>
 
-        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-border/70 dark:bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
             <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Data Quality</CardTitle>
             <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
@@ -181,12 +192,16 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums text-foreground">{overallDataQuality}%</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold tabular-nums text-foreground">{overallDataQuality}%</div>
+            )}
             <p className="text-xs text-muted-foreground">Live data ratio</p>
           </CardContent>
         </Card>
 
-        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-border/70 dark:bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
             <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Cache Entries</CardTitle>
             <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
@@ -194,8 +209,16 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCacheEntries.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">{totalLiveCached} live records</p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold tabular-nums text-foreground">{totalCacheEntries.toLocaleString()}</div>
+            )}
+            {isLoading ? (
+              <Skeleton className="mt-1 h-3 w-20 rounded" />
+            ) : (
+              <p className="text-xs text-muted-foreground">{totalLiveCached} live records</p>
+            )}
           </CardContent>
         </Card>
 
@@ -207,14 +230,18 @@ export default function Monitoring() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">Healthy</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-28 rounded-lg" />
+            ) : (
+              <div className="text-2xl font-bold text-success">Healthy</div>
+            )}
             <p className="text-xs text-muted-foreground">All services operational</p>
           </CardContent>
         </Card>
       </div>
 
       {/* API Health Status */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-border/70 dark:bg-card/80 dark:ring-primary/10">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.30),hsl(var(--card)/0))] px-5 py-5">
           <div className="flex min-w-0 items-start gap-3">
             <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
@@ -232,8 +259,24 @@ export default function Monitoring() {
         </CardHeader>
         <CardContent className="p-5">
           {isLoading ? (
-            <div className="flex min-h-40 items-center justify-center rounded-2xl border border-border/60 bg-muted/20 py-8">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="space-y-4">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-xl" />
+                      <Skeleton className="h-5 w-40 rounded-lg" />
+                    </div>
+                    <Skeleton className="h-7 w-24 rounded-full" />
+                  </div>
+                  <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((__, metricIndex) => (
+                      <Skeleton key={metricIndex} className="h-16 rounded-xl" />
+                    ))}
+                  </div>
+                  <Skeleton className="h-2.5 rounded-full" />
+                </div>
+              ))}
             </div>
           ) : apiStats.length === 0 ? (
             <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-muted-foreground">
@@ -246,7 +289,7 @@ export default function Monitoring() {
           ) : (
             <div className="space-y-4">
               {apiStats.map((stat) => (
-                <div key={stat.service_name} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-background/70 dark:border-white/10 dark:bg-background/25">
+                <div key={stat.service_name} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 hover:bg-background/70 dark:border-border/70 dark:bg-background/25">
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span className="shrink-0 rounded-xl border border-border/70 bg-card/80 p-2 text-muted-foreground">
@@ -254,7 +297,7 @@ export default function Monitoring() {
                       </span>
                       <span className="min-w-0 break-words font-medium">{formatServiceName(stat.service_name)}</span>
                     </div>
-                    <Badge variant={getStatusColor(stat.success_rate)} className="w-fit shrink-0 whitespace-nowrap">
+                    <Badge variant={getStatusColor(stat.success_rate)} className="w-fit shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm">
                       {stat.success_rate}% Success
                     </Badge>
                   </div>
@@ -283,7 +326,7 @@ export default function Monitoring() {
                       <span className="min-w-0 truncate">Success Rate</span>
                       <span className="shrink-0 tabular-nums">{stat.success_rate}%</span>
                     </div>
-                    <Progress value={stat.success_rate} className="h-2" />
+                    <Progress aria-label={`${formatServiceName(stat.service_name)} success rate ${stat.success_rate}%`} value={stat.success_rate} className={getStatusProgressClass(stat.success_rate)} />
                   </div>
                 </div>
               ))}
@@ -293,7 +336,7 @@ export default function Monitoring() {
       </Card>
 
       {/* Cache Performance */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-border/70 dark:bg-card/80 dark:ring-primary/10">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.22)_42%,hsl(var(--card)/0))] px-5 py-5">
           <div className="flex min-w-0 items-start gap-3">
             <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
@@ -311,13 +354,32 @@ export default function Monitoring() {
         </CardHeader>
         <CardContent className="p-5">
           {isLoading ? (
-            <div className="flex min-h-40 items-center justify-center rounded-2xl border border-border/60 bg-muted/20 py-8">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-xl" />
+                      <Skeleton className="h-5 w-44 rounded-lg" />
+                    </div>
+                    <div className="flex min-w-0 flex-wrap gap-2">
+                      <Skeleton className="h-7 w-24 rounded-full" />
+                      <Skeleton className="h-7 w-20 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {Array.from({ length: 4 }).map((__, metricIndex) => (
+                      <Skeleton key={metricIndex} className="h-16 rounded-xl" />
+                    ))}
+                  </div>
+                  <Skeleton className="h-12 rounded-xl" />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-4">
               {cacheStats.map((stat) => (
-                <div key={stat.cache_type} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm ring-1 ring-transparent transition-all hover:border-primary/30 hover:bg-background/70 hover:ring-primary/10 dark:border-white/10 dark:bg-background/25">
+                <div key={stat.cache_type} className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm ring-1 ring-transparent transition-all hover:border-primary/30 hover:bg-background/70 hover:ring-primary/10 dark:border-border/70 dark:bg-background/25">
                   <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span className="shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
@@ -329,13 +391,13 @@ export default function Monitoring() {
                     </div>
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       {stat.retention_days > 0 && (
-                        <Badge variant="outline" className="min-w-0 max-w-full rounded-full border-primary/25 bg-primary/10 text-xs text-primary">
+                        <Badge variant="outline" className="min-w-0 max-w-full rounded-full border-warning/35 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning shadow-sm">
                           <Clock className="mr-1 h-3 w-3 shrink-0" />
                           <span className="truncate">{stat.retention_days}d retention</span>
                         </Badge>
                       )}
                       {stat.total_entries > 0 && (
-                        <Badge variant="default" className="min-w-0 max-w-full rounded-full bg-primary text-primary-foreground shadow-sm shadow-primary/10">
+                        <Badge variant="default" className="min-w-0 max-w-full rounded-full border border-primary/30 bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/10">
                           <span className="truncate tabular-nums">{stat.total_entries.toLocaleString()} entries</span>
                         </Badge>
                       )}
@@ -368,7 +430,7 @@ export default function Monitoring() {
                           <span className="min-w-0 truncate">Cache Hit Potential</span>
                           <span className="shrink-0 tabular-nums">{stat.cache_hit_potential || 0}%</span>
                         </div>
-                        <Progress value={stat.cache_hit_potential || 0} className="h-2.5 bg-primary/12 [&>div]:bg-primary" />
+                        <Progress aria-label={`${stat.cache_type.replace('_', ' ')} cache hit potential ${stat.cache_hit_potential || 0}%`} value={stat.cache_hit_potential || 0} className="h-2.5 bg-muted/70 [&>div]:bg-primary" />
                       </div>
 
                       {stat.expired_entries > 0 && (
@@ -389,7 +451,7 @@ export default function Monitoring() {
       </Card>
 
       {/* Data Quality Breakdown */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-card/80 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.74))] shadow-[0_16px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-border/70 dark:bg-card/80 dark:ring-primary/10">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--success)/0.08),hsl(var(--warning)/0.06)_44%,hsl(var(--card)/0))] px-5 py-5">
           <div className="flex min-w-0 items-start gap-3">
             <span className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary shadow-sm">
@@ -407,6 +469,16 @@ export default function Monitoring() {
         </CardHeader>
         <CardContent className="p-5">
           <div className="space-y-5">
+            {isLoading ? (
+              <>
+                <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Skeleton className="h-32 rounded-2xl" />
+                  <Skeleton className="h-32 rounded-2xl" />
+                </div>
+                <Skeleton className="h-24 rounded-2xl" />
+              </>
+            ) : (
+              <>
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="min-w-0 overflow-hidden rounded-2xl border border-success/25 bg-[linear-gradient(145deg,hsl(var(--success)/0.12),hsl(var(--card)/0.72))] p-4 shadow-sm ring-1 ring-success/10">
                 <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
@@ -440,14 +512,16 @@ export default function Monitoring() {
                 <span className="min-w-0 break-words font-medium">Overall Data Quality</span>
                 <span className="shrink-0 font-semibold tabular-nums text-primary">{overallDataQuality}% Live</span>
               </div>
-              <Progress value={Number(overallDataQuality)} className="h-3 bg-muted [&>div]:bg-primary" />
+              <Progress aria-label={`Overall data quality ${overallDataQuality}% live`} value={Number(overallDataQuality)} className="h-3 bg-muted/70 [&>div]:bg-primary" />
             </div>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Footer */}
-      <div className="mx-auto flex min-w-0 max-w-xl flex-col items-center rounded-2xl border border-border/60 bg-card/55 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+      <div aria-live="polite" className="mx-auto flex min-w-0 max-w-xl flex-col items-center rounded-2xl border border-border/60 bg-card/55 px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
         <p className="min-w-0 break-words tabular-nums">Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
         <p className="mt-1 min-w-0 break-words leading-5">Data updates in real-time as services are used</p>
       </div>
