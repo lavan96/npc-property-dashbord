@@ -194,7 +194,7 @@ export function TokenEventDetailsDrawer({
             <div className="min-w-0 space-y-6 pb-8">
               {/* Outcome */}
               <section className="min-w-0">
-                <h3 className="text-sm font-semibold mb-2">Outcome</h3>
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />Outcome</h3>
                 {data.outcomes.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No outcome row yet.</p>
                 ) : (
@@ -202,16 +202,14 @@ export function TokenEventDetailsDrawer({
                     <div key={o.id} className={cn("min-w-0 space-y-3 rounded-2xl border border-border/70 p-4 text-sm shadow-sm transition-shadow duration-200", premiumTimeline ? "bg-background/65 ring-1 ring-black/5 hover:shadow-[0_16px_36px_rgba(15,23,42,0.08)] dark:ring-white/5 dark:hover:shadow-black/25" : "bg-background/55")}>
                       <div className="flex min-w-0 items-center justify-between gap-3">
                         <span className="min-w-0 truncate font-medium" title={o.function_name}>{o.function_name}</span>
-                        <Badge variant="outline" className={cn("max-w-[45%] shrink-0 truncate rounded-full", o.status === "success" ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-destructive/25 bg-destructive/10 text-destructive")} title={o.status}>
-                          {o.status.replace(/_/g, " ")}
-                        </Badge>
+                        <StatusBadge status={o.status} />
                       </div>
                       <div className="break-words text-xs text-muted-foreground">
                         {format(new Date(o.created_at), "PPpp")}
                         {o.user_id && data.users[o.user_id] && <> · {data.users[o.user_id]}</>}
                       </div>
                       <Separator />
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                         <div><p className="text-muted-foreground">Estimated</p><p className="font-semibold tabular-nums">{o.estimated_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Reserved</p><p className="font-semibold tabular-nums text-primary">{o.reserved_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Used</p><p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{o.actual_tokens.toLocaleString()}</p></div>
@@ -230,7 +228,8 @@ export function TokenEventDetailsDrawer({
 
               {/* Audit trail */}
               <section className="min-w-0">
-                <h3 className="text-sm font-semibold mb-2">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
                   Audit events ({data.events.length})
                 </h3>
                 {data.events.length === 0 ? (
