@@ -146,6 +146,7 @@ export {
 export {
   IMPORT_REVIEW_VISUAL_QA_PIPELINE_VERSION,
   runImportReviewVisualQualityPipeline,
+  shouldAutoRunVisualQa,
   type LoadedImportReviewForVisualQuality,
   type RunImportReviewVisualQualityPipelineOptions,
   type RunImportReviewVisualQualityPipelineResult,

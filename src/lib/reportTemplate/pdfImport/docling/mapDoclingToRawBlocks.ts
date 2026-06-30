@@ -25,6 +25,7 @@ import type {
   ImportBBox,
 } from '@/lib/reportTemplate/ingestion/reconciliation';
 import { resolveSourceFontFamily, lookupEmbeddedFamily } from '../fontResolver';
+import { deriveWeight } from '../fontFaceBuilder';
 import type {
   DoclingBBox,
   DoclingDocument,
@@ -134,6 +135,19 @@ function normaliseWeight(value: unknown): number | 'normal' | 'bold' | undefined
   return undefined;
 }
 
+/**
+ * Phase 6E — numeric weight from a font family / PostScript name (e.g.
+ * "OpenSans-Light" → 300, "Inter-SemiBold" → 600). Used only when the text item
+ * carries no explicit weight AND the name actually encodes one — `deriveWeight`
+ * returns its 400 default for plain names, which we treat as "no signal" so a
+ * heading's label-default weight is never clobbered.
+ */
+function weightFromFamilyName(family?: string): number | undefined {
+  if (!family) return undefined;
+  const w = deriveWeight(family, false);
+  return w !== 400 ? w : undefined;
+}
+
 function blockId(prefix: string, pageNo: number, index: number): string {
   return `docling-${prefix}-p${pageNo}-${index.toString(36)}`;
 }
@@ -163,7 +177,9 @@ function textItemToBlock(
       ? Math.max(1, Math.min(6, Math.round(item.level ?? 2)))
       : undefined;
   const fontSize = item.font?.size ?? labelDefaultFontSize(item.label, headingLevel);
-  const fontWeight = normaliseWeight(item.font?.weight) ?? labelDefaultWeight(item.label);
+  const fontWeight = normaliseWeight(item.font?.weight)
+    ?? weightFromFamilyName(item.font?.family)
+    ?? labelDefaultWeight(item.label);
   const fontStyle = item.font?.italic ? 'italic' : 'normal';
   // Phase B: tag page furniture so the plan builder can route it to a master page.
   const pageRegion: 'header' | 'footer' | undefined =

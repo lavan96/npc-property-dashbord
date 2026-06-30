@@ -395,6 +395,11 @@ export const VectorPathSchema = z.object({
   strokeWidth: z.number().optional(),
   fillRule: z.enum(['nonzero', 'evenodd']).optional(),
   opacity: z.number().min(0).max(1).optional(),
+  // Phase 6E — stroke styling captured from the source vector (dashed rules,
+  // rounded caps/joins). Optional so older templates parse unchanged.
+  strokeDasharray: z.string().optional(),
+  strokeLinecap: z.enum(['butt', 'round', 'square']).optional(),
+  strokeLinejoin: z.enum(['miter', 'round', 'bevel']).optional(),
 });
 export type VectorPath = z.infer<typeof VectorPathSchema>;
 

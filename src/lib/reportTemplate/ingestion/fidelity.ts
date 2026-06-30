@@ -198,8 +198,18 @@ function scorePage(page: CdirPage, opts: Required<Pick<CdirFidelityOptions, 'nat
   const pageArea = Math.max(1, page.width * page.height);
   const editableLayers = flat.filter(isNativeEditable);
   const fallbackLayers = flat.filter(isFallbackRaster);
-  const nativeCoverage = round3(clamp01(unionArea(editableLayers.map((layer) => layer.bounds as any)) / pageArea));
-  const rasterFallbackCoverage = round3(clamp01(unionArea(fallbackLayers.map((layer) => layer.bounds as any)) / pageArea));
+  const editableRects = editableLayers.map((layer) => layer.bounds as any);
+  const fallbackRects = fallbackLayers.map((layer) => layer.bounds as any);
+  const nativeArea = unionArea(editableRects);
+  // Fallback raster coverage = the page area that genuinely *relies* on the raster,
+  // i.e. the raster region NOT already reconstructed by native editable layers.
+  // A full-page raster trace is intentionally kept (visual-QA reference / underlay),
+  // but counting its whole area here pinned rasterFallbackCoverage at 1.0 even for
+  // excellent reconstructions — masking real fidelity gains. Compute the set
+  // difference instead: area(fallback \ editable) = area(fallback ∪ editable) − area(editable).
+  const fallbackOnlyArea = Math.max(0, unionArea([...fallbackRects, ...editableRects]) - nativeArea);
+  const nativeCoverage = round3(clamp01(nativeArea / pageArea));
+  const rasterFallbackCoverage = round3(clamp01(fallbackOnlyArea / pageArea));
   const expected = pageExpectation(page, opts.expectedText ?? []);
   const accuracy = expected === null ? null : textAccuracy(pageText(page), expected);
   const boundsById = new Map(flat.map((layer) => [layer.id, layer.bounds]));
