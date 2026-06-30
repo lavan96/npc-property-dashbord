@@ -1083,35 +1083,43 @@ export default function WhiteLabel() {
       <Separator className="bg-border/60" />
 
       {/* Company Name */}
-      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Monitor className="h-5 w-5 text-primary" />
-            <div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              <Monitor className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Company Name</CardTitle>
               <CardDescription>This will appear in the browser tab and sidebar</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              value={draftSettings.companyName}
-              onChange={(e) => updateDraftSettings({ companyName: e.target.value })}
-              placeholder="Enter company name"
-              className="sm:max-w-sm"
-            />
-            <Badge variant="outline" className="min-h-[44px] sm:min-h-0 shrink-0">Browser tab + shell brand name</Badge>
+          <div className="rounded-2xl border border-border/70 bg-background/60 p-3 shadow-inner sm:p-4">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+              <Input
+                value={draftSettings.companyName}
+                onChange={(e) => updateDraftSettings({ companyName: e.target.value })}
+                placeholder="Enter company name"
+                className="min-h-11 min-w-0 border-border/80 bg-card/90 font-medium shadow-sm focus-visible:ring-primary/30 sm:max-w-md"
+              />
+              <Badge variant="outline" className="min-h-10 w-fit max-w-full shrink-0 rounded-full border-primary/25 bg-primary/5 px-3 text-primary">
+                <span className="truncate">Browser tab + shell brand name</span>
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Color Theme */}
-      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Palette className="h-5 w-5 text-primary" />
-            <div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              <Palette className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Color Theme</CardTitle>
               <CardDescription>Customize the primary and accent colors of the dashboard</CardDescription>
             </div>
@@ -1120,13 +1128,15 @@ export default function WhiteLabel() {
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
             {/* Primary Color */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Primary Color</Label>
-              <p className="text-xs text-muted-foreground">
-                Used for buttons, links, and key UI elements
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="relative">
+            <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
+              <div className="min-w-0 space-y-1">
+                <Label className="text-sm font-medium">Primary Color</Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for buttons, links, and key UI elements
+                </p>
+              </div>
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative shrink-0 rounded-2xl border border-primary/20 bg-card p-2 shadow-sm transition-shadow hover:shadow-md">
                   <input
                     type="color"
                      value={draftSettings.primaryColor ? hslToHex(draftSettings.primaryColor) : '#D4A017'}
@@ -1134,15 +1144,15 @@ export default function WhiteLabel() {
                       const hsl = hexToHsl(e.target.value);
                        updateDraftSettings({ primaryColor: hsl });
                     }}
-                    className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
+                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent"
                     style={{ padding: 0 }}
                   />
                 </div>
-                <div className="flex-1 space-y-1">
-                  <div className="text-sm font-mono">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="w-fit max-w-full rounded-full border border-border/70 bg-card px-3 py-1 text-sm font-mono shadow-sm">
                     {draftSettings.primaryColor ? hslToHex(draftSettings.primaryColor) : '#D4A017'}
                   </div>
-                  <div className="text-xs text-muted-foreground font-mono">
+                  <div className="max-w-full break-words rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground font-mono">
                     hsl({draftSettings.primaryColor || '43 74% 49%'})
                   </div>
                 </div>
@@ -1150,6 +1160,7 @@ export default function WhiteLabel() {
                   <Button 
                     variant="ghost" 
                     size="sm"
+                    className="w-fit shrink-0"
                     onClick={() => {
                       updateDraftSettings({ primaryColor: null });
                     }}
@@ -1159,24 +1170,24 @@ export default function WhiteLabel() {
                 )}
               </div>
               {/* Preview swatches */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-1">
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'})` }}
                   title="Primary"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.8)` }}
                   title="80%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.5)` }}
                   title="50%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.primaryColor || '43 74% 49%'} / 0.2)` }}
                   title="20%"
                 />
@@ -1184,13 +1195,15 @@ export default function WhiteLabel() {
             </div>
 
             {/* Accent Color */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Accent Color</Label>
-              <p className="text-xs text-muted-foreground">
-                Used for highlights and secondary emphasis
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="relative">
+            <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
+              <div className="min-w-0 space-y-1">
+                <Label className="text-sm font-medium">Accent Color</Label>
+                <p className="text-xs text-muted-foreground">
+                  Used for highlights and secondary emphasis
+                </p>
+              </div>
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative shrink-0 rounded-2xl border border-primary/20 bg-card p-2 shadow-sm transition-shadow hover:shadow-md">
                   <input
                     type="color"
                      value={draftSettings.accentColor ? hslToHex(draftSettings.accentColor) : '#D4A017'}
@@ -1198,15 +1211,15 @@ export default function WhiteLabel() {
                       const hsl = hexToHsl(e.target.value);
                        updateDraftSettings({ accentColor: hsl });
                     }}
-                    className="w-12 h-12 rounded-lg cursor-pointer border-2 border-border overflow-hidden"
+                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent"
                     style={{ padding: 0 }}
                   />
                 </div>
-                <div className="flex-1 space-y-1">
-                  <div className="text-sm font-mono">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="w-fit max-w-full rounded-full border border-border/70 bg-card px-3 py-1 text-sm font-mono shadow-sm">
                     {draftSettings.accentColor ? hslToHex(draftSettings.accentColor) : '#D4A017'}
                   </div>
-                  <div className="text-xs text-muted-foreground font-mono">
+                  <div className="max-w-full break-words rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground font-mono">
                     hsl({draftSettings.accentColor || '43 74% 49%'})
                   </div>
                 </div>
@@ -1214,6 +1227,7 @@ export default function WhiteLabel() {
                   <Button 
                     variant="ghost" 
                     size="sm"
+                    className="w-fit shrink-0"
                     onClick={() => {
                       updateDraftSettings({ accentColor: null });
                     }}
@@ -1223,24 +1237,24 @@ export default function WhiteLabel() {
                 )}
               </div>
               {/* Preview swatches */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-1">
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'})` }}
                   title="Accent"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.8)` }}
                   title="80%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.5)` }}
                   title="50%"
                 />
                 <div 
-                  className="h-8 w-8 rounded-md border"
+                  className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background transition-transform hover:-translate-y-0.5 hover:shadow-md"
                    style={{ backgroundColor: `hsl(${draftSettings.accentColor || '43 74% 49%'} / 0.2)` }}
                   title="20%"
                 />
@@ -1251,11 +1265,13 @@ export default function WhiteLabel() {
       </Card>
 
       {/* Dark Mode */}
-      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            {currentTheme === 'dark' ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
-            <div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              {currentTheme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </div>
+            <div className="min-w-0 space-y-1">
               <CardTitle className="text-lg">Dark Mode</CardTitle>
               <CardDescription>Choose the default theme for your dashboard</CardDescription>
             </div>
@@ -1274,27 +1290,27 @@ export default function WhiteLabel() {
                     metadata: { theme: option.value }
                   });
                 }}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all hover:border-primary/50 ${
+                className={`flex min-w-0 flex-col items-center gap-3 rounded-2xl border p-4 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md ${
                    draftSettings.darkModeDefault === option.value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border'
+                    ? 'border-primary bg-primary/10 ring-1 ring-primary/25'
+                    : 'border-border/70 bg-background/60'
                 }`}
               >
-                <div className={`p-3 rounded-full ${
+                <div className={`rounded-2xl p-3 shadow-sm ${
                    draftSettings.darkModeDefault === option.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground'
                 }`}>
                   {option.icon}
                 </div>
-                <div className="text-center">
+                <div className="min-w-0 space-y-1 text-center">
                   <p className="font-medium text-sm">{option.label}</p>
                   <p className="text-xs text-muted-foreground">{option.description}</p>
                 </div>
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground mt-4">
+          <p className="mt-4 w-fit max-w-full rounded-full border border-border/70 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
             Runtime theme: <span className="font-medium capitalize">{currentTheme}</span>
           </p>
         </CardContent>
