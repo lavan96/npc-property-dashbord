@@ -636,7 +636,7 @@ export default function Integrations() {
         variant="page"
         className="flex min-h-[50vh] items-center justify-center rounded-[2rem] bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-6"
       >
-        <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-card/80 px-5 py-4 text-sm font-medium text-muted-foreground shadow-xl shadow-sm dark:shadow-black/25">
+        <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-card/80 px-5 py-4 text-sm font-medium text-muted-foreground shadow-xl shadow-sm dark:shadow-black/25" aria-live="polite">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           Loading integrations
         </div>
@@ -810,6 +810,7 @@ export default function Integrations() {
           size="sm"
           onClick={checkSupabaseSecrets}
           disabled={loadingSecrets}
+          aria-busy={loadingSecrets}
           aria-label="Refresh Supabase integration secret status"
           className="min-h-[44px] shrink-0 gap-2 self-start rounded-xl border-primary/25 bg-background/70 px-4 font-semibold text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_22px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/45 disabled:cursor-not-allowed disabled:opacity-65 sm:self-center"
         >
@@ -823,7 +824,7 @@ export default function Integrations() {
       </DashboardThemeFrame>
 
       {supabaseSetupRequired && (
-        <Alert className="rounded-2xl border-amber-400/40 bg-amber-500/10 shadow-sm">
+        <Alert className="min-w-0 rounded-2xl border-amber-400/40 bg-amber-500/10 shadow-sm">
           <AlertCircle className="h-4 w-4 text-yellow-500" />
           <AlertDescription className="text-sm">
             <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets,
@@ -854,7 +855,7 @@ export default function Integrations() {
           variant="toolbar"
           className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-sm dark:shadow-black/25 [scrollbar-color:hsl(var(--primary)/0.35)_transparent]"
         >
-          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+          <TabsList aria-label="Filter integrations by status" className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
             <TabsTrigger value="all" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">All</TabsTrigger>
             <TabsTrigger value="configured" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Configured</TabsTrigger>
             <TabsTrigger value="pending" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/45 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Pending</TabsTrigger>
