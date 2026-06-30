@@ -57,7 +57,7 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
   return (
     <div className="space-y-6">
       {/* Flags Summary */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className={criticalFlags.length > 0 ? 'border-red-300 bg-red-50/50' : ''}>
           <CardContent className="pt-4 text-center">
             <div className="text-2xl font-bold text-red-600">{criticalFlags.length}</div>

@@ -235,7 +235,7 @@ export default function Monitoring() {
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Total Calls</p>
                       <p className="font-semibold">{stat.total_calls.toLocaleString()}</p>
@@ -312,7 +312,7 @@ export default function Monitoring() {
 
                   {stat.total_entries > 0 ? (
                     <>
-                      <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">Live Data</p>
                           <p className="font-semibold">{stat.live_data.toLocaleString()}</p>

@@ -180,7 +180,7 @@ export function AuditTrailPanel({ auditTrail, explanation }: AuditTrailPanelProp
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3">
             {/* Summary Stats */}
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               <div className="text-center p-2 rounded bg-success/10 border border-success/20">
                 <p className="text-xs text-muted-foreground">Income Shading</p>
                 <p className="text-sm font-bold text-success">{formatAuditCurrency(auditTrail.summary.totalIncomeShading)}</p>

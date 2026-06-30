@@ -320,7 +320,7 @@ function PortfolioSummary({ portfolio }: { portfolio: Portfolio }) {
           />
           <Stat label="Avg LVR" value={portfolio.avg_lvr != null ? `${portfolio.avg_lvr}%` : '—'} icon={PieChart} />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="rounded-md border border-border p-3 md:col-span-1">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total purchase value</p>
             <p className="text-lg font-semibold mt-0.5">{fmtMoney(portfolio.total_purchase_value)}</p>
