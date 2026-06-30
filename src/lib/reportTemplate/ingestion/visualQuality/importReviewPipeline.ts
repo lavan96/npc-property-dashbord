@@ -16,6 +16,19 @@ import type { VisualImportFinalMode } from './schema';
 
 export const IMPORT_REVIEW_VISUAL_QA_PIPELINE_VERSION = 'import-review-visual-qa-pipeline-v1';
 
+/**
+ * Phase 6C — gate for the automatic, on-import visual-QA pass. Visual QA diffs the
+ * generated render against the source page rasters, so it can only run when the
+ * import actually produced source rasters. Pure + structurally typed so it can be
+ * unit-tested without the canvas-bound pipeline.
+ */
+export function shouldAutoRunVisualQa(
+  loaded: { renderArtifactManifest?: { sourceRasterCount?: number | null } | null } | null | undefined,
+): boolean {
+  const count = loaded?.renderArtifactManifest?.sourceRasterCount;
+  return typeof count === 'number' && count > 0;
+}
+
 export interface LoadedImportReviewForVisualQuality {
   record: {
     id: string;

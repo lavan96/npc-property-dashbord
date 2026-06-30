@@ -88,6 +88,38 @@ describe('golden render — editor→renderer contract (renderers must stay byte
     expect(html).not.toContain('background-size:cover');
   });
 
+  it('dims the raster reference via a white veil when background.opacity < 1 (Phase 6B)', () => {
+    const dimPage = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/page-001.png', imageFit: 'fill', opacity: 0.5 },
+        blocks: [],
+      }],
+    });
+    const { html } = renderTemplateToHtml(dimPage, { data: {}, editorMode: false });
+    // A white veil at (1 - opacity)=0.5 alpha is layered ON TOP of the raster.
+    expect(html).toContain('linear-gradient(rgba(255,255,255,0.500),rgba(255,255,255,0.500))');
+    // Two background layers → two background-size values (veil + raster).
+    expect(html).toContain('background-size:100% 100%, 100% 100%');
+  });
+
+  it('full-opacity raster (pixel-perfect) adds no veil', () => {
+    const fullPage = parseTemplate({
+      version: 1,
+      tokens: { colors: {}, fonts: {}, spacing: {} },
+      pages: [{
+        id: 'p', name: 'P', size: { width: 595, height: 842 },
+        background: { imageUrl: 'https://example.com/page-001.png', imageFit: 'fill', opacity: 1 },
+        blocks: [],
+      }],
+    });
+    const { html } = renderTemplateToHtml(fullPage, { data: {}, editorMode: false });
+    expect(html).not.toContain('linear-gradient(rgba(255,255,255');
+    expect(html).toContain('background-size:100% 100%');
+  });
+
   it('decorative background image keeps the cover default', () => {
     const coverPage = parseTemplate({
       version: 1,
