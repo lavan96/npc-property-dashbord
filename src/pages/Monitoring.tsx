@@ -155,7 +155,7 @@ export default function Monitoring() {
             Real-time API health and cache performance
           </p>
         </div>
-        <Button onClick={fetchStats} disabled={isLoading} variant="outline" className="min-w-0 shrink-0 rounded-full border-primary/30 bg-primary/10 px-5 font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/15 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.16)] focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60">
+        <Button aria-label="Refresh monitoring data" onClick={fetchStats} disabled={isLoading} variant="outline" className="min-w-0 w-full shrink-0 rounded-full border-primary/30 bg-primary/10 px-5 font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/15 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.16)] focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60 sm:w-auto">
           {isLoading ? (
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -166,7 +166,7 @@ export default function Monitoring() {
       </DashboardThemeFrame>
 
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
             <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Total API Calls</CardTitle>
@@ -326,7 +326,7 @@ export default function Monitoring() {
                       <span className="min-w-0 truncate">Success Rate</span>
                       <span className="shrink-0 tabular-nums">{stat.success_rate}%</span>
                     </div>
-                    <Progress value={stat.success_rate} className={getStatusProgressClass(stat.success_rate)} />
+                    <Progress aria-label={`${formatServiceName(stat.service_name)} success rate ${stat.success_rate}%`} value={stat.success_rate} className={getStatusProgressClass(stat.success_rate)} />
                   </div>
                 </div>
               ))}
@@ -362,7 +362,7 @@ export default function Monitoring() {
                       <Skeleton className="h-10 w-10 rounded-xl" />
                       <Skeleton className="h-5 w-44 rounded-lg" />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex min-w-0 flex-wrap gap-2">
                       <Skeleton className="h-7 w-24 rounded-full" />
                       <Skeleton className="h-7 w-20 rounded-full" />
                     </div>
@@ -391,13 +391,13 @@ export default function Monitoring() {
                     </div>
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       {stat.retention_days > 0 && (
-                        <Badge variant="outline" className="min-w-0 max-w-full rounded-full border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning shadow-sm">
+                        <Badge variant="outline" className="min-w-0 max-w-full rounded-full border-warning/35 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning shadow-sm">
                           <Clock className="mr-1 h-3 w-3 shrink-0" />
                           <span className="truncate">{stat.retention_days}d retention</span>
                         </Badge>
                       )}
                       {stat.total_entries > 0 && (
-                        <Badge variant="default" className="min-w-0 max-w-full rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/10">
+                        <Badge variant="default" className="min-w-0 max-w-full rounded-full border border-primary/30 bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/10">
                           <span className="truncate tabular-nums">{stat.total_entries.toLocaleString()} entries</span>
                         </Badge>
                       )}
@@ -430,7 +430,7 @@ export default function Monitoring() {
                           <span className="min-w-0 truncate">Cache Hit Potential</span>
                           <span className="shrink-0 tabular-nums">{stat.cache_hit_potential || 0}%</span>
                         </div>
-                        <Progress value={stat.cache_hit_potential || 0} className="h-2.5 bg-muted/70 [&>div]:bg-primary" />
+                        <Progress aria-label={`${stat.cache_type.replace('_', ' ')} cache hit potential ${stat.cache_hit_potential || 0}%`} value={stat.cache_hit_potential || 0} className="h-2.5 bg-muted/70 [&>div]:bg-primary" />
                       </div>
 
                       {stat.expired_entries > 0 && (
@@ -512,7 +512,7 @@ export default function Monitoring() {
                 <span className="min-w-0 break-words font-medium">Overall Data Quality</span>
                 <span className="shrink-0 font-semibold tabular-nums text-primary">{overallDataQuality}% Live</span>
               </div>
-              <Progress value={Number(overallDataQuality)} className="h-3 bg-muted/70 [&>div]:bg-primary" />
+              <Progress aria-label={`Overall data quality ${overallDataQuality}% live`} value={Number(overallDataQuality)} className="h-3 bg-muted/70 [&>div]:bg-primary" />
             </div>
               </>
             )}
