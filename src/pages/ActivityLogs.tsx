@@ -32,12 +32,12 @@ import {
 type ActionTone = 'success' | 'warning' | 'destructive' | 'info' | 'accent' | 'neutral';
 
 const TONE_CLASSES: Record<ActionTone, string> = {
-  success: 'dashboard-status-chip dashboard-status-chip-success',
-  warning: 'dashboard-status-chip dashboard-status-chip-warning',
-  destructive: 'dashboard-status-chip dashboard-status-chip-destructive',
-  info: 'dashboard-status-chip dashboard-status-chip-info',
-  accent: 'dashboard-status-chip dashboard-status-chip-accent',
-  neutral: 'dashboard-status-chip dashboard-status-chip-neutral',
+  success: 'dashboard-status-chip dashboard-status-chip-success max-w-full whitespace-nowrap shadow-sm shadow-success/5',
+  warning: 'dashboard-status-chip dashboard-status-chip-warning max-w-full whitespace-nowrap shadow-sm shadow-warning/5',
+  destructive: 'dashboard-status-chip dashboard-status-chip-destructive max-w-full whitespace-nowrap shadow-sm shadow-destructive/5',
+  info: 'dashboard-status-chip dashboard-status-chip-info max-w-full whitespace-nowrap shadow-sm shadow-primary/5',
+  accent: 'dashboard-status-chip dashboard-status-chip-accent max-w-full whitespace-nowrap shadow-sm shadow-primary/5',
+  neutral: 'dashboard-status-chip dashboard-status-chip-neutral max-w-full whitespace-nowrap',
 };
 
 const SEVERITY_BAR: Record<ActionTone, string> = {
@@ -248,6 +248,7 @@ function entityHref(entityType: string, entityId: string | null): string | null 
 
 type DateRangeKey = 'all' | '24h' | '7d' | '30d' | 'custom';
 type Density = 'compact' | 'comfortable';
+type ExportState = 'idle' | 'working' | 'success' | 'error';
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 const PRESETS_KEY = 'activityLogs.presets.v1';
 const DENSITY_KEY = 'activityLogs.density.v1';
@@ -314,6 +315,9 @@ export default function ActivityLogs() {
   const [presets, setPresets] = useState<FilterPreset[]>(() => loadPresets());
   const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [liveTailError, setLiveTailError] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<ExportState>('idle');
 
   // Live tail
   const [liveTail, setLiveTail] = useState(false);
@@ -352,9 +356,15 @@ export default function ActivityLogs() {
     });
 
     if (result.error) {
-      if (!silent) toast.error(result.error);
-      if (!silent) { setLogs([]); setUniqueUsers([]); setTotal(0); setStats(null); }
+      if (silent) setLiveTailError(result.error);
+      if (!silent) {
+        setLoadError(result.error);
+        toast.error(result.error);
+        setLogs([]); setUniqueUsers([]); setTotal(0); setStats(null);
+      }
     } else {
+      setLoadError(null);
+      setLiveTailError(null);
       // Detect new events for live tail badge
       const newTopId = result.logs[0]?.id ?? null;
       if (silent && prevTopIdRef.current && newTopId && newTopId !== prevTopIdRef.current) {
@@ -443,7 +453,7 @@ export default function ActivityLogs() {
 
   const getActionBadge = (a: string) => {
     const cfg = getActionConfig(a);
-    return <span className={TONE_CLASSES[cfg.tone]}>{cfg.label}</span>;
+    return <span className={cn(TONE_CLASSES[cfg.tone], 'truncate')} title={cfg.label}>{cfg.label}</span>;
   };
 
   const getEntityIcon = (entityType: string) =>
@@ -462,27 +472,46 @@ export default function ActivityLogs() {
     URL.revokeObjectURL(url);
   };
 
+  const markExportState = (state: ExportState) => {
+    setExportState(state);
+    if (state !== 'working') window.setTimeout(() => setExportState('idle'), 2200);
+  };
+
   const exportCSV = () => {
-    const csv = [
-      ['Timestamp', 'User', 'Action', 'Entity Type', 'Entity Name', 'Entity ID', 'IP Address'].join(','),
-      ...filteredLogs.map(log => [
-        log.created_at,
-        log.username || 'Unknown',
-        log.action_type,
-        log.entity_type,
-        log.entity_name || '',
-        log.entity_id || '',
-        log.ip_address || '',
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')),
-    ].join('\n');
-    downloadBlob(csv, 'text/csv', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    toast.success(`Exported ${filteredLogs.length} rows to CSV`);
+    markExportState('working');
+    try {
+      const csv = [
+        ['Timestamp', 'User', 'Action', 'Entity Type', 'Entity Name', 'Entity ID', 'IP Address'].join(','),
+        ...filteredLogs.map(log => [
+          log.created_at,
+          log.username || 'Unknown',
+          log.action_type,
+          log.entity_type,
+          log.entity_name || '',
+          log.entity_id || '',
+          log.ip_address || '',
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')),
+      ].join('\n');
+      downloadBlob(csv, 'text/csv', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      markExportState('success');
+      toast.success(`Exported ${filteredLogs.length} rows to CSV`);
+    } catch (error) {
+      markExportState('error');
+      toast.error(error instanceof Error ? error.message : 'Failed to export CSV');
+    }
   };
 
   const exportJSON = () => {
-    const json = JSON.stringify(filteredLogs, null, 2);
-    downloadBlob(json, 'application/json', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.json`);
-    toast.success(`Exported ${filteredLogs.length} rows to JSON`);
+    markExportState('working');
+    try {
+      const json = JSON.stringify(filteredLogs, null, 2);
+      downloadBlob(json, 'application/json', `activity-logs-page-${page}-${format(new Date(), 'yyyy-MM-dd')}.json`);
+      markExportState('success');
+      toast.success(`Exported ${filteredLogs.length} rows to JSON`);
+    } catch (error) {
+      markExportState('error');
+      toast.error(error instanceof Error ? error.message : 'Failed to export JSON');
+    }
   };
 
   // Presets
@@ -610,8 +639,8 @@ export default function ActivityLogs() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
+                <Download className={cn('h-4 w-4 mr-2', exportState === 'working' && 'animate-pulse')} />
+                {exportState === 'working' ? 'Exporting' : exportState === 'success' ? 'Exported' : exportState === 'error' ? 'Export failed' : 'Export'}
                 <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
@@ -655,9 +684,14 @@ export default function ActivityLogs() {
                 className={cn(TOOLBAR_BUTTON_CLASS, 'relative', liveTail && 'border-success/45 bg-primary text-primary-foreground ring-2 ring-success/20 shadow-[0_16px_36px_hsl(var(--success)/0.18)] hover:bg-primary-hover hover:text-primary-foreground')}
                 aria-pressed={liveTail}
               >
-                <Radio className={cn('h-4 w-4 mr-2', liveTail && 'animate-pulse text-success')} />
-                {liveTail ? 'Live' : 'Live tail'}
-                {liveTail && newSinceMount > 0 && (
+                <Radio className={cn('h-4 w-4 mr-2', liveTail && !liveTailError && 'animate-pulse text-success', liveTailError && 'text-destructive')} />
+                {liveTailError ? 'Live issue' : liveTail ? 'Live' : 'Live tail'}
+                {liveTailError && (
+                  <span className="ml-1.5 text-[10px] rounded-full bg-destructive/10 text-destructive px-1.5 py-0.5">
+                    !
+                  </span>
+                )}
+                {liveTail && !liveTailError && newSinceMount > 0 && (
                   <span className="ml-1.5 text-[10px] rounded-full bg-success/20 text-success px-1.5 py-0.5">
                     +{newSinceMount}
                   </span>
@@ -666,7 +700,9 @@ export default function ActivityLogs() {
             </TooltipTrigger>
             <TooltipContent>
               {liveTail
-                ? `Polling every 10s${lastTickAt ? ` · last @ ${format(lastTickAt, 'HH:mm:ss')}` : ''}${page > 1 ? ' (paused — not page 1)' : ''}`
+                ? liveTailError
+                  ? `Live tail refresh failed: ${liveTailError}`
+                  : `Polling every 10s${lastTickAt ? ` · last @ ${format(lastTickAt, 'HH:mm:ss')}` : ''}${page > 1 ? ' (paused — not page 1)' : ''}`
                 : 'Auto-refresh page 1 every 10s'}
             </TooltipContent>
           </Tooltip>
@@ -844,10 +880,10 @@ export default function ActivityLogs() {
         </CardHeader>
         <CardContent className="p-3 sm:p-4">
           {loading ? (
-            <div className="space-y-3 p-2 h-[640px]">
+            <div className="h-[640px] space-y-3 rounded-2xl border border-border/50 bg-card/35 p-4">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <Skeleton className="h-10 w-10 rounded-2xl" />
                   <div className="space-y-2 flex-1">
                     <Skeleton className="h-4 w-[260px]" />
                     <Skeleton className="h-3 w-[180px]" />
@@ -855,10 +891,27 @@ export default function ActivityLogs() {
                 </div>
               ))}
             </div>
+          ) : loadError ? (
+            <div className="flex h-[640px] flex-col items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/5 px-6 py-12 text-center">
+              <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+              <p className="font-semibold text-destructive">Unable to load activity logs</p>
+              <p className="mt-2 max-w-xl text-sm text-muted-foreground">{loadError}</p>
+              <Button variant="outline" size="sm" onClick={() => loadLogs(false)} className="mt-4 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                <RefreshCw className={cn('mr-2 h-4 w-4', loading && 'animate-spin')} />
+                Retry
+              </Button>
+            </div>
           ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground h-[640px] flex flex-col items-center justify-center">
+            <div className="text-center py-12 text-muted-foreground h-[640px] flex flex-col items-center justify-center rounded-2xl border border-border/50 bg-card/35 px-6">
               <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="font-medium">No activity logs found</p>
+              <p className="font-medium text-foreground">{searchTerm ? 'No results match this page search' : 'No activity logs found'}</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                {searchTerm
+                  ? 'Try a different search term or clear filters to review the current audit page.'
+                  : hasActiveFilters
+                    ? 'No activity logs match the selected filters.'
+                    : 'Activity will appear here when audit events are available.'}
+              </p>
               {hasActiveFilters && (
                 <Button variant="link" size="sm" onClick={clearFilters} className="mt-2">
                   Clear filters
@@ -978,10 +1031,10 @@ export default function ActivityLogs() {
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2">
                     <span className="text-muted-foreground">{getEntityIcon(selectedLog.entity_type)}</span>
-                    <span className="truncate">{selectedLog.entity_name || selectedLog.entity_type.replace(/_/g, ' ')}</span>
+                    <span className="truncate" title={selectedLog.entity_name || selectedLog.entity_type.replace(/_/g, ' ')}>{selectedLog.entity_name || selectedLog.entity_type.replace(/_/g, ' ')}</span>
                   </SheetTitle>
-                  <SheetDescription className="flex items-center gap-2">
-                    <span className={TONE_CLASSES[cfg.tone]}>{cfg.label}</span>
+                  <SheetDescription className="flex flex-wrap items-center gap-2">
+                    <span className={TONE_CLASSES[cfg.tone]} title={cfg.label}>{cfg.label}</span>
                     <span className="text-xs">{format(new Date(selectedLog.created_at), 'PPpp')}</span>
                   </SheetDescription>
                 </SheetHeader>
@@ -997,7 +1050,7 @@ export default function ActivityLogs() {
                   <DetailRow label="User">
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedLog.username || 'Unknown'}</span>
+                      <span className="truncate" title={selectedLog.username || 'Unknown'}>{selectedLog.username || 'Unknown'}</span>
                     </div>
                     {selectedLog.user_id && (
                       <CopyableMono value={selectedLog.user_id} onCopy={copy} />
@@ -1008,7 +1061,7 @@ export default function ActivityLogs() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">{getEntityIcon(selectedLog.entity_type)}</span>
-                        <span className="font-medium">
+                        <span className="font-medium truncate" title={selectedLog.entity_name || selectedLog.entity_type.replace(/_/g, ' ')}>
                           {selectedLog.entity_name || selectedLog.entity_type.replace(/_/g, ' ')}
                         </span>
                       </div>
@@ -1020,7 +1073,7 @@ export default function ActivityLogs() {
                       )}
                       {href && (
                         <Button
-                          size="sm" variant="outline" className="mt-2"
+                          size="sm" variant="outline" className="mt-2 rounded-xl border-primary/25 text-primary hover:bg-primary/10 hover:text-primary"
                           onClick={() => { navigate(href); setSelectedLog(null); }}
                         >
                           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
@@ -1033,7 +1086,7 @@ export default function ActivityLogs() {
                   {(selectedLog.ip_address || selectedLog.user_agent) && (
                     <DetailRow label="Session">
                       {selectedLog.ip_address && (
-                        <div className="text-xs font-mono">IP {selectedLog.ip_address}</div>
+                        <div className="inline-flex max-w-full rounded-lg border border-border/60 bg-muted/35 px-2 py-1 text-xs font-mono text-muted-foreground" title={selectedLog.ip_address}>IP {selectedLog.ip_address}</div>
                       )}
                       {selectedLog.user_agent && (
                         <div className="text-xs text-muted-foreground break-words">
@@ -1084,7 +1137,7 @@ function CopyableMono({ value, onCopy }: { value: string; onCopy: (v: string, l?
     <button
       type="button"
       onClick={() => onCopy(value, 'ID copied')}
-      className="group inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+      className="group inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border/60 bg-muted/35 px-2 py-1 text-xs font-mono text-muted-foreground transition-colors hover:border-primary/25 hover:bg-primary/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
     >
       <span className="truncate max-w-[280px]">{value}</span>
       <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1287,7 +1340,7 @@ function DesktopRow({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left grid gap-3 px-4 items-center',
+        'group/row w-full text-left grid gap-3 px-4 items-center',
         LEDGER_GRID_CLASS,
         'border-b border-border/40 bg-card/20 hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors relative',
         compact ? 'py-2' : 'py-3'
@@ -1306,23 +1359,25 @@ function DesktopRow({
         <User className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="font-medium text-sm truncate" title={userLabel}>{userLabel}</span>
       </div>
-      <div className="min-w-0">{badge}</div>
+      <div className="min-w-0 overflow-hidden">{badge}</div>
       <div className="flex items-center gap-2 min-w-0">
-        <span className="text-muted-foreground shrink-0">{entityIcon}</span>
+        <span className="text-muted-foreground shrink-0 transition-colors group-hover/row:text-primary">{entityIcon}</span>
         <div className="min-w-0">
-          <div className="text-sm font-medium truncate flex items-center gap-1.5" title={entityLabel}>
+          <div className="text-sm font-medium truncate flex items-center gap-1.5 transition-colors group-hover/row:text-primary" title={entityLabel}>
             {entityLabel}
-            {href && <ExternalLink className="h-3 w-3 text-muted-foreground/70 shrink-0" />}
+            {href && <ExternalLink className="h-3 w-3 shrink-0 text-primary/70" />}
           </div>
           {!compact && log.entity_id && (
-            <div className="text-xs text-muted-foreground font-mono truncate" title={log.entity_id}>
-              {log.entity_id.slice(0, 8)}…
+            <div className="mt-1 inline-flex max-w-full rounded-md bg-muted/35 px-1.5 py-0.5 text-xs font-mono text-muted-foreground" title={log.entity_id}>
+              <span className="truncate">{log.entity_id.slice(0, 8)}…</span>
             </div>
           )}
         </div>
       </div>
-      <div className="text-xs font-mono text-muted-foreground truncate" title={log.ip_address || undefined}>
-        {log.ip_address || '-'}
+      <div className="min-w-0">
+        <span className="inline-flex max-w-full rounded-md bg-muted/35 px-1.5 py-0.5 text-xs font-mono text-muted-foreground" title={log.ip_address || undefined}>
+          <span className="truncate">{log.ip_address || '-'}</span>
+        </span>
       </div>
     </button>
   );
@@ -1346,7 +1401,7 @@ function MobileRow({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left flex gap-3 items-start hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors px-3 border-b border-border/40 bg-card/20',
+        'group/row w-full text-left flex gap-3 items-start hover:bg-primary/5 focus-visible:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 transition-colors px-3 border-b border-border/40 bg-card/20',
         compact ? 'py-2' : 'py-3'
       )}
     >
@@ -1354,8 +1409,8 @@ function MobileRow({
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-muted-foreground shrink-0">{entityIcon}</span>
-            <span className="font-medium text-sm truncate" title={entityLabel}>
+            <span className="text-muted-foreground shrink-0 transition-colors group-hover/row:text-primary">{entityIcon}</span>
+            <span className="font-medium text-sm truncate transition-colors group-hover/row:text-primary" title={entityLabel}>
               {entityLabel}
             </span>
           </div>
@@ -1367,8 +1422,8 @@ function MobileRow({
         </div>
         {(log.entity_id || log.ip_address) && (
           <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-            <span className="min-w-0 truncate font-mono" title={log.entity_id || undefined}>{log.entity_id ? `${log.entity_id.slice(0, 8)}…` : '—'}</span>
-            <span className="shrink-0 truncate font-mono" title={log.ip_address || undefined}>{log.ip_address || '-'}</span>
+            <span className="min-w-0 rounded-md bg-muted/35 px-1.5 py-0.5 font-mono" title={log.entity_id || undefined}><span className="block truncate">{log.entity_id ? `${log.entity_id.slice(0, 8)}…` : '—'}</span></span>
+            <span className="shrink-0 rounded-md bg-muted/35 px-1.5 py-0.5 font-mono" title={log.ip_address || undefined}>{log.ip_address || '-'}</span>
           </div>
         )}
       </div>
