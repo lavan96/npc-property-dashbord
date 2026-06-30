@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { SwitchConfigModal } from '@/components/automation/SwitchConfigModal';
 import { GenerationLogModal } from '@/components/automation/GenerationLogModal';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface AutoReportSwitch {
   id: string;
@@ -273,25 +274,42 @@ const Automation = () => {
 
   return (
     <>
-      <div className="space-y-6">
+      <DashboardThemeFrame
+        variant="page"
+        className="space-y-6 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.92))] p-3 pb-8 text-foreground sm:p-5 lg:p-6"
+      >
         {/* Header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Auto-Generation Switchbot</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Configure automated investment report generation for incoming listings
-            </p>
+        <DashboardThemeFrame
+          as="header"
+          variant="hero"
+          className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_54%,hsl(var(--muted)/0.34))] shadow-[0_22px_70px_rgba(15,23,42,0.10)] dark:shadow-black/30 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
+              <Zap className="h-6 w-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Auto-Generation Switchbot</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Configure automated investment report generation for incoming listings
+              </p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setLogModalOpen(true)} size="sm" className="sm:size-default">
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setLogModalOpen(true)}
+              size="sm"
+              className="min-h-[44px] border-border/70 bg-background/80 shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-foreground focus-visible:ring-primary/45 sm:size-default"
+            >
               <History className="h-4 w-4 mr-2" />
               View Log
             </Button>
           </div>
-        </div>
+        </DashboardThemeFrame>
 
         {/* Airtable Sync Controls */}
-        <Card className="border-blue-500/30 bg-blue-500/5">
+        <Card className="overflow-hidden rounded-2xl border border-blue-500/25 bg-[linear-gradient(135deg,hsl(var(--info)/0.08),hsl(var(--card)/0.92))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:shadow-black/20">
           <CardContent className="py-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
@@ -370,7 +388,7 @@ const Automation = () => {
         </Card>
 
         {/* Master Switch Card */}
-        <Card className={masterEnabled ? 'border-green-500/50 bg-green-500/5' : 'border-muted'}>
+        <Card className={masterEnabled ? 'overflow-hidden rounded-2xl border-green-500/40 bg-[linear-gradient(135deg,hsl(var(--success)/0.10),hsl(var(--card)/0.94))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:shadow-black/20' : 'overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-black/20'}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -517,7 +535,7 @@ const Automation = () => {
             </div>
           )}
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       <SwitchConfigModal
         open={configModalOpen}
