@@ -258,6 +258,10 @@ const TOOLBAR_BUTTON_CLASS = 'min-h-[44px] rounded-xl border-border/70 bg-card/7
 // Data fetching, audit log filters, export, live-tail, pagination, permissions, routing,
 // top-up behaviour, and backend contracts are preserved without behavioural changes.
 
+// Developer note (Phase 1 scope lock): Activity Logs UI polish only.
+// Files touched: src/pages/ActivityLogs.tsx. Data fetching, audit log filters, export, live-tail, pagination,
+// permissions, routing, and backend contracts are preserved without behavioural changes.
+
 interface FilterPreset {
   id: string;
   name: string;
