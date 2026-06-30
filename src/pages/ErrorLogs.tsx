@@ -31,6 +31,7 @@ import { format, formatDistanceToNow, subDays } from 'date-fns';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Link } from 'react-router-dom';
 import { useSecureCallLogs } from '@/hooks/useSecureCallLogs';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 // Error source types
 type ErrorSource = 'investment_report' | 'bulk_generation' | 'vapi_call' | 'api_service' | 'email_sync' | 'automation';
@@ -337,16 +338,34 @@ export default function ErrorLogs() {
   });
 
   return (
-    <div className="space-y-6">
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="space-y-6 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.10),transparent_32%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background))_46%,hsl(var(--muted)/0.18))] pb-8 text-foreground"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Error Logs</h1>
-          <p className="text-muted-foreground">
-            Unified error monitoring across all integrations
-          </p>
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.15),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_56%,hsl(var(--primary)/0.10))] shadow-[0_22px_70px_rgba(15,23,42,0.10)] ring-1 ring-white/40 dark:ring-white/10 dark:shadow-black/35 sm:flex-row sm:items-start sm:justify-between"
+      >
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-warning/30 bg-warning/10 text-warning shadow-[0_12px_30px_hsl(var(--warning)/0.16)]">
+            <AlertTriangle className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h1 className="truncate text-3xl font-bold tracking-tight text-foreground md:text-4xl">Error Logs</h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
+              Unified error monitoring across all integrations
+            </p>
+          </div>
         </div>
-        <Button onClick={fetchErrors} disabled={isLoading} variant="outline">
+        <Button
+          onClick={fetchErrors}
+          disabled={isLoading}
+          variant="outline"
+          className="w-full shrink-0 rounded-full border-primary/25 bg-background/70 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:translate-y-0 disabled:opacity-60 sm:w-auto"
+        >
           {isLoading ? (
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -354,73 +373,87 @@ export default function ErrorLogs() {
           )}
           Refresh
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Stats Overview */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.18))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Errors</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Total Errors</CardTitle>
+              <span className="rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground">
+                <AlertTriangle className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-3xl font-bold tracking-tight text-foreground">{stats.total}</div>
+              <p className="mt-1 truncate text-xs text-muted-foreground">
                 Last {dateRange === '24h' ? '24 hours' : dateRange === '7d' ? '7 days' : '30 days'}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-red-200 dark:border-red-900">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-red-500/25 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--destructive)/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-red-500/35 dark:border-red-500/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Critical</CardTitle>
-              <XCircle className="h-4 w-4 text-red-500" />
+              <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Critical</CardTitle>
+              <span className="rounded-xl border border-red-500/25 bg-red-500/10 p-2 text-red-500">
+                <XCircle className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-500">{stats.critical}</div>
-              <p className="text-xs text-muted-foreground">Require immediate attention</p>
+              <div className="text-3xl font-bold tracking-tight text-red-500">{stats.critical}</div>
+              <p className="mt-1 truncate text-xs text-muted-foreground">Require immediate attention</p>
             </CardContent>
           </Card>
 
-          <Card className="border-orange-200 dark:border-orange-900">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-orange-500/25 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(24_95%_53%/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-500/35 dark:border-orange-500/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Errors</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-500" />
+              <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Errors</CardTitle>
+              <span className="rounded-xl border border-orange-500/25 bg-orange-500/10 p-2 text-orange-500">
+                <AlertCircle className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-500">{stats.error}</div>
-              <p className="text-xs text-muted-foreground">Failed operations</p>
+              <div className="text-3xl font-bold tracking-tight text-orange-500">{stats.error}</div>
+              <p className="mt-1 truncate text-xs text-muted-foreground">Failed operations</p>
             </CardContent>
           </Card>
 
-          <Card className="border-yellow-200 dark:border-yellow-900">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-warning/30 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--warning)/0.08))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-warning/45 dark:border-warning/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Warnings</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Warnings</CardTitle>
+              <span className="rounded-xl border border-warning/30 bg-warning/10 p-2 text-warning">
+                <AlertTriangle className="h-4 w-4" />
+              </span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-500">{stats.warning}</div>
-              <p className="text-xs text-muted-foreground">Potential issues</p>
+              <div className="text-3xl font-bold tracking-tight text-warning">{stats.warning}</div>
+              <p className="mt-1 truncate text-xs text-muted-foreground">Potential issues</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-emerald-500/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(160_84%_39%/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30 dark:border-emerald-400/20 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Trend</CardTitle>
+              <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Trend</CardTitle>
               {stats.trend === 'down' ? (
-                <TrendingDown className="h-4 w-4 text-green-500" />
+                <span className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-2 text-emerald-500">
+                  <TrendingDown className="h-4 w-4" />
+                </span>
               ) : stats.trend === 'up' ? (
-                <TrendingDown className="h-4 w-4 text-red-500 rotate-180" />
+                <span className="rounded-xl border border-red-500/25 bg-red-500/10 p-2 text-red-500">
+                  <TrendingDown className="h-4 w-4 rotate-180" />
+                </span>
               ) : (
-                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                <span className="rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4" />
+                </span>
               )}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="truncate text-3xl font-bold tracking-tight text-foreground">
                 {stats.trend === 'down' ? '↓ Improving' : stats.trend === 'up' ? '↑ Increasing' : '→ Stable'}
               </div>
-              <p className="text-xs text-muted-foreground">{stats.last24h} in last 24h</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">{stats.last24h} in last 24h</p>
             </CardContent>
           </Card>
         </div>
@@ -531,7 +564,7 @@ export default function ErrorLogs() {
           </TabsContent>
         ))}
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
 
