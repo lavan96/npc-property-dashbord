@@ -117,6 +117,12 @@ export default function Monitoring() {
     return 'destructive';
   };
 
+  const getStatusProgressClass = (successRate: number) => {
+    if (successRate >= 95) return 'h-2.5 bg-muted/70 [&>div]:bg-success';
+    if (successRate >= 80) return 'h-2.5 bg-muted/70 [&>div]:bg-warning';
+    return 'h-2.5 bg-muted/70 [&>div]:bg-destructive';
+  };
+
   const formatServiceName = (name: string) => {
     return name
       .split('-')
@@ -148,7 +154,7 @@ export default function Monitoring() {
             Real-time API health and cache performance
           </p>
         </div>
-        <Button onClick={fetchStats} disabled={isLoading} variant="outline" className="min-w-0 shrink-0 border-primary/30 bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary focus-visible:ring-primary/40">
+        <Button onClick={fetchStats} disabled={isLoading} variant="outline" className="min-w-0 shrink-0 rounded-full border-primary/30 bg-primary/10 px-5 font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/15 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.16)] focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60">
           {isLoading ? (
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -254,7 +260,7 @@ export default function Monitoring() {
                       </span>
                       <span className="min-w-0 break-words font-medium">{formatServiceName(stat.service_name)}</span>
                     </div>
-                    <Badge variant={getStatusColor(stat.success_rate)} className="w-fit shrink-0 whitespace-nowrap">
+                    <Badge variant={getStatusColor(stat.success_rate)} className="w-fit shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm">
                       {stat.success_rate}% Success
                     </Badge>
                   </div>
@@ -283,7 +289,7 @@ export default function Monitoring() {
                       <span className="min-w-0 truncate">Success Rate</span>
                       <span className="shrink-0 tabular-nums">{stat.success_rate}%</span>
                     </div>
-                    <Progress value={stat.success_rate} className="h-2" />
+                    <Progress value={stat.success_rate} className={getStatusProgressClass(stat.success_rate)} />
                   </div>
                 </div>
               ))}
@@ -329,13 +335,13 @@ export default function Monitoring() {
                     </div>
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       {stat.retention_days > 0 && (
-                        <Badge variant="outline" className="min-w-0 max-w-full rounded-full border-primary/25 bg-primary/10 text-xs text-primary">
+                        <Badge variant="outline" className="min-w-0 max-w-full rounded-full border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning shadow-sm">
                           <Clock className="mr-1 h-3 w-3 shrink-0" />
                           <span className="truncate">{stat.retention_days}d retention</span>
                         </Badge>
                       )}
                       {stat.total_entries > 0 && (
-                        <Badge variant="default" className="min-w-0 max-w-full rounded-full bg-primary text-primary-foreground shadow-sm shadow-primary/10">
+                        <Badge variant="default" className="min-w-0 max-w-full rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/10">
                           <span className="truncate tabular-nums">{stat.total_entries.toLocaleString()} entries</span>
                         </Badge>
                       )}
@@ -368,7 +374,7 @@ export default function Monitoring() {
                           <span className="min-w-0 truncate">Cache Hit Potential</span>
                           <span className="shrink-0 tabular-nums">{stat.cache_hit_potential || 0}%</span>
                         </div>
-                        <Progress value={stat.cache_hit_potential || 0} className="h-2.5 bg-primary/12 [&>div]:bg-primary" />
+                        <Progress value={stat.cache_hit_potential || 0} className="h-2.5 bg-muted/70 [&>div]:bg-primary" />
                       </div>
 
                       {stat.expired_entries > 0 && (
@@ -440,7 +446,7 @@ export default function Monitoring() {
                 <span className="min-w-0 break-words font-medium">Overall Data Quality</span>
                 <span className="shrink-0 font-semibold tabular-nums text-primary">{overallDataQuality}% Live</span>
               </div>
-              <Progress value={Number(overallDataQuality)} className="h-3 bg-muted [&>div]:bg-primary" />
+              <Progress value={Number(overallDataQuality)} className="h-3 bg-muted/70 [&>div]:bg-primary" />
             </div>
           </div>
         </CardContent>

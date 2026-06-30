@@ -52,7 +52,7 @@ export function TokenBalanceBanner() {
             variant="outline"
             size="sm"
             onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
-            className="w-full shrink-0 rounded-full border-primary/35 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary-hover hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.30)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 sm:w-auto"
+            className="w-full shrink-0 rounded-full border-primary/35 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary-hover hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.30)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-60 sm:w-auto"
           >
             Top up
           </Button>
