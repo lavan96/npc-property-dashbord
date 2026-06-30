@@ -167,7 +167,7 @@ interface ApiUsageData {
 }
 
 
-// Phase 1 scope lock: API Usage UI shell only. Data fetching, filters,
+// API Usage UI scope lock: presentation-only enhancements. Data fetching, filters,
 // calculations, status mappings, tabs, and refresh/date behaviour are preserved.
 const API_USAGE_PAGE_FRAME =
   'min-h-[calc(100dvh-5rem)] min-w-0 space-y-4 overflow-x-clip px-1 pb-6 sm:space-y-6 sm:px-0';
@@ -190,6 +190,9 @@ const API_USAGE_CHART_HEIGHT =
 
 const API_USAGE_TABLE_SCROLL =
   'min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.35)_transparent]';
+
+const API_USAGE_TALL_CHART_HEIGHT =
+  'min-h-0 min-w-0 overflow-hidden h-[320px] sm:h-[380px]';
 
 const API_USAGE_CHART_TOOLTIP_STYLE: CSSProperties = {
   backgroundColor: 'hsl(var(--card))',
@@ -674,7 +677,7 @@ export default function ApiUsage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:bg-slate-950/45 dark:shadow-black/25">
+        <DashboardThemeFrame variant="toolbar" className={`${API_USAGE_TABLE_SCROLL} border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:bg-slate-950/45 dark:shadow-black/25`}>
           <TabsList aria-label="API usage sections" className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
             <TabsTrigger value="overview" className={API_USAGE_TAB_TRIGGER}>Overview</TabsTrigger>
             <TabsTrigger value="consumption" className={API_USAGE_TAB_TRIGGER}>LLM Costs</TabsTrigger>
@@ -882,7 +885,7 @@ export default function ApiUsage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Token Usage Stacked Area */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
+              <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Brain className="h-4 w-4 text-primary" />
@@ -891,7 +894,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Daily token usage per service (stacked)</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="min-h-0 min-w-0 overflow-hidden h-[320px] sm:h-[380px]">
+                  <div className={API_USAGE_TALL_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={tokenChartData}>
                         <defs>
@@ -1011,7 +1014,7 @@ export default function ApiUsage() {
               </div>
 
               {/* Recent Usage Logs */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
+              <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Activity className="h-4 w-4 text-primary" />
@@ -1034,7 +1037,7 @@ export default function ApiUsage() {
                       </thead>
                       <tbody>
                         {filteredUsageLogs.map(log => (
-                          <tr key={log.id} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
+                          <tr key={log.id} className="border-b border-border/30 transition-colors hover:bg-muted/30 motion-reduce:transition-none">
                             <td className="min-w-0 p-3">
                               <div className="flex min-w-0 items-center gap-2">
                                 <div className="w-2 h-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(log.service) }} />
@@ -1119,7 +1122,7 @@ export default function ApiUsage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
               {/* VAPI Call Volume + Cost Trend (Composed Chart) */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
+              <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Phone className="h-4 w-4 text-pink-500" />
@@ -1128,7 +1131,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Calls (bars) and cost (line) over time</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="min-h-0 min-w-0 overflow-hidden h-[320px] sm:h-[380px]">
+                  <div className={API_USAGE_TALL_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={data.vapi.dailyTrend}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -1146,7 +1149,7 @@ export default function ApiUsage() {
               </Card>
 
               {/* VAPI Minutes Trend */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
+              <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Clock className="h-4 w-4 text-blue-500" />
@@ -1223,7 +1226,7 @@ export default function ApiUsage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
               {/* Per-Service Budget Bars */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm lg:col-span-2">
+              <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-green-500" />
@@ -1435,7 +1438,7 @@ export default function ApiUsage() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredServiceBreakdown.map(svc => (
-                  <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:shadow-black/20">
+                  <Card key={svc.service} className={API_USAGE_PANEL_CARD}>
                     <CardContent className="p-4">
                       <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
