@@ -5,9 +5,9 @@
  * (Track B) fidelity, or Hybrid (both), and shows real-time per-page
  * progress + a fidelity report card when finished.
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -22,12 +22,19 @@ import { type FidelityMode, type ImportProgress, type ImportResult } from '@/lib
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
 import { loadImportReviewDraft, saveImportReviewDecision, type ImportReviewDecisionRecord, type LoadImportReviewDraftResult } from '@/lib/reportTemplate/ingestion/importArtifacts';
-import { applyRepairedTemplateToRecord, buildVisualRepairAuditPayload, loadVisualQuality, loadVisualRepairAudit, persistedVisualQualityToReviewSummary, runImportReviewVisualQualityPipeline, runVisualRepairOrchestrationPipeline, saveVisualRepairAudit, type PersistedVisualQuality, type PersistedVisualRepairAudit, type VisualQaReviewSummary, type VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
+import { applyRepairedTemplateToRecord, buildVisualRepairAuditPayload, loadVisualQuality, loadVisualRepairAudit, persistedVisualQualityToReviewSummary, runImportReviewVisualQualityPipeline, runVisualRepairOrchestrationPipeline, saveVisualRepairAudit, shouldAutoRunVisualQa, type PersistedVisualQuality, type PersistedVisualRepairAudit, type VisualQaReviewSummary, type VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 import { ImportReviewDialog } from './ImportReviewDialog';
 import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
 
 
 type ImportReviewDebugSnapshot = Record<string, string | number | boolean | null>;
+
+const MODE_LABELS: Record<FidelityMode, string> = {
+  semantic: 'Semantic',
+  hybrid: 'Hybrid',
+  pixel: 'Pixel-perfect',
+  ocr: 'OCR',
+};
 
 const STAGE_LABELS: Record<string, string> = {
   reading: 'Reading source PDF',
@@ -69,6 +76,11 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const [persistedReview, setPersistedReview] = useState<LoadImportReviewDraftResult | null>(null);
   const [visualQaBusy, setVisualQaBusy] = useState(false);
   const [visualQaSummary, setVisualQaSummary] = useState<VisualQaReviewSummary | null>(null);
+  // Phase 6C — tracks the most recent import so a superseded auto visual-QA run
+  // (e.g. the user imports a second file before the first QA finishes) bails out
+  // instead of writing stale state. Also doubles as the "already kicked off"
+  // guard so the auto-run effect fires once per import.
+  const latestImportIdRef = useRef<string | null>(null);
   const [persistedVisualQuality, setPersistedVisualQuality] = useState<PersistedVisualQuality | null>(null);
   const [repairBusy, setRepairBusy] = useState(false);
   const [repairSummary, setRepairSummary] = useState<VisualRepairOrchestrationSummary | null>(null);
@@ -128,12 +140,14 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     setRecordedDecision(null);
   };
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (modeOverride?: FidelityMode) => {
     if (!file) return;
+    const useMode = modeOverride ?? mode;
+    if (modeOverride && modeOverride !== mode) setMode(modeOverride);
     setBusy(true);
     setProgress({ phase: 'reading' });
     try {
-      const outcome = await runReferenceImport({ kind: 'pdf', file, mode }, {
+      const outcome = await runReferenceImport({ kind: 'pdf', file, mode: useMode }, {
         templateName: file.name.replace(/\.pdf$/i, ''),
         userId: user?.id ?? null,
         isSuperadmin,
@@ -203,6 +217,78 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     console.warn('[visualRepair] load failed', loadedRepair.message);
     return null;
   }, []);
+
+  // Phase 6C — automatic, non-blocking visual QA on import completion. Previously
+  // the SSIM diff + persist only ran when the user clicked "Visual QA" inside the
+  // review dialog, so `visual_quality_summary` was null on every import. This runs
+  // the SAME pipeline automatically (reusing loadImportReviewDraft +
+  // runImportReviewVisualQualityPipeline) so the score is populated and surfaced.
+  // When QA flags the import for manual review it also runs the (non-applying)
+  // repair orchestration so a one-click "Apply repair" is ready — applying the
+  // repaired template stays an explicit user action (it mutates the saved template).
+  const autoVisualQa = useCallback(async (importId: string, importedTemplateId: string | null) => {
+    setVisualQaBusy(true);
+    try {
+      const loaded = await loadImportReviewDraft({ importId });
+      if (latestImportIdRef.current !== importId) return; // superseded by a newer import
+      setPersistedReview(loaded);
+      if (!shouldAutoRunVisualQa(loaded)) return; // no source rasters → diff impossible
+
+      const finalMode = mode === 'pixel' ? 'pixel-perfect' : mode === 'semantic' ? 'semantic' : 'hybrid';
+      const qa = await runImportReviewVisualQualityPipeline({
+        loaded,
+        templateId: importedTemplateId ?? loaded.record.created_template_id ?? null,
+        finalMode,
+        persist: true,
+        maxRasterDim: 768,
+      });
+      if (latestImportIdRef.current !== importId) return;
+      setPersistedReview((prev) => (prev ? { ...prev, draft: qa.draft } : { ...loaded, draft: qa.draft }));
+
+      if (qa.visualQa.persistResult.kind === 'ok') {
+        const persisted = await hydratePersistedVisualQuality(importId);
+        if (latestImportIdRef.current !== importId) return;
+        if (!persisted) setVisualQaSummary(qa.visualQa.summary);
+      } else {
+        setVisualQaSummary(qa.visualQa.summary);
+      }
+
+      if (qa.visualQa.summary.manualReviewRequired) {
+        try {
+          const repair = await runVisualRepairOrchestrationPipeline({
+            loaded,
+            templateId: importedTemplateId ?? loaded.record.created_template_id ?? null,
+            finalMode,
+            persistVisualQa: true,
+            maxRasterDim: 768,
+            maxRepairPasses: 2,
+          });
+          if (latestImportIdRef.current !== importId) return;
+          await saveVisualRepairAudit(repair.importId, buildVisualRepairAuditPayload(repair));
+          if (latestImportIdRef.current !== importId) return;
+          setPersistedReview((prev) => (prev ? { ...prev, draft: repair.draft } : prev));
+          setRepairSummary(repair.summary);
+          setRepairApplied(false);
+          setRepairDraftReady(Boolean(repair.draft?.template));
+          setVisualQaSummary(repair.visualQa.visualQa.summary);
+        } catch (repairErr) {
+          console.warn('[pdfImportReview] auto repair failed', (repairErr as Error).message);
+        }
+      }
+    } catch (err) {
+      console.warn('[pdfImportReview] auto visual QA failed', (err as Error).message);
+    } finally {
+      if (latestImportIdRef.current === importId) setVisualQaBusy(false);
+    }
+  }, [mode, hydratePersistedVisualQuality]);
+
+  // Fire the auto visual-QA pass once per completed import (non-blocking).
+  useEffect(() => {
+    const importId = result?.importId;
+    if (!importId || latestImportIdRef.current === importId) return;
+    latestImportIdRef.current = importId;
+    void autoVisualQa(importId, result?.template?.id ?? null);
+  }, [result?.importId, result?.template?.id, autoVisualQa]);
 
   const openReview = useCallback(async () => {
     if (!result?.importId) return;
@@ -730,6 +816,29 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                 <Stat label="Semantic only" value={result.fidelityReport.semanticPages} />
               </div>
 
+              {result.recommendedMode && result.recommendedMode !== mode && (
+                <div className="mt-3 rounded-md border border-primary/40 bg-primary/5 p-3 text-xs">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">Suggested mode: {MODE_LABELS[result.recommendedMode]}</span>
+                      {result.recommendedModeReason && (
+                        <p className="mt-0.5 text-muted-foreground">{result.recommendedModeReason}</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px] whitespace-nowrap"
+                      disabled={busy}
+                      onClick={() => start(result.recommendedMode)}
+                    >
+                      Re-import in {MODE_LABELS[result.recommendedMode]}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {importAssetSummary && (
                 <div className="mt-3 rounded-md border bg-background/70 p-3 text-xs">
                   <div className="flex items-center justify-between gap-2 font-medium">
@@ -790,7 +899,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
           {!result ? (
             <>
               <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy}>Cancel</Button>
-              <Button onClick={start} disabled={!file || busy}>
+              <Button onClick={() => start()} disabled={!file || busy}>
                 {busy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Importing…</> : 'Import'}
               </Button>
             </>

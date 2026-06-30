@@ -394,16 +394,16 @@ const Automation = () => {
         </Card>
 
         {/* Master Switch Card */}
-        <Card className={masterEnabled ? 'overflow-hidden rounded-2xl border-green-500/40 bg-[linear-gradient(135deg,hsl(var(--success)/0.10),hsl(var(--card)/0.94))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:shadow-black/20' : 'overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-black/20'}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${masterEnabled ? 'bg-green-500/20' : 'bg-muted'}`}>
-                  <Zap className={`h-5 w-5 ${masterEnabled ? 'text-green-500' : 'text-muted-foreground'}`} />
+        <Card className={masterEnabled ? 'relative overflow-hidden rounded-3xl border-green-500/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--success)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--success)/0.08))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-green-300/20 dark:ring-white/10 dark:shadow-black/25' : 'relative overflow-hidden rounded-3xl border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--muted)/0.42),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.88)_58%,hsl(var(--muted)/0.18))] shadow-[0_18px_52px_rgba(15,23,42,0.07)] ring-1 ring-white/45 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25'}>
+          <CardHeader className="pb-4">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/60 text-muted-foreground'}`}>
+                  <Zap className="h-6 w-6" />
                 </div>
-                <div>
-                  <CardTitle className="text-xl">Master Switch</CardTitle>
-                  <CardDescription>
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="text-xl tracking-tight text-foreground">Master Switch</CardTitle>
+                  <CardDescription className="max-w-2xl text-sm leading-5">
                     {masterEnabled 
                       ? `Active with ${enabledSwitchesCount} enabled switch${enabledSwitchesCount !== 1 ? 'es' : ''}`
                       : 'All auto-generation is currently disabled'
@@ -411,24 +411,24 @@ const Automation = () => {
                   </CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-sm font-medium ${masterEnabled ? 'text-green-500' : 'text-muted-foreground'}`}>
+              <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/65 px-3 py-2 shadow-sm sm:justify-end">
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.18em] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/70 text-muted-foreground'}`}>
                   {masterEnabled ? 'ON' : 'OFF'}
                 </span>
                 <Switch 
                   checked={masterEnabled} 
                   onCheckedChange={toggleMaster}
                   disabled={masterLoading}
-                  className="data-[state=checked]:bg-green-500"
+                  className="data-[state=checked]:bg-green-500 focus-visible:ring-green-500/40"
                 />
               </div>
             </div>
           </CardHeader>
           {!masterEnabled && switches.some(s => s.is_enabled) && (
             <CardContent className="pt-0">
-              <div className="flex items-center gap-2 text-amber-500 text-sm">
-                <AlertTriangle className="h-4 w-4" />
-                <span>You have enabled switches but the master switch is off. No reports will be auto-generated.</span>
+              <div className="flex items-start gap-3 rounded-2xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-foreground shadow-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <span className="leading-5 text-muted-foreground">You have enabled switches but the master switch is off. No reports will be auto-generated.</span>
               </div>
             </CardContent>
           )}
@@ -436,10 +436,12 @@ const Automation = () => {
 
         {/* Switches Section */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg sm:text-xl font-semibold">Filter Switches</h2>
+          <div className="flex min-w-0 flex-col gap-3 rounded-3xl border border-border/60 bg-card/70 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-black/20 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Filter Switches</h2>
+            </div>
             {canEdit && (
-              <Button onClick={openCreateModal} size="sm" className="sm:size-default min-h-[44px] sm:min-h-0">
+              <Button onClick={openCreateModal} size="sm" className="min-h-[44px] bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] transition-all hover:bg-primary-hover focus-visible:ring-primary/45 sm:size-default sm:min-h-0">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Switch
               </Button>
@@ -447,24 +449,26 @@ const Automation = () => {
           </div>
 
           {loading ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
+            <Card className="overflow-hidden rounded-3xl border-border/70 bg-card/85 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-black/20">
+              <CardContent className="py-10 text-center text-muted-foreground">
                 Loading switches...
               </CardContent>
             </Card>
           ) : switches.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <div className="flex flex-col items-center gap-3">
-                  <Settings2 className="h-12 w-12 text-muted-foreground/50" />
-                  <div>
-                    <p className="font-medium">No switches configured</p>
-                    <p className="text-sm text-muted-foreground">
+            <Card className="overflow-hidden rounded-3xl border-dashed border-primary/25 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.12),transparent_38%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.84))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] dark:border-primary/20 dark:shadow-black/25">
+              <CardContent className="px-4 py-14 text-center sm:px-6">
+                <div className="mx-auto flex max-w-md flex-col items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-3xl border border-border/70 bg-background/75 text-muted-foreground shadow-sm">
+                    <Settings2 className="h-9 w-9 text-muted-foreground/60" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">No switches configured</p>
+                    <p className="text-sm leading-5 text-muted-foreground">
                       Create your first switch to start auto-generating reports
                     </p>
                   </div>
                   {canEdit && (
-                    <Button onClick={openCreateModal} className="mt-2">
+                    <Button onClick={openCreateModal} className="mt-2 min-h-[44px] bg-primary text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.18)] hover:bg-primary-hover">
                       <Plus className="h-4 w-4 mr-2" />
                       Create Switch
                     </Button>
@@ -477,48 +481,50 @@ const Automation = () => {
               {switches.map((switchItem) => (
                 <Card 
                   key={switchItem.id} 
-                  className={switchItem.is_enabled ? 'border-primary/30' : 'border-muted'}
+                  className={switchItem.is_enabled ? 'group overflow-hidden rounded-3xl border-primary/30 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--primary)/0.07))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_48px_rgba(15,23,42,0.10)] dark:shadow-black/20' : 'group overflow-hidden rounded-3xl border-border/70 bg-card/85 shadow-[0_14px_40px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_48px_rgba(15,23,42,0.09)] dark:border-white/10 dark:shadow-black/20'}
                 >
-                  <CardContent className="py-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <Switch
-                          checked={switchItem.is_enabled}
-                          onCheckedChange={() => toggleSwitch(switchItem)}
-                          disabled={!masterEnabled || !canEdit}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium">{switchItem.name}</span>
-                            <Badge variant="secondary" className="text-xs">
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                        <div className="shrink-0 pt-1">
+                          <Switch
+                            checked={switchItem.is_enabled}
+                            onCheckedChange={() => toggleSwitch(switchItem)}
+                            disabled={!masterEnabled || !canEdit}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="min-w-0 max-w-full truncate text-sm font-semibold text-foreground sm:text-base">{switchItem.name}</span>
+                            <Badge variant="secondary" className="border border-border/50 bg-background/70 text-xs text-foreground shadow-sm">
                               {getCriteriaCount(switchItem.criteria)} criteria
                             </Badge>
                             {switchItem.is_enabled ? (
-                              <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+                              <Badge className="border-green-500/30 bg-green-500/15 text-green-600 shadow-sm dark:text-green-300">
                                 <Play className="h-3 w-3 mr-1" />
                                 Active
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="text-muted-foreground">
+                              <Badge variant="outline" className="border-border/70 bg-muted/50 text-muted-foreground shadow-sm">
                                 <Pause className="h-3 w-3 mr-1" />
                                 Paused
                               </Badge>
                             )}
                           </div>
                           {switchItem.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="max-w-3xl break-words text-sm leading-5 text-muted-foreground">
                               {switchItem.description}
                             </p>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <div className="flex shrink-0 items-center gap-2 self-end rounded-2xl border border-border/50 bg-background/55 p-1 shadow-sm sm:self-auto">
                         {canEdit && (
                           <Button 
                             variant="ghost" 
                             size="sm"
                             onClick={() => openEditModal(switchItem)}
-                            className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                            className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-primary/10 hover:text-foreground focus-visible:ring-primary/45 sm:min-h-0 sm:min-w-0"
                           >
                             <Settings2 className="h-4 w-4" />
                           </Button>
@@ -528,7 +534,7 @@ const Automation = () => {
                             variant="ghost" 
                             size="sm"
                             onClick={() => deleteSwitch(switchItem)}
-                            className="text-destructive hover:text-destructive min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                            className="min-h-[44px] min-w-[44px] rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/35 sm:min-h-0 sm:min-w-0"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
