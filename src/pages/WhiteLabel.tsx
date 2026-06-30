@@ -358,30 +358,40 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
   };
 
   return (
-    <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          {icon}
-          <div>
+    <Card className="group min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5 transition-shadow hover:shadow-xl hover:shadow-primary/5">
+      <CardHeader className="pb-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-sm transition-colors group-hover:bg-primary/15">
+            {icon}
+          </div>
+          <div className="min-w-0 space-y-1">
             <CardTitle className="text-lg">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
+            <CardDescription className="break-words leading-5">{description}</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {currentLogo ? (
           <div className="space-y-4">
-            <div className="relative w-full h-32 bg-muted rounded-lg flex items-center justify-center overflow-hidden border">
+            <div className="relative flex h-36 w-full items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(135deg,hsl(var(--muted)/0.55),hsl(var(--background)/0.9))] p-4 shadow-inner">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.10),transparent_38%)]" />
               <img 
                 src={currentLogo} 
                 alt={`${title} preview`}
-                className="max-w-full max-h-full object-contain"
+                className="relative max-h-full max-w-full object-contain drop-shadow-sm"
               />
+              {isProcessing ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 text-muted-foreground backdrop-blur-sm">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="text-sm font-medium">Processing...</span>
+                </div>
+              ) : null}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button 
-                variant="outline" 
+                variant="outline"
                 size="sm" 
+                className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessing}
               >
@@ -389,8 +399,9 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
                 Replace
               </Button>
               <Button 
-                variant="destructive" 
+                variant="outline"
                 size="sm" 
+                className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm hover:bg-destructive/10 hover:text-destructive"
                 onClick={handleRemove}
                 disabled={isProcessing}
               >
@@ -401,10 +412,10 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
           </div>
         ) : (
           <div 
-            className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+            className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
               isDragOver 
-                ? 'border-primary bg-primary/5 scale-[1.02]' 
-                : 'hover:border-primary hover:bg-muted/50'
+                ? 'scale-[1.01] border-primary bg-primary/10'
+                : 'border-border/70 bg-background/60 hover:border-primary/60 hover:bg-primary/5'
             }`}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={handleDragOver}
@@ -413,13 +424,22 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
           >
             {isProcessing ? (
               <>
-                <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
-                <span className="text-sm text-muted-foreground">Processing...</span>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+                <span className="text-sm font-medium text-foreground">Processing...</span>
+                <span className="text-xs text-muted-foreground">
+                  {removeBackgroundEnabled ? 'Removing background and uploading securely' : 'Uploading securely'}
+                </span>
               </>
             ) : (
               <>
-                <Upload className={`h-8 w-8 transition-colors ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
-                <span className={`text-sm transition-colors ${isDragOver ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors ${
+                  isDragOver ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border bg-card text-muted-foreground'
+                }`}>
+                  <Upload className="h-6 w-6" />
+                </div>
+                <span className={`text-sm transition-colors ${isDragOver ? 'text-primary font-medium' : 'text-foreground'}`}>
                   {isDragOver ? 'Drop image here' : 'Drag & drop or click to upload'}
                 </span>
                 <span className="text-xs text-muted-foreground">PNG, JPG, SVG (max 5MB)</span>
