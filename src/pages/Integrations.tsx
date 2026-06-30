@@ -10,12 +10,12 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { 
-  Settings2, 
-  Database, 
-  Phone, 
-  Mail, 
-  Brain, 
+import {
+  Settings2,
+  Database,
+  Phone,
+  Mail,
+  Brain,
   Webhook,
   Eye,
   EyeOff,
@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PlannedIntegrations } from '@/components/integrations/PlannedIntegrations';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface IntegrationConfig {
   id: string;
@@ -207,7 +208,7 @@ export default function Integrations() {
     setLoadingSecrets(true);
     try {
       const { data, error } = await invokeSecureFunction('check-integration-secrets', {});
-      
+
       if (error) {
         console.error('Error checking Supabase secrets:', error);
         return;
@@ -240,14 +241,14 @@ export default function Integrations() {
       if (data?.records) {
         const loadedValues: Record<string, string> = {};
         const loadedKeys = new Set<string>();
-        
+
         data.records.forEach((config: any) => {
           loadedValues[config.key_name] = config.key_value || '';
           if (config.key_value) {
             loadedKeys.add(config.key_name);
           }
         });
-        
+
         setValues(loadedValues);
         setSavedKeys(loadedKeys);
       }
@@ -276,7 +277,7 @@ export default function Integrations() {
       // Save each field for this integration
       for (const field of integration.fields) {
         const value = values[field.key] || '';
-        
+
         const { error } = await invokeSecureFunction('manage-templates', {
           operation: 'upsert',
           table: 'integration_configs',
@@ -395,7 +396,7 @@ export default function Integrations() {
   const getIntegrationStatus = (integration: IntegrationConfig) => {
     const requiredFields = integration.fields.filter(f => f.required !== false);
     const configuredFields = requiredFields.filter(f => savedKeys.has(f.key));
-    
+
     if (configuredFields.length === 0) return 'not_configured';
     if (configuredFields.length === requiredFields.length) return 'configured';
     return 'partial';
@@ -426,11 +427,96 @@ export default function Integrations() {
     }
   };
 
+  const getIntegrationTone = (integrationId: string) => {
+    const aiTone = {
+      card: 'hover:border-violet-400/30',
+      header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(124,58,237,0.075))]',
+      icon: 'border-violet-400/20 bg-violet-500/10 text-violet-400 group-hover:border-violet-400/35 group-hover:bg-violet-500/15 group-hover:shadow-[0_16px_36px_rgba(124,58,237,0.18)]',
+      field: 'focus-within:border-violet-400/30',
+    };
+
+    const tones: Record<string, typeof aiTone> = {
+      airtable: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      vapi: {
+        card: 'hover:border-teal-400/30',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.075))]',
+        icon: 'border-teal-400/20 bg-teal-500/10 text-teal-400 group-hover:border-teal-400/35 group-hover:bg-teal-500/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
+        field: 'focus-within:border-teal-400/30',
+      },
+      gohighlevel: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      twilio: {
+        card: 'hover:border-teal-400/30',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.07))]',
+        icon: 'border-teal-400/20 bg-teal-500/10 text-teal-400 group-hover:border-teal-400/35 group-hover:bg-teal-500/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
+        field: 'focus-within:border-teal-400/30',
+      },
+      microsoft: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      make: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      cloudflare: {
+        card: 'hover:border-primary/35',
+        header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),hsl(var(--primary)/0.075))]',
+        icon: 'border-primary/25 bg-primary/10 text-primary group-hover:border-primary/40 group-hover:bg-primary/15 group-hover:shadow-[0_16px_36px_hsl(var(--primary)/0.18)]',
+        field: 'focus-within:border-primary/35',
+      },
+      openai: aiTone,
+      perplexity: aiTone,
+      anthropic: aiTone,
+      gemini: aiTone,
+      openrouter: aiTone,
+    };
+
+    return tones[integrationId] || tones.gohighlevel;
+  };
+
+  const getFieldGridClass = (integration: IntegrationConfig) => {
+    if (integration.id === 'microsoft' || integration.id === 'cloudflare') {
+      return 'grid min-w-0 gap-3 lg:grid-cols-3';
+    }
+
+    if (integration.fields.length > 1) {
+      return 'grid min-w-0 gap-3 sm:grid-cols-2';
+    }
+
+    return 'grid min-w-0 gap-3';
+  };
+
+  const getFieldSpanClass = (integrationId: string, fieldKey: string) => {
+    if (integrationId === 'make' || fieldKey.includes('WEBHOOK_URL')) {
+      return 'sm:col-span-2 lg:col-span-3';
+    }
+
+    if (integrationId === 'microsoft' && fieldKey === 'MICROSOFT_CLIENT_SECRET') {
+      return 'lg:col-span-1';
+    }
+
+    return '';
+  };
+
   const getSupabaseSecretBadge = (integrationId: string) => {
     const secretStatus = supabaseSecrets[integrationId];
-    
+
     if (!secretStatus) return null;
-    
+
     if (secretStatus.configured) {
       return (
         <TooltipProvider>
@@ -477,7 +563,7 @@ export default function Integrations() {
         </TooltipProvider>
       );
     }
-    
+
     return null;
   };
 
@@ -489,21 +575,164 @@ export default function Integrations() {
     );
   }
 
+  const renderIntegrationCard = (integration: IntegrationConfig) => {
+    const status = getIntegrationStatus(integration);
+    const tone = getIntegrationTone(integration.id);
+
+    return (
+      <Card
+        key={integration.id}
+        className={`group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
+      >
+        <CardHeader className={`border-b border-border/50 pb-4 ${tone.header}`}>
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_hsl(var(--primary)/0.14)] transition-all duration-300 ${tone.icon}`}>
+                {integration.icon}
+              </div>
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="break-words text-lg font-semibold leading-tight tracking-tight text-foreground">
+                  {integration.name}
+                </CardTitle>
+                <CardDescription className="max-w-full break-words text-sm leading-5 text-muted-foreground">
+                  {integration.description}
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-row flex-wrap items-center gap-1.5 sm:max-w-[45%] sm:justify-end">
+              {getStatusBadge(status)}
+              {getSupabaseSecretBadge(integration.id)}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          <div className={getFieldGridClass(integration)}>
+            {integration.fields.map(field => {
+              const isSecretField = field.type === 'password';
+              const isRevealed = Boolean(showPasswords[field.key]);
+
+              return (
+                <div key={field.key} className={`min-w-0 space-y-2 rounded-2xl border border-border/45 bg-background/35 p-3 shadow-inner shadow-sm transition-colors focus-within:bg-background/55 sm:p-3.5 ${tone.field} ${getFieldSpanClass(integration.id, field.key)}`}>
+                  <Label htmlFor={field.key} className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <span className="min-w-0 truncate">{field.label}</span>
+                    {field.required !== false && <span className="text-destructive ml-0.5">*</span>}
+                    {isSecretField && <Shield className="ml-auto h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />}
+                  </Label>
+                  <div className="relative min-w-0">
+                    <Input
+                      id={field.key}
+                      type={isSecretField && !isRevealed ? 'password' : 'text'}
+                      placeholder={field.placeholder}
+                      value={values[field.key] || ''}
+                      onChange={(e) => handleValueChange(field.key, e.target.value)}
+                      className={`min-w-0 truncate rounded-xl border-border/70 bg-card/80 shadow-inner shadow-sm transition-all placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/35 ${isSecretField ? 'pr-12 font-mono text-sm tracking-[0.08em]' : 'pr-3'}`}
+                    />
+                    {isSecretField && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${isRevealed ? 'Hide' : 'Show'} ${field.label}`}
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                        onClick={() => togglePasswordVisibility(field.key)}
+                      >
+                        {isRevealed ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            {integration.docsUrl && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-center rounded-xl border border-border/50 bg-background/55 text-muted-foreground transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-auto"
+                onClick={() => window.open(integration.docsUrl, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Docs
+              </Button>
+            )}
+            <div className="flex min-w-0 gap-2 sm:ml-auto">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncToSupabase(integration.id)}
+                      disabled={syncingToSupabase === integration.id || saving === integration.id}
+                      className="min-h-10 shrink-0 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      {syncingToSupabase === integration.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sync to Supabase Secrets</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button
+                onClick={() => saveIntegration(integration.id)}
+                disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
+                className="min-h-10 min-w-0 flex-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.20)] transition-all hover:bg-primary-hover hover:shadow-[0_16px_34px_hsl(var(--primary)/0.24)] focus-visible:ring-2 focus-visible:ring-primary/45 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+              >
+                {saving === integration.id ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Save
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Integrations</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configure API keys and credentials for external services
-          </p>
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="space-y-5 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-3 text-foreground sm:space-y-6 sm:p-5 lg:p-6"
+    >
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_54%,hsl(var(--muted)/0.34))] shadow-[0_22px_70px_rgba(15,23,42,0.10)] dark:shadow-black/30 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="min-w-0 space-y-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Integrations</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Configure API keys and credentials for external services
+              </p>
+            </div>
+          </div>
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={checkSupabaseSecrets}
           disabled={loadingSecrets}
-          className="gap-2 min-h-[44px] sm:min-h-0 self-start"
+          className="min-h-[44px] shrink-0 gap-2 self-start rounded-xl border-primary/25 bg-background/70 px-4 font-semibold text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_22px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/45 sm:self-center"
         >
           {loadingSecrets ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -512,26 +741,26 @@ export default function Integrations() {
           )}
           Sync Status
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
       {supabaseSetupRequired && (
         <Alert className="border-yellow-500/50 bg-yellow-500/10">
           <AlertCircle className="h-4 w-4 text-yellow-500" />
           <AlertDescription className="text-sm">
-            <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets, 
+            <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets,
             add a <code className="bg-muted px-1 rounded">SUPABASE_ACCESS_TOKEN</code> secret in your{' '}
-            <a 
-              href="https://supabase.com/dashboard/project/dduzbchuswwbefdunfct/settings/functions" 
-              target="_blank" 
+            <a
+              href="https://supabase.com/dashboard/project/dduzbchuswwbefdunfct/settings/functions"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-primary underline"
             >
               Supabase dashboard
-            </a>. 
+            </a>.
             Get your token from{' '}
-            <a 
-              href="https://supabase.com/dashboard/account/tokens" 
-              target="_blank" 
+            <a
+              href="https://supabase.com/dashboard/account/tokens"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-primary underline"
             >
@@ -541,371 +770,51 @@ export default function Integrations() {
         </Alert>
       )}
 
-      <Tabs defaultValue="all" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
-          <TabsList className="inline-flex w-auto min-w-max">
-            <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
-            <TabsTrigger value="configured" className="text-xs sm:text-sm">Configured</TabsTrigger>
-            <TabsTrigger value="pending" className="text-xs sm:text-sm">Pending</TabsTrigger>
-            <TabsTrigger value="planned" className="text-xs sm:text-sm">Roadmap</TabsTrigger>
+      <Tabs defaultValue="all" className="w-full min-w-0">
+        <DashboardThemeFrame
+          variant="toolbar"
+          className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-sm dark:shadow-black/25 [scrollbar-color:hsl(var(--primary)/0.35)_transparent]"
+        >
+          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+            <TabsTrigger value="all" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">All</TabsTrigger>
+            <TabsTrigger value="configured" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Configured</TabsTrigger>
+            <TabsTrigger value="pending" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Pending</TabsTrigger>
+            <TabsTrigger value="planned" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Roadmap</TabsTrigger>
           </TabsList>
-        </div>
+        </DashboardThemeFrame>
 
-        <TabsContent value="all" className="mt-6">
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
-            {integrations.map(integration => {
-              const status = getIntegrationStatus(integration);
-              return (
-                <Card key={integration.id} className="bg-card border-border">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                          {integration.icon}
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg">{integration.name}</CardTitle>
-                          <CardDescription className="text-sm mt-0.5">
-                            {integration.description}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1.5 items-end">
-                        {getStatusBadge(status)}
-                        {getSupabaseSecretBadge(integration.id)}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {integration.fields.map(field => (
-                      <div key={field.key} className="space-y-2">
-                        <Label htmlFor={field.key} className="text-sm">
-                          {field.label}
-                          {field.required !== false && <span className="text-destructive ml-1">*</span>}
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id={field.key}
-                            type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
-                            placeholder={field.placeholder}
-                            value={values[field.key] || ''}
-                            onChange={(e) => handleValueChange(field.key, e.target.value)}
-                            className="pr-10"
-                          />
-                          {field.type === 'password' && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                              onClick={() => togglePasswordVisibility(field.key)}
-                            >
-                              {showPasswords[field.key] ? (
-                                <EyeOff className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <Eye className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2">
-                      {integration.docsUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-muted-foreground hover:text-foreground"
-                          onClick={() => window.open(integration.docsUrl, '_blank')}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Docs
-                        </Button>
-                      )}
-                      <div className="flex gap-2 ml-auto">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => syncToSupabase(integration.id)}
-                                disabled={syncingToSupabase === integration.id || saving === integration.id}
-                              >
-                                {syncingToSupabase === integration.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Upload className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Sync to Supabase Secrets</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <Button
-                          onClick={() => saveIntegration(integration.id)}
-                          disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
-                        >
-                          {saving === integration.id ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                          )}
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        <TabsContent value="all" className="mt-5 sm:mt-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
+            {integrations.map(renderIntegrationCard)}
           </div>
         </TabsContent>
 
-        <TabsContent value="configured" className="mt-6">
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+        <TabsContent value="configured" className="mt-5 sm:mt-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
             {integrations
               .filter(i => getIntegrationStatus(i) === 'configured')
-              .map(integration => {
-                const status = getIntegrationStatus(integration);
-                return (
-                  <Card key={integration.id} className="bg-card border-border">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                            {integration.icon}
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{integration.name}</CardTitle>
-                            <CardDescription className="text-sm mt-0.5">
-                              {integration.description}
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-1.5 items-end">
-                          {getStatusBadge(status)}
-                          {getSupabaseSecretBadge(integration.id)}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {integration.fields.map(field => (
-                        <div key={field.key} className="space-y-2">
-                          <Label htmlFor={field.key} className="text-sm">
-                            {field.label}
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              id={field.key}
-                              type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
-                              placeholder={field.placeholder}
-                              value={values[field.key] || ''}
-                              onChange={(e) => handleValueChange(field.key, e.target.value)}
-                              className="pr-10"
-                            />
-                            {field.type === 'password' && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                                onClick={() => togglePasswordVisibility(field.key)}
-                              >
-                                {showPasswords[field.key] ? (
-                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <Eye className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="flex items-center justify-between pt-2 gap-2">
-                        {integration.docsUrl && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={() => window.open(integration.docsUrl, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Docs
-                          </Button>
-                        )}
-                        <div className="flex gap-2 ml-auto">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => syncToSupabase(integration.id)}
-                                  disabled={syncingToSupabase === integration.id || saving === integration.id}
-                                >
-                                  {syncingToSupabase === integration.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Sync to Supabase Secrets</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <Button
-                            onClick={() => saveIntegration(integration.id)}
-                            disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
-                          >
-                            {saving === integration.id ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Save className="h-4 w-4 mr-2" />
-                            )}
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              .map(renderIntegrationCard)}
             {integrations.filter(i => getIntegrationStatus(i) === 'configured').length === 0 && (
-              <div className="col-span-2 text-center py-12 text-muted-foreground">
+              <div className="rounded-3xl border border-dashed border-border/70 bg-card/55 px-6 py-12 text-center text-muted-foreground xl:col-span-2">
                 No integrations have been fully configured yet.
               </div>
             )}
           </div>
         </TabsContent>
 
-        <TabsContent value="pending" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
+        <TabsContent value="pending" className="mt-5 sm:mt-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
             {integrations
               .filter(i => getIntegrationStatus(i) !== 'configured')
-              .map(integration => {
-                const status = getIntegrationStatus(integration);
-                return (
-                  <Card key={integration.id} className="bg-card border-border">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                            {integration.icon}
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">{integration.name}</CardTitle>
-                            <CardDescription className="text-sm mt-0.5">
-                              {integration.description}
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <div className="flex flex-col gap-1.5 items-end">
-                          {getStatusBadge(status)}
-                          {getSupabaseSecretBadge(integration.id)}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {integration.fields.map(field => (
-                        <div key={field.key} className="space-y-2">
-                          <Label htmlFor={field.key} className="text-sm">
-                            {field.label}
-                            {field.required !== false && <span className="text-destructive ml-1">*</span>}
-                          </Label>
-                          <div className="relative">
-                            <Input
-                              id={field.key}
-                              type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
-                              placeholder={field.placeholder}
-                              value={values[field.key] || ''}
-                              onChange={(e) => handleValueChange(field.key, e.target.value)}
-                              className="pr-10"
-                            />
-                            {field.type === 'password' && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                                onClick={() => togglePasswordVisibility(field.key)}
-                              >
-                                {showPasswords[field.key] ? (
-                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <Eye className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      
-                      <div className="flex items-center justify-between pt-2 gap-2">
-                        {integration.docsUrl && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={() => window.open(integration.docsUrl, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Docs
-                          </Button>
-                        )}
-                        <div className="flex gap-2 ml-auto">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => syncToSupabase(integration.id)}
-                                  disabled={syncingToSupabase === integration.id || saving === integration.id}
-                                >
-                                  {syncingToSupabase === integration.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Sync to Supabase Secrets</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          <Button
-                            onClick={() => saveIntegration(integration.id)}
-                            disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
-                          >
-                            {saving === integration.id ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Save className="h-4 w-4 mr-2" />
-                            )}
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              .map(renderIntegrationCard)}
           </div>
         </TabsContent>
 
         {/* Planned Integrations Roadmap */}
-        <TabsContent value="planned" className="mt-6">
+        <TabsContent value="planned" className="mt-5 sm:mt-6">
           <PlannedIntegrations />
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
