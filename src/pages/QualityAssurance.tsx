@@ -39,15 +39,17 @@ export default function QualityAssurance() {
   const [metrics, setMetrics] = useState<QAMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<QAReport | null>(null);
 
   useEffect(() => {
     loadQAData();
   }, []);
 
-  const loadQAData = async () => {
+  const loadQAData = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
+      setErrorMessage(null);
 
       // Fetch reports with validation data via edge function
       const { data, error: reportsError } = await invokeSecureFunction('get-investment-reports', {
@@ -125,6 +127,7 @@ export default function QualityAssurance() {
 
     } catch (error) {
       console.error('Error loading QA data:', error);
+      setErrorMessage('Failed to load quality assurance data');
       toast.error('Failed to load quality assurance data');
     } finally {
       setLoading(false);
@@ -134,7 +137,7 @@ export default function QualityAssurance() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadQAData();
+    loadQAData(false);
   };
 
   const getQualityScoreColor = (score: number): string => {
@@ -257,12 +260,41 @@ export default function QualityAssurance() {
               variant="outline"
               className="w-full shrink-0 rounded-full border-primary/25 bg-card/80 px-5 font-semibold shadow-sm shadow-primary/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 md:w-auto"
               aria-label="Refresh quality assurance dashboard"
+              aria-busy={refreshing}
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
         </DashboardThemeFrame>
+
+        {errorMessage && (
+          <Card className="min-w-0 overflow-hidden rounded-2xl border-destructive/35 bg-destructive/5 shadow-sm">
+            <CardContent className="flex min-w-0 flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="shrink-0 rounded-full border border-destructive/25 bg-destructive/10 p-2 text-destructive">
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <div className="font-semibold text-destructive">{errorMessage}</div>
+                  <p className="break-words text-sm leading-6 text-muted-foreground">
+                    Refresh the dashboard to retry loading report validation results. Existing errors are shown here instead of being hidden.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                variant="outline"
+                className="w-full shrink-0 rounded-full border-destructive/30 bg-background/70 font-semibold text-destructive hover:bg-destructive/10 sm:w-auto"
+                aria-busy={refreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Metrics Overview */}
         {metrics && (
@@ -390,8 +422,11 @@ export default function QualityAssurance() {
 
               <TabsContent value="all" className="space-y-3 mt-4">
                 {reports.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground">
-                    No recent reports are available yet. Validation results will appear here when reports are generated.
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground">
+                      <FileText className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <p>No recent reports are available yet. Validation results will appear here when reports are generated.</p>
                   </div>
                 )}
                 {reports.map(report => {
@@ -464,8 +499,11 @@ export default function QualityAssurance() {
 
               <TabsContent value="issues" className="space-y-3 mt-4">
                 {reportsWithValidationIssues.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground">
-                    No reports with validation issues are available in the current data set.
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-amber-300/35 bg-amber-100/60 text-amber-700 dark:bg-amber-400/10 dark:text-amber-200">
+                      <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <p>No reports with validation issues are available in the current data set.</p>
                   </div>
                 )}
                 {reportsWithValidationIssues.map(report => {
@@ -528,8 +566,11 @@ export default function QualityAssurance() {
 
               <TabsContent value="clean" className="space-y-3 mt-4">
                 {cleanReports.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground">
-                    No clean reports are available in the current data set.
+                  <div className="rounded-2xl border border-dashed border-border/70 bg-background/55 p-6 text-center text-sm text-muted-foreground" role="status">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-200">
+                      <CheckCircle className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <p>No clean reports are available in the current data set.</p>
                   </div>
                 )}
                 {cleanReports.map(report => (
