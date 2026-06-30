@@ -474,8 +474,8 @@ export function DepreciationCompsAdmin() {
       aria-labelledby="depreciation-comps-title"
       className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-6 sm:px-0"
     >
-      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.13),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.9)_55%,hsl(var(--primary)/0.08))] shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/45 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/35 dark:ring-white/10">
-        <CardHeader className="relative overflow-hidden border-b border-border/60 px-4 py-5 dark:border-white/10 sm:px-6 lg:px-7">
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/90 shadow-sm ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10">
+        <CardHeader className="relative overflow-hidden border-b border-border/60 bg-card/70 px-4 py-5 dark:border-white/10 sm:px-6 lg:px-7">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,hsl(var(--primary)/0.10),transparent_36%,hsl(var(--background)/0.22))]" />
           <div className="relative flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex min-w-0 gap-3">
@@ -543,7 +543,7 @@ export function DepreciationCompsAdmin() {
             </div>
             
             {/* Comps Table */}
-            <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[0_18px_48px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/25">
+            <DashboardThemeFrame variant="card" className="min-w-0 overflow-hidden">
               <ScrollArea className="h-[420px]">
                 <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
                   <Table className="min-w-[980px]">
@@ -639,13 +639,13 @@ export function DepreciationCompsAdmin() {
                   </Table>
                 </div>
               </ScrollArea>
-            </div>
+            </DashboardThemeFrame>
           </TabsContent>
           
           <TabsContent value="import" className="min-w-0 space-y-4">
             {/* CSV Import */}
             <div className="min-w-0 space-y-4">
-              <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+              <DashboardThemeFrame variant="toolbar" className="min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">CSV import workspace</p>
                   <p className="text-xs leading-5 text-muted-foreground">Use the template before importing comparable records.</p>
@@ -659,9 +659,9 @@ export function DepreciationCompsAdmin() {
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
-              </div>
+              </DashboardThemeFrame>
               
-              <div className="group rounded-3xl border border-dashed border-primary/30 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72))] p-1 shadow-[0_18px_48px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/50 hover:shadow-[0_22px_58px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.16),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.66),hsl(var(--background)/0.46))] dark:shadow-black/25 motion-reduce:transition-none">
+              <DashboardThemeFrame variant="sectionAccent" className="group border-dashed p-1 transition-all duration-200 hover:border-primary/50 motion-reduce:transition-none">
                 <Label
                   htmlFor="csv-upload"
                   className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/35 motion-reduce:transition-none sm:px-6"
@@ -682,7 +682,7 @@ export function DepreciationCompsAdmin() {
                   aria-describedby="csv-upload-help"
                   className="sr-only"
                 />
-              </div>
+              </DashboardThemeFrame>
               
               {csvError && (
                 <Alert variant="destructive" className="overflow-hidden rounded-2xl border-destructive/30 bg-destructive/10 text-destructive">
@@ -692,7 +692,7 @@ export function DepreciationCompsAdmin() {
               )}
               
               {csvPreview.length > 0 && (
-                <div className="space-y-4 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/25">
+                <DashboardThemeFrame variant="card" className="space-y-4 p-4">
                   <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h4 className="font-medium text-foreground">Preview (first 5 rows):</h4>
                     <Badge variant="secondary" className="w-fit shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary">
@@ -742,7 +742,7 @@ export function DepreciationCompsAdmin() {
                       </>
                     )}
                   </Button>
-                </div>
+                </DashboardThemeFrame>
               )}
             </div>
           </TabsContent>
