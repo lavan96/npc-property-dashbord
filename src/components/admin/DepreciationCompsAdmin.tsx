@@ -471,6 +471,7 @@ export function DepreciationCompsAdmin() {
     <DashboardThemeFrame
       as="main"
       variant="page"
+      aria-labelledby="depreciation-comps-title"
       className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-6 sm:px-0"
     >
       <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.13),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.9)_55%,hsl(var(--primary)/0.08))] shadow-[0_24px_80px_rgba(15,23,42,0.12)] ring-1 ring-white/45 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/35 dark:ring-white/10">
@@ -482,7 +483,7 @@ export function DepreciationCompsAdmin() {
                 <Database className="h-5 w-5" />
               </div>
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                <CardTitle id="depreciation-comps-title" className="text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                   Depreciation Comparables Database
                 </CardTitle>
                 <CardDescription className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
@@ -500,18 +501,18 @@ export function DepreciationCompsAdmin() {
         </CardHeader>
       
         <CardContent className="min-w-0 space-y-6 p-4 sm:p-6 lg:p-7">
-          <Tabs defaultValue="list" className="min-w-0 space-y-5">
+          <Tabs defaultValue="list" className="min-w-0 space-y-5" aria-label="Depreciation comparables workspace">
             <DashboardThemeFrame variant="toolbar" className="overflow-x-auto border-primary/15 bg-background/65 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/40 dark:shadow-black/25">
               <TabsList className="grid min-w-[18rem] flex-1 grid-cols-2 rounded-xl bg-muted/45 p-1 sm:min-w-0">
                 <TabsTrigger
                   value="list"
-                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
                 >
                   View Data
                 </TabsTrigger>
                 <TabsTrigger
                   value="import"
-                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="rounded-lg text-sm font-semibold text-muted-foreground transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_28px_hsl(var(--primary)/0.25)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
                 >
                   Import Data
                 </TabsTrigger>
@@ -523,7 +524,8 @@ export function DepreciationCompsAdmin() {
             <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 onClick={() => setShowAddModal(true)}
-                className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_16px_38px_hsl(var(--primary)/0.28)] focus-visible:ring-primary sm:w-auto"
+                aria-label="Add depreciation comparable"
+                className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:bg-primary/90 hover:shadow-[0_16px_38px_hsl(var(--primary)/0.28)] focus-visible:ring-primary motion-reduce:transition-none sm:w-auto"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Comp
@@ -532,7 +534,8 @@ export function DepreciationCompsAdmin() {
                 variant="outline"
                 onClick={fetchComps}
                 disabled={loading}
-                className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                aria-label="Refresh depreciation comparables"
+                className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none sm:w-auto"
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -561,7 +564,7 @@ export function DepreciationCompsAdmin() {
                       {loading ? (
                         <TableRow className="hover:bg-transparent">
                           <TableCell colSpan={9} className="py-12 text-center">
-                            <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-background/65 p-6 text-muted-foreground shadow-inner dark:bg-slate-950/35">
+                            <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-background/65 p-6 text-muted-foreground shadow-inner dark:bg-slate-950/35" role="status" aria-live="polite">
                               <Loader2 className="h-6 w-6 animate-spin text-primary" />
                               <p className="text-sm font-medium">Loading comparables...</p>
                             </div>
@@ -623,6 +626,7 @@ export function DepreciationCompsAdmin() {
                                 variant="ghost" 
                                 size="icon"
                                 onClick={() => handleDeleteComp(comp.id)}
+                                aria-label="Delete comparable"
                                 className="hover:bg-destructive/10 focus-visible:ring-destructive"
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -649,22 +653,23 @@ export function DepreciationCompsAdmin() {
                 <Button
                   variant="outline"
                   onClick={handleExportTemplate}
-                  className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary sm:w-auto"
+                  aria-label="Download depreciation comps CSV template"
+                  className="w-full border-primary/20 bg-background/70 font-medium text-foreground transition-all duration-200 hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-primary motion-reduce:transition-none sm:w-auto"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
               </div>
               
-              <div className="group rounded-3xl border border-dashed border-primary/30 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72))] p-1 shadow-[0_18px_48px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/50 hover:shadow-[0_22px_58px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.16),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.66),hsl(var(--background)/0.46))] dark:shadow-black/25">
+              <div className="group rounded-3xl border border-dashed border-primary/30 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72))] p-1 shadow-[0_18px_48px_rgba(15,23,42,0.08)] transition-all duration-200 hover:border-primary/50 hover:shadow-[0_22px_58px_rgba(15,23,42,0.12)] dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.16),transparent_42%),linear-gradient(180deg,hsl(var(--card)/0.66),hsl(var(--background)/0.46))] dark:shadow-black/25 motion-reduce:transition-none">
                 <Label
                   htmlFor="csv-upload"
-                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/35 sm:px-6"
+                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/35 motion-reduce:transition-none sm:px-6"
                 >
                   <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
                     <FileSpreadsheet className="h-8 w-8" />
                   </span>
-                  <span className="max-w-xl text-base font-semibold leading-7">
+                  <span id="csv-upload-help" className="max-w-xl text-base font-semibold leading-7">
                     <span className="text-primary underline-offset-4 group-hover:underline">Click to upload</span>
                     <span className="text-muted-foreground"> or drag and drop a CSV file</span>
                   </span>
@@ -674,7 +679,8 @@ export function DepreciationCompsAdmin() {
                   type="file"
                   accept=".csv"
                   onChange={handleFileUpload}
-                  className="hidden"
+                  aria-describedby="csv-upload-help"
+                  className="sr-only"
                 />
               </div>
               
@@ -721,6 +727,7 @@ export function DepreciationCompsAdmin() {
                   <Button
                     onClick={handleImportCsv}
                     disabled={uploading}
+                    aria-label={`Import all ${csvFullData.length - 1} depreciation comparable records`}
                     className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:bg-primary/90 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     {uploading ? (
