@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PlannedIntegrations } from '@/components/integrations/PlannedIntegrations';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface IntegrationConfig {
   id: string;
@@ -490,20 +491,35 @@ export default function Integrations() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Integrations</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configure API keys and credentials for external services
-          </p>
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="space-y-5 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-3 text-foreground sm:space-y-6 sm:p-5 lg:p-6"
+    >
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_54%,hsl(var(--muted)/0.34))] shadow-[0_22px_70px_rgba(15,23,42,0.10)] dark:shadow-black/30 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="min-w-0 space-y-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Integrations</h1>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Configure API keys and credentials for external services
+              </p>
+            </div>
+          </div>
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={checkSupabaseSecrets}
           disabled={loadingSecrets}
-          className="gap-2 min-h-[44px] sm:min-h-0 self-start"
+          className="min-h-[44px] shrink-0 gap-2 self-start rounded-xl border-primary/25 bg-background/70 px-4 font-semibold text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_22px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/45 sm:self-center"
         >
           {loadingSecrets ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -512,7 +528,7 @@ export default function Integrations() {
           )}
           Sync Status
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
       {supabaseSetupRequired && (
         <Alert className="border-yellow-500/50 bg-yellow-500/10">
@@ -541,18 +557,21 @@ export default function Integrations() {
         </Alert>
       )}
 
-      <Tabs defaultValue="all" className="w-full">
-        <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
-          <TabsList className="inline-flex w-auto min-w-max">
-            <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
-            <TabsTrigger value="configured" className="text-xs sm:text-sm">Configured</TabsTrigger>
-            <TabsTrigger value="pending" className="text-xs sm:text-sm">Pending</TabsTrigger>
-            <TabsTrigger value="planned" className="text-xs sm:text-sm">Roadmap</TabsTrigger>
+      <Tabs defaultValue="all" className="w-full min-w-0">
+        <DashboardThemeFrame
+          variant="toolbar"
+          className="overflow-x-auto overscroll-x-contain rounded-3xl border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.72))] p-1.5 shadow-xl shadow-sm dark:shadow-black/25 [scrollbar-color:hsl(var(--primary)/0.35)_transparent]"
+        >
+          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+            <TabsTrigger value="all" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">All</TabsTrigger>
+            <TabsTrigger value="configured" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Configured</TabsTrigger>
+            <TabsTrigger value="pending" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Pending</TabsTrigger>
+            <TabsTrigger value="planned" className="rounded-2xl px-4 py-2 text-xs font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_10px_24px_hsl(var(--primary)/0.22)] sm:text-sm">Roadmap</TabsTrigger>
           </TabsList>
-        </div>
+        </DashboardThemeFrame>
 
-        <TabsContent value="all" className="mt-6">
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+        <TabsContent value="all" className="mt-5 sm:mt-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
             {integrations.map(integration => {
               const status = getIntegrationStatus(integration);
               return (
@@ -665,8 +684,8 @@ export default function Integrations() {
           </div>
         </TabsContent>
 
-        <TabsContent value="configured" className="mt-6">
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
+        <TabsContent value="configured" className="mt-5 sm:mt-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
             {integrations
               .filter(i => getIntegrationStatus(i) === 'configured')
               .map(integration => {
@@ -778,15 +797,15 @@ export default function Integrations() {
                 );
               })}
             {integrations.filter(i => getIntegrationStatus(i) === 'configured').length === 0 && (
-              <div className="col-span-2 text-center py-12 text-muted-foreground">
+              <div className="rounded-3xl border border-dashed border-border/70 bg-card/55 px-6 py-12 text-center text-muted-foreground xl:col-span-2">
                 No integrations have been fully configured yet.
               </div>
             )}
           </div>
         </TabsContent>
 
-        <TabsContent value="pending" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
+        <TabsContent value="pending" className="mt-5 sm:mt-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
             {integrations
               .filter(i => getIntegrationStatus(i) !== 'configured')
               .map(integration => {
@@ -902,10 +921,10 @@ export default function Integrations() {
         </TabsContent>
 
         {/* Planned Integrations Roadmap */}
-        <TabsContent value="planned" className="mt-6">
+        <TabsContent value="planned" className="mt-5 sm:mt-6">
           <PlannedIntegrations />
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardThemeFrame>
   );
 }
