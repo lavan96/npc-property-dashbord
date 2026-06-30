@@ -520,46 +520,53 @@ export default function Integrations() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-4 sm:p-6">
-          {integration.fields.map(field => (
-            <div key={field.key} className="min-w-0 space-y-2">
-              <Label htmlFor={field.key} className="text-sm font-medium text-foreground">
-                {field.label}
-                {field.required !== false && <span className="text-destructive ml-1">*</span>}
-              </Label>
-              <div className="relative min-w-0">
-                <Input
-                  id={field.key}
-                  type={field.type === 'password' && !showPasswords[field.key] ? 'password' : 'text'}
-                  placeholder={field.placeholder}
-                  value={values[field.key] || ''}
-                  onChange={(e) => handleValueChange(field.key, e.target.value)}
-                  className="min-w-0 truncate border-border/70 bg-background/70 pr-10 shadow-inner shadow-sm transition-all focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/35"
-                />
-                {field.type === 'password' && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => togglePasswordVisibility(field.key)}
-                  >
-                    {showPasswords[field.key] ? (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                )}
+          {integration.fields.map(field => {
+            const isSecretField = field.type === 'password';
+            const isRevealed = Boolean(showPasswords[field.key]);
+
+            return (
+              <div key={field.key} className="min-w-0 space-y-2 rounded-2xl border border-border/45 bg-background/35 p-3 shadow-inner shadow-sm transition-colors focus-within:border-primary/35 focus-within:bg-background/55 sm:p-3.5">
+                <Label htmlFor={field.key} className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <span className="min-w-0 truncate">{field.label}</span>
+                  {field.required !== false && <span className="text-destructive ml-0.5">*</span>}
+                  {isSecretField && <Shield className="ml-auto h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />}
+                </Label>
+                <div className="relative min-w-0">
+                  <Input
+                    id={field.key}
+                    type={isSecretField && !isRevealed ? 'password' : 'text'}
+                    placeholder={field.placeholder}
+                    value={values[field.key] || ''}
+                    onChange={(e) => handleValueChange(field.key, e.target.value)}
+                    className={`min-w-0 truncate rounded-xl border-border/70 bg-card/80 shadow-inner shadow-sm transition-all placeholder:text-muted-foreground/70 focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/35 ${isSecretField ? 'pr-12 font-mono text-sm tracking-[0.08em]' : 'pr-3'}`}
+                  />
+                  {isSecretField && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`${isRevealed ? 'Hide' : 'Show'} ${field.label}`}
+                      className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-lg p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                      onClick={() => togglePasswordVisibility(field.key)}
+                    >
+                      {isRevealed ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="flex min-w-0 flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
             {integration.docsUrl && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-center rounded-xl text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary sm:w-auto"
+                className="w-full justify-center rounded-xl border border-border/50 bg-background/55 text-muted-foreground transition-all hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 sm:w-auto"
                 onClick={() => window.open(integration.docsUrl, '_blank')}
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
@@ -575,7 +582,7 @@ export default function Integrations() {
                       size="sm"
                       onClick={() => syncToSupabase(integration.id)}
                       disabled={syncingToSupabase === integration.id || saving === integration.id}
-                      className="shrink-0 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
+                      className="min-h-10 shrink-0 rounded-xl border-border/70 bg-background/70 transition-all hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-55"
                     >
                       {syncingToSupabase === integration.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -592,7 +599,7 @@ export default function Integrations() {
               <Button
                 onClick={() => saveIntegration(integration.id)}
                 disabled={saving === integration.id || syncingToSupabase === integration.id || !canEditIntegrations}
-                className="min-w-0 flex-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.20)] transition-all hover:bg-primary-hover hover:shadow-[0_16px_34px_hsl(var(--primary)/0.24)] sm:flex-none"
+                className="min-h-10 min-w-0 flex-1 rounded-xl bg-primary px-4 font-semibold text-primary-foreground shadow-[0_12px_28px_hsl(var(--primary)/0.20)] transition-all hover:bg-primary-hover hover:shadow-[0_16px_34px_hsl(var(--primary)/0.24)] focus-visible:ring-2 focus-visible:ring-primary/45 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
               >
                 {saving === integration.id ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
