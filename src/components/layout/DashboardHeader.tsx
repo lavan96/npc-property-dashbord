@@ -75,7 +75,7 @@ export function DashboardHeader({ theme, isDark, onCycleTheme }: DashboardHeader
   };
 
   return (
-    <header className="dashboard-topbar-surface sticky top-0 z-40 hidden md:block">
+    <header className="dashboard-topbar-surface sticky top-0 z-40 hidden lg:block">
       <div className="dashboard-topbar-inner">
         <div className="flex items-center gap-4 flex-1">
           <div className="dashboard-icon-button flex h-10 w-10 items-center justify-center">

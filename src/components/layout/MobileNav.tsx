@@ -26,7 +26,7 @@ export function MobileNav() {
   const isMoreActive = !mobileNavItems.some(item => isActive(item.url));
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       {/* Toggle pill - always visible */}
       <div className="flex justify-center">
         <button

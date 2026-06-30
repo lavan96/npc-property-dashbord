@@ -123,7 +123,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
       )}
 
       {/* Mobile Header */}
-      <header className="dashboard-topbar-surface sticky top-0 z-40 md:hidden">
+      <header className="dashboard-topbar-surface sticky top-0 z-40 lg:hidden">
         <div className="dashboard-topbar-inner">
           {/* Left: Menu + Logo */}
           <div className="flex items-center gap-2">
