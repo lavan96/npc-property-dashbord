@@ -48,6 +48,11 @@ export interface ImportResult {
     fontsEmbedded: number;
     fontsSubstituted: string[];
   };
+  /** Phase 6D — fidelity mode best suited to the parsed document (from its OCR /
+   * confidence signals). Surfaced as a "try this mode" nudge when it differs from
+   * the mode the user imported with. */
+  recommendedMode?: FidelityMode;
+  recommendedModeReason?: string;
 }
 
 export type PdfImportEngine = 'docling';
