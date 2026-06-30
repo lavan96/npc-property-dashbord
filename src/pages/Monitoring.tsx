@@ -140,13 +140,9 @@ export default function Monitoring() {
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_55%,hsl(var(--primary)/0.08))] sm:flex-row sm:items-center sm:justify-between"
+        className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.92)_55%,hsl(var(--primary)/0.08))] sm:flex-row sm:items-center sm:justify-between dark:bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.88)_55%,hsl(var(--primary)/0.10))]"
       >
         <div className="min-w-0 space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
-            <Activity className="h-3.5 w-3.5" />
-            Operational intelligence
-          </div>
           <h1 className="break-words text-3xl font-bold tracking-tight text-foreground sm:text-4xl">System Monitoring</h1>
           <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
             Real-time API health and cache performance
@@ -164,43 +160,51 @@ export default function Monitoring() {
 
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/35 dark:border-white/10 dark:bg-card/80">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total API Calls</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Total API Calls</CardTitle>
+            <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
+              <Activity className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCalls.toLocaleString()}</div>
+            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCalls.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Last 7 days</p>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/35 dark:border-white/10 dark:bg-card/80">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Data Quality</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Data Quality</CardTitle>
+            <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
+              <TrendingUp className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overallDataQuality}%</div>
+            <div className="text-2xl font-bold tabular-nums text-foreground">{overallDataQuality}%</div>
             <p className="text-xs text-muted-foreground">Live data ratio</p>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/35 dark:border-white/10 dark:bg-card/80">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cache Entries</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Cache Entries</CardTitle>
+            <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
+              <Database className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCacheEntries.toLocaleString()}</div>
+            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCacheEntries.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">{totalLiveCached} live records</p>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] transition-all hover:-translate-y-0.5 hover:border-primary/35 dark:border-white/10 dark:bg-card/80">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-success" />
+        <Card className="group min-w-0 overflow-hidden border-success/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--success)/0.08))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-success/10 transition-all hover:-translate-y-0.5 hover:border-success/40 hover:ring-success/20 dark:border-success/25 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">System Status</CardTitle>
+            <span className="rounded-xl border border-success/25 bg-success/10 p-2 text-success transition-colors group-hover:bg-success/15">
+              <CheckCircle2 className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">Healthy</div>
