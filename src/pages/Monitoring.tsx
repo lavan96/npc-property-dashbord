@@ -18,6 +18,7 @@ import {
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface APIHealthStat {
   service_name: string;
@@ -134,16 +135,20 @@ export default function Monitoring() {
   const totalLiveCached = cacheStats.reduce((sum, stat) => sum + stat.live_data, 0);
 
   return (
-    <div className="space-y-6">
+    <DashboardThemeFrame variant="page" className="space-y-6 pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Monitoring</h1>
-          <p className="text-muted-foreground">
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.92)_55%,hsl(var(--primary)/0.08))] sm:flex-row sm:items-center sm:justify-between dark:bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.88)_55%,hsl(var(--primary)/0.10))]"
+      >
+        <div className="min-w-0 space-y-2">
+          <h1 className="break-words text-3xl font-bold tracking-tight text-foreground sm:text-4xl">System Monitoring</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
             Real-time API health and cache performance
           </p>
         </div>
-        <Button onClick={fetchStats} disabled={isLoading} variant="outline">
+        <Button onClick={fetchStats} disabled={isLoading} variant="outline" className="min-w-0 shrink-0 border-primary/30 bg-primary/10 text-primary shadow-sm hover:bg-primary/15 hover:text-primary focus-visible:ring-primary/40">
           {isLoading ? (
             <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -151,47 +156,55 @@ export default function Monitoring() {
           )}
           Refresh
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Overview Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total API Calls</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Total API Calls</CardTitle>
+            <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
+              <Activity className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCalls.toLocaleString()}</div>
+            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCalls.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Last 7 days</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Data Quality</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Data Quality</CardTitle>
+            <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
+              <TrendingUp className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{overallDataQuality}%</div>
+            <div className="text-2xl font-bold tabular-nums text-foreground">{overallDataQuality}%</div>
             <p className="text-xs text-muted-foreground">Live data ratio</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cache Entries</CardTitle>
-            <Database className="h-4 w-4 text-muted-foreground" />
+        <Card className="group min-w-0 overflow-hidden border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-muted)/0.55))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-primary/5 transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:ring-primary/15 dark:border-white/10 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Cache Entries</CardTitle>
+            <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary transition-colors group-hover:bg-primary/15">
+              <Database className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCacheEntries.toLocaleString()}</div>
+            <div className="text-2xl font-bold tabular-nums text-foreground">{totalCacheEntries.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">{totalLiveCached} live records</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-success" />
+        <Card className="group min-w-0 overflow-hidden border-success/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--success)/0.08))] shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] ring-1 ring-success/10 transition-all hover:-translate-y-0.5 hover:border-success/40 hover:ring-success/20 dark:border-success/25 dark:bg-card/80">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
+            <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">System Status</CardTitle>
+            <span className="rounded-xl border border-success/25 bg-success/10 p-2 text-success transition-colors group-hover:bg-success/15">
+              <CheckCircle2 className="h-4 w-4" />
+            </span>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-success">Healthy</div>
@@ -201,9 +214,9 @@ export default function Monitoring() {
       </div>
 
       {/* API Health Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-card/80">
+        <CardHeader className="border-b border-border/60 bg-muted/20">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <Activity className="h-5 w-5" />
             API Health Status
           </CardTitle>
@@ -224,11 +237,11 @@ export default function Monitoring() {
           ) : (
             <div className="space-y-4">
               {apiStats.map((stat) => (
-                <div key={stat.service_name} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div key={stat.service_name} className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 dark:border-white/10 dark:bg-background/25">
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-2">
                       {getServiceIcon(stat.service_name)}
-                      <span className="font-medium">{formatServiceName(stat.service_name)}</span>
+                      <span className="min-w-0 break-words font-medium">{formatServiceName(stat.service_name)}</span>
                     </div>
                     <Badge variant={getStatusColor(stat.success_rate)}>
                       {stat.success_rate}% Success
@@ -269,9 +282,9 @@ export default function Monitoring() {
       </Card>
 
       {/* Cache Performance */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-card/80">
+        <CardHeader className="border-b border-border/60 bg-muted/20">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <Database className="h-5 w-5" />
             Cache Performance
           </CardTitle>
@@ -287,15 +300,15 @@ export default function Monitoring() {
           ) : (
             <div className="space-y-4">
               {cacheStats.map((stat) => (
-                <div key={stat.cache_type} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div key={stat.cache_type} className="min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm transition-all hover:border-primary/30 dark:border-white/10 dark:bg-background/25">
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-2">
                       <Database className="h-4 w-4" />
-                      <span className="font-medium capitalize">
+                      <span className="min-w-0 break-words font-medium capitalize">
                         {stat.cache_type.replace('_', ' ')}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       {stat.retention_days > 0 && (
                         <Badge variant="outline" className="text-xs">
                           <Clock className="h-3 w-3 mr-1" />
@@ -340,9 +353,9 @@ export default function Monitoring() {
                       </div>
 
                       {stat.expired_entries > 0 && (
-                        <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span>{stat.expired_entries} expired entries need cleanup</span>
+                        <div className="flex min-w-0 items-start gap-2 rounded-xl border border-warning/25 bg-warning/10 p-3 text-sm text-warning">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                          <span className="min-w-0 break-words">{stat.expired_entries} expired entries need cleanup</span>
                         </div>
                       )}
                     </>
@@ -357,9 +370,9 @@ export default function Monitoring() {
       </Card>
 
       {/* Data Quality Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_36px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-card/80">
+        <CardHeader className="border-b border-border/60 bg-muted/20">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <BarChart3 className="h-5 w-5" />
             Data Quality Breakdown
           </CardTitle>
@@ -369,8 +382,8 @@ export default function Monitoring() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="border rounded-lg p-4">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0 rounded-2xl border border-success/25 bg-success/10 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Live Data</span>
                   <CheckCircle2 className="h-4 w-4 text-success" />
@@ -381,10 +394,10 @@ export default function Monitoring() {
                 </p>
               </div>
 
-              <div className="border rounded-lg p-4">
+              <div className="min-w-0 rounded-2xl border border-warning/25 bg-warning/10 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Estimated Data</span>
-                  <Zap className="h-4 w-4 text-amber-500" />
+                  <Zap className="h-4 w-4 text-warning" />
                 </div>
                 <p className="text-2xl font-bold">{totalEstimatedData.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -405,10 +418,10 @@ export default function Monitoring() {
       </Card>
 
       {/* Footer */}
-      <div className="text-center text-sm text-muted-foreground">
+      <div className="min-w-0 rounded-2xl border border-border/60 bg-card/60 p-4 text-center text-sm text-muted-foreground shadow-sm">
         <p>Last refreshed: {lastRefresh.toLocaleTimeString()}</p>
         <p className="mt-1">Data updates in real-time as services are used</p>
       </div>
-    </div>
+    </DashboardThemeFrame>
   );
 }
