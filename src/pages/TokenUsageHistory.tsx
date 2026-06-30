@@ -14,7 +14,7 @@ import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
 import {
   RefreshCw, Search, Coins, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck,
+  ChevronsLeft, ChevronsRight, Activity, Clock3, ShieldCheck, FileKey2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
@@ -125,46 +125,84 @@ export default function TokenUsageHistory() {
   const pageRows = filtered.slice(pageStart, pageStart + pageSize);
 
   const kpis = [
-    { label: "Generations", value: totals.count.toLocaleString(), icon: Activity, helper: "Filtered generation records" },
-    { label: "Tokens Used", value: totals.used.toLocaleString(), icon: Coins, helper: "Actual committed usage" },
-    { label: "Tokens Reserved", value: totals.reserved.toLocaleString(), icon: ShieldCheck, helper: "Reserved token capacity" },
+    {
+      label: "Generations",
+      value: totals.count.toLocaleString(),
+      icon: Activity,
+      helper: "Filtered generation records",
+      accent: "from-primary/15 via-card to-muted/30",
+      iconClass: "border-primary/20 bg-primary/10 text-primary",
+      valueClass: "text-primary",
+    },
+    {
+      label: "Tokens Used",
+      value: totals.used.toLocaleString(),
+      icon: Coins,
+      helper: "Actual committed usage",
+      accent: "from-emerald-500/12 via-card to-muted/30",
+      iconClass: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      valueClass: "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      label: "Tokens Reserved",
+      value: totals.reserved.toLocaleString(),
+      icon: ShieldCheck,
+      helper: "Reserved token capacity",
+      accent: "from-amber-500/15 via-card to-muted/30",
+      iconClass: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      valueClass: "text-amber-700 dark:text-amber-300",
+    },
   ];
 
   return (
-    <DashboardThemeFrame variant="page" className="min-h-[calc(100vh-5rem)] space-y-6 p-3 sm:p-5 lg:p-6">
-      <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-4 border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--background))_52%,hsl(var(--primary)/0.12))] sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            <Coins className="h-3.5 w-3.5" />
-            Metering audit
+    <DashboardThemeFrame variant="page" className="min-h-[calc(100vh-5rem)] space-y-7 p-3 sm:p-5 lg:p-6">
+      <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--background))_55%,hsl(var(--primary)/0.10))] p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-7">
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
+            <FileKey2 className="h-7 w-7" />
+            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-emerald-500" aria-hidden="true" />
           </div>
-          <div className="min-w-0">
-            <h1 className="flex min-w-0 items-center gap-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-              <span className="truncate">Token Usage History</span>
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Every metered report generation, with estimated vs actual tokens and duration.
-            </p>
+          <div className="min-w-0 space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Metering audit
+            </div>
+            <div className="min-w-0">
+              <h1 className="min-w-0 truncate text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                Token Usage History
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Every metered report generation, with estimated vs actual tokens and duration.
+              </p>
+            </div>
           </div>
         </div>
-        <Button onClick={load} variant="outline" size="sm" disabled={loading} className="shrink-0 border-primary/25 bg-background/70 hover:bg-primary/10 hover:text-primary">
+        <Button
+          onClick={load}
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className="w-full shrink-0 rounded-xl border-primary/25 bg-background/75 px-4 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/30 sm:w-auto"
+        >
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </DashboardThemeFrame>
 
       <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
-        {kpis.map(({ label, value, icon: Icon, helper }) => (
-          <DashboardThemeFrame key={label} variant="premiumCard" className="p-4">
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-                <p className="mt-2 truncate text-2xl font-semibold tabular-nums text-primary sm:text-3xl" title={value}>{value}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground" title={helper}>{helper}</p>
+        {kpis.map(({ label, value, icon: Icon, helper, accent, iconClass, valueClass }) => (
+          <DashboardThemeFrame key={label} variant="premiumCard" className={cn("p-0", `bg-gradient-to-br ${accent}`)}>
+            <div className="flex min-h-[9.5rem] min-w-0 flex-col justify-between gap-5 p-5">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+                  <p className={cn("mt-3 truncate text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl", valueClass)} title={value}>{value}</p>
+                </div>
+                <div className={cn("rounded-2xl border p-2.5 shadow-sm", iconClass)}>
+                  <Icon className="h-5 w-5" />
+                </div>
               </div>
-              <div className="rounded-2xl border border-primary/20 bg-primary/10 p-2.5 text-primary">
-                <Icon className="h-5 w-5" />
-              </div>
+              <p className="truncate border-t border-border/50 pt-3 text-xs text-muted-foreground" title={helper}>{helper}</p>
             </div>
           </DashboardThemeFrame>
         ))}
