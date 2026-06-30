@@ -170,16 +170,26 @@ interface ApiUsageData {
 // Phase 1 scope lock: API Usage UI shell only. Data fetching, filters,
 // calculations, status mappings, tabs, and refresh/date behaviour are preserved.
 const API_USAGE_PAGE_FRAME =
-  'min-h-[calc(100dvh-5rem)] space-y-4 px-1 pb-6 sm:space-y-6 sm:px-0';
+  'min-h-[calc(100dvh-5rem)] min-w-0 space-y-4 overflow-x-clip px-1 pb-6 sm:space-y-6 sm:px-0';
 
 const API_USAGE_HERO_FRAME =
   'flex min-w-0 flex-col gap-4 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88)_58%,hsl(var(--primary)/0.08))] p-5 shadow-[0_22px_70px_rgba(15,23,42,0.12)] ring-1 ring-white/35 dark:ring-white/10 dark:shadow-black/35 sm:flex-row sm:items-start sm:justify-between sm:p-6';
 
 const API_USAGE_METRIC_CARD =
-  'group min-w-0 overflow-hidden border-primary/10 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-[0_12px_36px_rgba(15,23,42,0.08)] ring-1 ring-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-950/75 dark:ring-white/10 dark:shadow-black/25';
+  'group min-w-0 overflow-hidden border-primary/10 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-[0_12px_36px_rgba(15,23,42,0.08)] ring-1 ring-white/40 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950/75 dark:ring-white/10 dark:shadow-black/25';
 
 const API_USAGE_TAB_TRIGGER =
-  'shrink-0 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm sm:px-4 sm:text-sm';
+  'shrink-0 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary/30 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm motion-reduce:transition-none sm:px-4 sm:text-sm';
+
+
+const API_USAGE_PANEL_CARD =
+  'min-w-0 overflow-hidden border-border/50 bg-card/80 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20';
+
+const API_USAGE_CHART_HEIGHT =
+  'min-h-0 min-w-0 overflow-hidden h-[280px] sm:h-[320px]';
+
+const API_USAGE_TABLE_SCROLL =
+  'min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.35)_transparent]';
 
 const API_USAGE_CHART_TOOLTIP_STYLE: CSSProperties = {
   backgroundColor: 'hsl(var(--card))',
@@ -246,9 +256,9 @@ interface ApiUsageEmptyStateProps {
 
 function ApiUsageEmptyState({ icon, title, description }: ApiUsageEmptyStateProps) {
   return (
-    <DashboardThemeFrame variant="section" className="flex min-h-[18rem] items-center justify-center p-8 text-center">
-      <div className="mx-auto max-w-md text-muted-foreground">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary shadow-inner">
+    <DashboardThemeFrame variant="section" className="flex min-h-[18rem] min-w-0 items-center justify-center p-6 text-center sm:p-8">
+      <div className="mx-auto max-w-md min-w-0 text-muted-foreground">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary shadow-inner motion-safe:transition-transform motion-safe:duration-200 group-hover:scale-[1.02]">
           {icon}
         </div>
         <p className="text-lg font-semibold text-foreground">{title}</p>
@@ -294,7 +304,7 @@ interface ApiUsageInsightTileProps {
 
 function ApiUsageInsightTile({ label, value, detail, icon }: ApiUsageInsightTileProps) {
   return (
-    <div className="min-w-0 rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+    <div className="min-w-0 rounded-2xl border border-border/60 bg-card/70 p-4 shadow-sm shadow-black/5 transition-colors hover:border-primary/20 motion-reduce:transition-none dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
       <div className="mb-3 flex min-w-0 items-center gap-2 text-muted-foreground">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</span>
         <span className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.16em]">{label}</span>
@@ -569,17 +579,17 @@ export default function ApiUsage() {
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2 self-start sm:justify-end">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[130px] min-h-[40px]">
+            <SelectTrigger aria-label="Select API usage date range" className="min-h-[40px] w-[130px] border-primary/20 bg-background/80 shadow-sm transition-colors hover:bg-primary/5 focus:ring-primary/40 motion-reduce:transition-none">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[min(22rem,var(--radix-select-content-available-height))] border-border/80 bg-popover/95 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-popover/85">
               <SelectItem value="1">Last 24h</SelectItem>
               <SelectItem value="7">Last 7 days</SelectItem>
               <SelectItem value="30">Last 30 days</SelectItem>
               <SelectItem value="90">Last 90 days</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={() => fetchData(true)} disabled={refreshing} className="gap-2 min-h-[40px]">
+          <Button variant="outline" size="sm" onClick={() => fetchData(true)} disabled={refreshing} aria-label="Refresh API usage data" className="min-h-[40px] gap-2 border-primary/25 bg-primary/10 text-primary shadow-sm transition-colors hover:bg-primary/15 hover:text-primary focus-visible:ring-primary/50 motion-reduce:transition-none">
             {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             <span className="hidden sm:inline">Refresh</span>
           </Button>
@@ -588,7 +598,7 @@ export default function ApiUsage() {
 
       {/* Multi-Select Filters */}
       {data && (
-        <DashboardThemeFrame variant="toolbar" className="min-w-0 border-primary/10 bg-card/70 shadow-[0_12px_36px_rgba(15,23,42,0.06)] dark:bg-slate-950/35">
+        <DashboardThemeFrame variant="toolbar" className="min-w-0 flex-wrap border-primary/10 bg-card/70 shadow-[0_12px_36px_rgba(15,23,42,0.06)] dark:bg-slate-950/35">
           <span className="mr-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"><Filter className="h-3.5 w-3.5" />Filters:</span>
           <MultiSelectFilter
             label="Services"
@@ -618,7 +628,7 @@ export default function ApiUsage() {
               variant="ghost"
               size="sm"
               onClick={() => { setSelectedServices([]); setSelectedModels([]); setSelectedStatuses([]); }}
-              className="text-xs text-muted-foreground hover:text-foreground gap-1 h-9"
+              className="h-9 gap-1 text-xs text-muted-foreground hover:text-foreground focus-visible:ring-primary/40"
             >
               <X className="h-3 w-3" /> Clear all
             </Button>
@@ -665,7 +675,7 @@ export default function ApiUsage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
         <DashboardThemeFrame variant="toolbar" className="min-w-0 overflow-x-auto border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:bg-slate-950/45 dark:shadow-black/25">
-          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
+          <TabsList aria-label="API usage sections" className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
             <TabsTrigger value="overview" className={API_USAGE_TAB_TRIGGER}>Overview</TabsTrigger>
             <TabsTrigger value="consumption" className={API_USAGE_TAB_TRIGGER}>LLM Costs</TabsTrigger>
             <TabsTrigger value="vapi" className={API_USAGE_TAB_TRIGGER}>VAPI & Voice</TabsTrigger>
@@ -677,7 +687,7 @@ export default function ApiUsage() {
         </DashboardThemeFrame>
 
         {/* ==================== Overview Tab ==================== */}
-        <TabsContent value="overview" className="space-y-4 mt-4">
+        <TabsContent value="overview" className="mt-4 min-w-0 space-y-4">
           {data && (
             <>
               <ApiUsageTabHeader
@@ -719,7 +729,7 @@ export default function ApiUsage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Call Volume Area Chart */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-primary" />
@@ -728,7 +738,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Daily API calls per service</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[280px] sm:h-[320px]">
+                  <div className={API_USAGE_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={volumeChartData}>
                         <defs>
@@ -754,7 +764,7 @@ export default function ApiUsage() {
               </Card>
 
               {/* Success vs Errors */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Activity className="h-4 w-4 text-primary" />
@@ -763,7 +773,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Daily success and failure breakdown</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[280px] sm:h-[320px]">
+                  <div className={API_USAGE_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={successErrorData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -780,7 +790,7 @@ export default function ApiUsage() {
               </Card>
 
               {/* Usage Distribution Donut */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Server className="h-4 w-4 text-primary" />
@@ -789,7 +799,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Proportional usage by service</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[280px] sm:h-[320px]">
+                  <div className={API_USAGE_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie data={donutData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
@@ -803,7 +813,7 @@ export default function ApiUsage() {
               </Card>
 
               {/* Data Quality */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -812,7 +822,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Live vs estimated data across calls</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[280px] sm:h-[320px]">
+                  <div className={API_USAGE_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie data={qualityData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
@@ -830,7 +840,7 @@ export default function ApiUsage() {
         </TabsContent>
 
         {/* ==================== LLM Costs Tab ==================== */}
-        <TabsContent value="consumption" className="space-y-4 mt-4">
+        <TabsContent value="consumption" className="mt-4 min-w-0 space-y-4">
           {data?.consumption && (
             <>
               <ApiUsageTabHeader
@@ -881,7 +891,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Daily token usage per service (stacked)</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[320px] sm:h-[380px]">
+                  <div className="min-h-0 min-w-0 overflow-hidden h-[320px] sm:h-[380px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={tokenChartData}>
                         <defs>
@@ -907,7 +917,7 @@ export default function ApiUsage() {
               </Card>
 
               {/* Cost Trend */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Coins className="h-4 w-4 text-primary" />
@@ -916,7 +926,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Daily estimated LLM spend (USD)</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[280px] sm:h-[320px]">
+                  <div className={API_USAGE_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={costChartData}>
                         <defs>
@@ -937,7 +947,7 @@ export default function ApiUsage() {
               </Card>
 
               {/* Model Distribution Donut */}
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Brain className="h-4 w-4 text-primary" />
@@ -946,7 +956,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Which AI models are used most</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[280px] sm:h-[320px]">
+                  <div className={API_USAGE_CHART_HEIGHT}>
                     {modelDonutData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -967,7 +977,7 @@ export default function ApiUsage() {
               <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredConsumptionBreakdown
                   .map(svc => (
-                    <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 backdrop-blur-sm">
+                    <Card key={svc.service} className={API_USAGE_PANEL_CARD}>
                       <CardContent className="p-4">
                         <div className="flex min-w-0 items-center justify-between gap-3 mb-3">
                           <div className="flex min-w-0 items-center gap-2">
@@ -1010,7 +1020,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Last 50 external API consumption entries</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className={API_USAGE_TABLE_SCROLL}>
                     <table className="w-full min-w-[720px] table-fixed text-sm">
                       <thead>
                         <tr className="border-b border-border/50">
@@ -1066,7 +1076,7 @@ export default function ApiUsage() {
         </TabsContent>
 
         {/* ==================== VAPI & Voice Tab (NEW) ==================== */}
-        <TabsContent value="vapi" className="space-y-4 mt-4">
+        <TabsContent value="vapi" className="mt-4 min-w-0 space-y-4">
           {data?.vapi && data.vapi.totalCalls > 0 ? (
             <>
               <ApiUsageTabHeader
@@ -1118,7 +1128,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Calls (bars) and cost (line) over time</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[320px] sm:h-[380px]">
+                  <div className="min-h-0 min-w-0 overflow-hidden h-[320px] sm:h-[380px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={data.vapi.dailyTrend}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -1145,7 +1155,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Minutes consumed per day (Twilio telephony)</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[280px] sm:h-[320px]">
+                  <div className={API_USAGE_CHART_HEIGHT}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={data.vapi.dailyTrend}>
                         <defs>
@@ -1176,7 +1186,7 @@ export default function ApiUsage() {
         </TabsContent>
 
         {/* ==================== Budget Tab (NEW) ==================== */}
-        <TabsContent value="budget" className="space-y-4 mt-4">
+        <TabsContent value="budget" className="mt-4 min-w-0 space-y-4">
           {data?.projections ? (
             <>
               <ApiUsageTabHeader
@@ -1304,7 +1314,7 @@ export default function ApiUsage() {
         </TabsContent>
 
         {/* ==================== Performance Tab ==================== */}
-        <TabsContent value="performance" className="space-y-4 mt-4">
+        <TabsContent value="performance" className="mt-4 min-w-0 space-y-4">
           {data && (
             <>
               <ApiUsageTabHeader
@@ -1345,7 +1355,7 @@ export default function ApiUsage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
@@ -1375,7 +1385,7 @@ export default function ApiUsage() {
                 {filteredServiceBreakdown
                   .sort((a, b) => b.avgResponseTime - a.avgResponseTime)
                   .map(svc => (
-                    <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 backdrop-blur-sm">
+                    <Card key={svc.service} className={API_USAGE_PANEL_CARD}>
                       <CardContent className="p-4">
                         <div className="flex min-w-0 items-center justify-between gap-3 mb-3">
                           <div className="flex min-w-0 items-center gap-2">
@@ -1410,7 +1420,7 @@ export default function ApiUsage() {
         </TabsContent>
 
         {/* ==================== Services Tab ==================== */}
-        <TabsContent value="services" className="space-y-4 mt-4">
+        <TabsContent value="services" className="mt-4 min-w-0 space-y-4">
           {data && (
             <>
               <ApiUsageTabHeader
@@ -1455,7 +1465,7 @@ export default function ApiUsage() {
                 ))}
               </div>
 
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
@@ -1484,7 +1494,7 @@ export default function ApiUsage() {
         </TabsContent>
 
         {/* ==================== Logs Tab ==================== */}
-        <TabsContent value="logs" className="space-y-4 mt-4">
+        <TabsContent value="logs" className="mt-4 min-w-0 space-y-4">
           {data && (
             <>
               <ApiUsageTabHeader
@@ -1518,7 +1528,7 @@ export default function ApiUsage() {
                 />
               </div>
 
-              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+              <Card className={API_USAGE_PANEL_CARD}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-primary" />
@@ -1527,7 +1537,7 @@ export default function ApiUsage() {
                   <CardDescription className="text-xs">Last 50 logged health check interactions</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className={API_USAGE_TABLE_SCROLL}>
                     <table className="w-full min-w-[820px] table-fixed text-sm">
                       <thead>
                         <tr className="border-b border-border/50 bg-muted/20">
@@ -1541,7 +1551,7 @@ export default function ApiUsage() {
                       </thead>
                       <tbody>
                         {filteredHealthLogs.map(log => (
-                          <tr key={log.id} className="border-b border-border/30 transition-colors hover:bg-muted/30">
+                          <tr key={log.id} className="border-b border-border/30 transition-colors hover:bg-muted/30 motion-reduce:transition-none">
                             <td className="min-w-0 p-3">
                               <div className="flex min-w-0 items-center gap-2">
                                 <div className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(log.service) }} />
