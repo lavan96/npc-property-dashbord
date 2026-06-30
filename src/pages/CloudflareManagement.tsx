@@ -485,153 +485,186 @@ function FirewallTab() {
 
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        <h3 className="text-base sm:text-lg font-semibold">Firewall Rules</h3>
-        <Button onClick={() => setShowForm(!showForm)} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          New Rule
-        </Button>
-      </div>
-
-      {/* Quick presets */}
-      <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-        <CardHeader className="min-w-0 pb-3 sm:pb-6">
-          <CardTitle className="text-sm sm:text-base">Quick Presets (Auth Page Protection)</CardTitle>
-          <CardDescription className="text-xs sm:text-sm">One-click firewall rules for your auth page</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {presets.map((preset, i) => (
-              <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm font-medium">{preset.label}</p>
-                  <p className="max-w-full break-words text-[11px] font-mono text-muted-foreground sm:line-clamp-2 sm:text-xs" title={preset.expression}>{preset.expression}</p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="self-end sm:self-auto flex-shrink-0"
-                  onClick={async () => {
-                    const result = await createRule.execute('create_firewall_rule', {
-                      expression: preset.expression,
-                      action: preset.action,
-                      description: preset.label,
-                    });
-                    if (result?.success) {
-                      toast({ title: 'Preset Applied', description: preset.label });
-                      fetchRules();
-                    }
-                  }}
-                  disabled={createRule.loading}
-                >
-                  {createRule.loading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
-                </Button>
-              </div>
-            ))}
+      <DashboardThemeFrame variant="section" className="space-y-5 border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.07))] p-4 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:shadow-black/25 sm:p-5">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">Firewall Rules</h3>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">Security rule operations for auth protection, WAF expressions, and active Cloudflare firewall rules.</p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Create form */}
-      {showForm && (
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-          <CardHeader className="min-w-0 pb-3 sm:pb-6">
-            <CardTitle className="text-base">Create Firewall Rule</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input
-                placeholder="e.g. Block auth page from bots"
-                value={newRule.description}
-                onChange={e => setNewRule(r => ({ ...r, description: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Expression (Cloudflare filter syntax)</Label>
-              <Input
-                placeholder='(http.request.uri.path eq "/auth")'
-                value={newRule.expression}
-                onChange={e => setNewRule(r => ({ ...r, expression: e.target.value }))}
-                className="font-mono text-sm"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Action</Label>
-              <Select value={newRule.action} onValueChange={v => setNewRule(r => ({ ...r, action: v }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="block">Block</SelectItem>
-                  <SelectItem value="challenge">Challenge (CAPTCHA)</SelectItem>
-                  <SelectItem value="js_challenge">JS Challenge</SelectItem>
-                  <SelectItem value="managed_challenge">Managed Challenge</SelectItem>
-                  <SelectItem value="allow">Allow</SelectItem>
-                  <SelectItem value="log">Log Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="outline" onClick={() => setShowForm(false)} className="w-full sm:w-auto">Cancel</Button>
-              <Button onClick={handleCreate} disabled={createRule.loading} className="w-full sm:w-auto">
-                {createRule.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
-                Create Rule
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Existing Rules */}
-      {rules.loading && !rules.data ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <Button
+            onClick={() => setShowForm(!showForm)}
+            size="sm"
+            className="border border-primary/25 bg-primary/15 text-primary shadow-sm transition-all hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-primary/40 dark:text-primary"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            New Rule
+          </Button>
         </div>
-      ) : (
-        <Card className="min-w-0 overflow-hidden border-border/70 bg-card/85 shadow-sm dark:border-white/10 dark:bg-slate-950/55">
-          <CardHeader className="min-w-0 pb-3 sm:pb-6">
-            <CardTitle className="text-base">Active Rules ({rulesList.length})</CardTitle>
+
+        {/* Quick presets */}
+        <Card className="min-w-0 overflow-hidden border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--primary)/0.07))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-primary/20 dark:bg-slate-950/60 dark:shadow-black/25">
+          <CardHeader className="min-w-0 pb-3 sm:pb-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <CardTitle className="text-sm sm:text-base">Quick Presets (Auth Page Protection)</CardTitle>
+                <CardDescription className="mt-1 text-xs leading-5 sm:text-sm">One-click firewall rules for your auth page</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            {rulesList.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No firewall rules configured.</p>
-            ) : (
-              <div className="space-y-2">
-                {rulesList.map((rule: any) => (
-                  <div key={rule.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0 rounded-xl border border-border/60 bg-muted/30 p-2.5 shadow-sm sm:p-3 dark:border-white/10">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-medium">{rule.description || 'Untitled Rule'}</p>
-                      <p className="max-w-full break-words text-[11px] font-mono text-muted-foreground sm:line-clamp-2 sm:text-xs" title={rule.filter?.expression || 'N/A'}>
-                        {rule.filter?.expression || 'N/A'}
-                      </p>
+            <div className="space-y-2">
+              {presets.map((preset, i) => (
+                <div key={i} className="group flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 bg-background/55 p-3 shadow-sm transition-colors hover:border-primary/25 hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-slate-950/35">
+                  <div className="flex min-w-0 gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                      <Shield className="h-4 w-4" />
                     </div>
-                    <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
-                      <Badge variant="outline" className={`text-[11px] sm:text-xs ${
-                        rule.action === 'block' ? 'border-red-500/30 text-red-400' :
-                        rule.action === 'challenge' ? 'border-yellow-500/30 text-yellow-400' :
-                        rule.action === 'allow' ? 'border-green-500/30 text-green-400' :
-                        'border-blue-500/30 text-blue-400'
-                      }`}>
-                        {rule.action}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(rule.id)}
-                        disabled={deleteRule.loading}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground sm:text-sm">{preset.label}</p>
+                      <p className="mt-1 max-w-full break-words rounded-lg border border-border/50 bg-muted/35 px-2 py-1.5 font-mono text-[11px] leading-5 text-muted-foreground sm:line-clamp-2 sm:text-xs dark:border-white/10" title={preset.expression}>{preset.expression}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-shrink-0 self-end border-primary/20 bg-primary/5 text-primary shadow-sm transition-all hover:border-primary/35 hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40 sm:self-auto"
+                    onClick={async () => {
+                      const result = await createRule.execute('create_firewall_rule', {
+                        expression: preset.expression,
+                        action: preset.action,
+                        description: preset.label,
+                      });
+                      if (result?.success) {
+                        toast({ title: 'Preset Applied', description: preset.label });
+                        fetchRules();
+                      }
+                    }}
+                    disabled={createRule.loading}
+                  >
+                    {createRule.loading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Apply'}
+                  </Button>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Create form */}
+        {showForm && (
+          <Card className="min-w-0 overflow-hidden border-primary/20 bg-card/90 shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-primary/20 dark:bg-slate-950/60 dark:shadow-black/25">
+            <CardHeader className="min-w-0 pb-3 sm:pb-5">
+              <CardTitle className="text-base">Create Firewall Rule</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Input
+                    placeholder="e.g. Block auth page from bots"
+                    value={newRule.description}
+                    onChange={e => setNewRule(r => ({ ...r, description: e.target.value }))}
+                    className="min-w-0 border-border/70 bg-background/90 shadow-sm focus-visible:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Action</Label>
+                  <Select value={newRule.action} onValueChange={v => setNewRule(r => ({ ...r, action: v }))}>
+                    <SelectTrigger className="border-border/70 bg-background/90 shadow-sm focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="block">Block</SelectItem>
+                      <SelectItem value="challenge">Challenge (CAPTCHA)</SelectItem>
+                      <SelectItem value="js_challenge">JS Challenge</SelectItem>
+                      <SelectItem value="managed_challenge">Managed Challenge</SelectItem>
+                      <SelectItem value="allow">Allow</SelectItem>
+                      <SelectItem value="log">Log Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Expression (Cloudflare filter syntax)</Label>
+                <Input
+                  placeholder='(http.request.uri.path eq "/auth")'
+                  value={newRule.expression}
+                  onChange={e => setNewRule(r => ({ ...r, expression: e.target.value }))}
+                  className="min-w-0 border-border/70 bg-background/90 font-mono text-sm shadow-sm focus-visible:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55"
+                />
+              </div>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => setShowForm(false)} className="w-full border-border/70 bg-background/70 sm:w-auto">Cancel</Button>
+                <Button onClick={handleCreate} disabled={createRule.loading} className="w-full border border-primary/25 bg-primary/15 text-primary shadow-sm hover:bg-primary/20 focus-visible:ring-primary/40 sm:w-auto">
+                  {createRule.loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
+                  Create Rule
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Existing Rules */}
+        {rules.loading && !rules.data ? (
+          <div className="flex min-h-[14rem] items-center justify-center rounded-2xl border border-dashed border-primary/20 bg-muted/20 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/90 shadow-[0_14px_42px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/60 dark:shadow-black/25">
+            <CardHeader className="min-w-0 pb-3 sm:pb-5">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <CardTitle className="text-base">Active Rules ({rulesList.length})</CardTitle>
+                <Badge variant="outline" className="flex-shrink-0 border-primary/25 bg-primary/10 text-[11px] text-primary sm:text-xs">
+                  {rulesList.length}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {rulesList.length === 0 ? (
+                <div className="flex min-h-[10rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-background/45 px-4 py-8 text-center shadow-inner dark:border-white/10 dark:bg-slate-950/30">
+                  <Shield className="mb-3 h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">No firewall rules configured.</p>
+                  <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Created firewall rules and applied presets will appear in this ledger.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {rulesList.map((rule: any) => (
+                    <div key={rule.id} className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 bg-background/55 p-3 shadow-sm transition-colors hover:border-primary/25 hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-slate-950/35">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground sm:text-sm">{rule.description || 'Untitled Rule'}</p>
+                        <p className="mt-1 max-w-full break-words rounded-lg border border-border/50 bg-muted/35 px-2 py-1.5 font-mono text-[11px] leading-5 text-muted-foreground sm:line-clamp-2 sm:text-xs dark:border-white/10" title={rule.filter?.expression || 'N/A'}>
+                          {rule.filter?.expression || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-2 self-end sm:self-auto">
+                        <Badge variant="outline" className={`text-[11px] sm:text-xs ${
+                          rule.action === 'block' ? 'border-red-500/30 bg-red-500/10 text-red-500' :
+                          rule.action === 'challenge' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-600 dark:text-yellow-300' :
+                          rule.action === 'allow' ? 'border-green-500/30 bg-green-500/10 text-green-500' :
+                          'border-blue-500/30 bg-blue-500/10 text-blue-500'
+                        }`}>
+                          {rule.action}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/40"
+                          onClick={() => handleDelete(rule.id)}
+                          disabled={deleteRule.loading}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </DashboardThemeFrame>
     </div>
   );
 }
