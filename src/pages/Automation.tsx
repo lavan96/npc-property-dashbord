@@ -394,16 +394,16 @@ const Automation = () => {
         </Card>
 
         {/* Master Switch Card */}
-        <Card className={masterEnabled ? 'overflow-hidden rounded-2xl border-green-500/40 bg-[linear-gradient(135deg,hsl(var(--success)/0.10),hsl(var(--card)/0.94))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:shadow-black/20' : 'overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_14px_40px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-black/20'}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${masterEnabled ? 'bg-green-500/20' : 'bg-muted'}`}>
-                  <Zap className={`h-5 w-5 ${masterEnabled ? 'text-green-500' : 'text-muted-foreground'}`} />
+        <Card className={masterEnabled ? 'relative overflow-hidden rounded-3xl border-green-500/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--success)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--success)/0.08))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-green-300/20 dark:ring-white/10 dark:shadow-black/25' : 'relative overflow-hidden rounded-3xl border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--muted)/0.42),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.88)_58%,hsl(var(--muted)/0.18))] shadow-[0_18px_52px_rgba(15,23,42,0.07)] ring-1 ring-white/45 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25'}>
+          <CardHeader className="pb-4">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/60 text-muted-foreground'}`}>
+                  <Zap className="h-6 w-6" />
                 </div>
-                <div>
-                  <CardTitle className="text-xl">Master Switch</CardTitle>
-                  <CardDescription>
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="text-xl tracking-tight text-foreground">Master Switch</CardTitle>
+                  <CardDescription className="max-w-2xl text-sm leading-5">
                     {masterEnabled 
                       ? `Active with ${enabledSwitchesCount} enabled switch${enabledSwitchesCount !== 1 ? 'es' : ''}`
                       : 'All auto-generation is currently disabled'
@@ -411,24 +411,24 @@ const Automation = () => {
                   </CardDescription>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-sm font-medium ${masterEnabled ? 'text-green-500' : 'text-muted-foreground'}`}>
+              <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/65 px-3 py-2 shadow-sm sm:justify-end">
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.18em] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/70 text-muted-foreground'}`}>
                   {masterEnabled ? 'ON' : 'OFF'}
                 </span>
                 <Switch 
                   checked={masterEnabled} 
                   onCheckedChange={toggleMaster}
                   disabled={masterLoading}
-                  className="data-[state=checked]:bg-green-500"
+                  className="data-[state=checked]:bg-green-500 focus-visible:ring-green-500/40"
                 />
               </div>
             </div>
           </CardHeader>
           {!masterEnabled && switches.some(s => s.is_enabled) && (
             <CardContent className="pt-0">
-              <div className="flex items-center gap-2 text-amber-500 text-sm">
-                <AlertTriangle className="h-4 w-4" />
-                <span>You have enabled switches but the master switch is off. No reports will be auto-generated.</span>
+              <div className="flex items-start gap-3 rounded-2xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-foreground shadow-sm">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                <span className="leading-5 text-muted-foreground">You have enabled switches but the master switch is off. No reports will be auto-generated.</span>
               </div>
             </CardContent>
           )}
