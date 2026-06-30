@@ -567,20 +567,21 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
   };
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       {currentBanner ? (
         <div className="space-y-4">
-          <div className="relative w-full h-32 bg-muted rounded-lg flex items-center justify-center overflow-hidden border">
+          <div className="relative flex h-36 w-full items-center justify-center overflow-hidden rounded-2xl border border-border/70 bg-[linear-gradient(135deg,hsl(var(--muted)/0.55),hsl(var(--background)/0.9))] p-4 shadow-inner">
             <img 
               src={currentBanner} 
               alt="Email banner preview"
-              className="max-w-full max-h-full object-contain"
+              className="max-h-full max-w-full object-contain drop-shadow-sm"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button 
               variant="outline" 
               size="sm" 
+              className="border-primary/25 bg-primary/5 text-primary shadow-sm hover:bg-primary/10 hover:text-primary"
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing}
             >
@@ -588,8 +589,9 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
               Replace
             </Button>
             <Button 
-              variant="destructive" 
+              variant="outline" 
               size="sm" 
+              className="border-destructive/30 bg-destructive/5 text-destructive shadow-sm hover:bg-destructive/10 hover:text-destructive"
               onClick={handleRemove}
               disabled={isProcessing}
             >
@@ -600,10 +602,10 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
         </div>
       ) : (
         <div 
-          className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+          className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
             isDragOver 
-              ? 'border-primary bg-primary/5 scale-[1.02]' 
-              : 'hover:border-primary hover:bg-muted/50'
+              ? 'scale-[1.01] border-primary bg-primary/10' 
+              : 'border-border/70 bg-background/60 hover:border-primary/60 hover:bg-primary/5'
           }`}
           onClick={() => fileInputRef.current?.click()}
           onDragOver={handleDragOver}
@@ -612,12 +614,18 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
         >
           {isProcessing ? (
             <>
-              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
-              <span className="text-sm text-muted-foreground">Uploading...</span>
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+              <span className="text-sm font-medium text-foreground">Uploading...</span>
             </>
           ) : (
             <>
-              <Upload className={`h-8 w-8 transition-colors ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors ${
+                isDragOver ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border bg-card text-muted-foreground'
+              }`}>
+                <Upload className="h-6 w-6" />
+              </div>
               <span className={`text-sm transition-colors ${isDragOver ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                 {isDragOver ? 'Drop image here' : 'Drag & drop or click to upload'}
               </span>
@@ -1390,10 +1398,10 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <CardHeader className="border-b border-border/60 bg-background/35">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm shadow-primary/10">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
@@ -1402,7 +1410,11 @@ export default function WhiteLabel() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 p-4 sm:p-6">
+          <div className="rounded-2xl border border-border/70 bg-background/55 p-4 shadow-inner">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Compliance snapshot</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">Readiness, asset coverage, and contrast checks use the current draft values and continue to block publishing when critical issues are present.</p>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             {BRAND_SLOT_ORDER.map((slot) => {
               const validation = assetValidation[slot];
@@ -1412,26 +1424,26 @@ export default function WhiteLabel() {
               return (
                 <div
                   key={slot}
-                  className={`min-w-0 rounded-2xl border p-4 shadow-sm ${
+                  className={`min-w-0 overflow-hidden rounded-2xl border p-4 shadow-lg transition-colors ${
                     isValid
-                      ? 'border-success/25 bg-success/5 shadow-success/5'
+                      ? 'border-success/30 bg-success/5 shadow-success/10 ring-1 ring-success/10'
                       : isInvalid
-                        ? 'border-warning/30 bg-warning/5 shadow-warning/5'
-                        : 'border-border bg-muted/20 shadow-background/5'
+                        ? 'border-warning/35 bg-warning/5 shadow-warning/10 ring-1 ring-warning/10'
+                        : 'border-border bg-muted/20 shadow-background/5 ring-1 ring-border/50'
                   }`}
                 >
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{BRAND_SLOT_LABELS[slot]}</p>
+                      <p className="break-words text-sm font-semibold text-foreground">{BRAND_SLOT_LABELS[slot]}</p>
                       <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">{validation.detail}</p>
                       {validation.meta ? (
-                        <div className="mt-3 space-y-1 rounded-xl border border-border/60 bg-background/55 px-3 py-2 text-xs text-muted-foreground">
-                          <p>{validation.meta.width}×{validation.meta.height}px · {validation.meta.aspectRatio.toFixed(2)}:1 aspect</p>
-                          <p>{validation.meta.recommendation}</p>
+                        <div className="mt-3 space-y-1 rounded-xl border border-border/60 bg-background/70 px-3 py-2 text-xs leading-5 text-muted-foreground shadow-inner">
+                          <p className="break-words">{validation.meta.width}×{validation.meta.height}px · {validation.meta.aspectRatio.toFixed(2)}:1 aspect</p>
+                          <p className="break-words">{validation.meta.recommendation}</p>
                         </div>
                       ) : null}
                     </div>
-                    <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-3 ${isValid ? 'border-success/30 bg-success/10 text-success' : isInvalid ? 'border-warning/30 bg-warning/10 text-warning' : 'bg-muted/40'}`}>
+                    <Badge variant="outline" className={`w-fit shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${isValid ? 'border-success/35 bg-success/10 text-success shadow-sm shadow-success/10' : isInvalid ? 'border-warning/35 bg-warning/10 text-warning shadow-sm shadow-warning/10' : 'border-border bg-muted/40 text-muted-foreground'}`}>
                       {validation.status === 'validating' ? 'Checking' : validation.status === 'valid' ? 'Ready' : validation.status === 'invalid' ? 'Needs asset' : 'Idle'}
                     </Badge>
                   </div>
@@ -1443,10 +1455,10 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <CardHeader className="border-b border-border/60 bg-background/35">
           <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm shadow-primary/10">
               <Monitor className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
@@ -1455,13 +1467,17 @@ export default function WhiteLabel() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 p-4 sm:p-6">
+          <div className="rounded-2xl border border-border/70 bg-background/55 p-4 shadow-inner">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Executive impact summary</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">These surfaces inherit the same saved brand system when the draft is committed, making it easier to review shell, controls, data views, and assets before publishing.</p>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
             {impactPreview.map((item) => (
-              <div key={item.id} className="dashboard-section-band min-w-0 space-y-3 rounded-2xl border border-border/70 bg-background/55 p-4 shadow-sm">
-                <Badge variant="outline" className="w-fit rounded-full border-primary/25 bg-primary/5 px-3 text-primary">{item.surface}</Badge>
+              <div key={item.id} className="dashboard-section-band min-w-0 space-y-3 overflow-hidden rounded-2xl border border-border/70 bg-background/60 p-4 shadow-lg shadow-background/10 ring-1 ring-primary/5">
+                <Badge variant="outline" className="w-fit max-w-full rounded-full border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary shadow-sm shadow-primary/10"><span className="truncate">{item.surface}</span></Badge>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <p className="break-words text-sm font-semibold text-foreground">{item.label}</p>
                   <p className="mt-1 break-words text-sm leading-6 text-muted-foreground">{item.detail}</p>
                 </div>
               </div>
@@ -1492,37 +1508,37 @@ export default function WhiteLabel() {
         </CardContent>
       </Card>
 
-      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <CardHeader className="border-b border-border/60 bg-background/35">
           <CardTitle>Preview each surface</CardTitle>
           <CardDescription>Inspect auth, sidebar, and browser-tab styling in isolation before saving.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs value={activeSurfacePreview} onValueChange={(value) => setActiveSurfacePreview(value as SurfacePreview)} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="auth">Auth</TabsTrigger>
-              <TabsTrigger value="sidebar">Sidebar</TabsTrigger>
-              <TabsTrigger value="browser">Browser tab</TabsTrigger>
+        <CardContent className="p-4 sm:p-6">
+          <Tabs value={activeSurfacePreview} onValueChange={(value) => setActiveSurfacePreview(value as SurfacePreview)} className="min-w-0 space-y-5">
+            <TabsList className="grid h-auto w-full min-w-0 grid-cols-1 gap-2 rounded-[1.35rem] border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-3">
+              <TabsTrigger className="min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="auth">Auth</TabsTrigger>
+              <TabsTrigger className="min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="sidebar">Sidebar</TabsTrigger>
+              <TabsTrigger className="min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="browser"><span className="truncate">Browser tab</span></TabsTrigger>
             </TabsList>
 
             <TabsContent value="auth" className="space-y-3">
               <Label className="text-sm font-medium">Authentication surfaces</Label>
-              <div className="rounded-2xl border border-border/60 bg-card p-6">
-                <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-2xl border border-border/60 bg-background px-6 py-10 text-center shadow-sm">
+              <div className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-lg shadow-background/10 sm:p-6">
+                <div className="mx-auto flex max-w-md min-w-0 flex-col items-center gap-4 rounded-[1.5rem] border border-border/60 bg-background px-5 py-10 text-center shadow-xl ring-1 ring-primary/5 sm:px-6">
                   {getBrandAssetSrc(draftSettings, 'auth') ? (
-                    <img src={getBrandAssetSrc(draftSettings, 'auth') || ''} alt="Auth logo preview" className="h-14 max-w-[220px] object-contain" />
+                    <img src={getBrandAssetSrc(draftSettings, 'auth') || ''} alt="Auth logo preview" className="h-14 max-w-full object-contain drop-shadow-sm sm:max-w-[220px]" />
                   ) : (
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                       <LogIn className="h-6 w-6" />
                     </div>
                   )}
-                  <div className="space-y-1">
-                    <p className="text-lg font-semibold text-foreground">{draftSettings.companyName}</p>
-                    <p className="text-sm text-muted-foreground">Sign in to continue to your branded workspace.</p>
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-lg font-semibold text-foreground">{draftSettings.companyName}</p>
+                    <p className="text-sm leading-6 text-muted-foreground">Sign in to continue to your branded workspace.</p>
                   </div>
                   <div className="grid w-full gap-3">
-                    <div className="h-11 rounded-xl border border-border/60 bg-muted/40" />
-                    <div className="h-11 rounded-xl bg-primary" />
+                    <div className="h-11 rounded-xl border border-border/60 bg-muted/40 shadow-inner" />
+                    <div className="h-11 rounded-xl bg-primary shadow-lg shadow-primary/25" />
                   </div>
                 </div>
               </div>
@@ -1530,30 +1546,30 @@ export default function WhiteLabel() {
 
             <TabsContent value="sidebar" className="space-y-3">
               <Label className="text-sm font-medium">Sidebar shell surfaces</Label>
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_88px]">
-                <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-                  <div className="flex items-center gap-3 border-b border-border/60 bg-sidebar/95 p-4 text-sidebar-foreground">
+              <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_96px]">
+                <div className="overflow-hidden rounded-[1.5rem] border border-border/60 bg-card shadow-xl shadow-background/10 ring-1 ring-primary/5">
+                  <div className="flex min-w-0 items-center gap-3 border-b border-border/60 bg-sidebar/95 p-4 text-sidebar-foreground">
                     {getBrandAssetSrc(draftSettings, 'sidebar') ? (
-                      <img src={getBrandAssetSrc(draftSettings, 'sidebar') || ''} alt="Sidebar logo preview" className="h-10 max-w-[120px] object-contain" />
+                      <img src={getBrandAssetSrc(draftSettings, 'sidebar') || ''} alt="Sidebar logo preview" className="h-10 max-w-[140px] object-contain drop-shadow-sm" />
                     ) : (
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground">
                         <PanelLeft className="h-5 w-5" />
                       </div>
                     )}
-                    <div>
-                      <p className="text-sm font-semibold">{draftSettings.companyName}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{draftSettings.companyName}</p>
                       <p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/65">Internal dashboard</p>
                     </div>
                   </div>
                   <div className="space-y-2 p-3">
                     {['Overview', 'Clients', 'Pipeline'].map((item, index) => (
-                      <div key={item} className={`rounded-xl px-3 py-2.5 text-sm ${index === 0 ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'bg-sidebar-accent/10 text-sidebar-foreground/80'}`}>
-                        {item}
+                      <div key={item} className={`min-w-0 rounded-xl px-3 py-2.5 text-sm shadow-sm ${index === 0 ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sidebar-primary/15' : 'bg-sidebar-accent/10 text-sidebar-foreground/80'}`}>
+                        <span className="truncate">{item}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+                <div className="overflow-hidden rounded-[1.5rem] border border-border/60 bg-card shadow-xl shadow-background/10 ring-1 ring-primary/5">
                   <div className="flex items-center justify-center border-b border-border/60 bg-sidebar/95 p-4 text-sidebar-foreground">
                     {getBrandAssetSrc(draftSettings, 'sidebar-icon') ? (
                       <img src={getBrandAssetSrc(draftSettings, 'sidebar-icon') || ''} alt="Sidebar icon preview" className="h-10 w-10 object-contain" />
@@ -1574,11 +1590,11 @@ export default function WhiteLabel() {
 
             <TabsContent value="browser" className="space-y-3">
               <Label className="text-sm font-medium">Browser tab + favicon surface</Label>
-              <div className="rounded-2xl border border-border/60 bg-card p-4">
-                <div className="rounded-2xl border border-border/60 bg-background p-4">
-                  <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+              <div className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-lg shadow-background/10 ring-1 ring-primary/5">
+                <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-inner">
+                  <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 shadow-sm">
                     {getBrandAssetSrc(draftSettings, 'favicon') ? (
-                      <img src={getBrandAssetSrc(draftSettings, 'favicon') || ''} alt="Favicon preview" className="h-8 w-8 rounded-lg object-contain" />
+                      <img src={getBrandAssetSrc(draftSettings, 'favicon') || ''} alt="Favicon preview" className="h-8 w-8 shrink-0 rounded-lg object-contain drop-shadow-sm" />
                     ) : (
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Globe className="h-4 w-4" />
@@ -1586,7 +1602,7 @@ export default function WhiteLabel() {
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{draftSettings.companyName} Dashboard</p>
-                      <p className="text-xs text-muted-foreground">Browser tab preview with resolved favicon slot</p>
+                      <p className="truncate text-xs text-muted-foreground">Browser tab preview with resolved favicon slot</p>
                     </div>
                   </div>
                 </div>
@@ -1599,19 +1615,19 @@ export default function WhiteLabel() {
       <Separator />
 
       {/* Email Signature Configuration */}
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+      <div className="min-w-0 space-y-2 rounded-[1.75rem] border border-border/70 bg-card/80 p-5 shadow-lg shadow-background/5 ring-1 ring-primary/5">
+        <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
           <Mail className="h-6 w-6 text-primary" />
           Email Copilot Signature
         </h2>
-        <p className="text-muted-foreground">
+        <p className="break-words text-muted-foreground">
           Configure the email signature that will be attached to all outgoing emails from the Email Copilot
         </p>
       </div>
 
       {/* Email Signature Banner */}
-      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <CardHeader className="border-b border-border/60 bg-background/35">
           <div className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5 text-primary" />
             <div>
@@ -1620,7 +1636,7 @@ export default function WhiteLabel() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <EmailBannerUpload
             currentBanner={draftSettings.emailSignature.banner}
             onUpload={(url) => updateDraftSettings({ 
@@ -1634,8 +1650,8 @@ export default function WhiteLabel() {
       </Card>
 
       {/* Email Signature Body */}
-      <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <CardHeader className="border-b border-border/60 bg-background/35">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
             <div>
@@ -1644,8 +1660,8 @@ export default function WhiteLabel() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+        <CardContent className="space-y-6 p-4 sm:p-6">
+          <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="sig-name">Name</Label>
               <Input
@@ -1719,6 +1735,7 @@ export default function WhiteLabel() {
             <Label htmlFor="sig-disclaimer">Disclaimer / Legal Text</Label>
             <Textarea
               id="sig-disclaimer"
+              className="min-h-32 resize-y overflow-auto break-words"
               value={draftSettings.emailSignature.disclaimer}
               onChange={(e) => updateDraftSettings({ 
                 emailSignature: { ...draftSettings.emailSignature, disclaimer: e.target.value } 
@@ -1732,28 +1749,28 @@ export default function WhiteLabel() {
           </div>
 
           {/* Email Signature Preview */}
-          <div className="space-y-2 pt-4 border-t">
+          <div className="space-y-3 border-t border-border/60 pt-4">
             <Label className="text-sm font-medium">Email Signature Preview</Label>
-            <div className="border rounded-lg p-4 bg-background">
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background p-4 shadow-inner">
               {draftSettings.emailSignature.banner && (
                 <img 
                   src={draftSettings.emailSignature.banner} 
                   alt="Email banner" 
-                  className="max-h-20 mb-4 object-contain"
+                  className="mb-4 max-h-24 max-w-full object-contain"
                 />
               )}
-              <div className="space-y-1">
-                <p className="font-semibold text-foreground">{draftSettings.emailSignature.name || 'Your Name'}</p>
-                <p className="text-sm text-muted-foreground">{draftSettings.emailSignature.title || 'Your Title'}</p>
-                <div className="text-sm text-muted-foreground space-y-0.5 pt-2">
-                  {draftSettings.emailSignature.phone && <p>📞 {draftSettings.emailSignature.phone}</p>}
-                  {draftSettings.emailSignature.email && <p>✉️ {draftSettings.emailSignature.email}</p>}
-                  {draftSettings.emailSignature.website && <p>🌐 {draftSettings.emailSignature.website}</p>}
-                  {draftSettings.emailSignature.address && <p>📍 {draftSettings.emailSignature.address}</p>}
+              <div className="min-w-0 space-y-1">
+                <p className="break-words font-semibold text-foreground">{draftSettings.emailSignature.name || 'Your Name'}</p>
+                <p className="break-words text-sm text-muted-foreground">{draftSettings.emailSignature.title || 'Your Title'}</p>
+                <div className="space-y-0.5 pt-2 text-sm text-muted-foreground">
+                  {draftSettings.emailSignature.phone && <p className="break-words">📞 {draftSettings.emailSignature.phone}</p>}
+                  {draftSettings.emailSignature.email && <p className="break-words">✉️ {draftSettings.emailSignature.email}</p>}
+                  {draftSettings.emailSignature.website && <p className="break-words">🌐 {draftSettings.emailSignature.website}</p>}
+                  {draftSettings.emailSignature.address && <p className="break-words">📍 {draftSettings.emailSignature.address}</p>}
                 </div>
               </div>
               {draftSettings.emailSignature.disclaimer && (
-                <p className="text-xs text-muted-foreground mt-4 pt-4 border-t italic">
+                <p className="mt-4 max-h-40 overflow-auto break-words border-t border-border/60 pt-4 text-xs italic leading-5 text-muted-foreground">
                   {draftSettings.emailSignature.disclaimer}
                 </p>
               )}
@@ -1765,14 +1782,15 @@ export default function WhiteLabel() {
       <Separator />
 
       {/* Reset Section */}
-      <Card className="border-destructive/50 bg-card/95 shadow-lg shadow-destructive/5">
-        <CardHeader>
+      <Card className="overflow-hidden border-destructive/50 bg-card/95 shadow-xl shadow-destructive/10 ring-1 ring-destructive/10">
+        <CardHeader className="border-b border-destructive/20 bg-destructive/5">
           <CardTitle className="text-destructive">Reset Branding</CardTitle>
           <CardDescription>Reset the current draft back to defaults before deciding whether to save it globally.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <Button 
             variant="destructive" 
+            className="shadow-lg shadow-destructive/20" 
             onClick={() => setShowResetPrompt(true)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
