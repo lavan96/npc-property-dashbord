@@ -423,7 +423,7 @@ export default function DataImport() {
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="border-primary/20 p-5 shadow-xl shadow-sm ring-1 ring-white/45 dark:shadow-black/20 dark:ring-white/10 sm:p-7"
+        className="border-primary/20 p-5 shadow-xl shadow-sm ring-1 ring-white/45 transition-shadow duration-300 hover:shadow-[0_18px_54px_hsl(var(--primary)/0.10)] dark:shadow-black/20 dark:ring-white/10 sm:p-7"
       >
         <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 left-8 h-32 w-32 rounded-full bg-amber-400/10 blur-3xl" />
@@ -466,7 +466,7 @@ export default function DataImport() {
       </DashboardThemeFrame>
 
       {/* Quick Import Section */}
-      <Card className="relative w-full min-w-0 overflow-hidden rounded-[1.5rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.08))] shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-primary/20 dark:bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--primary)/0.10))] dark:shadow-black/30">
+      <Card className="group relative w-full min-w-0 overflow-hidden rounded-[1.5rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.08))] shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-primary/20 dark:bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--primary)/0.10))] dark:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.12)]">
         <div className="pointer-events-none absolute -right-14 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute left-8 top-0 h-px w-2/3 bg-gradient-to-r from-primary/45 via-primary/20 to-transparent" />
         <CardHeader className="relative border-b border-primary/15 bg-background/35">
@@ -523,7 +523,7 @@ export default function DataImport() {
               disabled={importingSuburbs}
               aria-busy={importingSuburbs}
               variant="outline"
-              className="min-w-0 max-w-full shrink-0 rounded-full border-primary/35 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)] focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:cursor-wait disabled:border-primary/25 disabled:bg-primary/55 disabled:text-primary-foreground/80 disabled:shadow-none lg:min-w-[18rem]"
+              className="min-w-0 max-w-full shrink-0 rounded-full border-primary/35 ring-1 ring-primary/10 bg-primary px-5 font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:cursor-wait disabled:border-primary/25 disabled:bg-primary/55 disabled:text-primary-foreground/80 disabled:shadow-none lg:min-w-[18rem]"
             >
               {importingSuburbs ? (
                 <>
@@ -557,7 +557,7 @@ export default function DataImport() {
         </CardContent>
       </Card>
 
-      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.24))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.24))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25 transition-all duration-300 hover:border-primary/20 hover:shadow-[0_18px_52px_hsl(var(--foreground)/0.08)]">
         <CardHeader className="border-b border-border/50 bg-background/35">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
@@ -593,7 +593,7 @@ export default function DataImport() {
               >
                 <SelectTrigger
                   id="dataType"
-                  className="min-w-0 max-w-full rounded-xl border-border/70 bg-card/90 shadow-sm transition-colors hover:border-primary/35 focus:ring-2 focus:ring-primary/40"
+                  className="min-w-0 max-w-full rounded-xl border-border/70 bg-card/90 shadow-sm transition-all duration-200 hover:border-primary/35 focus:ring-2 focus:ring-primary/40"
                 >
                   <SelectValue placeholder="Select data type..." />
                 </SelectTrigger>
@@ -602,7 +602,7 @@ export default function DataImport() {
                     <SelectItem
                       key={type.value}
                       value={type.value}
-                      className="min-w-0 rounded-lg focus:bg-primary/10 focus:text-foreground"
+                      className="min-w-0 rounded-lg transition-colors focus:bg-primary/10 focus:text-foreground data-[state=checked]:bg-primary/10 data-[state=checked]:text-foreground"
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         <Database className="h-4 w-4 shrink-0" />
@@ -627,7 +627,7 @@ export default function DataImport() {
                 <Select value={selectedState} onValueChange={setSelectedState}>
                   <SelectTrigger
                     id="state"
-                    className="min-w-0 max-w-full rounded-xl border-border/70 bg-card/90 shadow-sm transition-colors hover:border-primary/35 focus:ring-2 focus:ring-primary/40"
+                    className="min-w-0 max-w-full rounded-xl border-border/70 bg-card/90 shadow-sm transition-all duration-200 hover:border-primary/35 focus:ring-2 focus:ring-primary/40"
                   >
                     <SelectValue placeholder="Select state..." />
                   </SelectTrigger>
@@ -636,7 +636,7 @@ export default function DataImport() {
                       <SelectItem
                         key={state.value}
                         value={state.value}
-                        className="rounded-lg focus:bg-primary/10 focus:text-foreground"
+                        className="rounded-lg transition-colors focus:bg-primary/10 focus:text-foreground data-[state=checked]:bg-primary/10 data-[state=checked]:text-foreground"
                       >
                         {state.label}
                       </SelectItem>
@@ -658,7 +658,7 @@ export default function DataImport() {
               </span>
               <Label htmlFor="csvFile">CSV File</Label>
             </div>
-            <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-4 transition-colors focus-within:border-primary/45 focus-within:bg-primary/5 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-dashed border-border bg-muted/20 p-4 transition-all duration-200 hover:border-primary/25 hover:bg-primary/5 focus-within:border-primary/45 focus-within:bg-primary/5 sm:flex-row sm:items-center sm:gap-4">
               <input
                 id="csvFile"
                 aria-label="CSV File"
@@ -684,7 +684,7 @@ export default function DataImport() {
             aria-label="Upload Data"
             disabled={!uploadReady || uploading}
             aria-busy={uploading}
-            className={`min-w-0 max-w-full w-full rounded-full py-6 font-semibold transition-all focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none ${
+            className={`min-w-0 max-w-full w-full rounded-full py-6 font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none ${
               uploadReady
                 ? "shadow-[0_12px_30px_hsl(var(--primary)/0.22)] hover:-translate-y-0.5 hover:shadow-[0_18px_42px_hsl(var(--primary)/0.28)]"
                 : ""
@@ -807,7 +807,7 @@ export default function DataImport() {
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="grid min-w-0 gap-4 text-sm md:grid-cols-2">
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   📍 Suburb Directory:
@@ -819,12 +819,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 All Australian suburbs - no state selection needed
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 suburb,postcode,state
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   💵 Median Rent Cache:
@@ -836,12 +836,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 Pre-cached rent data - no state selection needed
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 suburb,postcode,state,property_type,bedrooms,median_weekly_rent,vacancy_rate,stock_on_market,source_url
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   🏫 Schools Directory:
@@ -853,12 +853,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 name,suburb,postcode,state,school_type,school_level,icsea_score,student_count,latitude,longitude,address,website_url
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   📊 ABS Census Cache:
@@ -870,12 +870,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 postcode,state,dataset,data
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   🚨 Crime Statistics Cache:
@@ -887,12 +887,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 suburb,postcode,state,data
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   🚇 Transport Data Cache:
@@ -904,12 +904,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 latitude,longitude,state,suburb,data
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   ⚠️ Risk Assessment Cache:
@@ -921,12 +921,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 suburb,postcode,state,latitude,longitude,flood_risk,bushfire_risk
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   🌡️ Climate Data Cache:
@@ -938,12 +938,12 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 State-specific (select state above)
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 suburb,postcode,state,climate_zone,temperature_data,rainfall_data,humidity_data,extreme_weather,projections
               </code>
             </div>
 
-            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-colors hover:border-primary/25 hover:bg-card/70">
+            <div className="group min-w-0 max-w-full rounded-2xl border border-border/50 bg-background/45 p-4 shadow-sm transition-all duration-200 hover:border-primary/25 hover:bg-card/70">
               <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
                 <h4 className="font-medium break-words">
                   💰 Economic Data (National):
@@ -955,11 +955,11 @@ export default function DataImport() {
               <p className="text-xs text-muted-foreground mb-1">
                 No state selection needed
               </p>
-              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner whitespace-pre">
+              <code className="block min-w-0 max-w-full overflow-x-auto rounded-xl border border-border/50 bg-muted/80 p-3 font-mono text-xs leading-6 text-foreground shadow-inner outline-none transition-colors duration-200 whitespace-pre focus-visible:ring-2 focus-visible:ring-primary/40">
                 data_type,data
               </code>
             </div>
-            <Alert className="min-w-0 rounded-2xl md:col-span-2">
+            <Alert className="min-w-0 rounded-2xl border-amber-500/25 bg-amber-500/10 transition-colors duration-200 md:col-span-2">
               <div className="flex min-w-0 gap-2">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                 <AlertDescription className="min-w-0 break-words">
