@@ -1232,6 +1232,47 @@ html {
     border-radius: 4px;
   }
 
+  /* Batch 5: Mobile-scrollable tabs & toolbars
+     Collapses any grid-based TabsList into a horizontally-scrollable flex strip
+     on phones, so tab labels never get crushed into illegible columns. */
+  @media (max-width: 639px) {
+    [role="tablist"].grid {
+      display: flex !important;
+      grid-template-columns: none !important;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      scroll-snap-type: x proximity;
+    }
+    [role="tablist"].grid::-webkit-scrollbar { display: none; }
+    [role="tablist"].grid > * {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+    }
+  }
+
+  /* Horizontal toolbar / chip-row helper: opt-in via .toolbar-scroll */
+  .toolbar-scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0.5rem;
+  }
+  .toolbar-scroll::-webkit-scrollbar { display: none; }
+  .toolbar-scroll > * { flex: 0 0 auto; }
+
+  @media (min-width: 640px) {
+    .toolbar-scroll {
+      flex-wrap: wrap;
+      overflow-x: visible;
+    }
+  }
+
+
   /* Reduced motion preferences */
   @media (prefers-reduced-motion: reduce) {
     *,
