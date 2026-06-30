@@ -426,7 +426,7 @@ export default function DataImport() {
         className="border-primary/20 p-5 shadow-xl shadow-sm ring-1 ring-white/45 transition-shadow duration-300 hover:shadow-[0_18px_54px_hsl(var(--primary)/0.10)] dark:shadow-black/20 dark:ring-white/10 sm:p-7"
       >
         <div className="pointer-events-none absolute -right-16 -top-20 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-16 left-8 h-32 w-32 rounded-full bg-amber-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 left-8 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 space-y-3">
             <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-primary shadow-sm">
@@ -466,7 +466,7 @@ export default function DataImport() {
       </DashboardThemeFrame>
 
       {/* Quick Import Section */}
-      <Card className="group relative w-full min-w-0 overflow-hidden rounded-[1.5rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.08))] shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur dark:border-primary/20 dark:bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--primary)/0.10))] dark:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.12)]">
+      <Card className="group relative w-full min-w-0 overflow-hidden rounded-[1.5rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.08))] shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] backdrop-blur dark:border-primary/20 dark:bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--primary)/0.10))] dark:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.12)]">
         <div className="pointer-events-none absolute -right-14 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute left-8 top-0 h-px w-2/3 bg-gradient-to-r from-primary/45 via-primary/20 to-transparent" />
         <CardHeader className="relative border-b border-primary/15 bg-background/35">
@@ -479,7 +479,7 @@ export default function DataImport() {
                 Quick Import from External Sources
               </span>
             </CardTitle>
-            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-success/25 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Trusted external source</span>
             </div>
@@ -557,7 +557,7 @@ export default function DataImport() {
         </CardContent>
       </Card>
 
-      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.24))] shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25 transition-all duration-300 hover:border-primary/20 hover:shadow-[0_18px_52px_hsl(var(--foreground)/0.08)]">
+      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.24))] shadow-[0_14px_40px_hsl(var(--foreground)/0.06)] backdrop-blur dark:border-white/10 dark:bg-background/55 dark:shadow-black/25 transition-all duration-300 hover:border-primary/20 hover:shadow-[0_18px_52px_hsl(var(--foreground)/0.08)]">
         <CardHeader className="border-b border-border/50 bg-background/35">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
@@ -703,7 +703,7 @@ export default function DataImport() {
             )}
           </Button>
           {!uploadReady && !uploading && (
-            <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-warning/25 bg-warning/10 p-3 text-sm text-foreground">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <p className="min-w-0 break-words">
                 Upload Data becomes available after the required data type
@@ -718,12 +718,12 @@ export default function DataImport() {
               variant={result.success ? "default" : "destructive"}
               className={`min-w-0 overflow-hidden rounded-2xl ${
                 result.success
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100"
+                  ? "border-success/30 bg-success/10 text-foreground"
                   : "border-destructive/35 bg-destructive/10"
               }`}
             >
               {result.success ? (
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
               ) : (
                 <XCircle className="h-4 w-4" />
               )}
@@ -735,7 +735,7 @@ export default function DataImport() {
                     </p>
                     {result.summary && (
                       <div className="mt-3 grid min-w-0 gap-2 text-sm sm:grid-cols-2">
-                        <div className="min-w-0 rounded-xl border border-emerald-500/20 bg-background/70 p-3">
+                        <div className="min-w-0 rounded-xl border border-success/20 bg-background/70 p-3">
                           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             Total records
                           </p>
@@ -743,11 +743,11 @@ export default function DataImport() {
                             {result.summary.total}
                           </p>
                         </div>
-                        <div className="min-w-0 rounded-xl border border-emerald-500/20 bg-background/70 p-3">
+                        <div className="min-w-0 rounded-xl border border-success/20 bg-background/70 p-3">
                           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             Imported
                           </p>
-                          <p className="mt-1 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                          <p className="mt-1 font-semibold tabular-nums text-success">
                             {result.summary.imported}
                           </p>
                         </div>
@@ -762,11 +762,11 @@ export default function DataImport() {
                           </div>
                         )}
                         {result.summary.skipped !== undefined && (
-                          <div className="min-w-0 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3">
-                            <p className="text-xs font-medium uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                          <div className="min-w-0 rounded-xl border border-warning/25 bg-warning/10 p-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-warning">
                               Skipped
                             </p>
-                            <p className="mt-1 font-semibold tabular-nums text-amber-900 dark:text-amber-100">
+                            <p className="mt-1 font-semibold tabular-nums text-foreground">
                               {result.summary.skipped}
                             </p>
                           </div>
@@ -788,18 +788,18 @@ export default function DataImport() {
         </CardContent>
       </Card>
 
-      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-card/80 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-card/80 shadow-[0_14px_40px_hsl(var(--foreground)/0.06)] backdrop-blur dark:border-white/10 dark:bg-background/55 dark:shadow-black/25">
         <CardHeader className="border-b border-border/50 bg-muted/20">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-300">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-warning/10 text-warning">
                 <AlertCircle className="h-5 w-5" />
               </span>
               <span className="min-w-0 break-words">
                 CSV Format Requirements
               </span>
             </CardTitle>
-            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-amber-500/25 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+            <div className="inline-flex max-w-full items-center gap-2 self-start rounded-full border border-warning/25 bg-warning/10 px-3 py-1 text-xs font-semibold text-warning">
               <FileText className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Import specification guide</span>
             </div>
@@ -812,7 +812,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   📍 Suburb Directory:
                 </h4>
-                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <span className="rounded-full border border-success/25 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
                   All Australian
                 </span>
               </div>
@@ -829,7 +829,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   💵 Median Rent Cache:
                 </h4>
-                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <span className="rounded-full border border-success/25 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
                   No state selection
                 </span>
               </div>
@@ -846,7 +846,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   🏫 Schools Directory:
                 </h4>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
                   State required
                 </span>
               </div>
@@ -863,7 +863,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   📊 ABS Census Cache:
                 </h4>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
                   State required
                 </span>
               </div>
@@ -880,7 +880,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   🚨 Crime Statistics Cache:
                 </h4>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
                   State required
                 </span>
               </div>
@@ -897,7 +897,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   🚇 Transport Data Cache:
                 </h4>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
                   State required
                 </span>
               </div>
@@ -914,7 +914,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   ⚠️ Risk Assessment Cache:
                 </h4>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
                   State required
                 </span>
               </div>
@@ -931,7 +931,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   🌡️ Climate Data Cache:
                 </h4>
-                <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[11px] font-semibold text-warning">
                   State required
                 </span>
               </div>
@@ -948,7 +948,7 @@ export default function DataImport() {
                 <h4 className="font-medium break-words">
                   💰 Economic Data (National):
                 </h4>
-                <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <span className="rounded-full border border-success/25 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
                   National
                 </span>
               </div>
@@ -959,7 +959,7 @@ export default function DataImport() {
                 data_type,data
               </code>
             </div>
-            <Alert className="min-w-0 rounded-2xl border-amber-500/25 bg-amber-500/10 transition-colors duration-200 md:col-span-2">
+            <Alert className="min-w-0 rounded-2xl border-warning/25 bg-warning/10 transition-colors duration-200 md:col-span-2">
               <div className="flex min-w-0 gap-2">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                 <AlertDescription className="min-w-0 break-words">
