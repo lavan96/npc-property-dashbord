@@ -935,12 +935,12 @@ export default function ApiUsage() {
               <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredConsumptionBreakdown
                   .map(svc => (
-                    <Card key={svc.service} className="border-border/50 bg-card/80 backdrop-blur-sm">
+                    <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 backdrop-blur-sm">
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
-                            <span className="text-sm font-medium text-foreground">{formatServiceName(svc.service)}</span>
+                        <div className="flex min-w-0 items-center justify-between gap-3 mb-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
+                            <span className="min-w-0 truncate text-sm font-medium text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
                           </div>
                           <Badge variant="secondary" className="text-[10px]">{svc.topModel}</Badge>
                         </div>
@@ -1282,7 +1282,45 @@ export default function ApiUsage() {
         {/* ==================== Performance Tab ==================== */}
         <TabsContent value="performance" className="space-y-4 mt-4">
           {data && (
-            <div className="grid grid-cols-1 gap-4">
+            <>
+              <ApiUsageTabHeader
+                icon={<Clock className="h-5 w-5" />}
+                eyebrow="API monitoring"
+                title="Performance and latency"
+                description="Review existing response-time telemetry, success rates, error volume, and per-service performance without changing thresholds or chart datasets."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
+                <Badge variant="outline" className="border-border/60 bg-background/60 text-muted-foreground">{filteredHealthServices.length} services in view</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <ApiUsageMetricCard
+                  icon={<Clock className="h-4 w-4 text-primary" />}
+                  label="Avg Response"
+                  value={`${data.summary.avgResponseTime}ms`}
+                  caption="Across tracked calls"
+                />
+                <ApiUsageMetricCard
+                  icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  label="Success Rate"
+                  value={`${data.summary.successRate}%`}
+                  caption={`${data.summary.successCalls.toLocaleString()} successful`}
+                />
+                <ApiUsageMetricCard
+                  icon={<XCircle className="h-4 w-4 text-red-500" />}
+                  label="Errors"
+                  value={data.summary.errorCalls.toLocaleString()}
+                  caption="Failed health interactions"
+                />
+                <ApiUsageMetricCard
+                  icon={<Activity className="h-4 w-4 text-primary" />}
+                  label="Throughput"
+                  value={data.summary.totalCalls.toLocaleString()}
+                  caption="Total API calls"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
               <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -1313,12 +1351,12 @@ export default function ApiUsage() {
                 {filteredServiceBreakdown
                   .sort((a, b) => b.avgResponseTime - a.avgResponseTime)
                   .map(svc => (
-                    <Card key={svc.service} className="border-border/50 bg-card/80 backdrop-blur-sm">
+                    <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 backdrop-blur-sm">
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
-                            <span className="text-sm font-medium text-foreground">{formatServiceName(svc.service)}</span>
+                        <div className="flex min-w-0 items-center justify-between gap-3 mb-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
+                            <span className="min-w-0 truncate text-sm font-medium text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
                           </div>
                           <Badge variant="outline" className={svc.successRate >= 95 ? 'border-green-500/30 text-green-400 bg-green-500/10' : svc.successRate >= 80 ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}>
                             {svc.successRate}%
@@ -1342,22 +1380,66 @@ export default function ApiUsage() {
                     </Card>
                   ))}
               </div>
-            </div>
+              </div>
+            </>
           )}
         </TabsContent>
 
         {/* ==================== Services Tab ==================== */}
         <TabsContent value="services" className="space-y-4 mt-4">
           {data && (
-            <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
-              <CardHeader className="pb-2">
+            <>
+              <ApiUsageTabHeader
+                icon={<Server className="h-5 w-5" />}
+                eyebrow="Integration inventory"
+                title="Services and health status"
+                description="Inspect existing service names, call volume, success/error split, average response time, and health indicators from the current API usage dataset."
+              >
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{filteredServiceBreakdown.length} services</Badge>
+                <Badge variant="outline" className="border-border/60 bg-background/60 text-muted-foreground">{data.summary.period}</Badge>
+              </ApiUsageTabHeader>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {filteredServiceBreakdown.map(svc => (
+                  <Card key={svc.service} className="min-w-0 border-border/50 bg-card/80 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:shadow-black/20">
+                    <CardContent className="p-4">
+                      <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
+                          <span className="min-w-0 truncate text-sm font-semibold text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
+                        </div>
+                        <Badge variant="outline" className={svc.successRate >= 95 ? 'shrink-0 border-green-500/30 bg-green-500/10 text-green-400' : svc.successRate >= 80 ? 'shrink-0 border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'shrink-0 border-red-500/30 bg-red-500/10 text-red-400'}>
+                          {svc.successRate}%
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="min-w-0 rounded-xl bg-muted/25 p-2">
+                          <p className="truncate text-lg font-bold text-foreground">{svc.total}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Calls</p>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-muted/25 p-2">
+                          <p className="truncate text-lg font-bold text-foreground">{svc.avgResponseTime}ms</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg</p>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-muted/25 p-2">
+                          <p className="truncate text-lg font-bold text-destructive">{svc.errors}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Errors</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <Card className="border-border/50 bg-card/80 backdrop-blur-sm">
+                <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
                   Service Breakdown
                 </CardTitle>
                 <CardDescription className="text-xs">Total calls, successes, and errors per service</CardDescription>
-              </CardHeader>
-              <CardContent>
+                </CardHeader>
+                <CardContent>
                 <div className="h-[400px] sm:h-[500px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={filteredServiceBreakdown.map(s => ({ ...s, name: formatServiceName(s.service) }))} layout="vertical">
@@ -1371,8 +1453,9 @@ export default function ApiUsage() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </>
           )}
         </TabsContent>
 
