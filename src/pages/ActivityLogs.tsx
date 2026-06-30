@@ -251,6 +251,12 @@ type Density = 'compact' | 'comfortable';
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 const PRESETS_KEY = 'activityLogs.presets.v1';
 const DENSITY_KEY = 'activityLogs.density.v1';
+const TOOLBAR_BUTTON_CLASS = 'min-h-[44px] rounded-xl border-border/70 bg-card/70 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-primary/35 sm:min-h-0';
+
+// Developer note (Phase 1 scope lock): Activity Logs UI polish only.
+// Files touched: src/pages/ActivityLogs.tsx and activity-log-only TokenBalanceBanner styling.
+// Data fetching, audit log filters, export, live-tail, pagination, permissions, routing,
+// top-up behaviour, and backend contracts are preserved without behavioural changes.
 
 // Developer note (Phase 1 scope lock): Activity Logs UI polish only.
 // Files touched: src/pages/ActivityLogs.tsx. Data fetching, audit log filters, export, live-tail, pagination,
@@ -530,18 +536,18 @@ export default function ActivityLogs() {
 
   return (
     <TooltipProvider delayDuration={200}>
-    <DashboardThemeFrame variant="page" className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+    <DashboardThemeFrame variant="page" className="space-y-5 px-0 py-0 sm:space-y-6">
       {/* Header */}
-      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <DashboardThemeFrame variant="hero" as="header" className="min-h-[148px] flex flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--dashboard-surface-elevated)/0.92))] sm:flex-row sm:items-center sm:justify-between dark:border-primary/20 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.78))]">
+        <div className="min-w-0 space-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Activity Logs</h1>
-          <p className="text-sm text-muted-foreground">Track all user actions and system events</p>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">Track all user actions and system events</p>
         </div>
-        <DashboardThemeFrame variant="toolbar" className="shrink-0 justify-start sm:justify-end">
+        <DashboardThemeFrame variant="toolbar" className="shrink-0 justify-start border-primary/15 bg-background/65 shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] sm:w-auto sm:justify-end dark:bg-slate-950/45">
           {/* Presets */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0">
+              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS}>
                 <Bookmark className="h-4 w-4 mr-2" />
                 Presets
                 {presets.length > 0 && (
@@ -591,7 +597,7 @@ export default function ActivityLogs() {
               <Button
                 variant="outline" size="sm"
                 onClick={() => setDensity(d => d === 'compact' ? 'comfortable' : 'compact')}
-                className="min-h-[44px] sm:min-h-0"
+                className={TOOLBAR_BUTTON_CLASS}
                 aria-label="Toggle density"
               >
                 {compact ? <Rows3 className="h-4 w-4" /> : <Rows2 className="h-4 w-4" />}
@@ -603,7 +609,7 @@ export default function ActivityLogs() {
           {/* Export dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0">
+              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
                 <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
@@ -618,7 +624,7 @@ export default function ActivityLogs() {
           {/* Severity legend */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0" aria-label="Severity legend">
+              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS} aria-label="Severity legend">
                 <Info className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
@@ -646,7 +652,7 @@ export default function ActivityLogs() {
               <Button
                 variant={liveTail ? 'default' : 'outline'} size="sm"
                 onClick={() => { setLiveTail(v => !v); setNewSinceMount(0); }}
-                className="min-h-[44px] sm:min-h-0 relative"
+                className={cn(TOOLBAR_BUTTON_CLASS, 'relative', liveTail && 'border-primary/50 bg-primary text-primary-foreground shadow-[0_16px_36px_hsl(var(--primary)/0.24)] hover:bg-primary-hover hover:text-primary-foreground')}
                 aria-pressed={liveTail}
               >
                 <Radio className={cn('h-4 w-4 mr-2', liveTail && 'animate-pulse text-success')} />
@@ -665,7 +671,7 @@ export default function ActivityLogs() {
             </TooltipContent>
           </Tooltip>
 
-          <Button variant="outline" size="sm" onClick={() => loadLogs(false)} className="min-h-[44px] sm:min-h-0">
+          <Button variant="outline" size="sm" onClick={() => loadLogs(false)} className={TOOLBAR_BUTTON_CLASS}>
             <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
             Refresh
           </Button>
