@@ -557,11 +557,15 @@ export default function ActivityLogs() {
   };
 
   const compact = density === 'compact';
-  const cellPad = compact ? 'py-2' : 'py-3';
 
   const topActionLabel = stats?.topAction
     ? (ACTION_TYPE_LABELS[stats.topAction.type]?.label || stats.topAction.type.replace(/_/g, ' '))
     : null;
+  const exportStatusLabel =
+    exportState === 'working' ? 'Exporting' :
+      exportState === 'success' ? 'Exported' :
+        exportState === 'error' ? 'Export failed' :
+          'Export';
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -640,9 +644,15 @@ export default function ActivityLogs() {
           {/* Export dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className={TOOLBAR_BUTTON_CLASS} aria-label="Open export menu">
+              <Button
+                variant="outline"
+                size="sm"
+                className={TOOLBAR_BUTTON_CLASS}
+                aria-label={`Open export menu. Current export status: ${exportStatusLabel}`}
+                aria-busy={exportState === 'working'}
+              >
                 <Download className={cn('h-4 w-4 mr-2', exportState === 'working' && 'animate-pulse')} />
-                {exportState === 'working' ? 'Exporting' : exportState === 'success' ? 'Exported' : exportState === 'error' ? 'Export failed' : 'Export'}
+                {exportStatusLabel}
                 <ChevronDown className="h-3.5 w-3.5 ml-1.5 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
@@ -862,7 +872,7 @@ export default function ActivityLogs() {
       </Card>
 
       {/* Activity */}
-      <Card className="dashboard-panel overflow-hidden border-primary/10">
+      <Card className="dashboard-panel overflow-hidden border-primary/10" aria-busy={loading}>
         <CardHeader className="border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.20))]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -876,7 +886,7 @@ export default function ActivityLogs() {
               </CardDescription>
             </div>
             {!loading && total > 0 && (
-              <span className="w-fit rounded-full border border-border/70 bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+              <span className="w-fit rounded-full border border-border/70 bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm" aria-live="polite">
                 {rangeStart}–{rangeEnd} / {total}
               </span>
             )}
@@ -884,7 +894,7 @@ export default function ActivityLogs() {
         </CardHeader>
         <CardContent className="p-3 sm:p-4">
           {loading ? (
-            <div className="h-[640px] space-y-3 rounded-2xl border border-border/50 bg-card/35 p-4">
+            <div className="h-[640px] space-y-3 rounded-2xl border border-border/50 bg-card/35 p-4" role="status" aria-label="Loading activity logs">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-4">
                   <Skeleton className="h-10 w-10 rounded-2xl" />
@@ -1292,13 +1302,10 @@ function VirtualLogList({
               }}
             >
               {item.kind === 'header' ? (
-                <div className={cn(
-                  'flex items-center border-b border-border/50 bg-muted/35 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground',
-                  variant === 'mobile' && 'sticky-ish'
-                )}>
-                  {item.label}
-                  <span className="ml-2 text-muted-foreground/70 normal-case font-normal">
-                    · {item.count} {item.count === 1 ? 'event' : 'events'}
+                <div className="flex min-w-0 flex-wrap items-center gap-2 border-b border-border/50 bg-muted/35 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  <span className="truncate">{item.label}</span>
+                  <span className="rounded-full border border-border/50 bg-card/60 px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-muted-foreground/80">
+                    {item.count} {item.count === 1 ? 'event' : 'events'}
                   </span>
                 </div>
               ) : variant === 'desktop' ? (
