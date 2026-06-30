@@ -22,7 +22,8 @@ import {
   ChevronUp,
   Filter,
   TrendingDown,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
@@ -82,6 +83,7 @@ export default function ErrorLogs() {
   const [errors, setErrors] = useState<UnifiedError[]>([]);
   const [stats, setStats] = useState<ErrorStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchErrorMessage, setFetchErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSource, setSelectedSource] = useState<ErrorSource | 'all'>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<ErrorSeverity | 'all'>('all');
@@ -92,6 +94,7 @@ export default function ErrorLogs() {
 
   const fetchErrors = useCallback(async () => {
     setIsLoading(true);
+    setFetchErrorMessage(null);
     try {
       const cutoffDate = subDays(new Date(), dateRange === '24h' ? 1 : dateRange === '7d' ? 7 : 30);
       const unifiedErrors: UnifiedError[] = [];
@@ -264,6 +267,7 @@ export default function ErrorLogs() {
       setErrors(unifiedErrors);
     } catch (error) {
       console.error('Error fetching error logs:', error);
+      setFetchErrorMessage(error instanceof Error ? error.message : 'Failed to load error logs');
       toast({
         title: "Error",
         description: "Failed to load error logs",
@@ -376,6 +380,7 @@ export default function ErrorLogs() {
       </DashboardThemeFrame>
 
       {/* Stats Overview */}
+      {isLoading && !stats && <ErrorStatsSkeleton />}
       {stats && (
         <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <Card className="group min-w-0 overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.18))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
@@ -523,6 +528,15 @@ export default function ErrorLogs() {
         </CardContent>
       </Card>
 
+      {fetchErrorMessage && (
+        <ErrorStatePanel
+          title="Failed to load error logs"
+          description={fetchErrorMessage}
+          onRefresh={fetchErrors}
+          isRefreshing={isLoading}
+        />
+      )}
+
       {/* Error Tabs by Source */}
       <Tabs defaultValue="all">
         <TabsList className="h-auto min-w-0 justify-start gap-2 overflow-x-auto rounded-[1.35rem] border border-primary/15 bg-card/70 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
@@ -551,6 +565,7 @@ export default function ErrorLogs() {
             toggleExpanded={toggleExpanded}
             isLoading={isLoading}
             onRetryReport={handleRetryReport}
+            hasActiveFilters={Boolean(searchQuery || selectedSource !== 'all' || selectedSeverity !== 'all')}
           />
         </TabsContent>
 
@@ -562,11 +577,91 @@ export default function ErrorLogs() {
               toggleExpanded={toggleExpanded}
               isLoading={isLoading}
               onRetryReport={handleRetryReport}
+              hasActiveFilters={Boolean(searchQuery || selectedSource !== 'all' || selectedSeverity !== 'all')}
             />
           </TabsContent>
         ))}
       </Tabs>
     </DashboardThemeFrame>
+  );
+}
+
+
+function ErrorStatsSkeleton() {
+  return (
+    <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Loading error summary">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Card key={index} className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/80 ring-1 ring-white/35 dark:border-white/10 dark:ring-white/10">
+          <CardContent className="space-y-4 p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="h-4 w-24 animate-pulse rounded-full bg-muted" />
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
+            </div>
+            <div className="h-9 w-16 animate-pulse rounded-lg bg-muted" />
+            <div className="h-3 w-28 animate-pulse rounded-full bg-muted" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function ErrorStatePanel({ title, description, onRefresh, isRefreshing }: { title: string; description: string; onRefresh: () => void; isRefreshing: boolean }) {
+  return (
+    <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-destructive/30 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--destructive)/0.08))] shadow-[0_16px_48px_rgba(239,68,68,0.08)] ring-1 ring-white/35 dark:ring-white/10">
+      <CardContent className="flex min-w-0 flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h3 className="font-semibold text-foreground">{title}</h3>
+            <p className="break-words text-sm leading-6 text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="w-full shrink-0 rounded-full border-destructive/25 bg-background/70 hover:bg-destructive/10 hover:text-foreground sm:w-auto"
+        >
+          {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          Refresh
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ErrorListSkeleton() {
+  return (
+    <div className="space-y-3" aria-label="Loading error records">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <Card key={index} className="min-w-0 overflow-hidden rounded-[1.35rem] border-border/70 bg-card/80 ring-1 ring-white/35 dark:border-white/10 dark:ring-white/10">
+          <CardContent className="p-5">
+            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex min-w-0 flex-1 gap-3">
+                <div className="h-10 w-10 shrink-0 animate-pulse rounded-2xl bg-muted" />
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <div className="h-6 w-20 animate-pulse rounded-full bg-muted" />
+                    <div className="h-6 w-32 animate-pulse rounded-full bg-muted" />
+                    <div className="h-6 w-40 animate-pulse rounded-full bg-muted" />
+                  </div>
+                  <div className="h-5 w-full max-w-xl animate-pulse rounded-full bg-muted" />
+                  <div className="h-4 w-full max-w-md animate-pulse rounded-full bg-muted" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 w-20 animate-pulse rounded-full bg-muted" />
+                <div className="h-9 w-20 animate-pulse rounded-full bg-muted" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
 
@@ -576,29 +671,33 @@ function ErrorList({
   expandedErrors, 
   toggleExpanded,
   isLoading,
-  onRetryReport
+  onRetryReport,
+  hasActiveFilters
 }: { 
   errors: UnifiedError[]; 
   expandedErrors: Set<string>;
   toggleExpanded: (id: string) => void;
   isLoading: boolean;
   onRetryReport: (reportId: string, address: string) => Promise<void>;
+  hasActiveFilters: boolean;
 }) {
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <ErrorListSkeleton />;
   }
 
   if (errors.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-          <h3 className="text-lg font-semibold">No errors found</h3>
-          <p className="text-muted-foreground">All systems operating normally</p>
+      <Card className={`min-w-0 overflow-hidden rounded-[1.5rem] border ${hasActiveFilters ? 'border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.06))]' : 'border-emerald-500/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(160_84%_39%/0.06))]'} shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-white/35 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25`}>
+        <CardContent className="flex min-w-0 flex-col items-center justify-center px-6 py-12 text-center">
+          <span className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border ${hasActiveFilters ? 'border-primary/25 bg-primary/10 text-primary' : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500'} shadow-sm`}>
+            {hasActiveFilters ? <Search className="h-7 w-7" /> : <CheckCircle2 className="h-7 w-7" />}
+          </span>
+          <h3 className="text-lg font-semibold text-foreground">No errors found</h3>
+          <p className="mt-1 max-w-md text-sm leading-6 text-muted-foreground">
+            {hasActiveFilters
+              ? 'No error records match the current search and filter combination.'
+              : 'All systems operating normally'}
+          </p>
         </CardContent>
       </Card>
     );
