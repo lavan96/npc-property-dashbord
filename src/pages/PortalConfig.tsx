@@ -618,7 +618,7 @@ export default function PortalConfig() {
                       </SelectItem>
                       <SelectItem value="full_edit">
                         <div className="flex min-w-0 items-center gap-2">
-                          <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-xs text-emerald-700 dark:text-emerald-300">Full Edit</Badge>
+                          <Badge variant="outline" className="border-success/40 bg-success/10 text-xs text-success">Full Edit</Badge>
                           <span className="text-xs text-muted-foreground">Edit all available sections</span>
                         </div>
                       </SelectItem>
@@ -643,8 +643,8 @@ export default function PortalConfig() {
                     <Badge variant="outline" className="mb-3 border-warning/40 bg-warning/10 text-xs text-warning">Limited</Badge>
                     <p className="break-words leading-6">Clients can edit their personal profile and upload documents. Other sections remain read-only.</p>
                   </div>
-                  <div className="min-w-0 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 dark:border-emerald-400/25 dark:bg-emerald-500/10">
-                    <Badge variant="outline" className="mb-3 border-emerald-500/40 bg-emerald-500/10 text-xs text-emerald-700 dark:text-emerald-300">Full Edit</Badge>
+                  <div className="min-w-0 rounded-2xl border border-success/30 bg-success/10 p-4 dark:border-success/25 dark:bg-success/10">
+                    <Badge variant="outline" className="mb-3 border-success/40 bg-success/10 text-xs text-success">Full Edit</Badge>
                     <p className="break-words leading-6">Clients have full editing access across profile, properties, employment/financial details, and documents.</p>
                   </div>
                 </div>
