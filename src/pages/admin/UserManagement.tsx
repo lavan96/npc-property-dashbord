@@ -408,7 +408,7 @@ export default function UserManagement() {
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="flex flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] p-5 shadow-[0_18px_55px_rgba(15,23,42,0.10)] dark:shadow-black/30 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
+        className="flex flex-col gap-5 border-primary/20 bg-card/90 p-5 shadow-lg shadow-primary/5 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
       >
         <div className="min-w-0 space-y-1">
           <h1 className="flex min-w-0 items-center gap-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -434,7 +434,7 @@ export default function UserManagement() {
                 Create Sub-Admin
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-black/20">
+            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-primary/10">
               <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
                 <DialogTitle className="flex items-center gap-2 text-xl">
                   <Plus className="h-5 w-5 text-primary" />
@@ -496,7 +496,7 @@ export default function UserManagement() {
                 Invite User
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-black/20">
+            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-primary/10">
               <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
                 <DialogTitle className="flex items-center gap-2 text-xl">
                   <UserPlus className="h-5 w-5 text-primary" />
@@ -563,8 +563,8 @@ export default function UserManagement() {
       />
 
       {/* Users List */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-black/25">
-        <CardHeader className="border-b border-border/60 bg-gradient-to-r from-muted/35 via-card to-primary/5 px-5 py-5 dark:border-white/10 dark:from-slate-950/70 dark:via-slate-950/50 dark:to-primary/10 sm:px-6">
+      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-lg shadow-primary/5 ring-1 ring-primary/5 dark:border-white/10">
+        <CardHeader className="border-b border-border/60 bg-muted/25 px-5 py-5 dark:border-white/10 sm:px-6">
           <CardTitle className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">All Users</CardTitle>
           <CardDescription className="text-sm leading-6">Manage user accounts and their access levels</CardDescription>
         </CardHeader>
@@ -615,7 +615,7 @@ export default function UserManagement() {
           ) : (
             <Table className="min-w-[980px]" aria-label="All users">
               <TableHeader>
-                <TableRow className="border-border/70 bg-muted/45 hover:bg-muted/45 dark:border-white/10 dark:bg-slate-900/70">
+                <TableRow className="border-border/70 bg-muted/45 hover:bg-muted/45 dark:border-white/10">
                   <TableHead className="w-12 pl-5">
                     <Checkbox
                       checked={selectedUserIds.size === users.length && users.length > 0}
