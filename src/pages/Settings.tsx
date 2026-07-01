@@ -40,6 +40,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
+import {
+  settingsAccentCardClass,
+  settingsBadgePillClass,
+  settingsCardClass,
+  settingsCx,
+  settingsInputClass,
+  settingsPillButtonClass,
+  settingsPrimaryButtonClass,
+  settingsSwitchClass,
+} from "@/components/settings/settingsUi";
 
 export default function Settings() {
   const { canEdit: canEditSettings } = useModulePermissions("settings");
@@ -293,15 +303,15 @@ export default function Settings() {
       <PushNotificationToggle />
 
       {/* Personal Mailbox Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
+      <Card className={settingsCardClass}>
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <Mail className="h-5 w-5 shrink-0" />
             Personal Mailbox
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        <CardContent className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
             <Label htmlFor="personal-mailbox">Mailbox Email Address</Label>
             {loadingMailbox ? (
               <div className="text-sm text-muted-foreground">Loading...</div>
@@ -309,13 +319,13 @@ export default function Settings() {
               <>
                 <Input
                   id="personal-mailbox"
-                  className="min-w-0"
+                  className={settingsInputClass}
                   type="email"
                   placeholder="your.email@example.com"
                   value={personalMailbox}
                   onChange={(e) => setPersonalMailbox(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="break-words text-xs leading-5 text-muted-foreground">
                   This email will be used for your personal email communications
                   within the dashboard.
                 </p>
@@ -326,7 +336,7 @@ export default function Settings() {
           <Button
             onClick={handleSaveMailbox}
             disabled={savingMailbox || loadingMailbox}
-            className="w-full"
+            className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
           >
             {savingMailbox && (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -337,15 +347,15 @@ export default function Settings() {
       </Card>
 
       {/* Email Signature Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSignature className="h-5 w-5" />
+      <Card className={settingsCardClass}>
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <FileSignature className="h-5 w-5 shrink-0" />
             Email Signature
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        <CardContent className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
             <Label htmlFor="email-signature">Your Email Signature</Label>
             {loadingSignature ? (
               <div className="text-sm text-muted-foreground">Loading...</div>
@@ -356,9 +366,9 @@ export default function Settings() {
                   placeholder="Best regards,&#10;Your Name&#10;Company Name&#10;Phone: +1 234 567 890"
                   value={emailSignature}
                   onChange={(e) => setEmailSignature(e.target.value)}
-                  className="min-h-[140px] min-w-0 resize-y whitespace-pre-wrap break-words font-mono text-sm leading-6"
+                  className="min-h-[160px] min-w-0 resize-y whitespace-pre-wrap break-words font-mono text-sm leading-6 focus-visible:ring-primary"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="break-words text-xs leading-5 text-muted-foreground">
                   This signature will be automatically appended to all emails
                   sent from the Email Copilot. You can use plain text or HTML
                   formatting.
@@ -370,7 +380,7 @@ export default function Settings() {
           <Button
             onClick={handleSaveSignature}
             disabled={savingSignature || loadingSignature}
-            className="w-full"
+            className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
           >
             {savingSignature && (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -399,40 +409,54 @@ export default function Settings() {
       <DeviceManagementCard />
 
       {/* Security Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
+      <Card className={settingsCardClass}>
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <Shield className="h-5 w-5 shrink-0 text-primary" />
             Security & Access
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex min-w-0 items-center justify-between gap-3">
+        <CardContent className="min-w-0 space-y-4">
+          <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">API Token Status</h4>
               <p className="text-xs text-muted-foreground">
                 Personal access token for Airtable API
               </p>
             </div>
-            <Badge variant="success">Configured</Badge>
+            <Badge variant="success" className={settingsBadgePillClass}>
+              Configured
+            </Badge>
           </div>
 
           <Separator />
 
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium">User Permissions</h4>
+          <div className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+            <h4 className="text-sm font-semibold">User Permissions</h4>
             <div className="space-y-2">
-              <div className="flex min-w-0 items-center justify-between gap-3">
-                <span className="text-sm">Read listings data</span>
-                <Badge variant="success">Enabled</Badge>
+              <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-muted/25 px-3 py-2">
+                <span className="min-w-0 break-words text-sm">
+                  Read listings data
+                </span>
+                <Badge variant="success" className={settingsBadgePillClass}>
+                  Enabled
+                </Badge>
               </div>
-              <div className="flex min-w-0 items-center justify-between gap-3">
-                <span className="text-sm">Export CSV data</span>
-                <Badge variant="success">Enabled</Badge>
+              <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-muted/25 px-3 py-2">
+                <span className="min-w-0 break-words text-sm">
+                  Export CSV data
+                </span>
+                <Badge variant="success" className={settingsBadgePillClass}>
+                  Enabled
+                </Badge>
               </div>
-              <div className="flex min-w-0 items-center justify-between gap-3">
-                <span className="text-sm">Modify listing data</span>
-                <Badge variant="outline">Disabled</Badge>
+              <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-muted/25 px-3 py-2">
+                <span className="min-w-0 break-words text-sm">
+                  Modify listing data
+                </span>
+                <Badge variant="outline" className={settingsBadgePillClass}>
+                  Disabled
+                </Badge>
               </div>
             </div>
           </div>
@@ -440,28 +464,31 @@ export default function Settings() {
       </Card>
 
       {/* Display Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.18))] shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/10 dark:border-primary/25 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader className="pb-3 md:pb-6">
-          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-            <Palette className="h-4 w-4 md:h-5 md:w-5" />
+      <Card className={settingsAccentCardClass}>
+        <CardHeader className="space-y-2 pb-3 md:pb-6">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <Palette className="h-4 w-4 shrink-0 text-primary md:h-5 md:w-5" />
             Display & Preferences
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="min-w-0 space-y-4">
           <div className="space-y-4">
-            <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Theme</h4>
                 <p className="text-xs text-muted-foreground">
                   Choose your preferred color scheme
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="grid min-w-0 grid-cols-3 gap-2 sm:flex">
                 <Button
                   variant={themeMode === "light" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setThemeMode("light")}
-                  className="flex-1 sm:flex-none"
+                  className={settingsCx(
+                    settingsPillButtonClass,
+                    "sm:flex-none",
+                  )}
                 >
                   Light
                 </Button>
@@ -469,7 +496,10 @@ export default function Settings() {
                   variant={themeMode === "dark" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setThemeMode("dark")}
-                  className="flex-1 sm:flex-none"
+                  className={settingsCx(
+                    settingsPillButtonClass,
+                    "sm:flex-none",
+                  )}
                 >
                   Dark
                 </Button>
@@ -477,7 +507,10 @@ export default function Settings() {
                   variant={themeMode === "system" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setThemeMode("system")}
-                  className="flex-1 sm:flex-none"
+                  className={settingsCx(
+                    settingsPillButtonClass,
+                    "sm:flex-none",
+                  )}
                 >
                   System
                 </Button>
@@ -487,7 +520,7 @@ export default function Settings() {
             <Separator />
 
             {/* Booking Timezone (Source of Truth) */}
-            <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Booking Timezone</h4>
                 <p className="text-xs text-muted-foreground">
@@ -502,10 +535,10 @@ export default function Settings() {
                     handleSettingChange("bookingTimezone", value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-w-0 focus:ring-primary">
                     <SelectValue placeholder="Select booking timezone" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[min(22rem,var(--radix-select-content-available-height))]">
                     <SelectItem value="Australia/Sydney">
                       Sydney (AEST/AEDT)
                     </SelectItem>
@@ -538,7 +571,7 @@ export default function Settings() {
             <Separator />
 
             {/* Display Timezone (Reference) */}
-            <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Display Timezone</h4>
                 <p className="text-xs text-muted-foreground">
@@ -555,10 +588,10 @@ export default function Settings() {
                     handleSettingChange("timezone", value)
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-w-0 focus:ring-primary">
                     <SelectValue placeholder="Select timezone" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[min(22rem,var(--radix-select-content-available-height))]">
                     <SelectItem value="Australia/Sydney">
                       Australia/Sydney (AEST/AEDT)
                     </SelectItem>
@@ -608,7 +641,7 @@ export default function Settings() {
 
             <Separator />
 
-            <div className="flex min-w-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Browser Notifications</h4>
                 <p className="text-xs text-muted-foreground">
@@ -616,6 +649,7 @@ export default function Settings() {
                 </p>
               </div>
               <Switch
+                className={settingsSwitchClass}
                 checked={settings.notifications}
                 onCheckedChange={(checked) =>
                   handleSettingChange("notifications", checked)
@@ -627,15 +661,15 @@ export default function Settings() {
       </Card>
 
       {/* Performance Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
+      <Card className={settingsCardClass}>
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <Clock className="h-5 w-5 shrink-0 text-primary" />
             Performance
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex min-w-0 items-center justify-between gap-3">
+        <CardContent className="min-w-0 space-y-4">
+          <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">Auto-refresh Data</h4>
               <p className="text-xs text-muted-foreground">
@@ -643,6 +677,7 @@ export default function Settings() {
               </p>
             </div>
             <Switch
+              className={settingsSwitchClass}
               checked={settings.autoRefresh}
               onCheckedChange={(checked) =>
                 handleSettingChange("autoRefresh", checked)
@@ -653,15 +688,16 @@ export default function Settings() {
           {settings.autoRefresh && (
             <>
               <Separator />
-              <div className="flex min-w-0 items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
                 <div className="min-w-0 space-y-1">
                   <h4 className="text-sm font-medium">Refresh Interval</h4>
                   <p className="text-xs text-muted-foreground">
                     How often to check for new data (minutes)
                   </p>
                 </div>
-                <div className="w-24">
+                <div className="w-28 shrink-0">
                   <Input
+                    className={settingsInputClass}
                     type="number"
                     min="1"
                     max="60"
@@ -681,15 +717,15 @@ export default function Settings() {
       </Card>
 
       {/* Report Generation Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5" />
+      <Card className={settingsCardClass}>
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <Zap className="h-5 w-5 shrink-0 text-primary" />
             Report Generation
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex min-w-0 items-center justify-between gap-3">
+        <CardContent className="min-w-0 space-y-4">
+          <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">Auto-Continue Reports</h4>
               <p className="text-xs text-muted-foreground">
@@ -697,6 +733,7 @@ export default function Settings() {
               </p>
             </div>
             <Switch
+              className={settingsSwitchClass}
               checked={settings.autoContinueReports}
               onCheckedChange={(checked) =>
                 handleSettingChange("autoContinueReports", checked)
@@ -707,15 +744,16 @@ export default function Settings() {
           {settings.autoContinueReports && (
             <>
               <Separator />
-              <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
                 <div className="min-w-0 space-y-1">
                   <h4 className="text-sm font-medium">Max Retry Attempts</h4>
                   <p className="text-xs text-muted-foreground">
                     Maximum times to auto-retry a stalled report (1-5)
                   </p>
                 </div>
-                <div className="w-24">
+                <div className="w-28 shrink-0">
                   <Input
+                    className={settingsInputClass}
                     type="number"
                     min="1"
                     max="5"
@@ -732,15 +770,16 @@ export default function Settings() {
 
               <Separator />
 
-              <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
                 <div className="min-w-0 space-y-1">
                   <h4 className="text-sm font-medium">Retry Delay</h4>
                   <p className="text-xs text-muted-foreground">
                     Seconds to wait between retry attempts (10-60)
                   </p>
                 </div>
-                <div className="w-24">
+                <div className="w-28 shrink-0">
                   <Input
+                    className={settingsInputClass}
                     type="number"
                     min="10"
                     max="60"
@@ -767,7 +806,12 @@ export default function Settings() {
         <Button
           onClick={saveAllSettings}
           disabled={isSaving || !canEditSettings}
-          className="w-full md:w-auto"
+          aria-busy={isSaving}
+          className={settingsCx(
+            settingsPillButtonClass,
+            settingsPrimaryButtonClass,
+            "w-full md:w-auto",
+          )}
         >
           {isSaving && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
           {!canEditSettings ? "View Only" : "Save Settings"}

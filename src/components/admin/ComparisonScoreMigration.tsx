@@ -1,10 +1,17 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Database, CheckCircle2, AlertCircle } from 'lucide-react';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, Database, CheckCircle2, AlertCircle } from "lucide-react";
+import { invokeSecureFunction } from "@/lib/secureInvoke";
+import { useToast } from "@/hooks/use-toast";
+import { settingsPrimaryButtonClass } from "@/components/settings/settingsUi";
 
 export function ComparisonScoreMigration() {
   const [isRunning, setIsRunning] = useState(false);
@@ -22,7 +29,10 @@ export function ComparisonScoreMigration() {
     setResult(null);
 
     try {
-      const { data, error } = await invokeSecureFunction('migrate-comparison-scores', {});
+      const { data, error } = await invokeSecureFunction(
+        "migrate-comparison-scores",
+        {},
+      );
 
       if (error) {
         throw error;
@@ -38,19 +48,21 @@ export function ComparisonScoreMigration() {
       } else if (data.migrated === 0) {
         toast({
           title: "No Migration Needed",
-          description: "All comparisons are already using the correct score format.",
+          description:
+            "All comparisons are already using the correct score format.",
         });
       }
     } catch (err) {
-      console.error('Migration error:', err);
+      console.error("Migration error:", err);
       toast({
         title: "Migration Failed",
-        description: err instanceof Error ? err.message : "Failed to run migration",
+        description:
+          err instanceof Error ? err.message : "Failed to run migration",
         variant: "destructive",
       });
       setResult({
         success: false,
-        errors: [err instanceof Error ? err.message : "Unknown error"]
+        errors: [err instanceof Error ? err.message : "Unknown error"],
       });
     } finally {
       setIsRunning(false);
@@ -58,29 +70,30 @@ export function ComparisonScoreMigration() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
+    <Card className="min-w-0 overflow-hidden rounded-2xl border-warning/25 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--warning)/0.08))] shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-warning/10 dark:border-warning/20 dark:bg-slate-950/80 dark:shadow-black/30">
+      <CardHeader className="space-y-2">
+        <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+          <Database className="h-5 w-5 shrink-0 text-warning" />
           Comparison Score Migration
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="max-w-3xl break-words leading-6">
           Migrate legacy comparison scores from 0-10 scale to 0-100 scale
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            This migration will normalize all comparison scores that appear to be on a 0-10 scale
-            (scores less than 15) by multiplying them by 10. This is a one-time operation.
+      <CardContent className="min-w-0 space-y-4">
+        <Alert className="min-w-0 overflow-hidden rounded-2xl border-warning/35 bg-warning/10 text-foreground">
+          <AlertCircle className="h-4 w-4 text-warning" />
+          <AlertDescription className="break-words leading-6">
+            This migration will normalize all comparison scores that appear to
+            be on a 0-10 scale (scores less than 15) by multiplying them by 10.
+            This is a one-time operation.
           </AlertDescription>
         </Alert>
 
-        <Button 
-          onClick={runMigration} 
+        <Button
+          onClick={runMigration}
           disabled={isRunning}
-          className="w-full"
+          className={settingsPrimaryButtonClass}
         >
           {isRunning ? (
             <>
@@ -96,25 +109,28 @@ export function ComparisonScoreMigration() {
         </Button>
 
         {result && (
-          <Alert variant={result.success ? "default" : "destructive"}>
+          <Alert
+            variant={result.success ? "default" : "destructive"}
+            className="min-w-0 overflow-hidden rounded-2xl"
+          >
             {result.success ? (
               <CheckCircle2 className="h-4 w-4" />
             ) : (
               <AlertCircle className="h-4 w-4" />
             )}
-            <AlertDescription>
+            <AlertDescription className="break-words">
               {result.success ? (
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-2">
                   <p className="font-medium">Migration Results:</p>
-                  <ul className="list-disc list-inside text-sm">
+                  <ul className="list-inside list-disc space-y-1 text-sm">
                     <li>Total Processed: {result.totalProcessed}</li>
                     <li>Migrated: {result.migrated}</li>
                     <li>Skipped (already correct): {result.skipped}</li>
                   </ul>
                   {result.errors && result.errors.length > 0 && (
-                    <div className="mt-2">
+                    <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3">
                       <p className="font-medium text-destructive">Errors:</p>
-                      <ul className="list-disc list-inside text-sm">
+                      <ul className="list-inside list-disc space-y-1 text-sm">
                         {result.errors.map((err, i) => (
                           <li key={i}>{err}</li>
                         ))}
@@ -126,7 +142,7 @@ export function ComparisonScoreMigration() {
                 <div>
                   <p className="font-medium">Migration Failed</p>
                   {result.errors && result.errors.length > 0 && (
-                    <ul className="list-disc list-inside text-sm mt-1">
+                    <ul className="mt-1 list-inside list-disc space-y-1 text-sm">
                       {result.errors.map((err, i) => (
                         <li key={i}>{err}</li>
                       ))}
