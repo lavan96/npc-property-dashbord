@@ -22,8 +22,10 @@ import {
   XCircle,
   Clock,
   Activity,
+  ShieldCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -122,12 +124,17 @@ interface StatsResponse {
   cost: { cloud_run_ms: number; bytes_in: number; bytes_out: number };
 }
 
+
+const METRIC_CARD_CLASS = "overflow-hidden rounded-2xl border-primary/15 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_12px_34px_rgba(15,23,42,0.08)] ring-1 ring-white/35 dark:border-white/10 dark:bg-slate-950/70 dark:ring-white/10 dark:shadow-black/30";
+const METRIC_LABEL_CLASS = "text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
+const METRIC_VALUE_CLASS = "mt-2 text-2xl font-bold tracking-tight text-foreground";
+
 const STATUS_COLOR: Record<StatusValue, string> = {
   queued: 'bg-muted text-muted-foreground',
-  uploading: 'bg-blue-500/10 text-blue-500',
-  parsing: 'bg-blue-500/10 text-blue-500',
-  mapping: 'bg-blue-500/10 text-blue-500',
-  finalizing: 'bg-blue-500/10 text-blue-500',
+  uploading: 'bg-warning/10 text-warning',
+  parsing: 'bg-warning/10 text-warning',
+  mapping: 'bg-warning/10 text-warning',
+  finalizing: 'bg-warning/10 text-warning',
   succeeded: 'bg-success/10 text-success',
   failed: 'bg-destructive/10 text-destructive',
   cancelled: 'bg-muted text-muted-foreground',
@@ -285,18 +292,33 @@ export default function PdfImportDiagnostics() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">PDF Import Diagnostics</h1>
-          <p className="text-sm text-muted-foreground">
-            7-day observability for the Docling pipeline. Inspect every import, download
-            raw Docling JSON + page rasters, and compare engine performance.
-          </p>
+    <DashboardThemeFrame as="main" variant="page" className="min-w-0 space-y-6 px-3 py-4 sm:px-5 sm:py-6 lg:px-6">
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex min-w-0 flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.90)_58%,hsl(var(--primary)/0.10))] p-5 shadow-[0_24px_70px_rgba(15,23,42,0.12)] dark:shadow-black/35 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8"
+      >
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-sm">
+            <Activity className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="min-w-0 text-3xl font-bold tracking-tight text-foreground">PDF Import Diagnostics</h1>
+              <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                Docling observability
+              </Badge>
+            </div>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              7-day observability for the Docling pipeline. Inspect every import, download
+              raw Docling JSON + page rasters, and review engine performance.
+            </p>
+          </div>
         </div>
         <Button
           variant="outline"
           size="sm"
+          className="h-10 rounded-xl border-primary/25 bg-background/70 font-semibold shadow-sm hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
           onClick={() => {
             loadStats();
             loadRows();
@@ -304,65 +326,65 @@ export default function PdfImportDiagnostics() {
           disabled={loading}
         >
           {loading ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="mr-2 h-4 w-4" />
           )}
           Refresh
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Stats strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Imports (7d)</div>
-            <div className="text-2xl font-bold">{stats?.totals.total ?? '—'}</div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Imports (7d)</div>
+            <div className={METRIC_VALUE_CLASS}>{stats?.totals.total ?? '—'}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Success rate</div>
-            <div className="text-2xl font-bold">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Success rate</div>
+            <div className={METRIC_VALUE_CLASS}>
               {successRate !== null ? `${successRate.toFixed(1)}%` : '—'}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">In-flight</div>
-            <div className="text-2xl font-bold">{stats?.totals.inflight ?? '—'}</div>
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>In-flight</div>
+            <div className={METRIC_VALUE_CLASS}>{stats?.totals.inflight ?? '—'}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">p50 / p95</div>
-            <div className="text-sm font-semibold">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>p50 / p95</div>
+            <div className="mt-2 text-sm font-semibold text-foreground">
               {formatMs(stats?.latency.p50_ms ?? null)} /{' '}
               {formatMs(stats?.latency.p95_ms ?? null)}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Avg SSIM</div>
-            <div className="text-2xl font-bold">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Avg SSIM</div>
+            <div className={METRIC_VALUE_CLASS}>
               {stats?.ssim.avg !== null && stats?.ssim.avg !== undefined
                 ? stats.ssim.avg.toFixed(3)
                 : '—'}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Engine mix</div>
-            <div className="flex items-center gap-2 text-sm font-semibold">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Engine mix</div>
+            <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-foreground">
               <span className="flex items-center gap-1">
-                <Zap className="h-3 w-3" />
+                <Zap className="h-3 w-3" aria-hidden="true" />
                 {stats?.totals.legacy ?? 0}
               </span>
               <span className="flex items-center gap-1">
-                <Cpu className="h-3 w-3" />
+                <Cpu className="h-3 w-3" aria-hidden="true" />
                 {stats?.totals.docling ?? 0}
               </span>
             </div>
@@ -370,82 +392,105 @@ export default function PdfImportDiagnostics() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Text chars</div>
-            <div className="text-2xl font-bold">{stats?.summary.text_chars?.toLocaleString() ?? '—'}</div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Text chars</div>
+            <div className={METRIC_VALUE_CLASS}>{stats?.summary.text_chars?.toLocaleString() ?? '—'}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Avg OCR %</div>
-            <div className="text-2xl font-bold">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Avg OCR %</div>
+            <div className={METRIC_VALUE_CLASS}>
               {stats?.summary.avg_ocr_ratio !== null && stats?.summary.avg_ocr_ratio !== undefined
                 ? `${Math.round(stats.summary.avg_ocr_ratio * 100)}%`
                 : '—'}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Tables</div>
-            <div className="text-2xl font-bold">{stats?.summary.table_count ?? '—'}</div>
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Tables</div>
+            <div className={METRIC_VALUE_CLASS}>{stats?.summary.table_count ?? '—'}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Avg confidence</div>
-            <div className="text-2xl font-bold">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Avg confidence</div>
+            <div className={METRIC_VALUE_CLASS}>
               {stats?.summary.avg_confidence !== null && stats?.summary.avg_confidence !== undefined
                 ? stats.summary.avg_confidence.toFixed(2)
                 : '—'}
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Cloud Run ms</div>
-            <div className="text-2xl font-bold">{formatMs(stats?.cost.cloud_run_ms ?? null)}</div>
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Cloud Run ms</div>
+            <div className={METRIC_VALUE_CLASS}>{formatMs(stats?.cost.cloud_run_ms ?? null)}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">I/O bytes</div>
-            <div className="text-sm font-semibold">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>I/O bytes</div>
+            <div className="mt-2 text-sm font-semibold text-foreground">
               {formatBytes(stats?.cost.bytes_in ?? null)} / {formatBytes(stats?.cost.bytes_out ?? null)}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Top user cohort</div>
-            <div className="text-sm font-semibold truncate">{topCohort(stats?.cohorts.byUser)}</div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Top user cohort</div>
+            <div className="mt-2 truncate text-sm font-semibold text-foreground">{topCohort(stats?.cohorts.byUser)}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Top file-size bucket</div>
-            <div className="text-sm font-semibold">{topCohort(stats?.cohorts.byFileSizeBucket)}</div>
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Top file-size bucket</div>
+            <div className="mt-2 text-sm font-semibold text-foreground">{topCohort(stats?.cohorts.byFileSizeBucket)}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-xs text-muted-foreground">Top page-count bucket</div>
-            <div className="text-sm font-semibold">{topCohort(stats?.cohorts.byPageCount)}</div>
+        <Card className={METRIC_CARD_CLASS}>
+          <CardContent className="p-4 sm:p-5">
+            <div className={METRIC_LABEL_CLASS}>Top page-count bucket</div>
+            <div className="mt-2 text-sm font-semibold text-foreground">{topCohort(stats?.cohorts.byPageCount)}</div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Recent imports</CardTitle>
-          <div className="flex gap-2">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="md:col-span-3 overflow-hidden rounded-3xl border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--card))_42%,hsl(var(--background)/0.88))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] ring-1 ring-white/35 dark:border-white/10 dark:ring-white/10 dark:shadow-black/30">
+          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm">
+              <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="text-sm font-semibold text-foreground">Compliance-safe diagnostics access</div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Diagnostic bundle downloads continue to use short-lived signed URLs, existing permission checks, and audited download handling. This view surfaces availability and metadata only; it does not expose raw signed URL values or hidden diagnostic internals.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+
+      <Card className="overflow-hidden rounded-3xl border-primary/15 bg-card/85 shadow-[0_18px_55px_rgba(15,23,42,0.10)] ring-1 ring-white/35 dark:border-white/10 dark:bg-slate-950/60 dark:ring-white/10 dark:shadow-black/35">
+        <CardHeader className="flex flex-col gap-4 border-b border-border/60 bg-muted/20 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <DatabaseZap className="h-4 w-4 text-primary" aria-hidden="true" />
+              Recent imports
+            </CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">Attempt summaries, stages, SSIM, cost telemetry, and audited diagnostic bundles with short-lived access.</p>
+          </div>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px] h-8">
+              <SelectTrigger className="h-9 w-full rounded-xl sm:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -460,7 +505,7 @@ export default function PdfImportDiagnostics() {
               </SelectContent>
             </Select>
             <Select value={engineFilter} onValueChange={setEngineFilter}>
-              <SelectTrigger className="w-[120px] h-8">
+              <SelectTrigger className="h-9 w-full rounded-xl sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -470,7 +515,7 @@ export default function PdfImportDiagnostics() {
               </SelectContent>
             </Select>
             <Select value={engineVersionFilter} onValueChange={setEngineVersionFilter}>
-              <SelectTrigger className="w-[220px] h-8">
+              <SelectTrigger className="h-9 w-full rounded-xl sm:w-[220px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -482,9 +527,9 @@ export default function PdfImportDiagnostics() {
             </Select>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+            <Table className="min-w-[1320px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>When</TableHead>
@@ -507,19 +552,31 @@ export default function PdfImportDiagnostics() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-12">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                    <TableCell colSpan={15} className="py-14">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-5 text-center shadow-sm" role="status" aria-live="polite">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">Loading Docling diagnostics</div>
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">Fetching attempt summaries, stages, SSIM, cost telemetry, and diagnostic bundle availability.</div>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
-                      No imports match the current filter.
+                    <TableCell colSpan={15} className="py-14">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-5 text-center shadow-sm" role="status" aria-live="polite">
+                        <Activity className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">No imports match the current filters</div>
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">Adjust the status, engine, or version filters to inspect other Docling import attempts.</div>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
                   rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.id} className="transition-colors hover:bg-primary/5">
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {formatRelative(row.created_at)}
                       </TableCell>
@@ -527,12 +584,12 @@ export default function PdfImportDiagnostics() {
                         <div className="truncate text-sm font-medium">
                           {row.source_file_name ?? row.id.slice(0, 8)}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className={METRIC_LABEL_CLASS}>
                           {formatBytes(row.source_file_size_bytes)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="gap-1">
+                        <Badge variant="outline" className="max-w-[260px] gap-1 overflow-hidden rounded-full border-primary/20 bg-background/70">
                           {row.engine === 'docling' ? (
                             <Cpu className="h-3 w-3" />
                           ) : (
@@ -540,7 +597,7 @@ export default function PdfImportDiagnostics() {
                           )}
                           {row.engine}
                           {row.engine_version ? (
-                            <span className="text-[10px] text-muted-foreground ml-1">
+                            <span className="ml-1 truncate text-[10px] text-muted-foreground">
                               {row.engine_version}
                             </span>
                           ) : null}
@@ -548,7 +605,7 @@ export default function PdfImportDiagnostics() {
                       </TableCell>
                       <TableCell className="text-xs">{row.mode}</TableCell>
                       <TableCell>
-                        <Badge className={`gap-1 ${STATUS_COLOR[row.status]}`}>
+                        <Badge className={`rounded-full gap-1 ${STATUS_COLOR[row.status]}`}>
                           {row.status === 'succeeded' ? (
                             <CheckCircle2 className="h-3 w-3" />
                           ) : row.status === 'failed' ? (
@@ -609,8 +666,10 @@ export default function PdfImportDiagnostics() {
                         <Button
                           size="sm"
                           variant="ghost"
+                          className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                           disabled={!row.diagnostics_path || downloading === row.id}
                           onClick={() => handleDownload(row.diagnostics_path, row.id)}
+                          aria-label="Download audited diagnostics bundle"
                         >
                           {downloading === row.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -627,6 +686,6 @@ export default function PdfImportDiagnostics() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </DashboardThemeFrame>
   );
 }
