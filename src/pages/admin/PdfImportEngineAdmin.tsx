@@ -6,12 +6,63 @@
  * and direct operators to diagnostics instead of a deleted flag editor.
  */
 import { Link } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
 import { ArrowRight, CheckCircle2, DatabaseZap, FileUp, LockKeyhole, ShieldCheck, Sparkles, Zap } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { useAuth } from '@/hooks/useAuth';
+
+const STATUS_CARDS: Array<{
+  title: string;
+  eyebrow: string;
+  description: string;
+  Icon: LucideIcon;
+  accent: 'success' | 'primary';
+  badgeIcon?: LucideIcon;
+}> = [
+  {
+    title: 'Legacy toggle retired',
+    eyebrow: 'Retired',
+    description:
+      'The `pdf_import.engine` flag and UI selector are no longer used. Dispatcher requests are idempotent and always target the Docling sidecar.',
+    Icon: CheckCircle2,
+    accent: 'success',
+  },
+  {
+    title: 'Observable pipeline',
+    eyebrow: 'Diagnostics',
+    description:
+      'Use diagnostics for attempts, summaries, SSIM artifacts, cost telemetry, and diagnostics bundle links instead of side-by-side legacy comparisons.',
+    Icon: DatabaseZap,
+    accent: 'primary',
+  },
+  {
+    title: 'Compliance defaults',
+    eyebrow: 'Defaults',
+    description:
+      'Signed diagnostic URLs are short lived, PII redaction remains available from import dialogs, and diagnostic downloads are audited.',
+    Icon: ShieldCheck,
+    badgeIcon: LockKeyhole,
+    accent: 'primary',
+  },
+];
+
+const accentClasses = {
+  success: {
+    card: 'border-success/25 hover:border-success/40',
+    icon: 'border-success/25 bg-success/10 text-success',
+    badge: 'border-success/25 bg-success/10 text-success',
+    divider: 'from-success/25',
+  },
+  primary: {
+    card: 'border-primary/25 hover:border-primary/40',
+    icon: 'border-primary/25 bg-primary/10 text-primary',
+    badge: 'border-primary/25 bg-primary/10 text-primary',
+    divider: 'from-primary/25',
+  },
+} as const;
 
 export default function PdfImportEngineAdmin() {
   const { isSuperadmin } = useAuth();
@@ -39,7 +90,7 @@ export default function PdfImportEngineAdmin() {
       <DashboardThemeFrame
         as="header"
         variant="hero"
-        className="isolate border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.20),transparent_32%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.90)_56%,hsl(var(--primary)/0.10))] p-5 shadow-[0_24px_70px_rgba(15,23,42,0.12)] ring-1 ring-primary/10 dark:shadow-black/35 sm:p-6 lg:p-8"
+        className="isolate border-primary/25 bg-gradient-to-br from-card via-card to-primary/10 p-5 ring-1 ring-primary/10 sm:p-6 lg:p-8"
       >
         <div className="absolute right-0 top-0 -z-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" aria-hidden="true" />
         <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -96,73 +147,42 @@ export default function PdfImportEngineAdmin() {
       </DashboardThemeFrame>
 
       <section aria-label="PDF import engine operational guarantees" className="grid gap-4 md:grid-cols-3">
-        <Card className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border-success/25 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.20)_58%,hsl(var(--success)/0.08)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-success/40 hover:shadow-[0_20px_54px_rgba(15,23,42,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-success/20 dark:bg-slate-950/75 dark:ring-white/10 dark:shadow-black/30">
-          <CardHeader className="space-y-4 pb-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-success/25 bg-success/10 text-success shadow-sm transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none">
-                <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <Badge variant="outline" className="rounded-full border-success/25 bg-success/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-success">
-                Retired
-              </Badge>
-            </div>
-            <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-              Legacy toggle retired
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col justify-between gap-4 text-sm leading-6 text-muted-foreground">
-            <p>
-              The `pdf_import.engine` flag and UI selector are no longer used. Dispatcher requests are
-              idempotent and always target the Docling sidecar.
-            </p>
-            <div className="h-px w-full bg-gradient-to-r from-success/25 via-border to-transparent" aria-hidden="true" />
-          </CardContent>
-        </Card>
-        <Card className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border-primary/25 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.20)_58%,hsl(var(--primary)/0.08)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_54px_rgba(15,23,42,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:bg-slate-950/75 dark:ring-white/10 dark:shadow-black/30">
-          <CardHeader className="space-y-4 pb-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none">
-                <DatabaseZap className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
-                Diagnostics
-              </Badge>
-            </div>
-            <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-              Observable pipeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col justify-between gap-4 text-sm leading-6 text-muted-foreground">
-            <p>
-              Use diagnostics for attempts, summaries, SSIM artifacts, cost telemetry, and diagnostics
-              bundle links instead of side-by-side legacy comparisons.
-            </p>
-            <div className="h-px w-full bg-gradient-to-r from-primary/25 via-border to-transparent" aria-hidden="true" />
-          </CardContent>
-        </Card>
-        <Card className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border-primary/25 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.20)_58%,hsl(var(--primary)/0.08)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_54px_rgba(15,23,42,0.14)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:bg-slate-950/75 dark:ring-white/10 dark:shadow-black/30">
-          <CardHeader className="space-y-4 pb-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none">
-                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
-                <LockKeyhole className="mr-1 h-3 w-3" aria-hidden="true" />
-                Defaults
-              </Badge>
-            </div>
-            <CardTitle className="text-base font-semibold tracking-tight text-foreground">
-              Compliance defaults
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col justify-between gap-4 text-sm leading-6 text-muted-foreground">
-            <p>
-              Signed diagnostic URLs are short lived, PII redaction remains available from import
-              dialogs, and diagnostic downloads are audited.
-            </p>
-            <div className="h-px w-full bg-gradient-to-r from-primary/25 via-border to-transparent" aria-hidden="true" />
-          </CardContent>
-        </Card>
+        {STATUS_CARDS.map(({ title, eyebrow, description, Icon, accent, badgeIcon: BadgeIcon }) => {
+          const styles = accentClasses[accent];
+
+          return (
+            <DashboardThemeFrame
+              key={title}
+              as="article"
+              variant="premiumCard"
+              className={`flex h-full flex-col p-0 ${styles.card}`}
+            >
+              <Card className="flex h-full min-w-0 flex-col border-0 bg-transparent shadow-none">
+                <div className="space-y-4 p-5 pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none ${styles.icon}`}
+                    >
+                      <Icon className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${styles.badge}`}
+                    >
+                      {BadgeIcon ? <BadgeIcon className="mr-1 h-3 w-3" aria-hidden="true" /> : null}
+                      {eyebrow}
+                    </Badge>
+                  </div>
+                  <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
+                </div>
+                <CardContent className="flex flex-1 flex-col justify-between gap-4 px-5 pb-5 text-sm leading-6 text-muted-foreground">
+                  <p>{description}</p>
+                  <div className={`h-px w-full bg-gradient-to-r via-border to-transparent ${styles.divider}`} aria-hidden="true" />
+                </CardContent>
+              </Card>
+            </DashboardThemeFrame>
+          );
+        })}
       </section>
     </DashboardThemeFrame>
   );
