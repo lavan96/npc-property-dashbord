@@ -576,25 +576,25 @@ export default function UserManagement() {
                   <p className="text-sm font-medium text-foreground">Loading users...</p>
                   <p className="text-xs text-muted-foreground">Fetching user accounts and access levels.</p>
                 </div>
-                <div className="h-9 w-24 animate-pulse rounded-full bg-muted" />
+                <div className="h-9 w-24 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
               </div>
               <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/60">
                 {[0, 1, 2, 3].map((row) => (
                   <div key={row} className="grid min-w-[980px] grid-cols-[48px_220px_150px_220px_150px_160px_130px_260px] items-center gap-0 border-b border-border/50 px-5 py-4 last:border-b-0">
-                    <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+                    <div className="h-4 w-4 animate-pulse rounded bg-muted motion-reduce:animate-none" />
                     <div className="space-y-2">
-                      <div className="h-4 w-36 animate-pulse rounded bg-muted" />
-                      <div className="h-3 w-44 animate-pulse rounded bg-muted/80" />
+                      <div className="h-4 w-36 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                      <div className="h-3 w-44 animate-pulse rounded bg-muted/80 motion-reduce:animate-none" />
                     </div>
-                    <div className="h-6 w-24 animate-pulse rounded-full bg-muted" />
-                    <div className="h-6 w-40 animate-pulse rounded-full bg-muted" />
-                    <div className="h-7 w-24 animate-pulse rounded-full bg-muted" />
-                    <div className="h-4 w-28 animate-pulse rounded bg-muted" />
-                    <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                    <div className="h-6 w-24 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+                    <div className="h-6 w-40 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+                    <div className="h-7 w-24 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+                    <div className="h-4 w-28 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                    <div className="h-4 w-20 animate-pulse rounded bg-muted motion-reduce:animate-none" />
                     <div className="ml-auto flex gap-2">
-                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
-                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
-                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
                     </div>
                   </div>
                 ))}
@@ -613,13 +613,14 @@ export default function UserManagement() {
               </div>
             </div>
           ) : (
-            <Table className="min-w-[980px]">
+            <Table className="min-w-[980px]" aria-label="All users">
               <TableHeader>
                 <TableRow className="border-border/70 bg-muted/45 hover:bg-muted/45 dark:border-white/10 dark:bg-slate-900/70">
                   <TableHead className="w-12 pl-5">
                     <Checkbox
                       checked={selectedUserIds.size === users.length && users.length > 0}
                       onCheckedChange={handleSelectAll}
+                      aria-label="Select all users"
                     />
                   </TableHead>
                   <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">User</TableHead>

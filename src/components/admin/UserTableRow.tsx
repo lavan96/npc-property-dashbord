@@ -44,9 +44,9 @@ export function UserTableRow({
 }: UserTableRowProps) {
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
-  const actionButtonClass = 'h-9 w-9 rounded-xl border-border/70 bg-background/80 p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40';
-  const cautionActionButtonClass = 'h-9 w-9 rounded-xl border-amber-300/40 bg-amber-500/10 p-0 text-amber-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-amber-500/15 focus-visible:ring-amber-400/40 dark:text-amber-200';
-  const destructiveActionButtonClass = 'h-9 w-9 rounded-xl p-0 shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-destructive/40';
+  const actionButtonClass = 'h-9 w-9 rounded-xl border-border/70 bg-background/80 p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 motion-reduce:transform-none motion-reduce:transition-none';
+  const cautionActionButtonClass = 'h-9 w-9 rounded-xl border-amber-300/40 bg-amber-500/10 p-0 text-amber-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-amber-500/15 focus-visible:ring-amber-400/40 motion-reduce:transform-none motion-reduce:transition-none dark:text-amber-200';
+  const destructiveActionButtonClass = 'h-9 w-9 rounded-xl p-0 shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-destructive/40 motion-reduce:transform-none motion-reduce:transition-none';
   const userInitials = u.username
     .split(/\s+/)
     .filter(Boolean)
@@ -57,7 +57,11 @@ export function UserTableRow({
   return (
     <TableRow className={selected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-primary/5'}>
       <TableCell className="pl-5">
-        <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(u.id)} />
+        <Checkbox
+          checked={selected}
+          onCheckedChange={() => onToggleSelect?.(u.id)}
+          aria-label={`Select ${u.username}`}
+        />
       </TableCell>
       <TableCell className="max-w-[260px] py-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -103,7 +107,7 @@ export function UserTableRow({
             variant="ghost"
             size="sm"
             onClick={() => onEditMailbox(u.id, u.personal_mailbox)}
-            className="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+            className="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 motion-reduce:transition-none"
             aria-label={`Edit mailbox for ${u.username}`}
           >
             <Mail className="h-3 w-3" />
@@ -112,7 +116,12 @@ export function UserTableRow({
       </TableCell>
       <TableCell className="py-4">
         <div className="flex items-center gap-2">
-          <Switch checked={u.is_active} onCheckedChange={(v) => onToggleActive(u.id, v)} disabled={isSelf} />
+          <Switch
+            checked={u.is_active}
+            onCheckedChange={(v) => onToggleActive(u.id, v)}
+            disabled={isSelf}
+            aria-label={`${u.is_active ? 'Deactivate' : 'Activate'} ${u.username}`}
+          />
           <span className={u.is_active ? 'inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300' : 'inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/35 px-2.5 py-1 text-xs font-semibold text-muted-foreground'}>
             <span className={u.is_active ? 'h-1.5 w-1.5 rounded-full bg-emerald-500' : 'h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
             {u.is_active ? 'Active' : 'Inactive'}
