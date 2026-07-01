@@ -44,6 +44,9 @@ export function UserTableRow({
 }: UserTableRowProps) {
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
+  const actionButtonClass = 'h-9 w-9 rounded-xl border-border/70 bg-background/80 p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40';
+  const cautionActionButtonClass = 'h-9 w-9 rounded-xl border-amber-300/40 bg-amber-500/10 p-0 text-amber-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-amber-500/15 focus-visible:ring-amber-400/40 dark:text-amber-200';
+  const destructiveActionButtonClass = 'h-9 w-9 rounded-xl p-0 shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-destructive/40';
   const userInitials = u.username
     .split(/\s+/)
     .filter(Boolean)
@@ -96,7 +99,13 @@ export function UserTableRow({
           ) : (
             <span className="rounded-full border border-dashed border-border/70 bg-muted/25 px-2.5 py-1 text-sm text-muted-foreground italic">Not set</span>
           )}
-          <Button variant="ghost" size="sm" onClick={() => onEditMailbox(u.id, u.personal_mailbox)} className="h-6 w-6 p-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEditMailbox(u.id, u.personal_mailbox)}
+            className="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40"
+            aria-label={`Edit mailbox for ${u.username}`}
+          >
             <Mail className="h-3 w-3" />
           </Button>
         </div>
@@ -125,11 +134,17 @@ export function UserTableRow({
       </TableCell>
       <TableCell className="py-4 pr-5 text-right">
         <TooltipProvider>
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-end gap-1.5">
             {!hasSuperadmin && !isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onEditPermissions(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEditPermissions(u.id)}
+                    className={actionButtonClass}
+                    aria-label={`Edit permissions for ${u.username}`}
+                  >
                     <Settings className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -139,7 +154,13 @@ export function UserTableRow({
             {!hasSuperadmin && !isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onClonePermissions(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onClonePermissions(u.id)}
+                    className={actionButtonClass}
+                    aria-label={`Clone permissions from ${u.username}`}
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -149,7 +170,13 @@ export function UserTableRow({
             {!isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onResetPassword({ id: u.id, username: u.username })}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onResetPassword({ id: u.id, username: u.username })}
+                    className={actionButtonClass}
+                    aria-label={`Reset password for ${u.username}`}
+                  >
                     <Key className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -159,7 +186,13 @@ export function UserTableRow({
             {!hasSuperadmin && !isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onPromote(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPromote(u.id)}
+                    className={cautionActionButtonClass}
+                    aria-label={`Promote ${u.username} to superadmin`}
+                  >
                     <Crown className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -169,7 +202,13 @@ export function UserTableRow({
             {hasSuperadmin && !isSelf && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" title="Demote to Admin">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title="Demote to Admin"
+                    className={cautionActionButtonClass}
+                    aria-label={`Demote ${u.username} to admin`}
+                  >
                     <ShieldOff className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
@@ -190,7 +229,13 @@ export function UserTableRow({
             {!isSelf && onForceLogout && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onForceLogout(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onForceLogout(u.id)}
+                    className={actionButtonClass}
+                    aria-label={`Force logout for ${u.username}`}
+                  >
                     <LogOut className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -200,7 +245,13 @@ export function UserTableRow({
             {!isSelf && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" title="Delete User">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    title="Delete User"
+                    className={destructiveActionButtonClass}
+                    aria-label={`Delete ${u.username}`}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
