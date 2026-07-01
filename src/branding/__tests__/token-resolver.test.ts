@@ -1,7 +1,55 @@
 import { describe, it, expect } from "vitest";
 import { resolveBrandTokens } from "../token-resolver";
-import { defaultBrandConfig, DEFAULT_PRIMARY } from "../brand-defaults";
+import { defaultBrandConfig, defaultDarkTokenMap, defaultLightTokenMap, DEFAULT_PRIMARY } from "../brand-defaults";
 import type { BrandConfig } from "../brand-types";
+
+
+const protectedLightSurfaceTokens = [
+  "--background",
+  "--foreground",
+  "--card",
+  "--card-foreground",
+  "--popover",
+  "--popover-foreground",
+  "--secondary",
+  "--muted",
+  "--muted-foreground",
+  "--border",
+  "--input",
+  "--sidebar-background",
+  "--sidebar-foreground",
+  "--sidebar-border",
+  "--dashboard-surface",
+  "--dashboard-surface-elevated",
+  "--dashboard-surface-muted",
+  "--dashboard-border-soft",
+  "--dashboard-border-strong",
+  "--surface-1",
+  "--surface-2",
+  "--surface-3",
+  "--surface-elevated",
+  "--surface-muted",
+  "--border-soft",
+  "--border-strong",
+  "--topbar-background",
+  "--sidebar-surface",
+  "--mobile-nav-background",
+] as const;
+
+const brandableLightTokens = [
+  "--primary",
+  "--primary-hover",
+  "--accent",
+  "--ring",
+  "--sidebar-primary",
+  "--sidebar-accent",
+  "--sidebar-ring",
+  "--dashboard-primary-strong",
+  "--dashboard-primary-soft",
+  "--chart-1",
+  "--chart-2",
+] as const;
+
 
 describe("resolveBrandTokens", () => {
   it("emits both light and dark token maps", () => {
@@ -76,5 +124,68 @@ describe("resolveBrandTokens", () => {
     expect(tokens.dark["--primary"]).toMatchInlineSnapshot(`"43 74% 49%"`);
     expect(tokens.light["--success"]).toMatchInlineSnapshot(`"142 71% 45%"`);
     expect(tokens.dark["--destructive"]).toMatchInlineSnapshot(`"0 84% 60%"`);
+  });
+
+  it("keeps light surfaces stable when custom brand colours are selected", () => {
+    const config: BrandConfig = {
+      ...defaultBrandConfig,
+      primaryColor: "285 90% 45%",
+      accentColor: "205 95% 45%",
+    };
+    const tokens = resolveBrandTokens(config);
+
+    for (const token of protectedLightSurfaceTokens) {
+      expect(tokens.light[token]).toBe(defaultLightTokenMap[token]);
+    }
+  });
+
+  it("limits custom brand colours to approved light semantic emphasis tokens", () => {
+    const config: BrandConfig = {
+      ...defaultBrandConfig,
+      primaryColor: "285 90% 45%",
+      accentColor: "205 95% 45%",
+    };
+    const tokens = resolveBrandTokens(config);
+
+    expect(tokens.light["--primary"]).toBe("285 90% 45%");
+    expect(tokens.light["--accent"]).toBe("205 95% 45%");
+    expect(tokens.light["--ring"]).toBe("285 90% 45%");
+    expect(tokens.light["--sidebar-primary"]).toBe("285 90% 45%");
+    expect(tokens.light["--sidebar-accent"]).toBe("205 95% 45%");
+    expect(tokens.light["--dashboard-primary-strong"]).toBe("285 90% 45%");
+
+    for (const token of brandableLightTokens) {
+      expect(tokens.light[token]).toBeTruthy();
+    }
+  });
+
+  it("keeps dark surface defaults separate from the luxury light baseline", () => {
+    const config: BrandConfig = {
+      ...defaultBrandConfig,
+      primaryColor: "285 90% 45%",
+      accentColor: "205 95% 45%",
+    };
+    const tokens = resolveBrandTokens(config);
+    const darkSurfaceTokens = [
+      "--background",
+      "--foreground",
+      "--card",
+      "--popover",
+      "--muted",
+      "--border",
+      "--input",
+      "--sidebar-background",
+      "--dashboard-surface",
+      "--dashboard-surface-elevated",
+      "--dashboard-surface-muted",
+      "--topbar-background",
+      "--sidebar-surface",
+      "--mobile-nav-background",
+    ] as const;
+
+    for (const token of darkSurfaceTokens) {
+      expect(tokens.dark[token]).toBe(defaultDarkTokenMap[token]);
+      expect(tokens.dark[token]).not.toBe(defaultLightTokenMap[token]);
+    }
   });
 });

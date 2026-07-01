@@ -32,6 +32,11 @@ function createLightTokens(config: BrandConfig): BrandTokenMap {
   const primary = normalizeHslString(config.primaryColor, DEFAULT_PRIMARY);
   const accent = normalizeHslString(config.accentColor, primary || DEFAULT_ACCENT);
 
+  // Phase 2 contract: light mode starts from the luxury surface baseline and
+  // brand colours are applied only to semantic emphasis tokens. Warm ivory,
+  // porcelain, champagne, and sidebar surface tokens intentionally remain from
+  // defaultLightTokenMap so a client's brand colour cannot wash out the entire
+  // dashboard.
   return {
     ...defaultLightTokenMap,
     '--primary': primary,
@@ -39,9 +44,9 @@ function createLightTokens(config: BrandConfig): BrandTokenMap {
     '--primary-hover': shiftLightness(primary, -7),
     '--accent': accent,
     '--accent-foreground': getReadableForeground(accent),
-    '--info': rotateHue(primary, 160),
-    '--info-foreground': getReadableForeground(rotateHue(primary, 160)),
-    '--info-light': shiftLightness(rotateHue(primary, 160), 45),
+    '--info': defaultLightTokenMap['--info'],
+    '--info-foreground': defaultLightTokenMap['--info-foreground'],
+    '--info-light': defaultLightTokenMap['--info-light'],
     '--ring': primary,
     '--sidebar-primary': primary,
     '--sidebar-primary-foreground': getReadableForeground(primary),

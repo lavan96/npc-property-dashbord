@@ -37,7 +37,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         // Mobile (<640px): bottom sheet sliding up; ≥sm: classic centered modal.
-        "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200",
+        "luxury-dialog-content fixed z-50 grid gap-4 border bg-background shadow-lg duration-200",
         "inset-x-0 bottom-0 top-auto w-full max-w-none rounded-t-2xl border-x-0 border-b-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-h-[92vh] overflow-y-auto",
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",

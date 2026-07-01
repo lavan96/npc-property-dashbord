@@ -133,6 +133,7 @@ import {
 } from '@/branding/brand-draft-storage';
 import { BrandPreviewShowcase } from '@/components/branding/BrandPreviewShowcase';
 import { BrandAccessibilityPanel } from '@/components/branding/BrandAccessibilityPanel';
+import { PageHero } from '@/components/layout/PageHero';
 
 type SurfacePreview = 'auth' | 'sidebar' | 'browser';
 
@@ -414,7 +415,8 @@ function LogoUploadCard({ title, description, icon, currentLogo, logoType, onUpl
         ) : (
           <div 
             aria-label={`Upload ${title}`}
-            className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
+            data-brand-upload-zone="true"
+            className={`dashboard-upload-zone flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
               isDragOver 
                 ? 'scale-[1.01] border-primary bg-primary/10'
                 : 'border-border/70 bg-background/60 hover:border-primary/60 hover:bg-primary/5'
@@ -604,7 +606,8 @@ function EmailBannerUpload({ currentBanner, onUpload, onRemove }: EmailBannerUpl
       ) : (
         <div 
           aria-label="Upload signature banner"
-          className={`flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
+          data-brand-upload-zone="true"
+          className={`dashboard-upload-zone flex h-36 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 text-center shadow-inner transition-all focus-within:ring-2 focus-within:ring-primary/30 ${
             isDragOver 
               ? 'scale-[1.01] border-primary bg-primary/10' 
               : 'border-border/70 bg-background/60 hover:border-primary/60 hover:bg-primary/5'
@@ -944,24 +947,20 @@ export default function WhiteLabel() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-8 overflow-x-hidden px-1 pb-10 sm:px-0">
-      <div className="relative overflow-hidden rounded-[2rem] border border-primary/15 bg-gradient-to-br from-card via-card to-primary/5 p-5 shadow-xl shadow-primary/5 sm:p-6 lg:p-7">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Branding</h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Customize the dashboard appearance with your brand identity
-            </p>
-          </div>
+      <PageHero
+        eyebrow="BRAND STUDIO"
+        title="Branding"
+        subtitle="Control logos, colours, browser identity, email signature, and theme defaults across the dashboard."
+        imageVariant="branding"
+        actions={(
           <Badge variant="outline" className="min-h-10 max-w-full gap-2 self-start rounded-full border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-sm shadow-primary/10 ring-1 ring-primary/10 sm:self-auto">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
               <Palette className="h-3.5 w-3.5" />
             </span>
-            <span className="truncate">White Label</span>
+            <span className="truncate">Global Brand System</span>
           </Badge>
-        </div>
-      </div>
+        )}
+      />
 
       <AlertDialog open={showLeavePrompt} onOpenChange={(open) => {
         if (!open) {
