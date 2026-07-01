@@ -780,7 +780,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
               />
               <span className="min-w-0">
                 <span className="flex items-center gap-2 font-semibold text-foreground"><ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />Redact likely PII before diagnostics</span>
-                <span className="mt-1 block leading-5 text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs.</span>
+                <span className="mt-1 block leading-5 text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs. Existing diagnostics auditing and access controls remain enforced.</span>
               </span>
             </label>
 
