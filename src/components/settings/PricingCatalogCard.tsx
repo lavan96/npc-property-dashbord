@@ -33,6 +33,13 @@ import {
   MISSION_CONTROL_CATALOG_URL,
   openMissionControl,
 } from "@/lib/missionControl";
+import {
+  settingsBadgePillClass,
+  settingsCardClass,
+  settingsCx,
+  settingsPanelClass,
+  settingsPillButtonClass,
+} from "@/components/settings/settingsUi";
 
 function Section({
   icon: Icon,
@@ -46,13 +53,16 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 space-y-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+    <div className={settingsCx(settingsPanelClass, "space-y-3")}>
       <div className="flex min-w-0 items-center gap-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
           <Icon className="h-4 w-4" />
         </span>
         <h3 className="min-w-0 break-words text-sm font-semibold">{title}</h3>
-        <Badge variant="outline" className="ml-auto shrink-0 rounded-full">
+        <Badge
+          variant="outline"
+          className={settingsCx(settingsBadgePillClass, "ml-auto")}
+        >
           {count}
         </Badge>
       </div>
@@ -71,7 +81,7 @@ export function PricingCatalogCard() {
   const { catalog, loading, error, refresh } = useMissionControlCatalog();
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+    <Card className={settingsCardClass}>
       <CardHeader className="space-y-4">
         <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
@@ -89,7 +99,7 @@ export function PricingCatalogCard() {
             size="sm"
             onClick={refresh}
             disabled={loading}
-            className="w-full rounded-full sm:w-auto"
+            className={settingsCx(settingsPillButtonClass, "w-full sm:w-auto")}
           >
             <RefreshCw
               className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
@@ -127,7 +137,10 @@ export function PricingCatalogCard() {
             variant="outline"
             size="sm"
             onClick={() => openMissionControl(MISSION_CONTROL_CATALOG_URL)}
-            className="w-full shrink-0 rounded-full border-primary/35 font-semibold hover:border-primary/60 sm:w-auto"
+            className={settingsCx(
+              settingsPillButtonClass,
+              "w-full shrink-0 border-primary/35 hover:border-primary/60 sm:w-auto",
+            )}
           >
             Open catalog
             <ExternalLink className="ml-1.5 h-3 w-3" />
@@ -167,7 +180,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
             </div>
             <Badge
               variant="secondary"
-              className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-primary"
+              className={settingsCx(
+                settingsBadgePillClass,
+                "bg-primary/10 px-3 py-1 text-primary",
+              )}
             >
               {formatPriceRange(
                 r.price_min_cents,
@@ -207,7 +223,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
             </div>
             <Badge
               variant="secondary"
-              className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-primary"
+              className={settingsCx(
+                settingsBadgePillClass,
+                "bg-primary/10 px-3 py-1 text-primary",
+              )}
             >
               {formatPriceRange(
                 a.price_min_cents,
@@ -239,7 +258,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
               {s.applies_to_plans?.length ? (
                 <Badge
                   variant="outline"
-                  className="ml-auto shrink-0 rounded-full text-[10px]"
+                  className={settingsCx(
+                    settingsBadgePillClass,
+                    "ml-auto text-[10px]",
+                  )}
                 >
                   {s.applies_to_plans.join(", ")}
                 </Badge>
@@ -279,7 +301,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
               </div>
               <Badge
                 variant="secondary"
-                className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-primary"
+                className={settingsCx(
+                  settingsBadgePillClass,
+                  "bg-primary/10 px-3 py-1 text-primary",
+                )}
               >
                 {r.credit_cost} {r.credit_cost === 1 ? "credit" : "credits"}
               </Badge>

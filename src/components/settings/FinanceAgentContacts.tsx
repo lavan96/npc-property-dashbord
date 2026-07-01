@@ -50,6 +50,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  settingsBadgePillClass,
+  settingsCardClass,
+  settingsDangerButtonClass,
+  settingsDialogClass,
+  settingsInputClass,
+  settingsPanelClass,
+  settingsPillButtonClass,
+  settingsPrimaryButtonClass,
+  settingsSwitchClass,
+  settingsCx,
+} from "@/components/settings/settingsUi";
 
 interface FinanceContact {
   id: string;
@@ -219,7 +231,7 @@ export function FinanceAgentContacts() {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+    <Card className={settingsCardClass}>
       <CardHeader className="space-y-4">
         <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-2">
@@ -236,13 +248,22 @@ export function FinanceAgentContacts() {
               <Button
                 size="sm"
                 onClick={() => setFormData(defaultFormData)}
-                className="w-full rounded-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover sm:w-auto"
+                className={settingsCx(
+                  settingsPillButtonClass,
+                  settingsPrimaryButtonClass,
+                  "w-full sm:w-auto",
+                )}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Contact
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl border-border/70 bg-card/95 sm:max-w-2xl">
+            <DialogContent
+              className={settingsCx(
+                settingsDialogClass,
+                "max-h-[90vh] overflow-y-auto sm:max-w-2xl",
+              )}
+            >
               <DialogHeader className="space-y-2">
                 <DialogTitle>
                   {editingContact
@@ -261,7 +282,7 @@ export function FinanceAgentContacts() {
                     <Label htmlFor="name">Name *</Label>
                     <Input
                       id="name"
-                      className="min-w-0 focus-visible:ring-primary"
+                      className={settingsInputClass}
                       value={formData.name}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -276,7 +297,7 @@ export function FinanceAgentContacts() {
                     <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
-                      className="min-w-0 focus-visible:ring-primary"
+                      className={settingsInputClass}
                       type="email"
                       value={formData.email}
                       onChange={(e) =>
@@ -295,7 +316,7 @@ export function FinanceAgentContacts() {
                     <Label htmlFor="company">Company</Label>
                     <Input
                       id="company"
-                      className="min-w-0 focus-visible:ring-primary"
+                      className={settingsInputClass}
                       value={formData.company}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -345,10 +366,15 @@ export function FinanceAgentContacts() {
                   />
                 </div>
 
-                <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-border/60 bg-background/45 p-3 dark:border-white/10 dark:bg-slate-950/35">
+                <div
+                  className={settingsCx(
+                    settingsPanelClass,
+                    "flex items-center gap-3",
+                  )}
+                >
                   <Switch
                     id="is_default"
-                    className="shrink-0 data-[state=checked]:bg-primary"
+                    className={settingsSwitchClass}
                     checked={formData.is_default}
                     onCheckedChange={(checked) =>
                       setFormData((prev) => ({ ...prev, is_default: checked }))
@@ -362,14 +388,17 @@ export function FinanceAgentContacts() {
                     type="button"
                     variant="outline"
                     onClick={handleCloseDialog}
-                    className="rounded-full"
+                    className={settingsPillButtonClass}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     disabled={isPending}
-                    className="rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
+                    className={settingsCx(
+                      settingsPillButtonClass,
+                      settingsPrimaryButtonClass,
+                    )}
                   >
                     {isPending && (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -485,7 +514,7 @@ export function FinanceAgentContacts() {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteMutation.mutate(contact.id)}
-                          className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          className={settingsDangerButtonClass}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

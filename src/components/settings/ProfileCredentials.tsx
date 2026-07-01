@@ -17,6 +17,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { validatePassword } from "@/utils/passwordValidation";
 import { PasswordStrengthMeter } from "@/components/ui/password-strength-meter";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
+import {
+  settingsCardClass,
+  settingsInputClass,
+} from "@/components/settings/settingsUi";
 
 export function ProfileCredentials() {
   const { user } = useAuth();
@@ -160,7 +164,7 @@ export function ProfileCredentials() {
 
   if (loading) {
     return (
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <Card className={settingsCardClass}>
         <CardHeader className="space-y-2">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <User className="h-5 w-5" />
@@ -181,7 +185,7 @@ export function ProfileCredentials() {
   }
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+    <Card className={settingsCardClass}>
       <CardHeader className="space-y-2">
         <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
           <User className="h-5 w-5" />
@@ -240,7 +244,7 @@ export function ProfileCredentials() {
               onChange={(e) => setNewUsername(e.target.value)}
               placeholder="Enter new username"
               disabled={updatingUsername}
-              className="min-w-0 focus-visible:ring-primary"
+              className={settingsInputClass}
             />
             <p className="text-xs leading-5 text-muted-foreground">
               Username must be at least 3 characters.
@@ -292,7 +296,7 @@ export function ProfileCredentials() {
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="Enter current password"
               disabled={updatingPassword}
-              className="min-w-0 focus-visible:ring-primary"
+              className={settingsInputClass}
             />
           </div>
 
@@ -305,7 +309,7 @@ export function ProfileCredentials() {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password (min 8 characters)"
               disabled={updatingPassword}
-              className="min-w-0 focus-visible:ring-primary"
+              className={settingsInputClass}
             />
             <div className="rounded-xl border border-border/60 bg-muted/25 p-3 dark:border-white/10">
               <PasswordStrengthMeter password={newPassword} />
@@ -321,7 +325,7 @@ export function ProfileCredentials() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
               disabled={updatingPassword}
-              className="min-w-0 focus-visible:ring-primary"
+              className={settingsInputClass}
             />
           </div>
 

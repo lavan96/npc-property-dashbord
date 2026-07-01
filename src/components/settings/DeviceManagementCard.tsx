@@ -31,6 +31,14 @@ import {
 } from "@/lib/deviceSession";
 import { getStoredDeviceId } from "@/lib/deviceFingerprint";
 import { useToast } from "@/hooks/use-toast";
+import {
+  settingsBadgePillClass,
+  settingsCardClass,
+  settingsDangerButtonClass,
+  settingsPillButtonClass,
+  settingsSubtlePanelClass,
+  settingsCx,
+} from "@/components/settings/settingsUi";
 
 function formatRelative(iso: string | null): string {
   if (!iso) return "unknown";
@@ -106,7 +114,7 @@ export function DeviceManagementCard() {
   };
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+    <Card className={settingsCardClass}>
       <CardHeader className="space-y-4">
         <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-2">
@@ -130,7 +138,7 @@ export function DeviceManagementCard() {
             size="sm"
             onClick={() => load(true)}
             disabled={loading || refreshing}
-            className="w-full rounded-full sm:w-auto"
+            className={settingsCx(settingsPillButtonClass, "w-full sm:w-auto")}
           >
             <RefreshCw
               className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
@@ -179,7 +187,10 @@ export function DeviceManagementCard() {
                       {isCurrent && (
                         <Badge
                           variant="secondary"
-                          className="shrink-0 rounded-full bg-primary/10 text-[10px] text-primary"
+                          className={settingsCx(
+                            settingsBadgePillClass,
+                            "bg-primary/10 text-[10px] text-primary",
+                          )}
                         >
                           This device
                         </Badge>
@@ -204,7 +215,7 @@ export function DeviceManagementCard() {
                       ? "Sign out to revoke this device"
                       : "Revoke device"
                   }
-                  className="shrink-0 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive disabled:text-muted-foreground"
+                  className={settingsDangerButtonClass}
                 >
                   {revoking === device.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -218,7 +229,7 @@ export function DeviceManagementCard() {
         )}
 
         <Separator />
-        <p className="rounded-2xl border border-border/60 bg-muted/25 p-3 text-xs leading-5 text-muted-foreground dark:border-white/10">
+        <p className={settingsSubtlePanelClass}>
           Revoking a device signs that browser out immediately and frees a
           device slot.
         </p>

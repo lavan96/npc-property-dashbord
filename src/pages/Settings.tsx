@@ -40,6 +40,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { logActivityDirect } from "@/hooks/useActivityLogger";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
+import {
+  settingsAccentCardClass,
+  settingsBadgePillClass,
+  settingsCardClass,
+  settingsInputClass,
+  settingsSwitchClass,
+} from "@/components/settings/settingsUi";
 
 export default function Settings() {
   const { canEdit: canEditSettings } = useModulePermissions("settings");
@@ -293,7 +300,7 @@ export default function Settings() {
       <PushNotificationToggle />
 
       {/* Personal Mailbox Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <Card className={settingsCardClass}>
         <CardHeader className="space-y-2">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <Mail className="h-5 w-5 shrink-0" />
@@ -309,7 +316,7 @@ export default function Settings() {
               <>
                 <Input
                   id="personal-mailbox"
-                  className="min-w-0 focus-visible:ring-primary"
+                  className={settingsInputClass}
                   type="email"
                   placeholder="your.email@example.com"
                   value={personalMailbox}
@@ -337,7 +344,7 @@ export default function Settings() {
       </Card>
 
       {/* Email Signature Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <Card className={settingsCardClass}>
         <CardHeader className="space-y-2">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <FileSignature className="h-5 w-5 shrink-0" />
@@ -399,7 +406,7 @@ export default function Settings() {
       <DeviceManagementCard />
 
       {/* Security Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <Card className={settingsCardClass}>
         <CardHeader className="space-y-2">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <Shield className="h-5 w-5 shrink-0 text-primary" />
@@ -414,7 +421,7 @@ export default function Settings() {
                 Personal access token for Airtable API
               </p>
             </div>
-            <Badge variant="success" className="shrink-0 rounded-full">
+            <Badge variant="success" className={settingsBadgePillClass}>
               Configured
             </Badge>
           </div>
@@ -428,7 +435,7 @@ export default function Settings() {
                 <span className="min-w-0 break-words text-sm">
                   Read listings data
                 </span>
-                <Badge variant="success" className="shrink-0 rounded-full">
+                <Badge variant="success" className={settingsBadgePillClass}>
                   Enabled
                 </Badge>
               </div>
@@ -436,7 +443,7 @@ export default function Settings() {
                 <span className="min-w-0 break-words text-sm">
                   Export CSV data
                 </span>
-                <Badge variant="success" className="shrink-0 rounded-full">
+                <Badge variant="success" className={settingsBadgePillClass}>
                   Enabled
                 </Badge>
               </div>
@@ -444,7 +451,7 @@ export default function Settings() {
                 <span className="min-w-0 break-words text-sm">
                   Modify listing data
                 </span>
-                <Badge variant="outline" className="shrink-0 rounded-full">
+                <Badge variant="outline" className={settingsBadgePillClass}>
                   Disabled
                 </Badge>
               </div>
@@ -454,7 +461,7 @@ export default function Settings() {
       </Card>
 
       {/* Display Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.18))] shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/10 dark:border-primary/25 dark:bg-slate-950/80 dark:shadow-black/30">
+      <Card className={settingsAccentCardClass}>
         <CardHeader className="space-y-2 pb-3 md:pb-6">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <Palette className="h-4 w-4 shrink-0 text-primary md:h-5 md:w-5" />
@@ -630,7 +637,7 @@ export default function Settings() {
                 </p>
               </div>
               <Switch
-                className="shrink-0 data-[state=checked]:bg-primary"
+                className={settingsSwitchClass}
                 checked={settings.notifications}
                 onCheckedChange={(checked) =>
                   handleSettingChange("notifications", checked)
@@ -642,7 +649,7 @@ export default function Settings() {
       </Card>
 
       {/* Performance Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <Card className={settingsCardClass}>
         <CardHeader className="space-y-2">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <Clock className="h-5 w-5 shrink-0 text-primary" />
@@ -658,7 +665,7 @@ export default function Settings() {
               </p>
             </div>
             <Switch
-              className="shrink-0 data-[state=checked]:bg-primary"
+              className={settingsSwitchClass}
               checked={settings.autoRefresh}
               onCheckedChange={(checked) =>
                 handleSettingChange("autoRefresh", checked)
@@ -698,7 +705,7 @@ export default function Settings() {
       </Card>
 
       {/* Report Generation Settings */}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <Card className={settingsCardClass}>
         <CardHeader className="space-y-2">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <Zap className="h-5 w-5 shrink-0 text-primary" />
@@ -714,7 +721,7 @@ export default function Settings() {
               </p>
             </div>
             <Switch
-              className="shrink-0 data-[state=checked]:bg-primary"
+              className={settingsSwitchClass}
               checked={settings.autoContinueReports}
               onCheckedChange={(checked) =>
                 handleSettingChange("autoContinueReports", checked)

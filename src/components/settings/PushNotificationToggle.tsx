@@ -18,6 +18,10 @@ import {
   unsubscribeFromPush,
   type PushSupportStatus,
 } from "@/lib/pushNotifications";
+import {
+  settingsCardClass,
+  settingsSwitchClass,
+} from "@/components/settings/settingsUi";
 
 export function PushNotificationToggle() {
   const { toast } = useToast();
@@ -117,7 +121,7 @@ export function PushNotificationToggle() {
   };
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+    <Card className={settingsCardClass}>
       <CardHeader className="space-y-2">
         <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
           <Bell className="h-4 w-4" />
@@ -145,7 +149,7 @@ export function PushNotificationToggle() {
               </Label>
               <Switch
                 id="push-toggle"
-                className="shrink-0 data-[state=checked]:bg-primary"
+                className={settingsSwitchClass}
                 checked={isSubscribed}
                 disabled={
                   working || (status !== "granted" && status !== "default")

@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Database, CheckCircle2, AlertCircle } from "lucide-react";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { useToast } from "@/hooks/use-toast";
+import { settingsPrimaryButtonClass } from "@/components/settings/settingsUi";
 
 export function ComparisonScoreMigration() {
   const [isRunning, setIsRunning] = useState(false);
@@ -92,7 +93,7 @@ export function ComparisonScoreMigration() {
         <Button
           onClick={runMigration}
           disabled={isRunning}
-          className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
+          className={settingsPrimaryButtonClass}
         >
           {isRunning ? (
             <>

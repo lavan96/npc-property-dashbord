@@ -23,6 +23,16 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { fetchTokenBalance } from "@/lib/missionControl";
+import {
+  settingsCardClass,
+  settingsCx,
+  settingsDialogClass,
+  settingsInputClass,
+  settingsPanelClass,
+  settingsPillButtonClass,
+  settingsPrimaryButtonClass,
+  settingsSubtlePanelClass,
+} from "@/components/settings/settingsUi";
 
 interface KeyInfo {
   configured: boolean;
@@ -131,7 +141,7 @@ export function MissionControlKeyCard() {
   if (forbidden) return null;
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+    <Card className={settingsCardClass}>
       <CardHeader className="space-y-2">
         <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
           <KeyRound className="h-5 w-5 shrink-0 text-primary" />
@@ -195,7 +205,7 @@ export function MissionControlKeyCard() {
                 variant="secondary"
                 onClick={testConnection}
                 disabled={testing || !info?.configured}
-                className="rounded-full font-semibold"
+                className={settingsPillButtonClass}
               >
                 {testing ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -207,14 +217,22 @@ export function MissionControlKeyCard() {
               <Button
                 onClick={() => setRotateOpen(true)}
                 disabled={!info?.configured}
-                className="rounded-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
+                className={settingsCx(
+                  settingsPillButtonClass,
+                  settingsPrimaryButtonClass,
+                )}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Rotate key
               </Button>
             </div>
 
-            <p className="flex min-w-0 items-start gap-2 rounded-2xl border border-border/60 bg-muted/25 p-3 text-xs leading-5 text-muted-foreground dark:border-white/10">
+            <p
+              className={settingsCx(
+                settingsSubtlePanelClass,
+                "flex items-start gap-2",
+              )}
+            >
               <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span className="min-w-0 break-words">
                 The raw secret is never shown — it's written straight into the
@@ -228,7 +246,9 @@ export function MissionControlKeyCard() {
       </CardContent>
 
       <Dialog open={rotateOpen} onOpenChange={setRotateOpen}>
-        <DialogContent className="rounded-2xl border-border/70 bg-card/95 sm:max-w-lg">
+        <DialogContent
+          className={settingsCx(settingsDialogClass, "sm:max-w-lg")}
+        >
           <DialogHeader className="space-y-2">
             <DialogTitle>Rotate Mission Control key</DialogTitle>
             <DialogDescription>
@@ -246,7 +266,7 @@ export function MissionControlKeyCard() {
                 min={0}
                 max={168}
                 value={graceHours}
-                className="min-w-0 focus-visible:ring-primary"
+                className={settingsInputClass}
                 onChange={(e) =>
                   setGraceHours(
                     Math.max(0, Math.min(168, Number(e.target.value) || 0)),
@@ -274,14 +294,17 @@ export function MissionControlKeyCard() {
               variant="ghost"
               onClick={() => setRotateOpen(false)}
               disabled={rotating}
-              className="rounded-full"
+              className={settingsPillButtonClass}
             >
               Cancel
             </Button>
             <Button
               onClick={rotate}
               disabled={rotating}
-              className="rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
+              className={settingsCx(
+                settingsPillButtonClass,
+                settingsPrimaryButtonClass,
+              )}
             >
               {rotating && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
               Rotate
@@ -301,7 +324,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-3 dark:border-white/10 dark:bg-slate-950/35">
+    <div className={settingsCx(settingsPanelClass, "space-y-2")}>
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
