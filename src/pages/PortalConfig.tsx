@@ -261,24 +261,46 @@ export default function PortalConfig() {
               <CardTitle>Portal Modules</CardTitle>
               <CardDescription>Enable or disable specific sections of the client portal</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-1">
-              {MODULE_ITEMS.map((item) => (
-                <div key={item.key} className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <item.icon className="h-4 w-4 text-primary" />
+            <CardContent className="space-y-3">
+              {MODULE_ITEMS.map((item) => {
+                const isEnabled = (config as any)[item.key] ?? true;
+
+                return (
+                  <div
+                    key={item.key}
+                    className="group flex min-w-0 flex-col gap-4 rounded-2xl border border-border/65 bg-background/55 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/5 hover:shadow-[0_14px_34px_hsl(var(--foreground)/0.08)] dark:border-white/10 dark:bg-slate-950/35 dark:hover:bg-primary/10 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm ring-1 ring-primary/10 transition-colors group-hover:bg-primary group-hover:text-primary-foreground dark:bg-primary/15">
+                        <item.icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <p className="break-words text-sm font-semibold text-foreground">{item.label}</p>
+                          <Badge
+                            variant="outline"
+                            className={isEnabled
+                              ? 'border-primary/30 bg-primary/10 text-primary'
+                              : 'border-border/70 bg-muted/40 text-muted-foreground'}
+                          >
+                            {isEnabled ? 'Enabled' : 'Disabled'}
+                          </Badge>
+                        </div>
+                        <p className="break-words text-xs leading-5 text-muted-foreground">{item.desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{item.label}</p>
-                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    <div className="flex shrink-0 items-center justify-between gap-3 rounded-full border border-border/60 bg-card/70 px-3 py-2 dark:border-white/10 dark:bg-slate-950/60 sm:justify-end">
+                      <span className="text-xs font-medium text-muted-foreground">{isEnabled ? 'Active' : 'Off'}</span>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => updateConfig({ [item.key]: checked } as any)}
+                        aria-label={`Toggle ${item.label}`}
+                        className="data-[state=checked]:bg-primary"
+                      />
                     </div>
                   </div>
-                  <Switch
-                    checked={(config as any)[item.key] ?? true}
-                    onCheckedChange={(checked) => updateConfig({ [item.key]: checked } as any)}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         </TabsContent>
