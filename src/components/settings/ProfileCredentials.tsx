@@ -21,7 +21,9 @@ import {
   settingsCardClass,
   settingsCx,
   settingsInputClass,
+  settingsPanelClass,
   settingsPrimaryButtonClass,
+  settingsSubtlePanelClass,
 } from "@/components/settings/settingsUi";
 
 export function ProfileCredentials() {
@@ -233,7 +235,7 @@ export function ProfileCredentials() {
         <Separator />
 
         {/* Update Username */}
-        <div className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+        <div className={settingsCx(settingsPanelClass, "space-y-4")}>
           <h4 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
             <User className="h-4 w-4" />
             Change Username
@@ -271,7 +273,7 @@ export function ProfileCredentials() {
         <Separator />
 
         {/* Update Password */}
-        <div className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+        <div className={settingsCx(settingsPanelClass, "space-y-4")}>
           <h4 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
             <Key className="h-4 w-4" />
             Change Password
@@ -313,7 +315,7 @@ export function ProfileCredentials() {
               disabled={updatingPassword}
               className={settingsInputClass}
             />
-            <div className="rounded-xl border border-border/60 bg-muted/25 p-3 dark:border-white/10">
+            <div className={settingsCx(settingsSubtlePanelClass, "rounded-xl")}>
               <PasswordStrengthMeter password={newPassword} />
             </div>
           </div>

@@ -21,6 +21,7 @@ import {
 import {
   settingsCardClass,
   settingsCx,
+  settingsPanelClass,
   settingsPillButtonClass,
   settingsSwitchClass,
 } from "@/components/settings/settingsUi";
@@ -142,7 +143,12 @@ export function PushNotificationToggle() {
           </div>
         ) : (
           <>
-            <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+            <div
+              className={settingsCx(
+                settingsPanelClass,
+                "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+              )}
+            >
               <Label
                 htmlFor="push-toggle"
                 className="min-w-0 cursor-pointer break-words leading-5"

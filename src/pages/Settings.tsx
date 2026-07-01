@@ -46,6 +46,7 @@ import {
   settingsCardClass,
   settingsCx,
   settingsInputClass,
+  settingsPanelClass,
   settingsPillButtonClass,
   settingsPrimaryButtonClass,
   settingsSwitchClass,
@@ -311,7 +312,7 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
-          <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+          <div className={settingsCx(settingsPanelClass, "space-y-2")}>
             <Label htmlFor="personal-mailbox">Mailbox Email Address</Label>
             {loadingMailbox ? (
               <div className="text-sm text-muted-foreground">Loading...</div>
@@ -355,7 +356,7 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
-          <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+          <div className={settingsCx(settingsPanelClass, "space-y-2")}>
             <Label htmlFor="email-signature">Your Email Signature</Label>
             {loadingSignature ? (
               <div className="text-sm text-muted-foreground">Loading...</div>
@@ -417,7 +418,12 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
-          <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className={settingsCx(
+              settingsPanelClass,
+              "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+            )}
+          >
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">API Token Status</h4>
               <p className="text-xs text-muted-foreground">
@@ -431,7 +437,7 @@ export default function Settings() {
 
           <Separator />
 
-          <div className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+          <div className={settingsCx(settingsPanelClass, "space-y-4")}>
             <h4 className="text-sm font-semibold">User Permissions</h4>
             <div className="space-y-2">
               <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-muted/25 px-3 py-2">
@@ -473,7 +479,12 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
           <div className="space-y-4">
-            <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+            <div
+              className={settingsCx(
+                settingsPanelClass,
+                "flex flex-col justify-between gap-3 sm:flex-row sm:items-center",
+              )}
+            >
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Theme</h4>
                 <p className="text-xs text-muted-foreground">
@@ -520,7 +531,12 @@ export default function Settings() {
             <Separator />
 
             {/* Booking Timezone (Source of Truth) */}
-            <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+            <div
+              className={settingsCx(
+                settingsPanelClass,
+                "flex flex-col justify-between gap-3 sm:flex-row sm:items-center",
+              )}
+            >
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Booking Timezone</h4>
                 <p className="text-xs text-muted-foreground">
@@ -571,7 +587,12 @@ export default function Settings() {
             <Separator />
 
             {/* Display Timezone (Reference) */}
-            <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+            <div
+              className={settingsCx(
+                settingsPanelClass,
+                "flex flex-col justify-between gap-3 sm:flex-row sm:items-center",
+              )}
+            >
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Display Timezone</h4>
                 <p className="text-xs text-muted-foreground">
@@ -641,7 +662,12 @@ export default function Settings() {
 
             <Separator />
 
-            <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+            <div
+              className={settingsCx(
+                settingsPanelClass,
+                "flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center",
+              )}
+            >
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Browser Notifications</h4>
                 <p className="text-xs text-muted-foreground">
@@ -669,7 +695,12 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
-          <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+          <div
+            className={settingsCx(
+              settingsPanelClass,
+              "flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center",
+            )}
+          >
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">Auto-refresh Data</h4>
               <p className="text-xs text-muted-foreground">
@@ -688,7 +719,12 @@ export default function Settings() {
           {settings.autoRefresh && (
             <>
               <Separator />
-              <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+              <div
+                className={settingsCx(
+                  settingsPanelClass,
+                  "flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center",
+                )}
+              >
                 <div className="min-w-0 space-y-1">
                   <h4 className="text-sm font-medium">Refresh Interval</h4>
                   <p className="text-xs text-muted-foreground">
@@ -725,7 +761,12 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
-          <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+          <div
+            className={settingsCx(
+              settingsPanelClass,
+              "flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center",
+            )}
+          >
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">Auto-Continue Reports</h4>
               <p className="text-xs text-muted-foreground">
@@ -744,7 +785,12 @@ export default function Settings() {
           {settings.autoContinueReports && (
             <>
               <Separator />
-              <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+              <div
+                className={settingsCx(
+                  settingsPanelClass,
+                  "flex flex-col justify-between gap-3 sm:flex-row sm:items-center",
+                )}
+              >
                 <div className="min-w-0 space-y-1">
                   <h4 className="text-sm font-medium">Max Retry Attempts</h4>
                   <p className="text-xs text-muted-foreground">
@@ -770,7 +816,12 @@ export default function Settings() {
 
               <Separator />
 
-              <div className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
+              <div
+                className={settingsCx(
+                  settingsPanelClass,
+                  "flex flex-col justify-between gap-3 sm:flex-row sm:items-center",
+                )}
+              >
                 <div className="min-w-0 space-y-1">
                   <h4 className="text-sm font-medium">Retry Delay</h4>
                   <p className="text-xs text-muted-foreground">
