@@ -229,8 +229,15 @@ export default function FinancePortalAnalytics() {
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
                   <div className="h-72 rounded-2xl border border-border/60 bg-background/45 p-3">
+                    {data.daily.length === 0 ? (
+                      <EmptyAnalyticsState
+                        icon={<Activity className="h-5 w-5" />}
+                        title="No engagement activity"
+                        description="No finance portal engagement was recorded for this date range."
+                      />
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={data.daily}>
+                      <AreaChart data={data.daily} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                         <defs>
                           <linearGradient id="gLogins" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
@@ -245,18 +252,22 @@ export default function FinancePortalAnalytics() {
                             <stop offset="100%" stopColor="hsl(var(--warning))" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => v.slice(5)} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.7} vertical={false} />
+                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} tickFormatter={(v) => v.slice(5)} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} allowDecimals={false} />
                         <RTooltip
-                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          cursor={{ stroke: 'hsl(var(--primary))', strokeOpacity: 0.25 }}
+                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, boxShadow: '0 18px 40px hsl(var(--foreground) / 0.12)', fontSize: 12 }}
+                          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 700 }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Area type="monotone" dataKey="logins" stroke="hsl(var(--primary))" fill="url(#gLogins)" name="Logins" />
-                        <Area type="monotone" dataKey="doc_uploads" stroke="hsl(var(--success))" fill="url(#gDocs)" name="Doc Uploads" />
-                        <Area type="monotone" dataKey="messages" stroke="hsl(var(--warning))" fill="url(#gMsg)" name="Messages" />
+                        <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 12 }} />
+                        <Area type="monotone" dataKey="logins" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#gLogins)" name="Logins" activeDot={{ r: 5, strokeWidth: 2 }} />
+                        <Area type="monotone" dataKey="doc_uploads" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#gDocs)" name="Doc Uploads" activeDot={{ r: 5, strokeWidth: 2 }} />
+                        <Area type="monotone" dataKey="messages" stroke="hsl(var(--warning))" strokeWidth={2} fill="url(#gMsg)" name="Messages" activeDot={{ r: 5, strokeWidth: 2 }} />
                       </AreaChart>
                     </ResponsiveContainer>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -269,17 +280,28 @@ export default function FinancePortalAnalytics() {
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
                   <div className="h-56 rounded-2xl border border-border/60 bg-background/45 p-3">
+                    {data.daily.length === 0 ? (
+                      <EmptyAnalyticsState
+                        icon={<BarChart3 className="h-5 w-5" />}
+                        title="No event volume"
+                        description="No audited events were recorded for this date range."
+                      />
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data.daily}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => v.slice(5)} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
+                      <BarChart data={data.daily} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.7} vertical={false} />
+                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} tickFormatter={(v) => v.slice(5)} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} allowDecimals={false} />
                         <RTooltip
-                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
+                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, boxShadow: '0 18px 40px hsl(var(--foreground) / 0.12)', fontSize: 12 }}
+                          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 700 }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[8, 8, 2, 2]} />
                       </BarChart>
                     </ResponsiveContainer>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -304,7 +326,15 @@ export default function FinancePortalAnalytics() {
                     </TableHeader>
                     <TableBody>
                       {data.top_users.length === 0 && (
-                        <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8 text-sm">No partner activity in this window.</TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} className="py-10">
+                            <EmptyAnalyticsState
+                              icon={<Users className="h-5 w-5" />}
+                              title="No partner activity"
+                              description="No partner events were recorded in this window."
+                            />
+                          </TableCell>
+                        </TableRow>
                       )}
                       {data.top_users.map(u => (
                         <TableRow key={u.finance_user_id} className="transition-colors hover:bg-primary/5">
@@ -430,6 +460,24 @@ export default function FinancePortalAnalytics() {
         </>
       )}
     </DashboardThemeFrame>
+  );
+}
+
+function EmptyAnalyticsState({
+  icon, title, description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/80 text-muted-foreground shadow-sm">
+        {icon}
+      </div>
+      <div className="text-sm font-semibold text-foreground">{title}</div>
+      <div className="max-w-sm text-xs leading-5 text-muted-foreground">{description}</div>
+    </div>
   );
 }
 
