@@ -236,25 +236,27 @@ export default function PortalConfig() {
         </div>
       </DashboardThemeFrame>
 
-      <Tabs defaultValue="modules" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="modules" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" /> Modules
-          </TabsTrigger>
-          <TabsTrigger value="welcome" className="flex items-center gap-2">
-            <Type className="h-4 w-4" /> Welcome
-          </TabsTrigger>
-          <TabsTrigger value="booking" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" /> Booking
-          </TabsTrigger>
-          <TabsTrigger value="access" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" /> Access
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="modules" className="min-w-0 space-y-6">
+        <DashboardThemeFrame variant="toolbar" className="overflow-x-auto p-1.5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
+          <TabsList className="flex h-auto min-w-max flex-1 items-center justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="modules" className="min-h-11 min-w-[9rem] flex-1 gap-2 rounded-xl border border-transparent px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] sm:min-w-0">
+              <Eye className="h-4 w-4" /> Modules
+            </TabsTrigger>
+            <TabsTrigger value="welcome" className="min-h-11 min-w-[9rem] flex-1 gap-2 rounded-xl border border-transparent px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] sm:min-w-0">
+              <Type className="h-4 w-4" /> Welcome
+            </TabsTrigger>
+            <TabsTrigger value="booking" className="min-h-11 min-w-[9rem] flex-1 gap-2 rounded-xl border border-transparent px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] sm:min-w-0">
+              <CalendarDays className="h-4 w-4" /> Booking
+            </TabsTrigger>
+            <TabsTrigger value="access" className="min-h-11 min-w-[9rem] flex-1 gap-2 rounded-xl border border-transparent px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] sm:min-w-0">
+              <Shield className="h-4 w-4" /> Access
+            </TabsTrigger>
+          </TabsList>
+        </DashboardThemeFrame>
 
         {/* MODULE TOGGLES */}
-        <TabsContent value="modules">
-          <Card>
+        <TabsContent value="modules" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
             <CardHeader>
               <CardTitle>Portal Modules</CardTitle>
               <CardDescription>Enable or disable specific sections of the client portal</CardDescription>
@@ -282,8 +284,8 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* WELCOME MESSAGE */}
-        <TabsContent value="welcome">
-          <Card>
+        <TabsContent value="welcome" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
             <CardHeader>
               <CardTitle>Welcome Message</CardTitle>
               <CardDescription>Customise the welcome text shown on the portal dashboard</CardDescription>
@@ -329,8 +331,8 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* BOOKING / CALENDAR */}
-        <TabsContent value="booking">
-          <Card>
+        <TabsContent value="booking" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-primary" />
@@ -529,8 +531,8 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* ACCESS LEVEL DEFAULTS */}
-        <TabsContent value="access">
-          <Card>
+        <TabsContent value="access" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
