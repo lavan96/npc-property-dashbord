@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 type Severity = 'ok' | 'notice' | 'warn' | 'critical';
 type Check = { key: string; label: string; count: number; severity: Severity };
@@ -32,9 +33,9 @@ type Overview = {
 };
 
 const SEVERITY_CLASS: Record<Severity, string> = {
-  ok:       'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
-  notice:   'bg-sky-500/15 text-sky-500 border-sky-500/30',
-  warn:     'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  ok:       'border-success/25 bg-success-light/70 text-success',
+  notice:   'border-[hsl(var(--info)/0.24)] bg-[hsl(var(--info-light)/0.72)] text-[hsl(var(--info))]',
+  warn:     'border-warning/30 bg-warning-light/70 text-warning',
   critical: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
@@ -71,36 +72,38 @@ export default function FinancePortalHealth() {
   })();
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 md:p-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+    <DashboardThemeFrame variant="page" className="space-y-6 p-4 md:p-6">
+      <DashboardThemeFrame variant="hero" as="header" className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className={cn('rounded-md p-2 border', SEVERITY_CLASS[worstSeverity])}>
+          <div className={cn('rounded-2xl p-3 border shadow-sm', SEVERITY_CLASS[worstSeverity])}>
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold">Tri-Portal Health Sweep</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tri-Portal Health Sweep</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
               Read-only diagnostics across Internal, Finance Partner, and Client portals.
               {overview && <> Last sweep: {new Date(overview.generated_at).toLocaleString('en-AU')}</>}
             </p>
           </div>
         </div>
-        <Button onClick={refresh} disabled={loading} size="sm">
+        <Button onClick={refresh} disabled={loading} size="sm" aria-label="Run tri-portal health sweep" className="gap-2 rounded-xl">
           <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
           Run sweep
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
       {loading && !overview ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
         </div>
       ) : !overview ? (
-        <Card>
+        <DashboardThemeFrame variant="section">
+          <Card className="border-0 bg-transparent shadow-none">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
             Press <strong>Run sweep</strong> to start.
           </CardContent>
         </Card>
+        </DashboardThemeFrame>
       ) : (
         <>
           {/* Check cards */}
@@ -108,7 +111,8 @@ export default function FinancePortalHealth() {
             {overview.checks.map(c => {
               const Icon = SEVERITY_ICON[c.severity];
               return (
-                <Card key={c.key} className={cn('border', c.count > 0 && SEVERITY_CLASS[c.severity])}>
+                <DashboardThemeFrame key={c.key} variant="premiumCard">
+                <Card className={cn('border-0 bg-transparent shadow-none', c.count > 0 && 'ring-1 ring-inset', c.count > 0 && SEVERITY_CLASS[c.severity])}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -124,13 +128,15 @@ export default function FinancePortalHealth() {
                     </Badge>
                   </CardContent>
                 </Card>
+                </DashboardThemeFrame>
               );
             })}
           </div>
 
           {/* Audit chain sample */}
-          <Card>
-            <CardHeader className="pb-2">
+          <DashboardThemeFrame variant="section" className="p-0">
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
               <CardTitle className="text-base flex items-center gap-2">
                 <LinkIcon className="h-4 w-4" />Audit chain integrity (sample {overview.audit_chain_sample.sampled} PFs)
               </CardTitle>
@@ -138,10 +144,11 @@ export default function FinancePortalHealth() {
                 Verifies prev_hash → row_hash linkage. Use the PF-level Audit tab for full SHA-256 recompute.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
+            <CardContent className="p-4 sm:p-5">
+              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <Table className="min-w-[760px]" aria-label="Audit chain integrity sample">
+                <TableHeader className="bg-muted/35">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead>Purchase file</TableHead>
                     <TableHead className="w-28 text-right">Events</TableHead>
                     <TableHead className="w-32 text-right">Status</TableHead>
@@ -152,7 +159,7 @@ export default function FinancePortalHealth() {
                   {overview.audit_chain_sample.results.map(r => {
                     const sev: Severity = r.status === 'broken_chain' ? 'critical' : r.status === 'no_events' ? 'notice' : 'ok';
                     return (
-                      <TableRow key={r.purchase_file_id}>
+                      <TableRow key={r.purchase_file_id} className="transition-colors hover:bg-primary/5">
                         <TableCell className="font-medium truncate">{r.title}</TableCell>
                         <TableCell className="text-right">{r.count}</TableCell>
                         <TableCell className="text-right">
@@ -161,7 +168,7 @@ export default function FinancePortalHealth() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button asChild size="sm" variant="ghost">
+                          <Button asChild size="sm" variant="ghost" className="rounded-xl focus-visible:ring-primary/40">
                             <Link to={`/finance/purchase-files/${r.purchase_file_id}`}>Open</Link>
                           </Button>
                         </TableCell>
@@ -170,10 +177,12 @@ export default function FinancePortalHealth() {
                   })}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
+          </DashboardThemeFrame>
         </>
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }

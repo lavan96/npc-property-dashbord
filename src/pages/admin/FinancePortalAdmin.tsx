@@ -233,49 +233,59 @@ export default function FinancePortalAdmin() {
 
   return (
     <DashboardThemeFrame variant="page" className="space-y-6 p-4 sm:p-6">
-      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            Finance Portal Admin
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage portal access, per-client assignments, and CRUD permission matrices for finance contacts.
-          </p>
+      <DashboardThemeFrame variant="hero" as="header" className="space-y-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-sm shadow-primary/10">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Administration control centre</span>
+            </div>
+            <div className="space-y-2">
+              <h1 className="flex min-w-0 items-center gap-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+                  <Shield className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 truncate">Finance Portal Admin</span>
+              </h1>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Manage portal access, per-client assignments, and CRUD permission matrices for finance contacts.
+              </p>
+            </div>
+          </div>
         </div>
-        <DashboardThemeFrame variant="toolbar" className="md:max-w-4xl">
+        <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-slate-950/55">
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 shadow-md ring-2 ring-primary/30"
+            className="min-h-10 flex-1 gap-2 rounded-xl shadow-md shadow-primary/20 ring-2 ring-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-primary/40 sm:flex-none"
             size="default"
           >
             <UserPlus className="h-4 w-4" />
             New Finance Contact
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/analytics"><BarChart3 className="h-4 w-4" />Analytics</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/bulk-import"><FileSpreadsheet className="h-4 w-4" />Bulk Import</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/compliance"><FileText className="h-4 w-4" />Compliance</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/health"><ShieldCheck className="h-4 w-4" />Health Sweep</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/commissions"><DollarSign className="h-4 w-4" />Commissions</Link>
           </Button>
-          <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="gap-2">
+          <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <History className="h-4 w-4" />
             Activity Log
           </Button>
-          <Button variant="outline" onClick={() => setDefaultsOpen(true)} className="gap-2">
+          <Button variant="outline" onClick={() => setDefaultsOpen(true)} className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Settings className="h-4 w-4" />
             Default Permissions
           </Button>
-          <Button variant="outline" onClick={loadAll} className="gap-2" disabled={loading}>
+          <Button variant="outline" onClick={loadAll} className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60 sm:flex-none" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -283,43 +293,51 @@ export default function FinancePortalAdmin() {
       </DashboardThemeFrame>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Total Contacts" value={counts.total} />
-        <StatCard label="Active" value={counts.active} tone="success" />
-        <StatCard label="Invited" value={counts.invited} tone="info" />
-        <StatCard label="No Access" value={counts.no_access} tone="muted" />
-        <StatCard label="Revoked" value={counts.revoked} tone="destructive" />
+        <StatCard label="Total Contacts" value={counts.total} icon={<Users className="h-4 w-4" />} />
+        <StatCard label="Active" value={counts.active} tone="success" icon={<CheckCircle2 className="h-4 w-4" />} />
+        <StatCard label="Invited" value={counts.invited} tone="info" icon={<Mail className="h-4 w-4" />} />
+        <StatCard label="No Access" value={counts.no_access} tone="muted" icon={<Shield className="h-4 w-4" />} />
+        <StatCard label="Revoked" value={counts.revoked} tone="destructive" icon={<Ban className="h-4 w-4" />} />
       </div>
 
       <DashboardThemeFrame variant="section" className="p-0">
         <Card className="border-0 bg-transparent shadow-none">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+        <CardHeader className="flex flex-col gap-4 border-b border-border/60 bg-gradient-to-r from-card/80 via-card/50 to-muted/25 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 space-y-1.5">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-xl tracking-tight">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
+                <Users className="h-5 w-5" />
+              </span>
               Finance Contacts
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="max-w-2xl leading-6">
               Each row links a finance contact to portal access and per-client permissions.
             </CardDescription>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex w-full flex-col gap-2 lg:w-auto lg:items-end">
+            <div className="relative w-full lg:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search name or email..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="h-9 w-full min-w-0 pl-8 sm:w-64"
+                aria-label="Search finance contacts"
+                className="h-10 w-full min-w-0 rounded-xl border-border/70 bg-background/75 pl-9 shadow-inner transition-all focus-visible:ring-primary/35"
               />
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex w-full flex-wrap gap-1.5 lg:justify-end">
               {(['all', 'active', 'invited', 'no_access', 'revoked'] as const).map(s => (
                 <Button
                   key={s}
                   size="sm"
                   variant={statusFilter === s ? 'default' : 'outline'}
-                  className="h-8 text-xs"
+                  className={`h-8 rounded-full px-3 text-xs font-semibold transition-all focus-visible:ring-primary/35 ${
+                    statusFilter === s
+                      ? 'shadow-sm shadow-primary/20'
+                      : 'border-border/70 bg-card/70 text-muted-foreground hover:border-primary/35 hover:bg-primary/10 hover:text-primary'
+                  }`}
                   onClick={() => setStatusFilter(s)}
+                  aria-pressed={statusFilter === s}
                 >
                   {s === 'all' ? 'All' : STATUS_BADGE[s as FinanceUserRow['status']]?.label || s}
                 </Button>
@@ -327,23 +345,23 @@ export default function FinancePortalAdmin() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-5">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70 shadow-inner">
-              <Table className="min-w-[980px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-24">Active</TableHead>
-                    <TableHead>Last Login</TableHead>
-                    <TableHead>Invite</TableHead>
-                    <TableHead>Compliance</TableHead>
+            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <Table className="min-w-[1080px]" aria-label="Finance contacts portal access table">
+                <TableHeader className="bg-muted/35">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-[260px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</TableHead>
+                    <TableHead className="w-[280px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</TableHead>
+                    <TableHead className="w-[145px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</TableHead>
+                    <TableHead className="w-24 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active</TableHead>
+                    <TableHead className="w-[170px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Last Login</TableHead>
+                    <TableHead className="w-[130px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Invite</TableHead>
+                    <TableHead className="w-[145px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Compliance</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -360,23 +378,23 @@ export default function FinancePortalAdmin() {
                     const portalUser = u.portal_user;
                     const canManageAssignments = !!portalUser;
                     return (
-                      <TableRow key={u.id} className="transition-colors hover:bg-muted/35">
-                        <TableCell>
-                          <div className="max-w-[220px] truncate font-medium" title={u.name}>{u.name}</div>
-                          <div className="max-w-[220px] truncate text-xs text-muted-foreground" title={u.company || u.contact_type}>
+                      <TableRow key={u.id} className="transition-colors hover:bg-primary/5">
+                        <TableCell className="px-4 py-3 align-middle">
+                          <div className="max-w-[230px] truncate font-semibold text-foreground" title={u.name}>{u.name}</div>
+                          <div className="max-w-[230px] truncate text-xs text-muted-foreground" title={u.company || u.contact_type}>
                             {u.company || u.contact_type}
                             {u.is_default && <span className="ml-2 text-primary">★ default</span>}
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[260px] truncate text-sm" title={u.email}>{u.email}</TableCell>
-                        <TableCell>
+                        <TableCell className="max-w-[280px] truncate px-4 py-3 align-middle text-sm text-muted-foreground" title={u.email}>{u.email}</TableCell>
+                        <TableCell className="px-4 py-3 align-middle">
                           <Badge variant={badge.variant} className={badge.className}>{badge.label}</Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4 py-3 align-middle">
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="inline-flex items-center">
+                                <div className="inline-flex items-center rounded-full bg-muted/35 p-1 ring-1 ring-border/50">
                                   <Switch
                                     checked={u.is_active}
                                     disabled={busyId === u.id}
@@ -393,21 +411,21 @@ export default function FinancePortalAdmin() {
                             </Tooltip>
                           </TooltipProvider>
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
+                        <TableCell className="px-4 py-3 align-middle text-xs text-muted-foreground">
                           {portalUser?.last_login_at
                             ? format(new Date(portalUser.last_login_at), 'MMM d, yyyy HH:mm')
                             : '—'}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
+                        <TableCell className="px-4 py-3 align-middle text-xs text-muted-foreground">
                           {portalUser?.invite_sent_at
                             ? format(new Date(portalUser.invite_sent_at), 'MMM d, yyyy')
                             : '—'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4 py-3 align-middle">
                           {portalUser ? (
                             <Popover>
                               <PopoverTrigger asChild>
-                                <button className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-all hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                <button className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1.5 text-xs shadow-sm transition-all hover:border-primary/30 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                                   {portalUser.has_accepted_terms && portalUser.has_completed_onboarding ? (
                                     <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                                   ) : (
@@ -457,10 +475,10 @@ export default function FinancePortalAdmin() {
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-4 py-3 align-middle">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40" disabled={busyId === u.id}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-transparent bg-background/60 shadow-sm transition-all hover:border-primary/25 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:opacity-60" disabled={busyId === u.id}>
                                 {busyId === u.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
@@ -468,7 +486,7 @@ export default function FinancePortalAdmin() {
                                 )}
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl shadow-black/10 backdrop-blur">
                               <DropdownMenuItem onClick={() => setEditUser(u)}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit Contact Details
@@ -661,23 +679,33 @@ export default function FinancePortalAdmin() {
 }
 
 function StatCard({
-  label, value, tone = 'default',
+  label, value, tone = 'default', icon,
 }: {
-  label: string; value: number; tone?: 'default' | 'success' | 'info' | 'muted' | 'destructive';
+  label: string;
+  value: number;
+  tone?: 'default' | 'success' | 'info' | 'muted' | 'destructive';
+  icon: JSX.Element;
 }) {
-  const toneCls = {
-    default:     'text-foreground',
-    success:     'text-success',
-    info:        'text-primary',
-    muted:       'text-muted-foreground',
-    destructive: 'text-destructive',
+  const toneClasses = {
+    default:     { text: 'text-foreground', surface: 'bg-foreground/5 text-foreground border-border/70' },
+    success:     { text: 'text-success', surface: 'bg-success/10 text-success border-success/20' },
+    info:        { text: 'text-primary', surface: 'bg-primary/10 text-primary border-primary/20' },
+    muted:       { text: 'text-muted-foreground', surface: 'bg-muted/60 text-muted-foreground border-border/70' },
+    destructive: { text: 'text-destructive', surface: 'bg-destructive/10 text-destructive border-destructive/20' },
   }[tone];
   return (
     <DashboardThemeFrame variant="premiumCard">
       <Card className="border-0 bg-transparent shadow-none">
       <CardContent className="p-4">
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-        <div className={`text-2xl font-bold mt-1 ${toneCls}`}>{value}</div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
+            <div className={`mt-2 text-3xl font-bold tracking-tight tabular-nums ${toneClasses.text}`}>{value}</div>
+          </div>
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm ${toneClasses.surface}`}>
+            {icon}
+          </div>
+        </div>
       </CardContent>
     </Card>
     </DashboardThemeFrame>

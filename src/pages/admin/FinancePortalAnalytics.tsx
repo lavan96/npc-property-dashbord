@@ -20,7 +20,7 @@ import {
 import { format } from 'date-fns';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, BarChart, Bar, Legend,
+  Tooltip as RTooltip, BarChart, Bar, Legend, LabelList,
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
@@ -76,17 +76,17 @@ interface AuditEntry {
   created_at: string;
 }
 
-const ACTION_TONE: Record<string, string> = {
-  login_success: 'text-success',
-  login_failed: 'text-destructive',
-  logout: 'text-muted-foreground',
-  document_uploaded: 'text-primary',
-  document_deleted: 'text-destructive',
-  message_sent: 'text-primary',
-  invite_sent: 'text-primary',
-  invite_accepted: 'text-success',
-  access_revoked: 'text-destructive',
-  access_reinstated: 'text-success',
+const ACTION_BADGE_CLASS: Record<string, string> = {
+  login_success: 'border-success/20 bg-success/10 text-success',
+  login_failed: 'border-destructive/20 bg-destructive/10 text-destructive',
+  logout: 'border-border/70 bg-muted/60 text-muted-foreground',
+  document_uploaded: 'border-primary/20 bg-primary/10 text-primary',
+  document_deleted: 'border-destructive/20 bg-destructive/10 text-destructive',
+  message_sent: 'border-primary/20 bg-primary/10 text-primary',
+  invite_sent: 'border-primary/20 bg-primary/10 text-primary',
+  invite_accepted: 'border-success/20 bg-success/10 text-success',
+  access_revoked: 'border-destructive/20 bg-destructive/10 text-destructive',
+  access_reinstated: 'border-success/20 bg-success/10 text-success',
 };
 
 function formatBytes(b: number): string {
@@ -154,19 +154,29 @@ export default function FinancePortalAnalytics() {
 
   return (
     <DashboardThemeFrame variant="page" className="space-y-6 p-4 sm:p-6">
-      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-primary" />
-            Finance Portal Analytics
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Aggregate activity, engagement, and audit insight across all finance partners.
-          </p>
+      <DashboardThemeFrame variant="hero" as="header" className="space-y-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-sm shadow-primary/10">
+              <Activity className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Finance intelligence centre</span>
+            </div>
+            <div className="space-y-2">
+              <h1 className="flex min-w-0 items-center gap-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+                  <BarChart3 className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 truncate">Finance Portal Analytics</span>
+              </h1>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Aggregate activity, engagement, and audit insight across all finance partners.
+              </p>
+            </div>
+          </div>
         </div>
-        <DashboardThemeFrame variant="toolbar" className="md:w-auto">
+        <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-slate-950/55 md:w-auto">
           <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="h-9 w-36">
+            <SelectTrigger aria-label="Select analytics date range" className="h-10 w-full rounded-xl border-border/70 bg-card/70 shadow-sm focus:ring-primary/35 sm:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -177,18 +187,18 @@ export default function FinancePortalAnalytics() {
               <SelectItem value="90">Last 90 days</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={loadAnalytics} className="gap-2" disabled={loading}>
+          <Button variant="outline" onClick={loadAnalytics} aria-label="Refresh finance portal analytics" className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60 sm:flex-none" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" asChild>
-            <Link to="/admin/finance-portal">Manage Users</Link>
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
+            <Link to="/admin/finance-portal"><Users className="h-4 w-4" />Manage Users</Link>
           </Button>
         </DashboardThemeFrame>
       </DashboardThemeFrame>
 
       {loading || !data ? (
-        <div className="flex items-center justify-center py-24">
+        <div className="flex items-center justify-center rounded-3xl border border-dashed border-border/70 bg-card/50 py-24">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
@@ -201,24 +211,33 @@ export default function FinancePortalAnalytics() {
           </div>
 
           <Tabs defaultValue="activity" className="space-y-4">
-            <TabsList className="h-auto w-full flex-wrap justify-start rounded-2xl bg-muted/60 p-1 sm:w-auto">
-              <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
-              <TabsTrigger value="partners"><Users className="h-4 w-4 mr-2" />Top Partners</TabsTrigger>
-              <TabsTrigger value="actions"><TrendingUp className="h-4 w-4 mr-2" />Action Breakdown</TabsTrigger>
-              <TabsTrigger value="audit"><Search className="h-4 w-4 mr-2" />Audit Log</TabsTrigger>
+            <DashboardThemeFrame variant="toolbar" className="w-full p-1.5">
+              <TabsList className="grid h-auto w-full grid-cols-1 gap-1 bg-transparent p-0 sm:grid-cols-2 xl:grid-cols-4">
+                <TabsTrigger value="activity" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
+                <TabsTrigger value="partners" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20"><Users className="h-4 w-4 mr-2" />Top Partners</TabsTrigger>
+                <TabsTrigger value="actions" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20"><TrendingUp className="h-4 w-4 mr-2" />Action Breakdown</TabsTrigger>
+                <TabsTrigger value="audit" className="rounded-xl px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20"><Search className="h-4 w-4 mr-2" />Audit Log</TabsTrigger>
             </TabsList>
+            </DashboardThemeFrame>
 
             <TabsContent value="activity" className="space-y-4">
               <DashboardThemeFrame variant="chartCard" className="p-0">
               <Card className="border-0 bg-transparent shadow-none">
-                <CardHeader>
-                  <CardTitle>Daily Engagement</CardTitle>
-                  <CardDescription>Logins, document uploads, messages, and BC reviews over the selected window.</CardDescription>
+                <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
+                  <CardTitle className="text-lg tracking-tight">Daily Engagement</CardTitle>
+                  <CardDescription className="leading-6">Logins, document uploads, messages, and BC reviews over the selected window.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-72">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="h-72 rounded-2xl border border-border/60 bg-background/45 p-3" role="img" aria-label="Daily engagement chart showing logins, document uploads, and messages">
+                    {data.daily.length === 0 ? (
+                      <EmptyAnalyticsState
+                        icon={<Activity className="h-5 w-5" />}
+                        title="No engagement activity"
+                        description="No finance portal engagement was recorded for this date range."
+                      />
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={data.daily}>
+                      <AreaChart data={data.daily} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
                         <defs>
                           <linearGradient id="gLogins" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
@@ -233,41 +252,56 @@ export default function FinancePortalAnalytics() {
                             <stop offset="100%" stopColor="hsl(var(--warning))" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => v.slice(5)} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.7} vertical={false} />
+                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} tickFormatter={(v) => v.slice(5)} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} allowDecimals={false} />
                         <RTooltip
-                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          cursor={{ stroke: 'hsl(var(--primary))', strokeOpacity: 0.25 }}
+                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, boxShadow: '0 18px 40px hsl(var(--foreground) / 0.12)', fontSize: 12 }}
+                          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 700 }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Area type="monotone" dataKey="logins" stroke="hsl(var(--primary))" fill="url(#gLogins)" name="Logins" />
-                        <Area type="monotone" dataKey="doc_uploads" stroke="hsl(var(--success))" fill="url(#gDocs)" name="Doc Uploads" />
-                        <Area type="monotone" dataKey="messages" stroke="hsl(var(--warning))" fill="url(#gMsg)" name="Messages" />
+                        <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: 12, paddingBottom: 12 }} />
+                        <Area type="monotone" dataKey="logins" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#gLogins)" name="Logins" activeDot={{ r: 5, strokeWidth: 2 }} />
+                        <Area type="monotone" dataKey="doc_uploads" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#gDocs)" name="Doc Uploads" activeDot={{ r: 5, strokeWidth: 2 }} />
+                        <Area type="monotone" dataKey="messages" stroke="hsl(var(--warning))" strokeWidth={2} fill="url(#gMsg)" name="Messages" activeDot={{ r: 5, strokeWidth: 2 }} />
                       </AreaChart>
                     </ResponsiveContainer>
+                    )}
                   </div>
                 </CardContent>
               </Card>
               </DashboardThemeFrame>
               <DashboardThemeFrame variant="chartCard" className="p-0">
               <Card className="border-0 bg-transparent shadow-none">
-                <CardHeader>
-                  <CardTitle>Total Events / Day</CardTitle>
-                  <CardDescription>Sum of all audited finance portal events.</CardDescription>
+                <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
+                  <CardTitle className="text-lg tracking-tight">Total Events / Day</CardTitle>
+                  <CardDescription className="leading-6">Sum of all audited finance portal events.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-56">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="h-56 rounded-2xl border border-border/60 bg-background/45 p-3" role="img" aria-label="Total events per day chart">
+                    {data.daily.length === 0 ? (
+                      <EmptyAnalyticsState
+                        icon={<BarChart3 className="h-5 w-5" />}
+                        title="No event volume"
+                        description="No audited events were recorded for this date range."
+                      />
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data.daily}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => v.slice(5)} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
+                      <BarChart data={data.daily} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.7} vertical={false} />
+                        <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} tickFormatter={(v) => v.slice(5)} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} allowDecimals={false} />
                         <RTooltip
-                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
+                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, boxShadow: '0 18px 40px hsl(var(--foreground) / 0.12)', fontSize: 12 }}
+                          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 700 }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[8, 8, 2, 2]} />
                       </BarChart>
                     </ResponsiveContainer>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -277,31 +311,39 @@ export default function FinancePortalAnalytics() {
             <TabsContent value="partners">
               <DashboardThemeFrame variant="section" className="p-0">
               <Card className="border-0 bg-transparent shadow-none">
-                <CardHeader>
-                  <CardTitle>Most Active Partners</CardTitle>
-                  <CardDescription>Top 10 finance partners by audited event count over the window.</CardDescription>
+                <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
+                  <CardTitle className="text-lg tracking-tight">Most Active Partners</CardTitle>
+                  <CardDescription className="leading-6">Top 10 finance partners by audited event count over the window.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70"><Table className="min-w-[720px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Partner</TableHead>
-                        <TableHead className="text-right">Events</TableHead>
-                        <TableHead>Last Activity</TableHead>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35"><Table className="min-w-[720px]" aria-label="Most active finance partners">
+                    <TableHeader className="bg-muted/35">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Partner</TableHead>
+                        <TableHead className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Events</TableHead>
+                        <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Last Activity</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {data.top_users.length === 0 && (
-                        <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8 text-sm">No partner activity in this window.</TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} className="py-10">
+                            <EmptyAnalyticsState
+                              icon={<Users className="h-5 w-5" />}
+                              title="No partner activity"
+                              description="No partner events were recorded in this window."
+                            />
+                          </TableCell>
+                        </TableRow>
                       )}
                       {data.top_users.map(u => (
-                        <TableRow key={u.finance_user_id}>
-                          <TableCell>
-                            <div className="font-medium">{u.name || 'Unknown'}</div>
-                            <div className="text-xs text-muted-foreground">{u.email}</div>
+                        <TableRow key={u.finance_user_id} className="transition-colors hover:bg-primary/5">
+                          <TableCell className="px-4 py-3">
+                            <div className="max-w-[280px] truncate font-semibold text-foreground">{u.name || 'Unknown'}</div>
+                            <div className="max-w-[280px] truncate text-xs text-muted-foreground">{u.email}</div>
                           </TableCell>
-                          <TableCell className="text-right font-mono">{u.events}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
+                          <TableCell className="px-4 py-3 text-right font-mono">{u.events}</TableCell>
+                          <TableCell className="px-4 py-3 text-xs text-muted-foreground">
                             {u.last_activity ? format(new Date(u.last_activity), 'MMM d, yyyy HH:mm') : '—'}
                           </TableCell>
                         </TableRow>
@@ -316,23 +358,36 @@ export default function FinancePortalAnalytics() {
             <TabsContent value="actions">
               <DashboardThemeFrame variant="chartCard" className="p-0">
               <Card className="border-0 bg-transparent shadow-none">
-                <CardHeader>
-                  <CardTitle>Action Frequency</CardTitle>
-                  <CardDescription>Breakdown of audit actions over the selected window.</CardDescription>
+                <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
+                  <CardTitle className="text-lg tracking-tight">Action Frequency</CardTitle>
+                  <CardDescription className="leading-6">Breakdown of audit actions over the selected window.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-80">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="h-80 rounded-2xl border border-border/60 bg-background/45 p-3" role="img" aria-label="Action frequency chart">
+                    {actionList.length === 0 ? (
+                      <EmptyAnalyticsState
+                        icon={<TrendingUp className="h-5 w-5" />}
+                        title="No action breakdown"
+                        description="No auditable actions were recorded for this date range."
+                      />
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={actionList} layout="vertical" margin={{ left: 80 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
-                        <YAxis type="category" dataKey="action" stroke="hsl(var(--muted-foreground))" fontSize={11} width={140} />
+                      <BarChart data={actionList} layout="vertical" margin={{ top: 8, right: 36, left: 76, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.7} horizontal={false} />
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} allowDecimals={false} />
+                        <YAxis type="category" dataKey="action" stroke="hsl(var(--muted-foreground))" fontSize={11} width={148} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} />
                         <RTooltip
-                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
+                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, boxShadow: '0 18px 40px hsl(var(--foreground) / 0.12)', fontSize: 12 }}
+                          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 700 }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]}>
+                          <LabelList dataKey="count" position="right" className="fill-muted-foreground text-[11px] font-semibold" />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -342,24 +397,25 @@ export default function FinancePortalAnalytics() {
             <TabsContent value="audit" className="space-y-4">
               <DashboardThemeFrame variant="section" className="p-0">
               <Card className="border-0 bg-transparent shadow-none">
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <CardTitle>Audit Log Search</CardTitle>
-                    <CardDescription>Search across actions, entity types, and metadata.</CardDescription>
+                <CardHeader className="flex flex-col gap-4 border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <CardTitle className="text-lg tracking-tight">Audit Log Search</CardTitle>
+                    <CardDescription className="leading-6">Search across actions, entity types, and metadata.</CardDescription>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <div className="grid w-full grid-cols-1 gap-2 lg:w-auto lg:grid-cols-[minmax(16rem,20rem)_13rem_auto]">
+                    <div className="relative min-w-0">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         value={auditSearch}
                         onChange={e => setAuditSearch(e.target.value)}
                         placeholder="Search action / entity / metadata..."
-                        className="h-9 w-full min-w-0 pl-8 sm:w-72"
+                        aria-label="Search audit log"
+                        className="h-10 w-full min-w-0 rounded-xl border-border/70 bg-background/75 pl-9 shadow-inner transition-all focus-visible:ring-primary/35"
                         onKeyDown={e => e.key === 'Enter' && loadAudit()}
                       />
                     </div>
                     <Select value={auditAction} onValueChange={setAuditAction}>
-                      <SelectTrigger className="h-9 w-full sm:w-48"><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label="Filter audit log by action" className="h-10 w-full rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All actions</SelectItem>
                         {Object.keys(data.action_counts).sort().map(a => (
@@ -367,22 +423,22 @@ export default function FinancePortalAnalytics() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={loadAudit} disabled={auditLoading} className="gap-2 h-9">
+                    <Button variant="outline" onClick={loadAudit} disabled={auditLoading} aria-label="Search audit log" className="h-10 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60">
                       {auditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                       Search
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70">
-                    <Table className="min-w-[840px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>When</TableHead>
-                          <TableHead>Actor</TableHead>
-                          <TableHead>Action</TableHead>
-                          <TableHead>Entity</TableHead>
-                          <TableHead>IP</TableHead>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+                    <Table className="min-w-[840px]" aria-label="Finance portal audit log">
+                      <TableHeader className="bg-muted/35">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">When</TableHead>
+                          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Actor</TableHead>
+                          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Action</TableHead>
+                          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entity</TableHead>
+                          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">IP</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -390,21 +446,25 @@ export default function FinancePortalAnalytics() {
                           <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-sm">No audit records.</TableCell></TableRow>
                         )}
                         {audit.map(a => (
-                          <TableRow key={a.id} className="transition-colors hover:bg-muted/35">
-                            <TableCell className="text-xs whitespace-nowrap">
+                          <TableRow key={a.id} className="transition-colors hover:bg-primary/5">
+                            <TableCell className="whitespace-nowrap px-4 py-3 text-xs">
                               {format(new Date(a.created_at), 'MMM d, HH:mm:ss')}
                             </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-[10px] capitalize">{a.actor_type}</Badge>
+                            <TableCell className="px-4 py-3">
+                              <Badge variant="outline" className="max-w-[140px] truncate rounded-full border-border/70 bg-background/70 text-[10px] capitalize text-muted-foreground" title={a.actor_type}>{a.actor_type}</Badge>
                             </TableCell>
-                            <TableCell className={`max-w-[220px] truncate text-sm font-medium ${ACTION_TONE[a.action] || ''}`} title={a.action}>
-                              {a.action}
+                            <TableCell className="max-w-[240px] px-4 py-3">
+                              <Badge variant="outline" className={`max-w-full truncate rounded-full text-[10px] font-semibold ${ACTION_BADGE_CLASS[a.action] || 'border-border/70 bg-muted/50 text-muted-foreground'}`} title={a.action}>
+                                {a.action}
+                              </Badge>
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
-                              {a.entity_type || '—'}
-                              {a.entity_id && <span className="ml-1 font-mono">{a.entity_id.slice(0, 8)}</span>}
+                            <TableCell className="max-w-[240px] px-4 py-3 text-xs text-muted-foreground">
+                              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                <span className="max-w-[120px] truncate" title={a.entity_type || '—'}>{a.entity_type || '—'}</span>
+                                {a.entity_id && <span className="max-w-[96px] truncate rounded-md bg-muted/50 px-1.5 py-0.5 font-mono" title={a.entity_id}>{a.entity_id.slice(0, 8)}</span>}
+                              </div>
                             </TableCell>
-                            <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground font-mono" title={a.ip_address || '—'}>{a.ip_address || '—'}</TableCell>
+                            <TableCell className="max-w-[160px] truncate px-4 py-3 font-mono text-xs text-muted-foreground" title={a.ip_address || '—'}>{a.ip_address || '—'}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -421,29 +481,52 @@ export default function FinancePortalAnalytics() {
   );
 }
 
+function EmptyAnalyticsState({
+  icon, title, description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/80 text-muted-foreground shadow-sm">
+        {icon}
+      </div>
+      <div className="text-sm font-semibold text-foreground">{title}</div>
+      <div className="max-w-sm text-xs leading-5 text-muted-foreground">{description}</div>
+    </div>
+  );
+}
+
 function KpiCard({
   icon, label, value, subtitle, tone = 'default',
 }: {
   icon: React.ReactNode; label: string; value: number; subtitle?: string;
   tone?: 'default' | 'warning' | 'success' | 'destructive';
 }) {
-  const toneCls = {
-    default:     'text-foreground',
-    warning:     'text-warning',
-    success:     'text-success',
-    destructive: 'text-destructive',
+  const toneClasses = {
+    default:     { text: 'text-foreground', surface: 'bg-primary/10 text-primary border-primary/20' },
+    warning:     { text: 'text-warning', surface: 'bg-warning/10 text-warning border-warning/20' },
+    success:     { text: 'text-success', surface: 'bg-success/10 text-success border-success/20' },
+    destructive: { text: 'text-destructive', surface: 'bg-destructive/10 text-destructive border-destructive/20' },
   }[tone];
   return (
     <DashboardThemeFrame variant="premiumCard">
       <Card className="border-0 bg-transparent shadow-none">
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-            {icon}{label}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {label}
+            </div>
+            <div className={`mt-2 text-3xl font-bold tracking-tight tabular-nums ${toneClasses.text}`}>{value.toLocaleString()}</div>
+            {subtitle && <div className="mt-1 max-w-full truncate text-xs text-muted-foreground" title={subtitle}>{subtitle}</div>}
+          </div>
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm ${toneClasses.surface}`}>
+            {icon}
           </div>
         </div>
-        <div className={`text-2xl font-bold mt-2 ${toneCls}`}>{value.toLocaleString()}</div>
-        {subtitle && <div className="text-xs text-muted-foreground mt-1">{subtitle}</div>}
       </CardContent>
     </Card>
     </DashboardThemeFrame>
