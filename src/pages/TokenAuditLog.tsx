@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Clock3, DatabaseZap, FileKey2, Filter, Loader2, RefreshCw, Search, ShieldCheck, WalletCards } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, DatabaseZap, FileKey2, Filter, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck, WalletCards, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
 
@@ -84,6 +84,12 @@ function TokenSummary({ row }: { row: AuditRow }) {
 }
 
 const PREMIUM_SCROLLBAR = "[scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:bg-transparent";
+
+const EVENT_STATES = [
+  { label: "Reserve", description: "Holds estimated Mission Control tokens before a job runs.", icon: RotateCcw, tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" },
+  { label: "Commit", description: "Finalises actual token usage after successful completion.", icon: CheckCircle2, tone: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+  { label: "Cancel", description: "Releases a reservation when work is cancelled or fails safely.", icon: XCircle, tone: "border-destructive/20 bg-destructive/10 text-destructive" },
+] as const;
 
 export default function TokenAuditLog() {
   const [rows, setRows] = useState<AuditRow[]>([]);
@@ -165,7 +171,7 @@ export default function TokenAuditLog() {
         <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
           <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-1.5">
+              <div className="min-w-0 space-y-3">
                 <CardTitle className="flex min-w-0 items-center gap-2 text-xl tracking-tight">
                   <span className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
                     <Clock3 className="h-5 w-5" />
@@ -175,6 +181,17 @@ export default function TokenAuditLog() {
                 <CardDescription className="max-w-3xl text-sm leading-6 text-muted-foreground">
                   Most recent 500 events. Filter by type or search by key / user.
                 </CardDescription>
+                <div className="grid gap-2 pt-1 md:grid-cols-3" aria-label="Mission Control audit event workflow">
+                  {EVENT_STATES.map(({ label, description, icon: Icon, tone }) => (
+                    <div key={label} className={cn("flex min-w-0 items-start gap-2 rounded-2xl border px-3 py-2 shadow-sm", tone)}>
+                      <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em]">{label}</p>
+                        <p className="mt-1 text-[11px] leading-4 opacity-85">{description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
               <Badge variant="outline" className="w-fit rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-primary">
                 {filtered.length.toLocaleString()} visible
@@ -232,9 +249,19 @@ export default function TokenAuditLog() {
               </div>
             </DashboardThemeFrame>
 
-            <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <span className="min-w-0 truncate">Viewing: <span className="font-semibold capitalize text-foreground">{activeFilterLabel}</span></span>
-              <span className="min-w-0 truncate">Click an idempotency key to inspect the reserve / commit / cancel trail.</span>
+            <div className="grid min-w-0 gap-3 rounded-3xl border border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.78),hsl(var(--muted)/0.24))] p-3 text-xs shadow-sm sm:grid-cols-3">
+              <div className="rounded-2xl border border-border/50 bg-background/70 px-4 py-3">
+                <span className="block text-muted-foreground">Current view</span>
+                <span className="mt-1 block truncate font-semibold capitalize text-foreground">{activeFilterLabel}</span>
+              </div>
+              <div className="rounded-2xl border border-border/50 bg-background/70 px-4 py-3">
+                <span className="block text-muted-foreground">Audit drilldown</span>
+                <span className="mt-1 block truncate font-semibold text-foreground">Idempotency key trails</span>
+              </div>
+              <div className="rounded-2xl border border-border/50 bg-primary/10 px-4 py-3 text-primary">
+                <span className="block text-primary/80">Refresh behaviour</span>
+                <span className="mt-1 block truncate font-semibold">Keeps filters and search intact</span>
+              </div>
             </div>
 
             {loading && rows.length > 0 && (
