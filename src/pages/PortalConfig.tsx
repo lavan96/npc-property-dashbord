@@ -312,41 +312,52 @@ export default function PortalConfig() {
               <CardTitle>Welcome Message</CardTitle>
               <CardDescription>Customise the welcome text shown on the portal dashboard</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Welcome Title</Label>
-                <Input
-                  value={config.welcome_title || ''}
-                  onChange={(e) => updateConfig({ welcome_title: e.target.value })}
-                  placeholder="Welcome to your Client Portal"
-                />
+            <CardContent className="space-y-5">
+              <div className="grid gap-5 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+                <div className="space-y-2.5">
+                  <Label className="text-sm font-semibold text-foreground">Welcome Title</Label>
+                  <Input
+                    value={config.welcome_title || ''}
+                    onChange={(e) => updateConfig({ welcome_title: e.target.value })}
+                    placeholder="Welcome to your Client Portal"
+                    className="min-h-11 rounded-xl border-border/70 bg-card/80 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                  />
+                </div>
+
+                <div className="space-y-2.5">
+                  <Label className="text-sm font-semibold text-foreground">Welcome Message</Label>
+                  <Textarea
+                    value={config.welcome_message || ''}
+                    onChange={(e) => updateConfig({ welcome_message: e.target.value })}
+                    placeholder="Access your property investment details..."
+                    rows={6}
+                    className="min-h-[150px] resize-none rounded-xl border-border/70 bg-card/80 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                  />
+                </div>
+
+                <div className="space-y-2.5">
+                  <Label className="text-sm font-semibold text-foreground">Banner Image URL (optional)</Label>
+                  <Input
+                    value={config.welcome_banner_url || ''}
+                    onChange={(e) => updateConfig({ welcome_banner_url: e.target.value || null })}
+                    placeholder="https://..."
+                    className="min-h-11 min-w-0 rounded-xl border-border/70 bg-card/80 font-mono text-sm text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Welcome Message</Label>
-                <Textarea
-                  value={config.welcome_message || ''}
-                  onChange={(e) => updateConfig({ welcome_message: e.target.value })}
-                  placeholder="Access your property investment details..."
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Banner Image URL (optional)</Label>
-                <Input
-                  value={config.welcome_banner_url || ''}
-                  onChange={(e) => updateConfig({ welcome_banner_url: e.target.value || null })}
-                  placeholder="https://..."
-                />
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label>Portal Footer Text</Label>
-                <Input
-                  value={config.portal_footer_text || ''}
-                  onChange={(e) => updateConfig({ portal_footer_text: e.target.value })}
-                  placeholder="Secured Portal • End-to-end encrypted"
-                />
+
+              <Separator className="bg-border/70" />
+
+              <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 dark:border-primary/20 dark:bg-primary/10 sm:p-5">
+                <div className="space-y-2.5">
+                  <Label className="text-sm font-semibold text-foreground">Portal Footer Text</Label>
+                  <Input
+                    value={config.portal_footer_text || ''}
+                    onChange={(e) => updateConfig({ portal_footer_text: e.target.value })}
+                    placeholder="Secured Portal • End-to-end encrypted"
+                    className="min-h-11 min-w-0 rounded-xl border-border/70 bg-card/90 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/70"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
