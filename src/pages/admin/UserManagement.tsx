@@ -570,7 +570,48 @@ export default function UserManagement() {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="text-center py-10 text-muted-foreground">Loading users...</div>
+            <div className="space-y-3 p-5" role="status" aria-live="polite">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Loading users...</p>
+                  <p className="text-xs text-muted-foreground">Fetching user accounts and access levels.</p>
+                </div>
+                <div className="h-9 w-24 animate-pulse rounded-full bg-muted" />
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/60">
+                {[0, 1, 2, 3].map((row) => (
+                  <div key={row} className="grid min-w-[980px] grid-cols-[48px_220px_150px_220px_150px_160px_130px_260px] items-center gap-0 border-b border-border/50 px-5 py-4 last:border-b-0">
+                    <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                      <div className="h-3 w-44 animate-pulse rounded bg-muted/80" />
+                    </div>
+                    <div className="h-6 w-24 animate-pulse rounded-full bg-muted" />
+                    <div className="h-6 w-40 animate-pulse rounded-full bg-muted" />
+                    <div className="h-7 w-24 animate-pulse rounded-full bg-muted" />
+                    <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+                    <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                    <div className="ml-auto flex gap-2">
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 p-8 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                <Users className="h-7 w-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold text-foreground">No users found</h3>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  User accounts will appear here when they are returned by the existing user-management service.
+                </p>
+              </div>
+            </div>
           ) : (
             <Table className="min-w-[980px]">
               <TableHeader>
