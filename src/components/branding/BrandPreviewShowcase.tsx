@@ -20,25 +20,32 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
   const faviconSrc = getBrandAssetSrc(settings, 'favicon');
 
   return (
-    <Tabs defaultValue="dashboard" className="min-w-0 space-y-5">
-      <TabsList className="grid h-auto w-full min-w-0 grid-cols-2 gap-2 rounded-[1.35rem] border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-4">
-        {['dashboard', 'client', 'finance', 'browser'].map((surface) => (
+    <Tabs defaultValue="dashboard-light" className="min-w-0 space-y-5">
+      <TabsList className="grid h-auto w-full min-w-0 grid-cols-2 gap-2 rounded-[1.35rem] border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-3 xl:grid-cols-6">
+        {[
+          ['dashboard-light', 'Dashboard Light'],
+          ['dashboard-dark', 'Dashboard Dark'],
+          ['client', 'Client Portal'],
+          ['finance', 'Finance Portal'],
+          ['browser', 'Browser Identity'],
+          ['email', 'Email Signature'],
+        ].map(([surface, label]) => (
           <TabsTrigger
             key={surface}
             className="min-w-0 rounded-2xl px-3 py-2.5 text-xs font-semibold capitalize text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25 sm:text-sm"
             value={surface}
           >
-            <span className="block min-w-0 truncate">{surface}</span>
+            <span className="block min-w-0 truncate">{label}</span>
           </TabsTrigger>
         ))}
       </TabsList>
 
-      <TabsContent value="dashboard" className="space-y-4">
+      <TabsContent value="dashboard-light" className="space-y-4">
         <div className="grid min-w-0 gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <div style={tokenStyle(tokens.dark)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-sidebar-border/70 bg-sidebar/95 p-4 text-sidebar-foreground shadow-2xl shadow-background/15 ring-1 ring-primary/5">
+          <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-sidebar-border/70 bg-sidebar/95 p-4 text-sidebar-foreground shadow-2xl shadow-background/15 ring-1 ring-primary/5">
             <div className="flex min-w-0 items-center gap-3 border-b border-sidebar-border/70 pb-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sidebar-border/60 bg-sidebar-accent/10 p-1 shadow-inner">
-                <BrandLogo slot="sidebar" className="max-h-10 max-w-[120px] object-contain" fallbackClassName="h-10 w-10" />
+                <BrandLogo settings={settings} slot="sidebar" className="max-h-10 max-w-[120px] object-contain" fallbackClassName="h-10 w-10" />
               </div>
               <div className="min-w-0">
                 <p className="truncate font-semibold">{settings.companyName}</p>
@@ -58,7 +65,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
             </div>
           </div>
 
-          <div style={tokenStyle(tokens.dark)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
+          <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
             <div className="min-w-0 overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/95 shadow-xl ring-1 ring-primary/5">
               <div className="flex min-w-0 flex-col gap-3 border-b border-border/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
@@ -76,7 +83,31 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
                   </div>
                 ))}
               </div>
+              <div className="grid gap-3 border-t border-border/60 bg-muted/20 p-4 md:grid-cols-[1fr_auto] md:items-center">
+                <div className="min-w-0 rounded-2xl border border-input bg-background/80 px-3 py-2 text-sm text-muted-foreground shadow-inner ring-2 ring-primary/20">
+                  Focused search / input preview with gold ring
+                </div>
+                <div className="flex min-w-0 flex-wrap gap-2">
+                  <button className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25">Primary action</button>
+                  <button className="rounded-xl border border-border bg-background/80 px-4 py-2 text-sm font-semibold text-foreground">Secondary</button>
+                  <span className="rounded-full border border-success/25 bg-success-light px-3 py-2 text-xs font-semibold text-success">Success</span>
+                </div>
+              </div>
             </div>
+          </div>
+        </div>
+      </TabsContent>
+
+
+      <TabsContent value="dashboard-dark" className="space-y-4">
+        <div style={tokenStyle(tokens.dark)} className="grid min-w-0 gap-4 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-4 shadow-2xl shadow-background/15 md:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="rounded-2xl border border-sidebar-border/70 bg-sidebar p-4 text-sidebar-foreground">
+            <p className="text-xs uppercase tracking-[0.18em] text-sidebar-foreground/60">Dark dashboard</p>
+            <div className="mt-4 rounded-xl bg-sidebar-primary px-3 py-2 text-sm font-semibold text-sidebar-primary-foreground">Active navigation</div>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-card p-4">
+            <p className="font-semibold text-foreground">Dark mode reference</p>
+            <p className="mt-2 text-sm text-muted-foreground">Dark tokens remain available for comparison and are not changed by the luxury light-mode refresh.</p>
           </div>
         </div>
       </TabsContent>
@@ -86,7 +117,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
           <div className="min-w-0 rounded-[28px] border border-border/70 bg-card/95 p-4 shadow-xl ring-1 ring-primary/5">
             <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/60 pb-4">
               <div className="flex min-w-0 items-center gap-3">
-                <BrandLogo slot="auth" className="h-10 max-w-[180px] shrink-0 object-contain" fallbackClassName="h-10 w-10 shrink-0" />
+                <BrandLogo settings={settings} slot="auth" className="h-10 max-w-[180px] shrink-0 object-contain" fallbackClassName="h-10 w-10 shrink-0" />
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-foreground">{settings.companyName}</p>
                   <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Client portal</p>
@@ -111,12 +142,12 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
       </TabsContent>
 
       <TabsContent value="finance">
-        <div style={tokenStyle(tokens.dark)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
+        <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
           <div className="min-w-0 rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-xl ring-1 ring-primary/5">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-3">
-                  <BrandLogo slot="auth" className="h-10 max-w-[180px] shrink-0 object-contain" fallbackClassName="h-10 w-10 shrink-0" />
+                  <BrandLogo settings={settings} slot="auth" className="h-10 max-w-[180px] shrink-0 object-contain" fallbackClassName="h-10 w-10 shrink-0" />
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-foreground">Finance Portal</p>
                     <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Partner access</p>
@@ -148,6 +179,17 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
                <div className="mb-2"><BrandMark settings={settings} slot="sidebar-icon" className="h-4 w-4 object-contain" fallbackClassName="h-4 w-4 rounded" /></div>
               The favicon slot falls back to your sidebar icon or primary logo if a dedicated favicon has not been uploaded yet.
             </div>
+          </div>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="email">
+        <div style={tokenStyle(tokens.light)} className="min-w-0 rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+          <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Email signature</p>
+            <p className="mt-2 font-semibold text-foreground">{settings.emailSignature?.name || settings.companyName}</p>
+            <p className="text-sm text-muted-foreground">{settings.emailSignature?.title || 'Property advisory team'}</p>
+            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/10 p-3 text-sm text-foreground">Champagne banner, brand logo, and contact details inherit saved brand tokens.</div>
           </div>
         </div>
       </TabsContent>
