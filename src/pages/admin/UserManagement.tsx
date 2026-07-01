@@ -434,34 +434,46 @@ export default function UserManagement() {
                 Create Sub-Admin
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create Sub-Admin</DialogTitle>
+            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-black/20">
+              <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <Plus className="h-5 w-5 text-primary" />
+                  Create Sub-Admin
+                </DialogTitle>
                 <DialogDescription>Create a new sub-admin account with specific permissions.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Username *</Label>
-                    <Input value={createUsername} onChange={(e) => setCreateUsername(e.target.value)} placeholder="username" />
+              <div className="space-y-5 p-6">
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Account details</h3>
+                    <p className="text-xs text-muted-foreground">Set the required sign-in details and mailbox routing for this sub-admin.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Password *</Label>
-                    <Input type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} placeholder="Min 6 characters" />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Username *</Label>
+                      <Input value={createUsername} onChange={(e) => setCreateUsername(e.target.value)} placeholder="username" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Password *</Label>
+                      <Input type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} placeholder="Min 6 characters" />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Email <span className="text-destructive">*</span></Label>
+                      <Input type="email" required value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="user@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Personal Mailbox (optional)</Label>
+                      <Input type="email" value={createMailbox} onChange={(e) => setCreateMailbox(e.target.value)} placeholder="mailbox@example.com" />
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email <span className="text-destructive">*</span></Label>
-                    <Input type="email" required value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="user@example.com" />
+                <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
+                  <div>
+                    <Label>Module Permissions</Label>
+                    <p className="text-xs text-muted-foreground">Choose the modules this sub-admin can access. Existing permission logic is unchanged.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Personal Mailbox (optional)</Label>
-                    <Input type="email" value={createMailbox} onChange={(e) => setCreateMailbox(e.target.value)} placeholder="mailbox@example.com" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Module Permissions</Label>
                   <PermissionsGrid
                     modules={modules}
                     permissions={createPermissions}
@@ -469,7 +481,7 @@ export default function UserManagement() {
                     onApplyPreset={setCreatePermissions}
                   />
                 </div>
-                <Button onClick={handleCreateSubAdmin} disabled={creating} className="w-full">
+                <Button onClick={handleCreateSubAdmin} disabled={creating} className="w-full shadow-lg shadow-primary/15">
                   {creating ? 'Creating...' : 'Create Sub-Admin'}
                 </Button>
               </div>
@@ -484,34 +496,46 @@ export default function UserManagement() {
                 Invite User
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Invite New User</DialogTitle>
+            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-black/20">
+              <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <UserPlus className="h-5 w-5 text-primary" />
+                  Invite New User
+                </DialogTitle>
                 <DialogDescription>Send an invitation to join the dashboard with specific permissions.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email *</Label>
-                    <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" />
+              <div className="space-y-5 p-6">
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Invitation details</h3>
+                    <p className="text-xs text-muted-foreground">Enter the recipient and choose the existing invite delivery method.</p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Email *</Label>
+                      <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Username (optional)</Label>
+                      <Input value={inviteUsername} onChange={(e) => setInviteUsername(e.target.value)} placeholder="Leave blank to use email" />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Username (optional)</Label>
-                    <Input value={inviteUsername} onChange={(e) => setInviteUsername(e.target.value)} placeholder="Leave blank to use email" />
+                    <Label>Invite Method</Label>
+                    <Select value={inviteType} onValueChange={(v: 'magic_link' | 'temp_password') => setInviteType(v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="magic_link"><div className="flex items-center gap-2"><Mail className="h-4 w-4" />Magic Link</div></SelectItem>
+                        <SelectItem value="temp_password"><div className="flex items-center gap-2"><Key className="h-4 w-4" />Temporary Password</div></SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Invite Method</Label>
-                  <Select value={inviteType} onValueChange={(v: 'magic_link' | 'temp_password') => setInviteType(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="magic_link"><div className="flex items-center gap-2"><Mail className="h-4 w-4" />Magic Link</div></SelectItem>
-                      <SelectItem value="temp_password"><div className="flex items-center gap-2"><Key className="h-4 w-4" />Temporary Password</div></SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Module Permissions</Label>
+                <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
+                  <div>
+                    <Label>Module Permissions</Label>
+                    <p className="text-xs text-muted-foreground">Assign starting module access for the invited user. Existing permission logic is unchanged.</p>
+                  </div>
                   <PermissionsGrid
                     modules={modules}
                     permissions={invitePermissions}
@@ -519,7 +543,7 @@ export default function UserManagement() {
                     onApplyPreset={setInvitePermissions}
                   />
                 </div>
-                <Button onClick={handleSendInvite} disabled={inviteSending} className="w-full">
+                <Button onClick={handleSendInvite} disabled={inviteSending} className="w-full shadow-lg shadow-primary/15">
                   {inviteSending ? 'Sending...' : 'Send Invitation'}
                 </Button>
               </div>
