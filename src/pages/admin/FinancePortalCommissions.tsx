@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface Commission {
   id: string;
@@ -126,7 +127,8 @@ export default function FinancePortalCommissions() {
 
   const toggle = (id: string) => {
     const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     setSelected(next);
   };
 
@@ -167,44 +169,50 @@ export default function FinancePortalCommissions() {
   };
 
   return (
-    <div className="container max-w-7xl py-8 space-y-6">
+    <DashboardThemeFrame variant="page" className="space-y-6 p-4 sm:p-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" asChild className="rounded-xl">
           <Link to="/admin/finance-portal"><ArrowLeft className="h-4 w-4 mr-1" />Finance Portal</Link>
         </Button>
       </div>
 
-      <div className="flex items-center justify-between">
+      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Commissions & Payouts</h1>
-          <p className="text-muted-foreground">Track partner commissions, issue statements, and process remittance.</p>
+          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight sm:text-3xl">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+              <DollarSign className="h-5 w-5" />
+            </span>
+            Commissions & Payouts
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Track partner commissions, issue statements, and process remittance.</p>
         </div>
-        <Button onClick={refresh} variant="outline" size="sm" disabled={loading}>
+        <Button onClick={refresh} variant="outline" size="sm" disabled={loading} className="rounded-xl border-border/70 bg-card/70 hover:border-primary/40 hover:bg-primary/10 hover:text-primary">
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />Refresh
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
-      <div className="flex gap-2 border-b">
+      <DashboardThemeFrame variant="toolbar" className="p-1.5">
         <button
           onClick={() => setTab('commissions')}
-          className={`px-4 py-2 -mb-px border-b-2 text-sm font-medium ${tab === 'commissions' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
+          className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${tab === 'commissions' ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
         ><DollarSign className="inline h-4 w-4 mr-1" />Commissions ({commissions.length})</button>
         <button
           onClick={() => setTab('statements')}
-          className={`px-4 py-2 -mb-px border-b-2 text-sm font-medium ${tab === 'statements' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`}
+          className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${tab === 'statements' ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
         ><FileText className="inline h-4 w-4 mr-1" />Statements ({statements.length})</button>
-      </div>
+      </DashboardThemeFrame>
 
       {tab === 'commissions' && (
-        <Card>
-          <CardHeader>
+        <DashboardThemeFrame variant="section" className="p-0">
+        <Card className="border-0 bg-transparent shadow-none">
+          <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Search partner, client, notes…" value={search} onChange={e => setSearch(e.target.value)} />
+                <Input className="h-10 rounded-xl border-border/70 bg-background/75 pl-9 shadow-inner focus-visible:ring-primary/35" placeholder="Search partner, client, notes…" value={search} onChange={e => setSearch(e.target.value)} />
               </div>
               <Select value={filterPartner} onValueChange={setFilterPartner}>
-                <SelectTrigger className="w-[220px]"><SelectValue placeholder="Partner" /></SelectTrigger>
+                <SelectTrigger className="h-10 w-[220px] rounded-xl border-border/70 bg-background/75"><SelectValue placeholder="Partner" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All partners</SelectItem>
                   {partners.map(p => (
@@ -213,7 +221,7 @@ export default function FinancePortalCommissions() {
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectTrigger className="h-10 w-[160px] rounded-xl border-border/70 bg-background/75"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -225,20 +233,20 @@ export default function FinancePortalCommissions() {
               </Select>
               <Dialog open={showGenerate} onOpenChange={setShowGenerate}>
                 <DialogTrigger asChild>
-                  <Button variant="outline"><FileText className="h-4 w-4 mr-2" />Generate statement</Button>
+                  <Button variant="outline" className="rounded-xl"><FileText className="h-4 w-4 mr-2" />Generate statement</Button>
                 </DialogTrigger>
                 <GenerateStatementDialog partners={partners} onClose={() => { setShowGenerate(false); refresh(); }} />
               </Dialog>
               <Dialog open={showCreate} onOpenChange={setShowCreate}>
                 <DialogTrigger asChild>
-                  <Button><Plus className="h-4 w-4 mr-2" />Manual commission</Button>
+                  <Button className="rounded-xl"><Plus className="h-4 w-4 mr-2" />Manual commission</Button>
                 </DialogTrigger>
                 <ManualCommissionDialog partners={partners} onClose={() => { setShowCreate(false); refresh(); }} />
               </Dialog>
             </div>
 
             {selected.size > 0 && (
-              <div className="mt-3 flex items-center gap-2 p-2 rounded-md bg-muted/40 border">
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 p-2">
                 <span className="text-sm">{selected.size} selected</span>
                 <Button size="sm" variant="outline" onClick={() => bulkSetStatus('invoiced')}>Mark invoiced</Button>
                 <Button size="sm" variant="outline" onClick={() => bulkSetStatus('paid')}>Mark paid</Button>
@@ -247,15 +255,16 @@ export default function FinancePortalCommissions() {
               </div>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-5">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />Loading commissions…
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
+              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <Table className="min-w-[1050px]">
+                <TableHeader className="bg-muted/35">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead className="w-8" />
                     <TableHead>Partner</TableHead>
                     <TableHead>Client / Deal</TableHead>
@@ -272,7 +281,7 @@ export default function FinancePortalCommissions() {
                     <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No commissions found</TableCell></TableRow>
                   )}
                   {filteredCommissions.map(c => (
-                    <TableRow key={c.id}>
+                    <TableRow key={c.id} className="transition-colors hover:bg-primary/5">
                       <TableCell><Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} /></TableCell>
                       <TableCell>
                         <div className="font-medium">{c.partner_name_snapshot || '—'}</div>
@@ -292,23 +301,27 @@ export default function FinancePortalCommissions() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
+        </DashboardThemeFrame>
       )}
 
       {tab === 'statements' && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Partner statements</CardTitle></CardHeader>
-          <CardContent>
+        <DashboardThemeFrame variant="section" className="p-0">
+        <Card className="border-0 bg-transparent shadow-none">
+          <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5"><CardTitle className="text-base">Partner statements</CardTitle></CardHeader>
+          <CardContent className="p-4 sm:p-5">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />Loading…
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
+              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <Table className="min-w-[880px]">
+                <TableHeader className="bg-muted/35">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead>Partner</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead className="text-right">Lines</TableHead>
@@ -322,7 +335,7 @@ export default function FinancePortalCommissions() {
                     <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No statements yet</TableCell></TableRow>
                   )}
                   {statements.map(s => (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} className="transition-colors hover:bg-primary/5">
                       <TableCell>
                         <div className="font-medium">{s.partner_name_snapshot}</div>
                         <div className="text-xs text-muted-foreground">{s.partner_company_snapshot}</div>
@@ -362,11 +375,13 @@ export default function FinancePortalCommissions() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
+        </DashboardThemeFrame>
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }
 
@@ -395,12 +410,12 @@ function ManualCommissionDialog({ partners, onClose }: { partners: any[]; onClos
   };
 
   return (
-    <DialogContent>
-      <DialogHeader>
+    <DialogContent className="max-w-lg rounded-2xl border-border/70 bg-card/95 p-0 shadow-2xl shadow-black/15 backdrop-blur">
+      <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-card/90 to-muted/25 p-5">
         <DialogTitle>Manual commission line</DialogTitle>
         <DialogDescription>Add an ad-hoc commission for a partner.</DialogDescription>
       </DialogHeader>
-      <div className="space-y-3">
+      <div className="space-y-3 p-5">
         <div>
           <Label>Partner</Label>
           <Select value={partnerId} onValueChange={setPartnerId}>
@@ -416,7 +431,7 @@ function ManualCommissionDialog({ partners, onClose }: { partners: any[]; onClos
         </div>
         <div><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} /></div>
       </div>
-      <DialogFooter>
+      <DialogFooter className="border-t border-border/60 bg-muted/20 p-5">
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button onClick={submit} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Create</Button>
       </DialogFooter>
@@ -447,12 +462,12 @@ function GenerateStatementDialog({ partners, onClose }: { partners: any[]; onClo
   };
 
   return (
-    <DialogContent>
-      <DialogHeader>
+    <DialogContent className="max-w-lg rounded-2xl border-border/70 bg-card/95 p-0 shadow-2xl shadow-black/15 backdrop-blur">
+      <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-card/90 to-muted/25 p-5">
         <DialogTitle>Generate statement</DialogTitle>
         <DialogDescription>Pulls all eligible (pending / invoiced) commissions in the period that aren't already on a statement.</DialogDescription>
       </DialogHeader>
-      <div className="space-y-3">
+      <div className="space-y-3 p-5">
         <div>
           <Label>Partner</Label>
           <Select value={partnerId} onValueChange={setPartnerId}>
@@ -467,7 +482,7 @@ function GenerateStatementDialog({ partners, onClose }: { partners: any[]; onClo
           <div><Label>Period end</Label><Input type="date" value={end} onChange={e => setEnd(e.target.value)} /></div>
         </div>
       </div>
-      <DialogFooter>
+      <DialogFooter className="border-t border-border/60 bg-muted/20 p-5">
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button onClick={submit} disabled={saving}>{saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Generate</Button>
       </DialogFooter>
