@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useBrand } from '@/branding/useBrand';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface PartnerOption { id: string; name: string; email: string; }
 interface ExportRow {
@@ -158,30 +159,33 @@ export default function FinancePortalCompliance() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-primary" />
-            Compliance Export
+    <DashboardThemeFrame variant="page" className="space-y-6 p-4 sm:p-6">
+      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight sm:text-3xl">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <span className="truncate">Compliance Export</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
             Audit-grade export of finance portal activity for compliance and partner reviews.
           </p>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Report parameters</CardTitle>
-          <CardDescription>Filter by partner and time window. CSV and printable PDF available after running.</CardDescription>
+      <DashboardThemeFrame variant="section" className="p-0">
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
+          <CardTitle className="text-lg tracking-tight">Report parameters</CardTitle>
+          <CardDescription className="leading-6">Filter by partner and time window. CSV and printable PDF available after running.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Partner</label>
               <Select value={partnerId} onValueChange={setPartnerId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Select compliance report partner" className="h-10 rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All partners</SelectItem>
                   {partners.map(p => (
@@ -192,14 +196,14 @@ export default function FinancePortalCompliance() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">From</label>
-              <Input type="date" value={since} onChange={e => setSince(e.target.value)} />
+              <Input aria-label="Compliance report start date" className="h-10 rounded-xl border-border/70 bg-background/75" type="date" value={since} onChange={e => setSince(e.target.value)} />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">To</label>
-              <Input type="date" value={until} onChange={e => setUntil(e.target.value)} />
+              <Input aria-label="Compliance report end date" className="h-10 rounded-xl border-border/70 bg-background/75" type="date" value={until} onChange={e => setUntil(e.target.value)} />
             </div>
             <div className="flex items-end">
-              <Button onClick={runReport} disabled={loading} className="w-full gap-2">
+              <Button onClick={runReport} disabled={loading} aria-label="Run compliance report" className="h-10 w-full gap-2 rounded-xl shadow-md shadow-primary/20">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Run Report
               </Button>
@@ -207,29 +211,31 @@ export default function FinancePortalCompliance() {
           </div>
         </CardContent>
       </Card>
+      </DashboardThemeFrame>
 
       {rows.length > 0 && (
-        <Card>
-          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <DashboardThemeFrame variant="section" className="p-0">
+        <Card className="border-0 bg-transparent shadow-none">
+          <CardHeader className="flex flex-col gap-3 border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Results — {rows.length} records</CardTitle>
               <CardDescription>
                 Action breakdown:{' '}
                 {Object.entries(summary).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => (
-                  <Badge key={k} variant="outline" className="mr-1 text-[10px]">{k}: {v}</Badge>
+                  <Badge key={k} variant="outline" className="mr-1 rounded-full border-border/70 bg-background/70 text-[10px]">{k}: {v}</Badge>
                 ))}
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={exportCsv} className="gap-2"><Download className="h-4 w-4" />CSV</Button>
-              <Button variant="default" onClick={printPdf} className="gap-2"><Printer className="h-4 w-4" />Print / PDF</Button>
+              <Button variant="outline" onClick={exportCsv} className="gap-2 rounded-xl"><Download className="h-4 w-4" />CSV</Button>
+              <Button variant="default" onClick={printPdf} className="gap-2 rounded-xl"><Printer className="h-4 w-4" />Print / PDF</Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-auto max-h-[60vh]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
+          <CardContent className="p-4 sm:p-5">
+            <div className="max-h-[60vh] overflow-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <Table className="min-w-[980px]" aria-label="Compliance export results">
+                <TableHeader className="bg-muted/35">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead>Timestamp</TableHead>
                     <TableHead>Partner</TableHead>
                     <TableHead>Client</TableHead>
@@ -241,7 +247,7 @@ export default function FinancePortalCompliance() {
                 </TableHeader>
                 <TableBody>
                   {rows.slice(0, 500).map((r, i) => (
-                    <TableRow key={i}>
+                    <TableRow key={i} className="transition-colors hover:bg-primary/5">
                       <TableCell className="text-xs whitespace-nowrap">{format(new Date(r.timestamp), 'MMM d, HH:mm:ss')}</TableCell>
                       <TableCell className="text-sm">
                         <div className="font-medium">{r.partner_name || '—'}</div>
@@ -283,7 +289,8 @@ export default function FinancePortalCompliance() {
             </div>
           </CardContent>
         </Card>
+        </DashboardThemeFrame>
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }
