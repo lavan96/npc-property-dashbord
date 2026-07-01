@@ -32,6 +32,11 @@ function createLightTokens(config: BrandConfig): BrandTokenMap {
   const primary = normalizeHslString(config.primaryColor, DEFAULT_PRIMARY);
   const accent = normalizeHslString(config.accentColor, primary || DEFAULT_ACCENT);
 
+  // Phase 2 contract: light mode starts from the luxury surface baseline and
+  // brand colours are applied only to semantic emphasis tokens. Warm ivory,
+  // porcelain, champagne, and sidebar surface tokens intentionally remain from
+  // defaultLightTokenMap so a client's brand colour cannot wash out the entire
+  // dashboard.
   return {
     ...defaultLightTokenMap,
     '--primary': primary,
