@@ -153,7 +153,7 @@ export default function TokenAuditLog() {
             variant="outline"
             size="sm"
             disabled={loading}
-            className="min-h-11 w-full shrink-0 rounded-xl border-primary/25 bg-background/90 px-4 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
+            className="min-h-11 w-full shrink-0 rounded-xl border-primary/25 bg-background/90 px-4 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.14)] active:translate-y-0 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -188,7 +188,7 @@ export default function TokenAuditLog() {
                     Event type
                   </label>
                   <Select value={eventFilter} onValueChange={setEventFilter} disabled={loading}>
-                    <SelectTrigger id="token-audit-event-filter" className="min-h-11 w-full rounded-2xl border-border/70 bg-background/90 px-3 shadow-sm transition-all duration-200 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus:ring-2 focus:ring-primary/30" aria-label="Filter token audit events by type">
+                    <SelectTrigger id="token-audit-event-filter" className="min-h-11 w-full rounded-2xl border-border/70 bg-background/90 px-3 shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] active:translate-y-0 active:scale-[0.99] focus:ring-2 focus:ring-primary/30" aria-label="Filter token audit events by type">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -204,11 +204,11 @@ export default function TokenAuditLog() {
                     <Search className="h-3.5 w-3.5 text-primary" />
                     Keyword search
                   </label>
-                  <div className="group relative min-w-0">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                  <div className="group relative min-w-0 rounded-2xl transition-all duration-200 focus-within:-translate-y-px focus-within:shadow-[0_12px_28px_hsl(var(--primary)/0.10)]">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-hover:text-primary/80 group-focus-within:text-primary" />
                     <Input
                       id="token-audit-search"
-                      className="min-h-11 min-w-0 rounded-2xl border-border/70 bg-background/90 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="min-h-11 min-w-0 rounded-2xl border-border/70 bg-background/90 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] active:scale-[0.995] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
                       placeholder="Search by idempotency key, user, function…"
                       aria-label="Search token audit events by idempotency key, user, or function"
                       value={search}
@@ -359,17 +359,37 @@ export default function TokenAuditLog() {
                     <TableBody>
                       {filtered.map((r) => {
                         const isOpen = activeKey === r.idempotency_key;
+                        const eventTone = r.event === "reserve"
+                          ? "amber"
+                          : r.event === "commit"
+                            ? "emerald"
+                            : r.event === "cancel"
+                              ? "destructive"
+                              : "primary";
                         return (
                           <TableRow
                             key={r.id}
                             className={cn(
-                              "group border-l-2 border-l-transparent transition-all duration-200 odd:bg-background/20 hover:border-l-primary/60 hover:bg-primary/5 hover:shadow-[inset_4px_0_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/5",
+                              "group border-l-2 border-l-transparent transition-all duration-200 odd:bg-background/20 hover:bg-primary/5 hover:shadow-[inset_4px_0_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/5",
+                              eventTone === "amber" && "hover:border-l-amber-500/70",
+                              eventTone === "emerald" && "hover:border-l-emerald-500/70",
+                              eventTone === "destructive" && "hover:border-l-destructive/70",
+                              eventTone === "primary" && "hover:border-l-primary/60",
                               isOpen && "border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.16)]",
                             )}
                           >
                             <TableCell className="align-top text-xs text-muted-foreground">
                               <div className="flex min-w-0 gap-2">
-                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary/70 shadow-[0_0_0_4px_hsl(var(--primary)/0.10)]" aria-hidden="true" />
+                                <span
+                                  className={cn(
+                                    "mt-1.5 h-2 w-2 shrink-0 rounded-full shadow-[0_0_0_4px_hsl(var(--primary)/0.10)]",
+                                    eventTone === "amber" && "bg-amber-500",
+                                    eventTone === "emerald" && "bg-emerald-500",
+                                    eventTone === "destructive" && "bg-destructive",
+                                    eventTone === "primary" && "bg-primary/70",
+                                  )}
+                                  aria-hidden="true"
+                                />
                                 <div className="min-w-0">
                                   <span className="block whitespace-nowrap font-medium text-foreground" title={r.created_at}>{format(new Date(r.created_at), "MMM d, HH:mm:ss")}</span>
                                   <span className="block truncate" title={r.created_at}>{new Date(r.created_at).toLocaleString()}</span>
@@ -389,14 +409,16 @@ export default function TokenAuditLog() {
                               <button
                                 type="button"
                                 className={cn(
-                                  "flex min-h-9 max-w-full items-center truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all duration-200 hover:-translate-y-px hover:border-primary/45 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10),0_10px_22px_hsl(var(--primary)/0.12)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2",
+                                  "group/key flex min-h-9 max-w-full items-center gap-2 truncate rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-left font-mono text-xs text-primary shadow-sm underline-offset-4 transition-all duration-200 hover:-translate-y-px hover:border-primary/45 hover:bg-primary/10 hover:shadow-[0_0_0_3px_hsl(var(--primary)/0.10),0_10px_22px_hsl(var(--primary)/0.12)] hover:underline active:translate-y-0 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2",
                                   isOpen && "border-primary/45 bg-primary/15",
                                 )}
                                 title={r.idempotency_key}
                                 aria-label={`Open token audit trail for ${r.idempotency_key}`}
                                 onClick={() => setActiveKey(r.idempotency_key)}
                               >
+                                <FileKey2 className="h-3.5 w-3.5 shrink-0 opacity-70 transition-opacity group-hover/key:opacity-100" />
                                 <span className="min-w-0 truncate">{r.idempotency_key}</span>
+                                <span className="ml-auto hidden shrink-0 rounded-full border border-primary/15 bg-background/70 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-primary/80 group-hover/key:inline-flex group-focus-visible/key:inline-flex">Trail</span>
                               </button>
                             </TableCell>
                             <TableCell className="align-top"><TokenSummary row={r} /></TableCell>
