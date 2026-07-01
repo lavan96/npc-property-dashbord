@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap, Sparkles } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap, Sparkles, ShieldCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -25,6 +25,7 @@ import { loadImportReviewDraft, saveImportReviewDecision, type ImportReviewDecis
 import { applyRepairedTemplateToRecord, buildVisualRepairAuditPayload, loadVisualQuality, loadVisualRepairAudit, persistedVisualQualityToReviewSummary, runImportReviewVisualQualityPipeline, runVisualRepairOrchestrationPipeline, saveVisualRepairAudit, shouldAutoRunVisualQa, type PersistedVisualQuality, type PersistedVisualRepairAudit, type VisualQaReviewSummary, type VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 import { ImportReviewDialog } from './ImportReviewDialog';
 import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
+import { cn } from '@/lib/utils';
 
 
 type ImportReviewDebugSnapshot = Record<string, string | number | boolean | null>;
@@ -645,35 +646,44 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-primary" /> Import PDF as editable template
+      <DialogContent className="max-h-[min(92dvh,920px)] max-w-3xl overflow-hidden border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--background))_58%,hsl(var(--primary)/0.08)_100%)] p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950 dark:shadow-black/45">
+        <div className="max-h-[min(92dvh,920px)] overflow-y-auto p-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:p-6">
+        <DialogHeader className="space-y-3 border-b border-border/60 pb-4">
+          <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm">
+              <Upload className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">Import PDF as editable template</span>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="max-w-2xl text-sm leading-6">
             Convert any PDF brochure or report into a fully editable template. Choose how faithful the conversion should be.
           </DialogDescription>
         </DialogHeader>
 
         {!result ? (
-          <div className="space-y-4">
+          <div className="space-y-5 pt-5">
             {/* Dropzone */}
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="w-full border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors disabled:opacity-60"
+              aria-busy={busy}
+              className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--background)/0.92),hsl(var(--primary)/0.08))] p-6 text-center shadow-inner transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/10 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-8"
             >
-              <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+              <span className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" aria-hidden="true" />
+              <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/25 bg-card text-primary shadow-sm transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none">
+                <FileText className="h-7 w-7" aria-hidden="true" />
+              </span>
               {file ? (
-                <div className="text-sm">
-                  <div className="font-medium">{file.name}</div>
-                  <div className="text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB</div>
-                </div>
+                <span className="block text-sm">
+                  <span className="block break-words font-semibold text-foreground">{file.name}</span>
+                  <span className="mt-1 block text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB · ready for Docling import</span>
+                </span>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  Click to select a PDF (max 50 MB)
-                </div>
+                <span className="block text-sm text-muted-foreground">
+                  <span className="block font-medium text-foreground">Click to select a PDF</span>
+                  <span className="mt-1 block">Accepted type: PDF · max 50 MB</span>
+                </span>
               )}
               <input
                 ref={fileRef}
@@ -686,57 +696,57 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
 
             {/* Mode */}
             <div>
-              <Label className="text-sm font-medium">Fidelity mode</Label>
+              <Label className="text-sm font-semibold text-foreground">Fidelity mode</Label>
               <RadioGroup
                 value={mode}
                 onValueChange={(v) => setMode(v as FidelityMode)}
-                className="mt-2 space-y-2"
+                className="mt-3 grid gap-3"
                 disabled={busy}
               >
-                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('semantic')}>
+                <Card className={cn("cursor-pointer rounded-2xl border-border/70 bg-card/80 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0", mode === 'semantic' && "border-primary/45 bg-primary/10 ring-1 ring-primary/20")} onClick={() => !busy && setMode('semantic')}>
                   <div className="flex items-start gap-3">
                     <RadioGroupItem value="semantic" id="m-semantic" className="mt-1" />
-                    <div className="flex-1">
-                      <Label htmlFor="m-semantic" className="font-medium cursor-pointer">Semantic (Track A)</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor="m-semantic" className="cursor-pointer font-semibold text-foreground">Semantic (Track A)</Label>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
                         Extract text, vectors, and images at exact coordinates and source colours/fonts as editable overlays. Smallest file size, best for digital-native PDFs.
                       </p>
                     </div>
                   </div>
                 </Card>
-                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('pixel')}>
+                <Card className={cn("cursor-pointer rounded-2xl border-border/70 bg-card/80 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0", mode === 'pixel' && "border-primary/45 bg-primary/10 ring-1 ring-primary/20")} onClick={() => !busy && setMode('pixel')}>
                   <div className="flex items-start gap-3">
                     <RadioGroupItem value="pixel" id="m-pixel" className="mt-1" />
-                    <div className="flex-1">
-                      <Label htmlFor="m-pixel" className="font-medium cursor-pointer">Pixel-perfect (Track B)</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor="m-pixel" className="cursor-pointer font-semibold text-foreground">Pixel-perfect (Track B)</Label>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
                         Rasterise each page at 180 DPI as the page background. Looks identical to the source, but is not editable.
                       </p>
                     </div>
                   </div>
                 </Card>
-                <Card className="p-3 cursor-pointer border-primary/40 bg-primary/5" onClick={() => !busy && setMode('hybrid')}>
+                <Card className={cn("cursor-pointer rounded-2xl border-primary/40 bg-primary/5 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/10 focus-within:ring-2 focus-within:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0", mode === 'hybrid' && "border-primary/60 bg-primary/10 ring-1 ring-primary/25 shadow-md")} onClick={() => !busy && setMode('hybrid')}>
                   <div className="flex items-start gap-3">
                     <RadioGroupItem value="hybrid" id="m-hybrid" className="mt-1" />
-                    <div className="flex-1">
-                      <Label htmlFor="m-hybrid" className="font-medium cursor-pointer flex items-center gap-2">
-                        Hybrid <Badge variant="default" className="text-[10px]">Recommended default</Badge>
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor="m-hybrid" className="flex cursor-pointer flex-wrap items-center gap-2 font-semibold text-foreground">
+                        Hybrid <Badge variant="default" className="rounded-full text-[10px]">Recommended default</Badge>
                       </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
                         Production default. Preserves source-page fidelity using a locked raster reference per page, while generating editable overlays wherever extraction confidence is high. Safest choice for design-heavy reports — falls back gracefully when Docling misses layout, shapes, or spacing.
                       </p>
                     </div>
                   </div>
                 </Card>
 
-                <Card className="p-3 cursor-pointer" onClick={() => !busy && setMode('ocr')}>
+                <Card className={cn("cursor-pointer rounded-2xl border-border/70 bg-card/80 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0", mode === 'ocr' && "border-primary/45 bg-primary/10 ring-1 ring-primary/20")} onClick={() => !busy && setMode('ocr')}>
                   <div className="flex items-start gap-3">
                     <RadioGroupItem value="ocr" id="m-ocr" className="mt-1" />
-                    <div className="flex-1">
-                      <Label htmlFor="m-ocr" className="font-medium cursor-pointer flex items-center gap-2">
-                        OCR (scanned PDF) <Badge variant="outline" className="text-[10px]">Docling native</Badge>
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor="m-ocr" className="flex cursor-pointer flex-wrap items-center gap-2 font-semibold text-foreground">
+                        OCR (scanned PDF) <Badge variant="outline" className="rounded-full text-[10px]">Docling native</Badge>
                       </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
                         For scans and image-only PDFs. Docling uses native OCR and parser confidence signals.
                       </p>
                     </div>
@@ -746,41 +756,43 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
             </div>
 
             {/* Engine status */}
-            <div className="rounded-md border bg-muted/30 p-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="font-medium">Extraction engine</span>
-                <Badge variant="default" className="text-[10px]">Docling (cloud)</Badge>
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Zap className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span className="font-semibold text-foreground">Extraction engine</span>
+                <Badge variant="default" className="rounded-full text-[10px]">Docling (cloud)</Badge>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
                 Legacy pdf.js routing has been retired. All template PDF imports now use the Cloud Run Docling sidecar, including native OCR, high-DPI rastering, diagnostics, and job-ledger telemetry.
               </p>
             </div>
 
 
-            <label className="flex items-start gap-2 rounded-md border bg-muted/20 p-3 text-xs">
+            <label className="flex items-start gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4 text-xs shadow-sm transition-colors hover:border-primary/25 hover:bg-primary/5">
               <input
                 type="checkbox"
-                className="mt-0.5"
+                className="mt-1 h-4 w-4 accent-primary"
                 checked={redactPii}
                 onChange={(e) => setRedactPii(e.target.checked)}
                 disabled={busy}
               />
-              <span>
-                <span className="font-medium">Redact likely PII before diagnostics</span>
-                <span className="block text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs.</span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 font-semibold text-foreground"><ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />Redact likely PII before diagnostics</span>
+                <span className="mt-1 block leading-5 text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs. Existing diagnostics auditing and access controls remain enforced.</span>
               </span>
             </label>
 
             {/* Progress */}
             {progress && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground gap-2">
-                  <span className="truncate">{progressDetails.label}</span>
-                  <span className="whitespace-nowrap">{percent}% · {progressDetails.eta}</span>
+              <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+                <div className="flex justify-between gap-3 text-xs text-muted-foreground">
+                  <span className="min-w-0 truncate font-medium text-foreground">{progressDetails.label}</span>
+                  <span className="whitespace-nowrap tabular-nums">{percent}% · {progressDetails.eta}</span>
                 </div>
-                <Progress value={percent} />
-                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                <Progress value={percent} className="mt-3" />
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px]">
                   <Badge variant="outline" className="font-mono">stage: {progress.stage ?? progress.phase}</Badge>
                   {progress.pagesTotal ? (
                     <Badge variant="outline">pages {progress.pagesCompleted ?? 0}/{progress.pagesTotal}</Badge>
@@ -788,8 +800,8 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                   <Badge variant="outline">Docling (cloud)</Badge>
                 </div>
                 {progress.warning && (
-                  <div className="rounded-md border border-warning/40 bg-warning/5 px-2 py-1 text-[11px] text-warning flex items-start gap-1.5">
-                    <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <div className="mt-3 flex items-start gap-1.5 rounded-xl border border-warning/40 bg-warning/5 px-3 py-2 text-[11px] leading-5 text-warning">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
                     <span className="break-words">{progress.warning}</span>
                   </div>
                 )}
@@ -895,24 +907,25 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="mt-5 border-t border-border/60 pt-4 sm:gap-2">
           {!result ? (
             <>
-              <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy}>Cancel</Button>
-              <Button onClick={() => start()} disabled={!file || busy}>
-                {busy ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Importing…</> : 'Import'}
+              <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy} className="rounded-xl">Cancel</Button>
+              <Button onClick={() => start()} disabled={!file || busy} className="rounded-xl px-5 font-semibold shadow-lg shadow-primary/20">
+                {busy ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Importing…</> : 'Import'}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => handleClose(false)}>Close</Button>
-              {reviewDraft && <Button variant="secondary" onClick={openReview}>Review quality</Button>}
-              <Button onClick={() => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); }}>
+              <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl">Close</Button>
+              {reviewDraft && <Button variant="secondary" onClick={openReview} className="rounded-xl">Review quality</Button>}
+              <Button onClick={() => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); }} className="rounded-xl px-5 font-semibold shadow-lg shadow-primary/20">
                 Open in editor
               </Button>
             </>
           )}
         </DialogFooter>
+        </div>
       </DialogContent>
       <ImportReviewDialog
         open={reviewOpen}
