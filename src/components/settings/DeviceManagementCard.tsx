@@ -3,24 +3,41 @@
  * Mission Control device cap and lets them revoke any of them. The current
  * browser is highlighted using the locally-stored device id.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { Loader2, RefreshCw, Smartphone, Trash2, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { listMyDevices, revokeDevice, type DeviceRow } from '@/lib/deviceSession';
-import { getStoredDeviceId } from '@/lib/deviceFingerprint';
-import { useToast } from '@/hooks/use-toast';
+import { useCallback, useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import {
+  Loader2,
+  RefreshCw,
+  Smartphone,
+  Trash2,
+  AlertTriangle,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  listMyDevices,
+  revokeDevice,
+  type DeviceRow,
+} from "@/lib/deviceSession";
+import { getStoredDeviceId } from "@/lib/deviceFingerprint";
+import { useToast } from "@/hooks/use-toast";
 
 function formatRelative(iso: string | null): string {
-  if (!iso) return 'unknown';
+  if (!iso) return "unknown";
   const diff = Date.now() - new Date(iso).getTime();
-  if (Number.isNaN(diff)) return 'unknown';
+  if (Number.isNaN(diff)) return "unknown";
   const mins = Math.round(diff / 60_000);
-  if (mins < 1) return 'just now';
+  if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.round(mins / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -49,21 +66,24 @@ export function DeviceManagementCard() {
       setDeviceLimit(res.device_limit);
       setDevicesActive(res.devices_active);
     } catch (e: any) {
-      setError(e?.message || 'Failed to load devices.');
+      setError(e?.message || "Failed to load devices.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const handleRevoke = async (device: DeviceRow) => {
     if (device.id === currentId) {
       toast({
-        title: 'Sign out instead',
-        description: 'Revoke the current device by signing out from this browser.',
-        variant: 'destructive',
+        title: "Sign out instead",
+        description:
+          "Revoke the current device by signing out from this browser.",
+        variant: "destructive",
       });
       return;
     }
@@ -71,39 +91,61 @@ export function DeviceManagementCard() {
     const { ok, error: err } = await revokeDevice(device.id);
     setRevoking(null);
     if (!ok) {
-      toast({ title: 'Could not revoke', description: err || 'Try again.', variant: 'destructive' });
+      toast({
+        title: "Could not revoke",
+        description: err || "Try again.",
+        variant: "destructive",
+      });
       return;
     }
-    toast({ title: 'Device revoked', description: device.device_label || 'Device removed.' });
+    toast({
+      title: "Device revoked",
+      description: device.device_label || "Device removed.",
+    });
     void load(true);
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
+    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <CardHeader className="space-y-4">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-2">
+            <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-primary" />
               Active devices
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="max-w-3xl break-words leading-6">
               Browsers and devices currently signed in to your account.
               {deviceLimit > 0 && (
-                <> Using <strong>{devicesActive}</strong> of <strong>{deviceLimit}</strong> slots.</>
+                <>
+                  {" "}
+                  Using <strong>{devicesActive}</strong> of{" "}
+                  <strong>{deviceLimit}</strong> slots.
+                </>
               )}
             </CardDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => load(true)} disabled={loading || refreshing}>
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => load(true)}
+            disabled={loading || refreshing}
+            className="w-full rounded-full sm:w-auto"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
+            />
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="min-w-0 space-y-3">
         {error && (
-          <Alert variant="destructive">
+          <Alert
+            variant="destructive"
+            className="min-w-0 overflow-hidden rounded-2xl"
+          >
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription className="break-words">{error}</AlertDescription>
           </Alert>
         )}
 
@@ -113,31 +155,42 @@ export function DeviceManagementCard() {
             <Skeleton className="h-16 w-full" />
           </div>
         ) : devices.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic py-4 text-center">
+          <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 px-4 py-8 text-center text-sm italic text-muted-foreground">
+            <Smartphone className="mx-auto mb-3 h-10 w-10 opacity-50" />
             No active devices found.
-          </p>
+          </div>
         ) : (
           devices.map((device) => {
             const isCurrent = device.id === currentId;
             return (
               <div
                 key={device.id}
-                className="flex items-center justify-between gap-3 rounded-md border border-border p-3"
+                className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-start gap-3 min-w-0">
-                  <Smartphone className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
+                    <Smartphone className="h-4 w-4" />
+                  </span>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">
-                        {device.device_label || device.platform || 'Browser'}
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <p className="min-w-0 break-words text-sm font-medium">
+                        {device.device_label || device.platform || "Browser"}
                       </p>
                       {isCurrent && (
-                        <Badge variant="secondary" className="text-[10px]">This device</Badge>
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 rounded-full bg-primary/10 text-[10px] text-primary"
+                        >
+                          This device
+                        </Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
-                      Last active {formatRelative(device.last_seen_at ?? device.created_at)}
-                      {device.user_agent ? ` · ${device.user_agent.slice(0, 60)}` : ''}
+                    <p className="min-w-0 break-words text-xs leading-5 text-muted-foreground">
+                      Last active{" "}
+                      {formatRelative(device.last_seen_at ?? device.created_at)}
+                      {device.user_agent
+                        ? ` · ${device.user_agent.slice(0, 60)}`
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -146,7 +199,12 @@ export function DeviceManagementCard() {
                   size="sm"
                   disabled={revoking === device.id || isCurrent}
                   onClick={() => handleRevoke(device)}
-                  title={isCurrent ? 'Sign out to revoke this device' : 'Revoke device'}
+                  title={
+                    isCurrent
+                      ? "Sign out to revoke this device"
+                      : "Revoke device"
+                  }
+                  className="shrink-0 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive disabled:text-muted-foreground"
                 >
                   {revoking === device.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -160,8 +218,9 @@ export function DeviceManagementCard() {
         )}
 
         <Separator />
-        <p className="text-xs text-muted-foreground">
-          Revoking a device signs that browser out immediately and frees a device slot.
+        <p className="rounded-2xl border border-border/60 bg-muted/25 p-3 text-xs leading-5 text-muted-foreground dark:border-white/10">
+          Revoking a device signs that browser out immediately and frees a
+          device slot.
         </p>
       </CardContent>
     </Card>

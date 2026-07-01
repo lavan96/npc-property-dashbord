@@ -6,9 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { KeyRound, RefreshCw, Activity, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  KeyRound,
+  RefreshCw,
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import { fetchTokenBalance } from "@/lib/missionControl";
@@ -38,7 +49,10 @@ export function MissionControlKeyCard() {
     setLoadError(null);
     setForbidden(false);
     try {
-      const { data, error } = await invokeSecureFunction<KeyInfo>("mission-control-key-info", {});
+      const { data, error } = await invokeSecureFunction<KeyInfo>(
+        "mission-control-key-info",
+        {},
+      );
       if (error) {
         const msg = (error.message ?? "").toLowerCase();
         if (msg.includes("forbid")) setForbidden(true);
@@ -56,7 +70,9 @@ export function MissionControlKeyCard() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const testConnection = async () => {
     setTesting(true);
@@ -68,7 +84,11 @@ export function MissionControlKeyCard() {
       });
       load();
     } catch (e: any) {
-      toast({ title: "Test failed", description: e.message ?? "Unknown error", variant: "destructive" });
+      toast({
+        title: "Test failed",
+        description: e.message ?? "Unknown error",
+        variant: "destructive",
+      });
     } finally {
       setTesting(false);
     }
@@ -77,12 +97,17 @@ export function MissionControlKeyCard() {
   const rotate = async () => {
     setRotating(true);
     try {
-      const { data, error } = await invokeSecureFunction<any>("mission-control-rotate-key", {
-        grace_hours: graceHours,
-        reason: reason || "manual_rotation",
-      });
+      const { data, error } = await invokeSecureFunction<any>(
+        "mission-control-rotate-key",
+        {
+          grace_hours: graceHours,
+          reason: reason || "manual_rotation",
+        },
+      );
       if (error) throw new Error(error.message ?? "Failed");
-      const revoke = data?.revokeAt ? new Date(data.revokeAt).toLocaleString() : "soon";
+      const revoke = data?.revokeAt
+        ? new Date(data.revokeAt).toLocaleString()
+        : "soon";
       toast({
         title: "Key rotated",
         description: `New prefix ${data?.keyPrefix ?? "(unknown)"} is live; previous key is revoked at ${revoke}.`,
@@ -91,7 +116,11 @@ export function MissionControlKeyCard() {
       setReason("");
       load();
     } catch (e: any) {
-      toast({ title: "Rotation failed", description: e.message ?? "Unknown error", variant: "destructive" });
+      toast({
+        title: "Rotation failed",
+        description: e.message ?? "Unknown error",
+        variant: "destructive",
+      });
     } finally {
       setRotating(false);
     }
@@ -102,21 +131,25 @@ export function MissionControlKeyCard() {
   if (forbidden) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5" />
+    <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
+      <CardHeader className="space-y-2">
+        <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+          <KeyRound className="h-5 w-5 shrink-0 text-primary" />
           Mission Control Key
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="min-w-0 space-y-4">
         {loading ? (
-          <div className="text-sm text-muted-foreground">Loading…</div>
+          <div className="rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            Loading…
+          </div>
         ) : loadError ? (
-          <div className="space-y-3">
-            <div className="flex items-start gap-2 text-sm text-destructive">
+          <div className="min-w-0 space-y-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-4">
+            <div className="flex min-w-0 items-start gap-2 text-sm text-destructive">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>Couldn't load Mission Control status: {loadError}</span>
+              <span className="min-w-0 break-words">
+                Couldn't load Mission Control status: {loadError}
+              </span>
             </div>
             <Button variant="secondary" size="sm" onClick={load}>
               <RefreshCw className="h-4 w-4 mr-2" /> Retry
@@ -124,12 +157,14 @@ export function MissionControlKeyCard() {
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2">
               <Field label="Current key">
                 {info?.configured ? (
-                  <code className="text-sm">{info?.keyPrefix ?? "(set)"}</code>
+                  <code className="rounded-full border border-border/60 bg-muted/40 px-2 py-1 text-sm text-foreground">
+                    {info?.keyPrefix ?? "(set)"}
+                  </code>
                 ) : (
-                  <Badge variant="destructive" className="gap-1">
+                  <Badge variant="destructive" className="gap-1 rounded-full">
                     <AlertTriangle className="h-3 w-3" /> Not configured
                   </Badge>
                 )}
@@ -155,54 +190,99 @@ export function MissionControlKeyCard() {
               </Field>
             </div>
 
-            <div className="flex flex-wrap gap-2 pt-2">
-              <Button variant="secondary" onClick={testConnection} disabled={testing || !info?.configured}>
-                {testing ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Activity className="h-4 w-4 mr-2" />}
+            <div className="flex min-w-0 flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
+              <Button
+                variant="secondary"
+                onClick={testConnection}
+                disabled={testing || !info?.configured}
+                className="rounded-full font-semibold"
+              >
+                {testing ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Activity className="h-4 w-4 mr-2" />
+                )}
                 Test connection
               </Button>
-              <Button onClick={() => setRotateOpen(true)} disabled={!info?.configured}>
+              <Button
+                onClick={() => setRotateOpen(true)}
+                disabled={!info?.configured}
+                className="rounded-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Rotate key
               </Button>
             </div>
 
-            <p className="text-xs text-muted-foreground flex items-start gap-1">
+            <p className="flex min-w-0 items-start gap-2 rounded-2xl border border-border/60 bg-muted/25 p-3 text-xs leading-5 text-muted-foreground dark:border-white/10">
               <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              The raw secret is never shown — it's written straight into the project secrets store. The previous key keeps working during the grace period you choose, then Mission Control revokes it automatically.
+              <span className="min-w-0 break-words">
+                The raw secret is never shown — it's written straight into the
+                project secrets store. The previous key keeps working during the
+                grace period you choose, then Mission Control revokes it
+                automatically.
+              </span>
             </p>
           </>
         )}
       </CardContent>
 
       <Dialog open={rotateOpen} onOpenChange={setRotateOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="rounded-2xl border-border/70 bg-card/95 sm:max-w-lg">
+          <DialogHeader className="space-y-2">
             <DialogTitle>Rotate Mission Control key</DialogTitle>
             <DialogDescription>
-              Issues a new clone API key. The previous key remains valid for the grace period below, after which Mission Control revokes it automatically.
+              Issues a new clone API key. The previous key remains valid for the
+              grace period below, after which Mission Control revokes it
+              automatically.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
+          <div className="min-w-0 space-y-3">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="grace">Grace period (hours)</Label>
               <Input
-                id="grace" type="number" min={0} max={168} value={graceHours}
-                onChange={(e) => setGraceHours(Math.max(0, Math.min(168, Number(e.target.value) || 0)))}
+                id="grace"
+                type="number"
+                min={0}
+                max={168}
+                value={graceHours}
+                className="min-w-0 focus-visible:ring-primary"
+                onChange={(e) =>
+                  setGraceHours(
+                    Math.max(0, Math.min(168, Number(e.target.value) || 0)),
+                  )
+                }
               />
-              <p className="text-xs text-muted-foreground">0–168. Default 1 hour.</p>
+              <p className="text-xs text-muted-foreground">
+                0–168. Default 1 hour.
+              </p>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="reason">Reason (optional)</Label>
               <Textarea
-                id="reason" value={reason} maxLength={280}
+                id="reason"
+                value={reason}
+                maxLength={280}
+                className="min-w-0 resize-y break-words focus-visible:ring-primary"
                 placeholder="e.g. quarterly rotation, suspected exposure…"
                 onChange={(e) => setReason(e.target.value)}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setRotateOpen(false)} disabled={rotating}>Cancel</Button>
-            <Button onClick={rotate} disabled={rotating}>
+            <Button
+              variant="ghost"
+              onClick={() => setRotateOpen(false)}
+              disabled={rotating}
+              className="rounded-full"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={rotate}
+              disabled={rotating}
+              className="rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary-hover"
+            >
               {rotating && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
               Rotate
             </Button>
@@ -213,11 +293,19 @@ export function MissionControlKeyCard() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="space-y-1">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div>{children}</div>
+    <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-3 dark:border-white/10 dark:bg-slate-950/35">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="min-w-0 break-words">{children}</div>
     </div>
   );
 }
