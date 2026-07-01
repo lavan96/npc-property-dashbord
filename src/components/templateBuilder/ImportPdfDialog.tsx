@@ -780,15 +780,15 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
               />
               <span className="min-w-0">
                 <span className="flex items-center gap-2 font-semibold text-foreground"><ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />Redact likely PII before diagnostics</span>
-                <span className="mt-1 block leading-5 text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs.</span>
+                <span className="mt-1 block leading-5 text-muted-foreground">Recommended for bank statements, payslips, loan applications, and finance-portal PDFs. Existing diagnostics auditing and access controls remain enforced.</span>
               </span>
             </label>
 
             {/* Progress */}
             {progress && (
-              <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+              <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 shadow-sm">
                 <div className="flex justify-between gap-3 text-xs text-muted-foreground">
-                  <span className="min-w-0 truncate font-medium text-foreground">{progressDetails.label}</span>
+                  <span className="min-w-0 truncate font-semibold text-foreground">{progressDetails.label}</span>
                   <span className="whitespace-nowrap tabular-nums">{percent}% · {progressDetails.eta}</span>
                 </div>
                 <Progress value={percent} className="mt-3" />

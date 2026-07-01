@@ -22,6 +22,7 @@ import {
   XCircle,
   Clock,
   Activity,
+  ShieldCheck,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
@@ -130,10 +131,10 @@ const METRIC_VALUE_CLASS = "mt-2 text-2xl font-bold tracking-tight text-foregrou
 
 const STATUS_COLOR: Record<StatusValue, string> = {
   queued: 'bg-muted text-muted-foreground',
-  uploading: 'bg-blue-500/10 text-blue-500',
-  parsing: 'bg-blue-500/10 text-blue-500',
-  mapping: 'bg-blue-500/10 text-blue-500',
-  finalizing: 'bg-blue-500/10 text-blue-500',
+  uploading: 'bg-warning/10 text-warning',
+  parsing: 'bg-warning/10 text-warning',
+  mapping: 'bg-warning/10 text-warning',
+  finalizing: 'bg-warning/10 text-warning',
   succeeded: 'bg-success/10 text-success',
   failed: 'bg-destructive/10 text-destructive',
   cancelled: 'bg-muted text-muted-foreground',
@@ -461,6 +462,23 @@ export default function PdfImportDiagnostics() {
         </Card>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="md:col-span-3 overflow-hidden rounded-3xl border-primary/20 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--card))_42%,hsl(var(--background)/0.88))] shadow-[0_14px_42px_rgba(15,23,42,0.08)] ring-1 ring-white/35 dark:border-white/10 dark:ring-white/10 dark:shadow-black/30">
+          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:p-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm">
+              <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <div className="text-sm font-semibold text-foreground">Compliance-safe diagnostics access</div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Diagnostic bundle downloads continue to use short-lived signed URLs, existing permission checks, and audited download handling. This view surfaces availability and metadata only; it does not expose raw signed URL values or hidden diagnostic internals.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+
       <Card className="overflow-hidden rounded-3xl border-primary/15 bg-card/85 shadow-[0_18px_55px_rgba(15,23,42,0.10)] ring-1 ring-white/35 dark:border-white/10 dark:bg-slate-950/60 dark:ring-white/10 dark:shadow-black/35">
         <CardHeader className="flex flex-col gap-4 border-b border-border/60 bg-muted/20 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
@@ -468,7 +486,7 @@ export default function PdfImportDiagnostics() {
               <DatabaseZap className="h-4 w-4 text-primary" aria-hidden="true" />
               Recent imports
             </CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Attempt summaries, stages, SSIM, cost telemetry, and audited diagnostic bundles.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Attempt summaries, stages, SSIM, cost telemetry, and audited diagnostic bundles with short-lived access.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -534,14 +552,26 @@ export default function PdfImportDiagnostics() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-12">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                    <TableCell colSpan={15} className="py-14">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-5 text-center shadow-sm">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">Loading Docling diagnostics</div>
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">Fetching attempt summaries, stages, SSIM, cost telemetry, and diagnostic bundle availability.</div>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
-                      No imports match the current filter.
+                    <TableCell colSpan={15} className="py-14">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-5 text-center shadow-sm">
+                        <Activity className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">No imports match the current filters</div>
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">Adjust the status, engine, or version filters to inspect other Docling import attempts.</div>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -639,7 +669,7 @@ export default function PdfImportDiagnostics() {
                           className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
                           disabled={!row.diagnostics_path || downloading === row.id}
                           onClick={() => handleDownload(row.diagnostics_path, row.id)}
-                          aria-label="Download diagnostics bundle"
+                          aria-label="Download audited diagnostics bundle"
                         >
                           {downloading === row.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
