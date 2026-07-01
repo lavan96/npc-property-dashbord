@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Clock3, DatabaseZap, FileKey2, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Clock3, DatabaseZap, FileKey2, Filter, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
 
@@ -145,28 +145,53 @@ export default function TokenAuditLog() {
             </div>
           </CardHeader>
           <CardContent className="min-w-0 space-y-5 p-4 sm:p-6">
-            <DashboardThemeFrame variant="toolbar" className="min-w-0 items-stretch justify-between gap-3 border-primary/10 bg-muted/25 p-2.5 sm:items-center">
-              <Select value={eventFilter} onValueChange={setEventFilter} disabled={loading}>
-                <SelectTrigger className="min-h-10 w-full rounded-2xl border-border/70 bg-background/85 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/30 sm:w-[180px]" aria-label="Filter token audit events by type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All events</SelectItem>
-                  <SelectItem value="reserve">Reserve</SelectItem>
-                  <SelectItem value="commit">Commit</SelectItem>
-                  <SelectItem value="cancel">Cancel</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="group relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                <Input
-                  className="min-h-10 min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/30 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
-                  placeholder="Search by idempotency key, user, function…"
-                  aria-label="Search token audit events by idempotency key, user, or function"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  disabled={loading && rows.length === 0}
-                />
+            <DashboardThemeFrame variant="toolbar" className="min-w-0 flex-col items-stretch gap-4 border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.30),hsl(var(--background)/0.72))] p-3 shadow-inner sm:p-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-end">
+                <div className="min-w-0 shrink-0 space-y-2 md:w-[220px]">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="token-audit-event-filter">
+                    <Filter className="h-3.5 w-3.5 text-primary" />
+                    Event type
+                  </label>
+                  <Select value={eventFilter} onValueChange={setEventFilter} disabled={loading}>
+                    <SelectTrigger id="token-audit-event-filter" className="min-h-11 w-full rounded-2xl border-border/70 bg-background/90 px-3 shadow-sm transition-all duration-200 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus:ring-2 focus:ring-primary/30" aria-label="Filter token audit events by type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All events</SelectItem>
+                      <SelectItem value="reserve">Reserve</SelectItem>
+                      <SelectItem value="commit">Commit</SelectItem>
+                      <SelectItem value="cancel">Cancel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="token-audit-search">
+                    <Search className="h-3.5 w-3.5 text-primary" />
+                    Keyword search
+                  </label>
+                  <div className="group relative min-w-0">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                    <Input
+                      id="token-audit-search"
+                      className="min-h-11 min-w-0 rounded-2xl border-border/70 bg-background/90 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
+                      placeholder="Search by idempotency key, user, function…"
+                      aria-label="Search token audit events by idempotency key, user, or function"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      disabled={loading && rows.length === 0}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid shrink-0 grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-card/70 p-2 text-xs shadow-sm sm:min-w-[220px]">
+                <div className="rounded-xl bg-muted/35 px-3 py-2">
+                  <span className="block text-muted-foreground">Loaded</span>
+                  <span className="font-semibold tabular-nums text-foreground">{rows.length.toLocaleString()}</span>
+                </div>
+                <div className="rounded-xl bg-primary/10 px-3 py-2">
+                  <span className="block text-primary/80">Visible</span>
+                  <span className="font-semibold tabular-nums text-primary">{filtered.length.toLocaleString()}</span>
+                </div>
               </div>
             </DashboardThemeFrame>
 
