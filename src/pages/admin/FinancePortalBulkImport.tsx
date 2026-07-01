@@ -143,12 +143,14 @@ export default function FinancePortalBulkImport() {
             type="file"
             accept=".csv,text/csv"
             onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            aria-label="Upload finance portal assignment CSV"
             className="h-10 rounded-xl border-border/70 bg-background/75"
           />
           <Textarea
             rows={8}
             placeholder="Or paste CSV content here..."
             value={csvText}
+            aria-label="Paste finance portal assignment CSV content"
             onChange={e => {
               setCsvText(e.target.value);
               setRows(parseCsv(e.target.value));
@@ -174,7 +176,7 @@ export default function FinancePortalBulkImport() {
         </CardHeader>
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => submit(true)} disabled={previewing || rows.length === 0} className="gap-2">
+            <Button onClick={() => submit(true)} disabled={previewing || rows.length === 0} aria-label="Run dry-run preview for bulk import" className="gap-2">
               {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
               Dry Run Preview
             </Button>
@@ -201,7 +203,7 @@ export default function FinancePortalBulkImport() {
 
           {results.length > 0 && (
             <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
-              <Table className="min-w-[860px]">
+              <Table className="min-w-[860px]" aria-label="Bulk import preview results">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-16">Row</TableHead>

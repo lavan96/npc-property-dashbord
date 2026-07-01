@@ -86,7 +86,7 @@ export default function FinancePortalHealth() {
             </p>
           </div>
         </div>
-        <Button onClick={refresh} disabled={loading} size="sm" className="gap-2 rounded-xl">
+        <Button onClick={refresh} disabled={loading} size="sm" aria-label="Run tri-portal health sweep" className="gap-2 rounded-xl">
           <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
           Run sweep
         </Button>
@@ -146,7 +146,7 @@ export default function FinancePortalHealth() {
             </CardHeader>
             <CardContent className="p-4 sm:p-5">
               <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
-              <Table className="min-w-[760px]">
+              <Table className="min-w-[760px]" aria-label="Audit chain integrity sample">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Purchase file</TableHead>
@@ -168,7 +168,7 @@ export default function FinancePortalHealth() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button asChild size="sm" variant="ghost">
+                          <Button asChild size="sm" variant="ghost" className="rounded-xl focus-visible:ring-primary/40">
                             <Link to={`/finance/purchase-files/${r.purchase_file_id}`}>Open</Link>
                           </Button>
                         </TableCell>

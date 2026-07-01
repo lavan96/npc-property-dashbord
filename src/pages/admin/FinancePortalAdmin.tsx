@@ -321,6 +321,7 @@ export default function FinancePortalAdmin() {
                 placeholder="Search name or email..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
+                aria-label="Search finance contacts"
                 className="h-10 w-full min-w-0 rounded-xl border-border/70 bg-background/75 pl-9 shadow-inner transition-all focus-visible:ring-primary/35"
               />
             </div>
@@ -336,6 +337,7 @@ export default function FinancePortalAdmin() {
                       : 'border-border/70 bg-card/70 text-muted-foreground hover:border-primary/35 hover:bg-primary/10 hover:text-primary'
                   }`}
                   onClick={() => setStatusFilter(s)}
+                  aria-pressed={statusFilter === s}
                 >
                   {s === 'all' ? 'All' : STATUS_BADGE[s as FinanceUserRow['status']]?.label || s}
                 </Button>
@@ -350,7 +352,7 @@ export default function FinancePortalAdmin() {
             </div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
-              <Table className="min-w-[1080px]">
+              <Table className="min-w-[1080px]" aria-label="Finance contacts portal access table">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[260px] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</TableHead>

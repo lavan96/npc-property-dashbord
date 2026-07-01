@@ -176,7 +176,7 @@ export default function FinancePortalAnalytics() {
         </div>
         <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-slate-950/55 md:w-auto">
           <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-card/70 shadow-sm focus:ring-primary/35 sm:w-40">
+            <SelectTrigger aria-label="Select analytics date range" className="h-10 w-full rounded-xl border-border/70 bg-card/70 shadow-sm focus:ring-primary/35 sm:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -187,7 +187,7 @@ export default function FinancePortalAnalytics() {
               <SelectItem value="90">Last 90 days</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={loadAnalytics} className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60 sm:flex-none" disabled={loading}>
+          <Button variant="outline" onClick={loadAnalytics} aria-label="Refresh finance portal analytics" className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60 sm:flex-none" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -228,7 +228,7 @@ export default function FinancePortalAnalytics() {
                   <CardDescription className="leading-6">Logins, document uploads, messages, and BC reviews over the selected window.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
-                  <div className="h-72 rounded-2xl border border-border/60 bg-background/45 p-3">
+                  <div className="h-72 rounded-2xl border border-border/60 bg-background/45 p-3" role="img" aria-label="Daily engagement chart showing logins, document uploads, and messages">
                     {data.daily.length === 0 ? (
                       <EmptyAnalyticsState
                         icon={<Activity className="h-5 w-5" />}
@@ -279,7 +279,7 @@ export default function FinancePortalAnalytics() {
                   <CardDescription className="leading-6">Sum of all audited finance portal events.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
-                  <div className="h-56 rounded-2xl border border-border/60 bg-background/45 p-3">
+                  <div className="h-56 rounded-2xl border border-border/60 bg-background/45 p-3" role="img" aria-label="Total events per day chart">
                     {data.daily.length === 0 ? (
                       <EmptyAnalyticsState
                         icon={<BarChart3 className="h-5 w-5" />}
@@ -316,7 +316,7 @@ export default function FinancePortalAnalytics() {
                   <CardDescription className="leading-6">Top 10 finance partners by audited event count over the window.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
-                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35"><Table className="min-w-[720px]">
+                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35"><Table className="min-w-[720px]" aria-label="Most active finance partners">
                     <TableHeader className="bg-muted/35">
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Partner</TableHead>
@@ -363,7 +363,7 @@ export default function FinancePortalAnalytics() {
                   <CardDescription className="leading-6">Breakdown of audit actions over the selected window.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
-                  <div className="h-80 rounded-2xl border border-border/60 bg-background/45 p-3">
+                  <div className="h-80 rounded-2xl border border-border/60 bg-background/45 p-3" role="img" aria-label="Action frequency chart">
                     {actionList.length === 0 ? (
                       <EmptyAnalyticsState
                         icon={<TrendingUp className="h-5 w-5" />}
@@ -409,12 +409,13 @@ export default function FinancePortalAnalytics() {
                         value={auditSearch}
                         onChange={e => setAuditSearch(e.target.value)}
                         placeholder="Search action / entity / metadata..."
+                        aria-label="Search audit log"
                         className="h-10 w-full min-w-0 rounded-xl border-border/70 bg-background/75 pl-9 shadow-inner transition-all focus-visible:ring-primary/35"
                         onKeyDown={e => e.key === 'Enter' && loadAudit()}
                       />
                     </div>
                     <Select value={auditAction} onValueChange={setAuditAction}>
-                      <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35"><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label="Filter audit log by action" className="h-10 w-full rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All actions</SelectItem>
                         {Object.keys(data.action_counts).sort().map(a => (
@@ -422,7 +423,7 @@ export default function FinancePortalAnalytics() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={loadAudit} disabled={auditLoading} className="h-10 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60">
+                    <Button variant="outline" onClick={loadAudit} disabled={auditLoading} aria-label="Search audit log" className="h-10 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60">
                       {auditLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                       Search
                     </Button>
@@ -430,7 +431,7 @@ export default function FinancePortalAnalytics() {
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
                   <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
-                    <Table className="min-w-[840px]">
+                    <Table className="min-w-[840px]" aria-label="Finance portal audit log">
                       <TableHeader className="bg-muted/35">
                         <TableRow className="hover:bg-transparent">
                           <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">When</TableHead>

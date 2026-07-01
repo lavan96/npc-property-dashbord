@@ -193,11 +193,15 @@ export default function FinancePortalCommissions() {
 
       <DashboardThemeFrame variant="toolbar" className="p-1.5">
         <button
+          type="button"
           onClick={() => setTab('commissions')}
+          aria-pressed={tab === 'commissions'}
           className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${tab === 'commissions' ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
         ><DollarSign className="inline h-4 w-4 mr-1" />Commissions ({commissions.length})</button>
         <button
+          type="button"
           onClick={() => setTab('statements')}
+          aria-pressed={tab === 'statements'}
           className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${tab === 'statements' ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'}`}
         ><FileText className="inline h-4 w-4 mr-1" />Statements ({statements.length})</button>
       </DashboardThemeFrame>
@@ -209,10 +213,10 @@ export default function FinancePortalCommissions() {
             <div className="flex flex-wrap gap-3 items-center">
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input className="h-10 rounded-xl border-border/70 bg-background/75 pl-9 shadow-inner focus-visible:ring-primary/35" placeholder="Search partner, client, notes…" value={search} onChange={e => setSearch(e.target.value)} />
+                <Input className="h-10 rounded-xl border-border/70 bg-background/75 pl-9 shadow-inner focus-visible:ring-primary/35" placeholder="Search partner, client, notes…" value={search} onChange={e => setSearch(e.target.value)} aria-label="Search commissions" />
               </div>
               <Select value={filterPartner} onValueChange={setFilterPartner}>
-                <SelectTrigger className="h-10 w-[220px] rounded-xl border-border/70 bg-background/75"><SelectValue placeholder="Partner" /></SelectTrigger>
+                <SelectTrigger aria-label="Filter commissions by partner" className="h-10 w-[220px] rounded-xl border-border/70 bg-background/75"><SelectValue placeholder="Partner" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All partners</SelectItem>
                   {partners.map(p => (
@@ -221,7 +225,7 @@ export default function FinancePortalCommissions() {
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="h-10 w-[160px] rounded-xl border-border/70 bg-background/75"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectTrigger aria-label="Filter commissions by status" className="h-10 w-[160px] rounded-xl border-border/70 bg-background/75"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -262,7 +266,7 @@ export default function FinancePortalCommissions() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
-              <Table className="min-w-[1050px]">
+              <Table className="min-w-[1050px]" aria-label="Finance portal commissions">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-8" />
@@ -282,7 +286,7 @@ export default function FinancePortalCommissions() {
                   )}
                   {filteredCommissions.map(c => (
                     <TableRow key={c.id} className="transition-colors hover:bg-primary/5">
-                      <TableCell><Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} /></TableCell>
+                      <TableCell><Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggle(c.id)} aria-label={`Select commission ${c.id}`} /></TableCell>
                       <TableCell>
                         <div className="font-medium">{c.partner_name_snapshot || '—'}</div>
                         <div className="text-xs text-muted-foreground">{c.partner_company_snapshot || ''}</div>
@@ -319,7 +323,7 @@ export default function FinancePortalCommissions() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
-              <Table className="min-w-[880px]">
+              <Table className="min-w-[880px]" aria-label="Finance portal commission statements">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Partner</TableHead>
@@ -353,7 +357,7 @@ export default function FinancePortalCommissions() {
                         )}
                         {s.pdf_storage_path && (
                           <>
-                            <Button size="sm" variant="ghost" onClick={() => downloadStatement(s.pdf_storage_path!)}>
+                            <Button size="sm" variant="ghost" onClick={() => downloadStatement(s.pdf_storage_path!)} aria-label={`Download statement ${s.id}`}>
                               <Download className="h-4 w-4" />
                             </Button>
                             <FlattenPdfIconButton
@@ -419,15 +423,15 @@ function ManualCommissionDialog({ partners, onClose }: { partners: any[]; onClos
         <div>
           <Label>Partner</Label>
           <Select value={partnerId} onValueChange={setPartnerId}>
-            <SelectTrigger><SelectValue placeholder="Select partner" /></SelectTrigger>
+            <SelectTrigger aria-label="Select partner for manual commission"><SelectValue placeholder="Select partner" /></SelectTrigger>
             <SelectContent>
               {partners.map(p => <SelectItem key={p.id} value={p.id}>{p.name}{p.company ? ` · ${p.company}` : ''}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Basis amount ($)</Label><Input type="number" value={basis} onChange={e => setBasis(e.target.value)} /></div>
-          <div><Label>Rate (%)</Label><Input type="number" step="0.01" value={rate} onChange={e => setRate(e.target.value)} /></div>
+          <div><Label>Basis amount ($)</Label><Input type="number" value={basis} onChange={e => setBasis(e.target.value)} aria-label="Manual commission basis amount" /></div>
+          <div><Label>Rate (%)</Label><Input type="number" step="0.01" value={rate} onChange={e => setRate(e.target.value)} aria-label="Manual commission rate percentage" /></div>
         </div>
         <div><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} /></div>
       </div>
@@ -471,15 +475,15 @@ function GenerateStatementDialog({ partners, onClose }: { partners: any[]; onClo
         <div>
           <Label>Partner</Label>
           <Select value={partnerId} onValueChange={setPartnerId}>
-            <SelectTrigger><SelectValue placeholder="Select partner" /></SelectTrigger>
+            <SelectTrigger aria-label="Select partner for statement generation"><SelectValue placeholder="Select partner" /></SelectTrigger>
             <SelectContent>
               {partners.map(p => <SelectItem key={p.id} value={p.id}>{p.name}{p.company ? ` · ${p.company}` : ''}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div><Label>Period start</Label><Input type="date" value={start} onChange={e => setStart(e.target.value)} /></div>
-          <div><Label>Period end</Label><Input type="date" value={end} onChange={e => setEnd(e.target.value)} /></div>
+          <div><Label>Period start</Label><Input type="date" value={start} onChange={e => setStart(e.target.value)} aria-label="Statement period start date" /></div>
+          <div><Label>Period end</Label><Input type="date" value={end} onChange={e => setEnd(e.target.value)} aria-label="Statement period end date" /></div>
         </div>
       </div>
       <DialogFooter className="border-t border-border/60 bg-muted/20 p-5">

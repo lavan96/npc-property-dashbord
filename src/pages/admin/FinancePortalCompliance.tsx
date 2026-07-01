@@ -185,7 +185,7 @@ export default function FinancePortalCompliance() {
             <div>
               <label className="text-xs font-medium text-muted-foreground">Partner</label>
               <Select value={partnerId} onValueChange={setPartnerId}>
-                <SelectTrigger className="h-10 rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Select compliance report partner" className="h-10 rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All partners</SelectItem>
                   {partners.map(p => (
@@ -196,14 +196,14 @@ export default function FinancePortalCompliance() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">From</label>
-              <Input className="h-10 rounded-xl border-border/70 bg-background/75" type="date" value={since} onChange={e => setSince(e.target.value)} />
+              <Input aria-label="Compliance report start date" className="h-10 rounded-xl border-border/70 bg-background/75" type="date" value={since} onChange={e => setSince(e.target.value)} />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">To</label>
-              <Input className="h-10 rounded-xl border-border/70 bg-background/75" type="date" value={until} onChange={e => setUntil(e.target.value)} />
+              <Input aria-label="Compliance report end date" className="h-10 rounded-xl border-border/70 bg-background/75" type="date" value={until} onChange={e => setUntil(e.target.value)} />
             </div>
             <div className="flex items-end">
-              <Button onClick={runReport} disabled={loading} className="h-10 w-full gap-2 rounded-xl shadow-md shadow-primary/20">
+              <Button onClick={runReport} disabled={loading} aria-label="Run compliance report" className="h-10 w-full gap-2 rounded-xl shadow-md shadow-primary/20">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                 Run Report
               </Button>
@@ -233,7 +233,7 @@ export default function FinancePortalCompliance() {
           </CardHeader>
           <CardContent className="p-4 sm:p-5">
             <div className="max-h-[60vh] overflow-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
-              <Table className="min-w-[980px]">
+              <Table className="min-w-[980px]" aria-label="Compliance export results">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">
                     <TableHead>Timestamp</TableHead>
