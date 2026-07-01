@@ -33,6 +33,7 @@ import { EditFinanceContactDialog } from '@/components/admin/finance-portal/Edit
 import { InviteFinanceContactDialog } from '@/components/admin/finance-portal/InviteFinanceContactDialog';
 import { GlobalPartnerPermissionsDialog } from '@/components/admin/finance-portal/GlobalPartnerPermissionsDialog';
 import { EMPTY_MATRIX, normalizeMatrix, type FinancePermissionMatrix } from '@/components/admin/finance-portal/FinancePermissionMatrix';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface FinanceUserRow {
   id: string;                  // finance_agent_contacts.id
@@ -56,13 +57,13 @@ interface FinanceUserRow {
   };
 }
 
-const STATUS_BADGE: Record<FinanceUserRow['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  no_access:        { label: 'No Access',        variant: 'outline' },
-  invited:          { label: 'Invited',          variant: 'secondary' },
-  invite_expired:   { label: 'Invite Expired',   variant: 'destructive' },
-  active:           { label: 'Active',           variant: 'default' },
-  inactive:         { label: 'Inactive',         variant: 'outline' },
-  revoked:          { label: 'Revoked',          variant: 'destructive' },
+const STATUS_BADGE: Record<FinanceUserRow['status'], { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
+  no_access:        { label: 'No Access',        variant: 'outline', className: 'dashboard-status-chip text-muted-foreground' },
+  invited:          { label: 'Invited',          variant: 'secondary', className: 'dashboard-status-chip dashboard-status-chip-warning' },
+  invite_expired:   { label: 'Invite Expired',   variant: 'destructive', className: 'dashboard-status-chip dashboard-status-chip-destructive' },
+  active:           { label: 'Active',           variant: 'default', className: 'dashboard-status-chip dashboard-status-chip-success' },
+  inactive:         { label: 'Inactive',         variant: 'outline', className: 'dashboard-status-chip text-muted-foreground' },
+  revoked:          { label: 'Revoked',          variant: 'destructive', className: 'dashboard-status-chip dashboard-status-chip-destructive' },
 };
 
 export default function FinancePortalAdmin() {
@@ -231,57 +232,67 @@ export default function FinancePortalAdmin() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            Finance Portal Admin
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage portal access, per-client assignments, and CRUD permission matrices for finance contacts.
-          </p>
+    <DashboardThemeFrame variant="page" className="space-y-6 p-4 sm:p-6">
+      <DashboardThemeFrame variant="hero" as="header" className="space-y-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary shadow-sm shadow-primary/10">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Administration control centre</span>
+            </div>
+            <div className="space-y-2">
+              <h1 className="flex min-w-0 items-center gap-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+                  <Shield className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 truncate">Finance Portal Admin</span>
+              </h1>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Manage portal access, per-client assignments, and CRUD permission matrices for finance contacts.
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-slate-950/55">
           <Button
             onClick={() => setCreateOpen(true)}
-            className="gap-2 shadow-md ring-2 ring-primary/30"
+            className="min-h-10 flex-1 gap-2 rounded-xl shadow-md shadow-primary/20 ring-2 ring-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-primary/40 sm:flex-none"
             size="default"
           >
             <UserPlus className="h-4 w-4" />
             New Finance Contact
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/analytics"><BarChart3 className="h-4 w-4" />Analytics</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/bulk-import"><FileSpreadsheet className="h-4 w-4" />Bulk Import</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/compliance"><FileText className="h-4 w-4" />Compliance</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/health"><ShieldCheck className="h-4 w-4" />Health Sweep</Link>
           </Button>
-          <Button variant="outline" asChild className="gap-2">
+          <Button variant="outline" asChild className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Link to="/admin/finance-portal/commissions"><DollarSign className="h-4 w-4" />Commissions</Link>
           </Button>
-          <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="gap-2">
+          <Button variant="outline" onClick={() => { setActivityForUser(null); setActivityOpen(true); }} className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <History className="h-4 w-4" />
             Activity Log
           </Button>
-          <Button variant="outline" onClick={() => setDefaultsOpen(true)} className="gap-2">
+          <Button variant="outline" onClick={() => setDefaultsOpen(true)} className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:flex-none">
             <Settings className="h-4 w-4" />
             Default Permissions
           </Button>
-          <Button variant="outline" onClick={loadAll} className="gap-2" disabled={loading}>
+          <Button variant="outline" onClick={loadAll} className="min-h-10 flex-1 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 disabled:translate-y-0 disabled:opacity-60 sm:flex-none" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-        </div>
-      </div>
+        </DashboardThemeFrame>
+      </DashboardThemeFrame>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Total Contacts" value={counts.total} />
         <StatCard label="Active" value={counts.active} tone="success" />
         <StatCard label="Invited" value={counts.invited} tone="info" />
@@ -289,7 +300,8 @@ export default function FinancePortalAdmin() {
         <StatCard label="Revoked" value={counts.revoked} tone="destructive" />
       </div>
 
-      <Card>
+      <DashboardThemeFrame variant="section" className="p-0">
+        <Card className="border-0 bg-transparent shadow-none">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -307,7 +319,7 @@ export default function FinancePortalAdmin() {
                 placeholder="Search name or email..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-8 h-9 w-64"
+                className="h-9 w-full min-w-0 pl-8 sm:w-64"
               />
             </div>
             <div className="flex flex-wrap gap-1">
@@ -331,8 +343,8 @@ export default function FinancePortalAdmin() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
+            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70 shadow-inner">
+              <Table className="min-w-[980px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Contact</TableHead>
@@ -358,17 +370,17 @@ export default function FinancePortalAdmin() {
                     const portalUser = u.portal_user;
                     const canManageAssignments = !!portalUser;
                     return (
-                      <TableRow key={u.id}>
+                      <TableRow key={u.id} className="transition-colors hover:bg-muted/35">
                         <TableCell>
-                          <div className="font-medium">{u.name}</div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="max-w-[220px] truncate font-medium" title={u.name}>{u.name}</div>
+                          <div className="max-w-[220px] truncate text-xs text-muted-foreground" title={u.company || u.contact_type}>
                             {u.company || u.contact_type}
                             {u.is_default && <span className="ml-2 text-primary">★ default</span>}
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">{u.email}</TableCell>
+                        <TableCell className="max-w-[260px] truncate text-sm" title={u.email}>{u.email}</TableCell>
                         <TableCell>
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                          <Badge variant={badge.variant} className={badge.className}>{badge.label}</Badge>
                         </TableCell>
                         <TableCell>
                           <TooltipProvider delayDuration={150}>
@@ -405,11 +417,11 @@ export default function FinancePortalAdmin() {
                           {portalUser ? (
                             <Popover>
                               <PopoverTrigger asChild>
-                                <button className="flex items-center gap-1.5 text-xs hover:opacity-80 transition-opacity">
+                                <button className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-all hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                                   {portalUser.has_accepted_terms && portalUser.has_completed_onboarding ? (
                                     <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                                   ) : (
-                                    <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                                    <CircleDot className="h-4 w-4 text-warning shrink-0" />
                                   )}
                                   <span className="text-muted-foreground">
                                     {portalUser.has_accepted_terms && portalUser.has_completed_onboarding
@@ -425,7 +437,7 @@ export default function FinancePortalAdmin() {
                                     {portalUser.has_accepted_terms ? (
                                       <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                                     ) : (
-                                      <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                                      <CircleDot className="h-4 w-4 text-warning shrink-0" />
                                     )}
                                     <span className="text-sm">Terms & Conditions</span>
                                     <Badge variant={portalUser.has_accepted_terms ? 'default' : 'secondary'} className="ml-auto text-[10px]">
@@ -441,7 +453,7 @@ export default function FinancePortalAdmin() {
                                     {portalUser.has_completed_onboarding ? (
                                       <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                                     ) : (
-                                      <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                                      <CircleDot className="h-4 w-4 text-warning shrink-0" />
                                     )}
                                     <span className="text-sm">Onboarding Tour</span>
                                     <Badge variant={portalUser.has_completed_onboarding ? 'default' : 'secondary'} className="ml-auto text-[10px]">
@@ -458,7 +470,7 @@ export default function FinancePortalAdmin() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={busyId === u.id}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40" disabled={busyId === u.id}>
                                 {busyId === u.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
@@ -560,7 +572,8 @@ export default function FinancePortalAdmin() {
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      </DashboardThemeFrame>
 
       <ClientAssignmentsDialog
         open={!!assignmentsForUser}
@@ -653,7 +666,7 @@ export default function FinancePortalAdmin() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DashboardThemeFrame>
   );
 }
 
@@ -670,11 +683,13 @@ function StatCard({
     destructive: 'text-destructive',
   }[tone];
   return (
-    <Card>
+    <DashboardThemeFrame variant="premiumCard">
+      <Card className="border-0 bg-transparent shadow-none">
       <CardContent className="p-4">
         <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
         <div className={`text-2xl font-bold mt-1 ${toneCls}`}>{value}</div>
       </CardContent>
     </Card>
+    </DashboardThemeFrame>
   );
 }
