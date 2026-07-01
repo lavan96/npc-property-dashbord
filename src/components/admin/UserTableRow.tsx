@@ -44,6 +44,12 @@ export function UserTableRow({
 }: UserTableRowProps) {
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
+  const userInitials = u.username
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
 
   return (
     <TableRow className={selected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-primary/5'}>
@@ -51,27 +57,44 @@ export function UserTableRow({
         <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(u.id)} />
       </TableCell>
       <TableCell className="max-w-[260px] py-4">
-        <div className="min-w-0 space-y-1">
-          <div className="flex min-w-0 items-center gap-2 font-semibold text-foreground">
-            <span className="truncate" title={u.username}>{u.username}</span>
-            {isSelf && <Badge variant="outline" className="text-xs">You</Badge>}
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-xs font-bold uppercase tracking-wide text-primary shadow-inner">
+            {userInitials}
           </div>
-          <div className="truncate text-sm text-muted-foreground" title={u.email || 'No email'}>{u.email || 'No email'}</div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex min-w-0 items-center gap-2 font-semibold text-foreground">
+              <span className="truncate" title={u.username}>{u.username}</span>
+              {isSelf && (
+                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-primary">
+                  You
+                </Badge>
+              )}
+            </div>
+            <div className="truncate text-sm text-muted-foreground" title={u.email || 'No email'}>{u.email || 'No email'}</div>
+          </div>
         </div>
       </TableCell>
       <TableCell className="py-4">
         <div className="flex flex-wrap gap-1.5">
-          {hasSuperadmin && <Badge className="bg-amber-500"><Crown className="h-3 w-3 mr-1" />Superadmin</Badge>}
-          {hasAdmin && !hasSuperadmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" />Admin</Badge>}
-          {!hasSuperadmin && !hasAdmin && <Badge variant="outline">User</Badge>}
+          {hasSuperadmin && (
+            <Badge className="border border-amber-300/50 bg-amber-500/15 text-amber-700 shadow-sm shadow-amber-500/10 hover:bg-amber-500/20 dark:text-amber-200">
+              <Crown className="h-3 w-3 mr-1" />Superadmin
+            </Badge>
+          )}
+          {hasAdmin && !hasSuperadmin && (
+            <Badge variant="secondary" className="border border-primary/20 bg-primary/10 text-primary">
+              <Shield className="h-3 w-3 mr-1" />Admin
+            </Badge>
+          )}
+          {!hasSuperadmin && !hasAdmin && <Badge variant="outline" className="border-border/70 bg-muted/40 text-muted-foreground">User</Badge>}
         </div>
       </TableCell>
       <TableCell className="max-w-[260px] py-4">
         <div className="flex min-w-0 items-center gap-2">
           {u.personal_mailbox ? (
-            <span className="truncate text-sm" title={u.personal_mailbox}>{u.personal_mailbox}</span>
+            <span className="min-w-0 truncate rounded-full border border-border/60 bg-muted/35 px-2.5 py-1 text-sm text-foreground" title={u.personal_mailbox}>{u.personal_mailbox}</span>
           ) : (
-            <span className="text-sm text-muted-foreground italic">Not set</span>
+            <span className="rounded-full border border-dashed border-border/70 bg-muted/25 px-2.5 py-1 text-sm text-muted-foreground italic">Not set</span>
           )}
           <Button variant="ghost" size="sm" onClick={() => onEditMailbox(u.id, u.personal_mailbox)} className="h-6 w-6 p-0">
             <Mail className="h-3 w-3" />
@@ -81,7 +104,8 @@ export function UserTableRow({
       <TableCell className="py-4">
         <div className="flex items-center gap-2">
           <Switch checked={u.is_active} onCheckedChange={(v) => onToggleActive(u.id, v)} disabled={isSelf} />
-          <span className={u.is_active ? 'text-green-600' : 'text-muted-foreground'}>
+          <span className={u.is_active ? 'inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300' : 'inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/35 px-2.5 py-1 text-xs font-semibold text-muted-foreground'}>
+            <span className={u.is_active ? 'h-1.5 w-1.5 rounded-full bg-emerald-500' : 'h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
             {u.is_active ? 'Active' : 'Inactive'}
           </span>
         </div>
