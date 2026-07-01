@@ -44,49 +44,91 @@ export function UserTableRow({
 }: UserTableRowProps) {
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
+  const actionButtonClass = 'h-9 w-9 rounded-xl border-border/70 bg-background/80 p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 motion-reduce:transform-none motion-reduce:transition-none';
+  const cautionActionButtonClass = 'h-9 w-9 rounded-xl border-amber-300/40 bg-amber-500/10 p-0 text-amber-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-amber-500/15 focus-visible:ring-amber-400/40 motion-reduce:transform-none motion-reduce:transition-none dark:text-amber-200';
+  const destructiveActionButtonClass = 'h-9 w-9 rounded-xl p-0 shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-destructive/40 motion-reduce:transform-none motion-reduce:transition-none';
+  const userInitials = u.username
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
 
   return (
-    <TableRow className={selected ? 'bg-muted/30' : ''}>
-      <TableCell>
-        <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(u.id)} />
+    <TableRow className={selected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-primary/5'}>
+      <TableCell className="pl-5">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={() => onToggleSelect?.(u.id)}
+          aria-label={`Select ${u.username}`}
+        />
       </TableCell>
-      <TableCell>
-        <div>
-          <div className="font-medium flex items-center gap-2">
-            {u.username}
-            {isSelf && <Badge variant="outline" className="text-xs">You</Badge>}
+      <TableCell className="max-w-[260px] py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-xs font-bold uppercase tracking-wide text-primary shadow-inner">
+            {userInitials}
           </div>
-          <div className="text-sm text-muted-foreground">{u.email || 'No email'}</div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex min-w-0 items-center gap-2 font-semibold text-foreground">
+              <span className="truncate" title={u.username}>{u.username}</span>
+              {isSelf && (
+                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-primary">
+                  You
+                </Badge>
+              )}
+            </div>
+            <div className="truncate text-sm text-muted-foreground" title={u.email || 'No email'}>{u.email || 'No email'}</div>
+          </div>
         </div>
       </TableCell>
-      <TableCell>
-        <div className="flex gap-1">
-          {hasSuperadmin && <Badge className="bg-amber-500"><Crown className="h-3 w-3 mr-1" />Superadmin</Badge>}
-          {hasAdmin && !hasSuperadmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" />Admin</Badge>}
-          {!hasSuperadmin && !hasAdmin && <Badge variant="outline">User</Badge>}
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          {u.personal_mailbox ? (
-            <span className="text-sm">{u.personal_mailbox}</span>
-          ) : (
-            <span className="text-sm text-muted-foreground italic">Not set</span>
+      <TableCell className="py-4">
+        <div className="flex flex-wrap gap-1.5">
+          {hasSuperadmin && (
+            <Badge className="border border-amber-300/50 bg-amber-500/15 text-amber-700 shadow-sm shadow-amber-500/10 hover:bg-amber-500/20 dark:text-amber-200">
+              <Crown className="h-3 w-3 mr-1" />Superadmin
+            </Badge>
           )}
-          <Button variant="ghost" size="sm" onClick={() => onEditMailbox(u.id, u.personal_mailbox)} className="h-6 w-6 p-0">
+          {hasAdmin && !hasSuperadmin && (
+            <Badge variant="secondary" className="border border-primary/20 bg-primary/10 text-primary">
+              <Shield className="h-3 w-3 mr-1" />Admin
+            </Badge>
+          )}
+          {!hasSuperadmin && !hasAdmin && <Badge variant="outline" className="border-border/70 bg-muted/40 text-muted-foreground">User</Badge>}
+        </div>
+      </TableCell>
+      <TableCell className="max-w-[260px] py-4">
+        <div className="flex min-w-0 items-center gap-2">
+          {u.personal_mailbox ? (
+            <span className="min-w-0 truncate rounded-full border border-border/60 bg-muted/35 px-2.5 py-1 text-sm text-foreground" title={u.personal_mailbox}>{u.personal_mailbox}</span>
+          ) : (
+            <span className="rounded-full border border-dashed border-border/70 bg-muted/25 px-2.5 py-1 text-sm text-muted-foreground italic">Not set</span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEditMailbox(u.id, u.personal_mailbox)}
+            className="h-8 w-8 shrink-0 rounded-xl p-0 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 motion-reduce:transition-none"
+            aria-label={`Edit mailbox for ${u.username}`}
+          >
             <Mail className="h-3 w-3" />
           </Button>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="py-4">
         <div className="flex items-center gap-2">
-          <Switch checked={u.is_active} onCheckedChange={(v) => onToggleActive(u.id, v)} disabled={isSelf} />
-          <span className={u.is_active ? 'text-green-600' : 'text-muted-foreground'}>
+          <Switch
+            checked={u.is_active}
+            onCheckedChange={(v) => onToggleActive(u.id, v)}
+            disabled={isSelf}
+            aria-label={`${u.is_active ? 'Deactivate' : 'Activate'} ${u.username}`}
+          />
+          <span className={u.is_active ? 'inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300' : 'inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/35 px-2.5 py-1 text-xs font-semibold text-muted-foreground'}>
+            <span className={u.is_active ? 'h-1.5 w-1.5 rounded-full bg-emerald-500' : 'h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
             {u.is_active ? 'Active' : 'Inactive'}
           </span>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="py-4">
         {u.last_login_at ? (
           <div className="flex items-center gap-1 text-sm text-muted-foreground" title={new Date(u.last_login_at).toLocaleString()}>
             <Clock className="h-3 w-3" />
@@ -96,16 +138,22 @@ export function UserTableRow({
           <span className="text-xs text-muted-foreground italic">Never</span>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground text-sm">
+      <TableCell className="py-4 text-sm text-muted-foreground">
         {new Date(u.created_at).toLocaleDateString()}
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="py-4 pr-5 text-right">
         <TooltipProvider>
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-end gap-1.5">
             {!hasSuperadmin && !isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onEditPermissions(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEditPermissions(u.id)}
+                    className={actionButtonClass}
+                    aria-label={`Edit permissions for ${u.username}`}
+                  >
                     <Settings className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -115,7 +163,13 @@ export function UserTableRow({
             {!hasSuperadmin && !isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onClonePermissions(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onClonePermissions(u.id)}
+                    className={actionButtonClass}
+                    aria-label={`Clone permissions from ${u.username}`}
+                  >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -125,7 +179,13 @@ export function UserTableRow({
             {!isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onResetPassword({ id: u.id, username: u.username })}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onResetPassword({ id: u.id, username: u.username })}
+                    className={actionButtonClass}
+                    aria-label={`Reset password for ${u.username}`}
+                  >
                     <Key className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -135,7 +195,13 @@ export function UserTableRow({
             {!hasSuperadmin && !isSelf && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onPromote(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPromote(u.id)}
+                    className={cautionActionButtonClass}
+                    aria-label={`Promote ${u.username} to superadmin`}
+                  >
                     <Crown className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -145,7 +211,13 @@ export function UserTableRow({
             {hasSuperadmin && !isSelf && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" title="Demote to Admin">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    title="Demote to Admin"
+                    className={cautionActionButtonClass}
+                    aria-label={`Demote ${u.username} to admin`}
+                  >
                     <ShieldOff className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
@@ -166,7 +238,13 @@ export function UserTableRow({
             {!isSelf && onForceLogout && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => onForceLogout(u.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onForceLogout(u.id)}
+                    className={actionButtonClass}
+                    aria-label={`Force logout for ${u.username}`}
+                  >
                     <LogOut className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -176,7 +254,13 @@ export function UserTableRow({
             {!isSelf && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" title="Delete User">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    title="Delete User"
+                    className={destructiveActionButtonClass}
+                    aria-label={`Delete ${u.username}`}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
