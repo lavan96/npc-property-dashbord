@@ -646,7 +646,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[min(92dvh,920px)] max-w-3xl overflow-hidden border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--background))_58%,hsl(var(--primary)/0.08)_100%)] p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950 dark:shadow-black/45">
+      <DialogContent className="max-h-[min(92dvh,920px)] w-[calc(100vw-1rem)] max-w-3xl overflow-hidden border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--background))_58%,hsl(var(--primary)/0.08)_100%)] p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950 dark:shadow-black/45 sm:w-[calc(100vw-2rem)]">
         <div className="max-h-[min(92dvh,920px)] overflow-y-auto p-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:p-6">
         <DialogHeader className="space-y-3 border-b border-border/60 pb-4">
           <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight">
@@ -668,6 +668,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
               onClick={() => fileRef.current?.click()}
               disabled={busy}
               aria-busy={busy}
+              aria-label="Select a PDF file to import"
               className="group relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--background)/0.92),hsl(var(--primary)/0.08))] p-6 text-center shadow-inner transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/10 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:p-8"
             >
               <span className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" aria-hidden="true" />
@@ -786,7 +787,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
 
             {/* Progress */}
             {progress && (
-              <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 shadow-sm">
+              <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 shadow-sm" role="status" aria-live="polite">
                 <div className="flex justify-between gap-3 text-xs text-muted-foreground">
                   <span className="min-w-0 truncate font-semibold text-foreground">{progressDetails.label}</span>
                   <span className="whitespace-nowrap tabular-nums">{percent}% · {progressDetails.eta}</span>

@@ -292,7 +292,7 @@ export default function PdfImportDiagnostics() {
   };
 
   return (
-    <DashboardThemeFrame as="main" variant="page" className="space-y-6 px-3 py-4 sm:px-5 sm:py-6 lg:px-6">
+    <DashboardThemeFrame as="main" variant="page" className="min-w-0 space-y-6 px-3 py-4 sm:px-5 sm:py-6 lg:px-6">
       <DashboardThemeFrame
         as="header"
         variant="hero"
@@ -488,9 +488,9 @@ export default function PdfImportDiagnostics() {
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">Attempt summaries, stages, SSIM, cost telemetry, and audited diagnostic bundles with short-lived access.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[140px] rounded-xl">
+              <SelectTrigger className="h-9 w-full rounded-xl sm:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -505,7 +505,7 @@ export default function PdfImportDiagnostics() {
               </SelectContent>
             </Select>
             <Select value={engineFilter} onValueChange={setEngineFilter}>
-              <SelectTrigger className="h-9 w-[120px] rounded-xl">
+              <SelectTrigger className="h-9 w-full rounded-xl sm:w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -515,7 +515,7 @@ export default function PdfImportDiagnostics() {
               </SelectContent>
             </Select>
             <Select value={engineVersionFilter} onValueChange={setEngineVersionFilter}>
-              <SelectTrigger className="h-9 w-[220px] rounded-xl">
+              <SelectTrigger className="h-9 w-full rounded-xl sm:w-[220px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -553,7 +553,7 @@ export default function PdfImportDiagnostics() {
                 {loading && rows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={15} className="py-14">
-                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-5 text-center shadow-sm">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-5 text-center shadow-sm" role="status" aria-live="polite">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
                         <div>
                           <div className="text-sm font-semibold text-foreground">Loading Docling diagnostics</div>
@@ -565,7 +565,7 @@ export default function PdfImportDiagnostics() {
                 ) : rows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={15} className="py-14">
-                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-5 text-center shadow-sm">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-5 text-center shadow-sm" role="status" aria-live="polite">
                         <Activity className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
                         <div>
                           <div className="text-sm font-semibold text-foreground">No imports match the current filters</div>
