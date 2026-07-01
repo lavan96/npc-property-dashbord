@@ -539,31 +539,31 @@ export default function UserManagement() {
       />
 
       {/* Users List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>Manage user accounts and their access levels</CardDescription>
+      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-black/25">
+        <CardHeader className="border-b border-border/60 bg-gradient-to-r from-muted/35 via-card to-primary/5 px-5 py-5 dark:border-white/10 dark:from-slate-950/70 dark:via-slate-950/50 dark:to-primary/10 sm:px-6">
+          <CardTitle className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">All Users</CardTitle>
+          <CardDescription className="text-sm leading-6">Manage user accounts and their access levels</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading users...</div>
+            <div className="text-center py-10 text-muted-foreground">Loading users...</div>
           ) : (
-            <Table>
+            <Table className="min-w-[980px]">
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
+                <TableRow className="border-border/70 bg-muted/45 hover:bg-muted/45 dark:border-white/10 dark:bg-slate-900/70">
+                  <TableHead className="w-12 pl-5">
                     <Checkbox
                       checked={selectedUserIds.size === users.length && users.length > 0}
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Mailbox</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">User</TableHead>
+                  <TableHead className="min-w-[150px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Role</TableHead>
+                  <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Mailbox</TableHead>
+                  <TableHead className="min-w-[150px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Status</TableHead>
+                  <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Last Login</TableHead>
+                  <TableHead className="min-w-[130px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Created</TableHead>
+                  <TableHead className="min-w-[260px] pr-5 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
