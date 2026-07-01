@@ -193,7 +193,7 @@ export default function PortalConfig() {
   }
 
   return (
-    <DashboardThemeFrame variant="page" className="space-y-6 pb-24">
+    <DashboardThemeFrame variant="page" className="min-h-0 space-y-6 pb-28">
       {/* Header */}
       <DashboardThemeFrame
         as="header"
@@ -236,7 +236,7 @@ export default function PortalConfig() {
         </div>
       </DashboardThemeFrame>
 
-      <Tabs defaultValue="modules" className="min-w-0 space-y-6">
+      <Tabs defaultValue="modules" className="min-h-0 min-w-0 space-y-6">
         <DashboardThemeFrame variant="toolbar" className="overflow-x-auto p-1.5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
           <TabsList className="flex h-auto min-w-max flex-1 items-center justify-start gap-1 bg-transparent p-0">
             <TabsTrigger value="modules" className="min-h-11 min-w-[9rem] flex-1 gap-2 rounded-xl border border-transparent px-4 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_28px_hsl(var(--primary)/0.22)] sm:min-w-0">
@@ -255,9 +255,9 @@ export default function PortalConfig() {
         </DashboardThemeFrame>
 
         {/* MODULE TOGGLES */}
-        <TabsContent value="modules" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <TabsContent value="modules" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
-            <CardHeader>
+            <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle>Portal Modules</CardTitle>
               <CardDescription>Enable or disable specific sections of the client portal</CardDescription>
             </CardHeader>
@@ -306,9 +306,9 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* WELCOME MESSAGE */}
-        <TabsContent value="welcome" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <TabsContent value="welcome" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
-            <CardHeader>
+            <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle>Welcome Message</CardTitle>
               <CardDescription>Customise the welcome text shown on the portal dashboard</CardDescription>
             </CardHeader>
@@ -364,9 +364,9 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* BOOKING / CALENDAR */}
-        <TabsContent value="booking" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <TabsContent value="booking" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
-            <CardHeader>
+            <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle className="flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-primary" />
                 Booking Configuration
@@ -583,9 +583,9 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* ACCESS LEVEL DEFAULTS */}
-        <TabsContent value="access" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+        <TabsContent value="access" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
-            <CardHeader>
+            <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
                 Access Level Defaults
@@ -656,13 +656,14 @@ export default function PortalConfig() {
 
       {/* Floating save bar */}
       {hasChanges && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-3 px-6 py-3 bg-card border border-border rounded-full shadow-xl">
-            <span className="text-sm text-muted-foreground">You have unsaved changes</span>
+        <div className="fixed inset-x-4 bottom-4 z-50 flex justify-center sm:bottom-6">
+          <div className="flex w-full max-w-xl flex-col gap-3 rounded-2xl border border-warning/25 bg-card/95 px-4 py-3 shadow-2xl shadow-black/10 ring-1 ring-warning/10 backdrop-blur dark:bg-slate-950/95 dark:shadow-black/40 sm:w-auto sm:flex-row sm:items-center sm:rounded-full sm:px-6" role="status" aria-live="polite">
+            <span className="min-w-0 text-sm text-muted-foreground">You have unsaved changes</span>
             <Button
               size="sm"
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
+              className="rounded-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {saveMutation.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
               Save
