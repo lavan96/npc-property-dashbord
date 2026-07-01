@@ -294,14 +294,14 @@ export default function Settings() {
 
       {/* Personal Mailbox Settings */}
       <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <Mail className="h-5 w-5 shrink-0" />
             Personal Mailbox
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        <CardContent className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
             <Label htmlFor="personal-mailbox">Mailbox Email Address</Label>
             {loadingMailbox ? (
               <div className="text-sm text-muted-foreground">Loading...</div>
@@ -309,13 +309,13 @@ export default function Settings() {
               <>
                 <Input
                   id="personal-mailbox"
-                  className="min-w-0"
+                  className="min-w-0 focus-visible:ring-primary"
                   type="email"
                   placeholder="your.email@example.com"
                   value={personalMailbox}
                   onChange={(e) => setPersonalMailbox(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="break-words text-xs leading-5 text-muted-foreground">
                   This email will be used for your personal email communications
                   within the dashboard.
                 </p>
@@ -326,7 +326,7 @@ export default function Settings() {
           <Button
             onClick={handleSaveMailbox}
             disabled={savingMailbox || loadingMailbox}
-            className="w-full"
+            className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
           >
             {savingMailbox && (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -338,14 +338,14 @@ export default function Settings() {
 
       {/* Email Signature Settings */}
       <Card className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSignature className="h-5 w-5" />
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
+            <FileSignature className="h-5 w-5 shrink-0" />
             Email Signature
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
+        <CardContent className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-2 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
             <Label htmlFor="email-signature">Your Email Signature</Label>
             {loadingSignature ? (
               <div className="text-sm text-muted-foreground">Loading...</div>
@@ -356,9 +356,9 @@ export default function Settings() {
                   placeholder="Best regards,&#10;Your Name&#10;Company Name&#10;Phone: +1 234 567 890"
                   value={emailSignature}
                   onChange={(e) => setEmailSignature(e.target.value)}
-                  className="min-h-[140px] min-w-0 resize-y whitespace-pre-wrap break-words font-mono text-sm leading-6"
+                  className="min-h-[160px] min-w-0 resize-y whitespace-pre-wrap break-words font-mono text-sm leading-6 focus-visible:ring-primary"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="break-words text-xs leading-5 text-muted-foreground">
                   This signature will be automatically appended to all emails
                   sent from the Email Copilot. You can use plain text or HTML
                   formatting.
@@ -370,7 +370,7 @@ export default function Settings() {
           <Button
             onClick={handleSaveSignature}
             disabled={savingSignature || loadingSignature}
-            className="w-full"
+            className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
           >
             {savingSignature && (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
