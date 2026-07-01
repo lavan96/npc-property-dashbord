@@ -1210,6 +1210,138 @@ Deno.serve(async (req) => {
       });
     }
 
+
+    // ---------- Phase 7B: Visual repair audit persistence ----------
+    if (operation === 'save_visual_repair_audit') {
+      const importId = body.import_id as string;
+      const payload = body.payload;
+
+      if (!importId || !payload || typeof payload !== 'object') {
+        return json({ error: 'import_id and payload are required' }, 400);
+      }
+
+      await ensureArtifactBucket(admin);
+
+      const { data: record, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .single();
+
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (record?.user_id && authedUserId && record.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const auditPath = `${importId}/repair/repair-loop.json`;
+      const repairFolder = `${importId}/repair`;
+      const persistedAt = new Date().toISOString();
+
+      const auditPayload = {
+        ...(payload as Record<string, unknown>),
+        persistedAt,
+        artifactPaths: {
+          summary: auditPath,
+          repairFolder,
+        },
+      };
+
+      const { error: uploadErr } = await admin.storage
+        .from(ARTIFACT_BUCKET)
+        .upload(auditPath, new TextEncoder().encode(JSON.stringify(auditPayload)), {
+          contentType: 'application/json',
+          upsert: true,
+        });
+
+      if (uploadErr) {
+        logDbError('save_visual_repair_audit.upload', uploadErr);
+        return json({ error: uploadErr.message }, 400);
+      }
+
+      const summary = (payload as any)?.summary && typeof (payload as any).summary === 'object'
+        ? (payload as any).summary
+        : {};
+
+      const currentMeta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
+      const nextMeta = {
+        ...currentMeta,
+        visual_repair_artifact_path: auditPath,
+        visual_repair_summary: {
+          version: summary.version ?? null,
+          importId: summary.importId ?? importId,
+          templateId: summary.templateId ?? null,
+          visualQaScore: summary.visualQaScore ?? null,
+          finalScore: summary.finalScore ?? null,
+          scoreDelta: summary.scoreDelta ?? null,
+          visualQaPersisted: summary.visualQaPersisted ?? null,
+          repairStatus: summary.repairStatus ?? null,
+          canRunRepairLoop: summary.canRunRepairLoop ?? null,
+          eligiblePageCount: summary.eligiblePageCount ?? null,
+          totalApplied: summary.totalApplied ?? null,
+          passesAttempted: summary.passesAttempted ?? null,
+          patchesAccepted: summary.patchesAccepted ?? null,
+          patchesRejected: summary.patchesRejected ?? null,
+          requiresFallback: summary.requiresFallback ?? null,
+          requiresManualReview: summary.requiresManualReview ?? null,
+          problemCount: summary.problemCount ?? null,
+          generatedAt: (payload as any)?.generatedAt ?? null,
+          persistedAt,
+        },
+      };
+
+      const { error: updateErr } = await admin
+        .from('template_imports')
+        .update({ meta: nextMeta })
+        .eq('id', importId);
+
+      if (updateErr) {
+        logDbError('save_visual_repair_audit.update_meta', updateErr);
+        return json({ error: updateErr.message }, 400);
+      }
+
+      return json({
+        ok: true,
+        audit_path: auditPath,
+        artifactPaths: {
+          summary: auditPath,
+          repairFolder,
+        },
+      });
+    }
+
+    if (operation === 'get_visual_repair_audit') {
+      const importId = body.import_id as string;
+      if (!importId) return json({ error: 'import_id required' }, 400);
+
+      const { data: record, error: getErr } = await admin
+        .from('template_imports')
+        .select('id,user_id,meta')
+        .eq('id', importId)
+        .single();
+
+      if (getErr) return json({ error: getErr.message }, 404);
+      if (record?.user_id && authedUserId && record.user_id !== authedUserId && auth.userId !== 'service_role') {
+        return json({ error: 'forbidden' }, 403);
+      }
+
+      const meta = ((record.meta && typeof record.meta === 'object') ? record.meta : {}) as any;
+      const auditPath = meta.visual_repair_artifact_path as string | null | undefined;
+      if (!auditPath) return json(null);
+
+      const payload = await readJsonArtifact(admin, auditPath);
+      if (!payload) return json(null);
+
+      return json({
+        importId,
+        payload,
+        artifactPaths: {
+          summary: auditPath,
+          repairFolder: `${importId}/repair`,
+        },
+      });
+    }
+
+
     // ---------- Phase 8: Diagnostics — list visual-quality reports ----------
     if (operation === 'list_visual_quality') {
       const limit = Math.min(Number(body.limit) || 50, 200);
