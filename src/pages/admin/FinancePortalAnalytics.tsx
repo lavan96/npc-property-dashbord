@@ -23,6 +23,7 @@ import {
   Tooltip as RTooltip, BarChart, Bar, Legend,
 } from 'recharts';
 import { Link } from 'react-router-dom';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface DailyPoint {
   date: string;
@@ -152,8 +153,8 @@ export default function FinancePortalAnalytics() {
   }, [data]);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <DashboardThemeFrame variant="page" className="space-y-6 p-4 sm:p-6">
+      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />
@@ -163,9 +164,9 @@ export default function FinancePortalAnalytics() {
             Aggregate activity, engagement, and audit insight across all finance partners.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <DashboardThemeFrame variant="toolbar" className="md:w-auto">
           <Select value={days} onValueChange={setDays}>
-            <SelectTrigger className="w-36 h-9">
+            <SelectTrigger className="h-9 w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -183,8 +184,8 @@ export default function FinancePortalAnalytics() {
           <Button variant="outline" asChild>
             <Link to="/admin/finance-portal">Manage Users</Link>
           </Button>
-        </div>
-      </div>
+        </DashboardThemeFrame>
+      </DashboardThemeFrame>
 
       {loading || !data ? (
         <div className="flex items-center justify-center py-24">
@@ -192,7 +193,7 @@ export default function FinancePortalAnalytics() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard icon={<Users className="h-4 w-4" />} label="Active Partners" value={data.kpis.active_users} subtitle={`${data.kpis.invited_users} invited · ${data.kpis.revoked_users} revoked`} />
             <KpiCard icon={<ShieldCheck className="h-4 w-4" />} label="Client Assignments" value={data.kpis.total_assignments} subtitle={`${data.kpis.auto_linked_assignments} auto-linked`} />
             <KpiCard icon={<MessageSquare className="h-4 w-4" />} label="Active Threads" value={data.kpis.active_threads} subtitle={`${data.kpis.unread_messages_staff} unread for staff`} tone={data.kpis.unread_messages_staff > 0 ? 'warning' : 'default'} />
@@ -200,7 +201,7 @@ export default function FinancePortalAnalytics() {
           </div>
 
           <Tabs defaultValue="activity" className="space-y-4">
-            <TabsList>
+            <TabsList className="h-auto w-full flex-wrap justify-start rounded-2xl bg-muted/60 p-1 sm:w-auto">
               <TabsTrigger value="activity"><Activity className="h-4 w-4 mr-2" />Activity</TabsTrigger>
               <TabsTrigger value="partners"><Users className="h-4 w-4 mr-2" />Top Partners</TabsTrigger>
               <TabsTrigger value="actions"><TrendingUp className="h-4 w-4 mr-2" />Action Breakdown</TabsTrigger>
@@ -208,7 +209,8 @@ export default function FinancePortalAnalytics() {
             </TabsList>
 
             <TabsContent value="activity" className="space-y-4">
-              <Card>
+              <DashboardThemeFrame variant="chartCard" className="p-0">
+              <Card className="border-0 bg-transparent shadow-none">
                 <CardHeader>
                   <CardTitle>Daily Engagement</CardTitle>
                   <CardDescription>Logins, document uploads, messages, and BC reviews over the selected window.</CardDescription>
@@ -246,7 +248,9 @@ export default function FinancePortalAnalytics() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              </DashboardThemeFrame>
+              <DashboardThemeFrame variant="chartCard" className="p-0">
+              <Card className="border-0 bg-transparent shadow-none">
                 <CardHeader>
                   <CardTitle>Total Events / Day</CardTitle>
                   <CardDescription>Sum of all audited finance portal events.</CardDescription>
@@ -267,16 +271,18 @@ export default function FinancePortalAnalytics() {
                   </div>
                 </CardContent>
               </Card>
+              </DashboardThemeFrame>
             </TabsContent>
 
             <TabsContent value="partners">
-              <Card>
+              <DashboardThemeFrame variant="section" className="p-0">
+              <Card className="border-0 bg-transparent shadow-none">
                 <CardHeader>
                   <CardTitle>Most Active Partners</CardTitle>
                   <CardDescription>Top 10 finance partners by audited event count over the window.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
+                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70"><Table className="min-w-[720px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Partner</TableHead>
@@ -301,13 +307,15 @@ export default function FinancePortalAnalytics() {
                         </TableRow>
                       ))}
                     </TableBody>
-                  </Table>
+                  </Table></div>
                 </CardContent>
               </Card>
+              </DashboardThemeFrame>
             </TabsContent>
 
             <TabsContent value="actions">
-              <Card>
+              <DashboardThemeFrame variant="chartCard" className="p-0">
+              <Card className="border-0 bg-transparent shadow-none">
                 <CardHeader>
                   <CardTitle>Action Frequency</CardTitle>
                   <CardDescription>Breakdown of audit actions over the selected window.</CardDescription>
@@ -328,11 +336,13 @@ export default function FinancePortalAnalytics() {
                   </div>
                 </CardContent>
               </Card>
+              </DashboardThemeFrame>
             </TabsContent>
 
             <TabsContent value="audit" className="space-y-4">
-              <Card>
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <DashboardThemeFrame variant="section" className="p-0">
+              <Card className="border-0 bg-transparent shadow-none">
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle>Audit Log Search</CardTitle>
                     <CardDescription>Search across actions, entity types, and metadata.</CardDescription>
@@ -344,12 +354,12 @@ export default function FinancePortalAnalytics() {
                         value={auditSearch}
                         onChange={e => setAuditSearch(e.target.value)}
                         placeholder="Search action / entity / metadata..."
-                        className="pl-8 h-9 w-72"
+                        className="h-9 w-full min-w-0 pl-8 sm:w-72"
                         onKeyDown={e => e.key === 'Enter' && loadAudit()}
                       />
                     </div>
                     <Select value={auditAction} onValueChange={setAuditAction}>
-                      <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-9 w-full sm:w-48"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All actions</SelectItem>
                         {Object.keys(data.action_counts).sort().map(a => (
@@ -364,8 +374,8 @@ export default function FinancePortalAnalytics() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
+                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/70">
+                    <Table className="min-w-[840px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>When</TableHead>
@@ -380,21 +390,21 @@ export default function FinancePortalAnalytics() {
                           <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-sm">No audit records.</TableCell></TableRow>
                         )}
                         {audit.map(a => (
-                          <TableRow key={a.id}>
+                          <TableRow key={a.id} className="transition-colors hover:bg-muted/35">
                             <TableCell className="text-xs whitespace-nowrap">
                               {format(new Date(a.created_at), 'MMM d, HH:mm:ss')}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-[10px] capitalize">{a.actor_type}</Badge>
                             </TableCell>
-                            <TableCell className={`text-sm font-medium ${ACTION_TONE[a.action] || ''}`}>
+                            <TableCell className={`max-w-[220px] truncate text-sm font-medium ${ACTION_TONE[a.action] || ''}`} title={a.action}>
                               {a.action}
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">
                               {a.entity_type || '—'}
                               {a.entity_id && <span className="ml-1 font-mono">{a.entity_id.slice(0, 8)}</span>}
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground font-mono">{a.ip_address || '—'}</TableCell>
+                            <TableCell className="max-w-[160px] truncate text-xs text-muted-foreground font-mono" title={a.ip_address || '—'}>{a.ip_address || '—'}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -402,11 +412,12 @@ export default function FinancePortalAnalytics() {
                   </div>
                 </CardContent>
               </Card>
+              </DashboardThemeFrame>
             </TabsContent>
           </Tabs>
         </>
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }
 
@@ -423,7 +434,8 @@ function KpiCard({
     destructive: 'text-destructive',
   }[tone];
   return (
-    <Card>
+    <DashboardThemeFrame variant="premiumCard">
+      <Card className="border-0 bg-transparent shadow-none">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
@@ -434,5 +446,6 @@ function KpiCard({
         {subtitle && <div className="text-xs text-muted-foreground mt-1">{subtitle}</div>}
       </CardContent>
     </Card>
+    </DashboardThemeFrame>
   );
 }
