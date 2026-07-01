@@ -593,54 +593,59 @@ export default function PortalConfig() {
               <CardDescription>Set the default permissions for new client portal users</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <Label>Default Access Level for New Users</Label>
-                <Select
-                  value={config.default_access_level}
-                  onValueChange={(val) => updateConfig({ default_access_level: val })}
-                >
-                  <SelectTrigger className="w-full md:w-[300px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="read_only">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">Read Only</Badge>
-                        <span className="text-muted-foreground text-xs">View data but cannot edit</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="limited_edit">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-600">Limited Edit</Badge>
-                        <span className="text-muted-foreground text-xs">Edit profile and documents only</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="full_edit">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs border-green-500/50 text-green-600">Full Edit</Badge>
-                        <span className="text-muted-foreground text-xs">Edit all available sections</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+                <div className="max-w-xl space-y-3">
+                  <Label className="text-sm font-semibold text-foreground">Default Access Level for New Users</Label>
+                  <Select
+                    value={config.default_access_level}
+                    onValueChange={(val) => updateConfig({ default_access_level: val })}
+                  >
+                    <SelectTrigger className="min-h-11 w-full rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60 md:w-[340px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="read_only">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Badge variant="outline" className="border-border/70 bg-muted/40 text-xs text-muted-foreground">Read Only</Badge>
+                          <span className="text-xs text-muted-foreground">View data but cannot edit</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="limited_edit">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Badge variant="outline" className="border-warning/40 bg-warning/10 text-xs text-warning">Limited Edit</Badge>
+                          <span className="text-xs text-muted-foreground">Edit profile and documents only</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="full_edit">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-xs text-emerald-700 dark:text-emerald-300">Full Edit</Badge>
+                          <span className="text-xs text-muted-foreground">Edit all available sections</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <Separator />
+              <Separator className="bg-border/70" />
 
-              <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
-                <h4 className="font-medium text-sm">Access Level Guide</h4>
-                <div className="grid gap-2 text-sm text-muted-foreground">
-                  <div className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs shrink-0 mt-0.5">Read Only</Badge>
-                    <p>Clients can view all enabled portal sections but cannot modify any data. Documents are downloadable but not uploadable.</p>
+              <div className="rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+                <div className="mb-4 flex min-w-0 items-center gap-2">
+                  <Shield className="h-4 w-4 shrink-0 text-primary" />
+                  <h4 className="text-sm font-semibold text-foreground">Access Level Guide</h4>
+                </div>
+                <div className="grid gap-3 text-sm text-muted-foreground lg:grid-cols-3">
+                  <div className="min-w-0 rounded-2xl border border-border/70 bg-card/75 p-4 dark:border-white/10 dark:bg-slate-950/55">
+                    <Badge variant="outline" className="mb-3 border-border/70 bg-muted/40 text-xs text-muted-foreground">Read Only</Badge>
+                    <p className="break-words leading-6">Clients can view all enabled portal sections but cannot modify any data. Documents are downloadable but not uploadable.</p>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs border-yellow-500/50 text-yellow-600 shrink-0 mt-0.5">Limited</Badge>
-                    <p>Clients can edit their personal profile and upload documents. Other sections remain read-only.</p>
+                  <div className="min-w-0 rounded-2xl border border-warning/30 bg-warning/10 p-4 dark:border-warning/25 dark:bg-warning/10">
+                    <Badge variant="outline" className="mb-3 border-warning/40 bg-warning/10 text-xs text-warning">Limited</Badge>
+                    <p className="break-words leading-6">Clients can edit their personal profile and upload documents. Other sections remain read-only.</p>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Badge variant="outline" className="text-xs border-green-500/50 text-green-600 shrink-0 mt-0.5">Full Edit</Badge>
-                    <p>Clients have full editing access across profile, properties, employment/financial details, and documents.</p>
+                  <div className="min-w-0 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 dark:border-emerald-400/25 dark:bg-emerald-500/10">
+                    <Badge variant="outline" className="mb-3 border-emerald-500/40 bg-emerald-500/10 text-xs text-emerald-700 dark:text-emerald-300">Full Edit</Badge>
+                    <p className="break-words leading-6">Clients have full editing access across profile, properties, employment/financial details, and documents.</p>
                   </div>
                 </div>
               </div>
