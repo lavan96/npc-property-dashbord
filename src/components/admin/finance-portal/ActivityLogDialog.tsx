@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Activity, Clock, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Props {
@@ -69,39 +69,63 @@ export function ActivityLogDialog({ open, onOpenChange, financeUserId, title }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{title || 'Finance Portal Activity'}</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-h-[85vh] max-w-4xl overflow-hidden rounded-2xl border-border/70 bg-card/95 p-0 shadow-2xl shadow-black/15 backdrop-blur">
+        <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-card/90 to-muted/25 p-5">
+          <DialogTitle className="flex min-w-0 items-center gap-2 text-xl tracking-tight">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+              <Activity className="h-5 w-5" />
+            </span>
+            <span className="truncate">{title || 'Finance Portal Activity'}</span>
+          </DialogTitle>
+          <DialogDescription className="leading-6">
             {financeUserId ? 'Audit trail for this portal user.' : 'Recent activity across all finance portal users.'}
           </DialogDescription>
         </DialogHeader>
         {loading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center rounded-b-2xl bg-muted/15 py-14">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <ScrollArea className="flex-1 max-h-[60vh] border rounded-lg">
-            <div className="divide-y">
+          <ScrollArea className="max-h-[62vh] bg-background/35">
+            <div className="divide-y divide-border/60">
               {logs.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center py-8">No activity yet.</div>
+                <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-dashed border-border/70 bg-muted/30 text-muted-foreground">
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <div className="text-sm font-semibold text-foreground">No activity yet</div>
+                  <div className="max-w-sm text-xs leading-5 text-muted-foreground">
+                    Finance portal audit events will appear here once activity is recorded.
+                  </div>
+                </div>
               )}
               {logs.map(l => {
                 const label = ACTION_LABELS[l.action] || { label: l.action, tone: 'outline' as const };
                 return (
-                  <div key={l.id} className="p-3 flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant={label.tone}>{label.label}</Badge>
-                        <span className="text-xs text-muted-foreground capitalize">{l.actor_type}</span>
+                  <div key={l.id} className="flex items-start gap-3 p-4 transition-colors hover:bg-primary/5">
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={label.tone} className="max-w-full rounded-full text-[10px] font-semibold" title={label.label}>{label.label}</Badge>
+                        <Badge variant="outline" className="rounded-full border-border/70 bg-background/70 text-[10px] capitalize text-muted-foreground" title={l.actor_type}>{l.actor_type}</Badge>
                       </div>
+                      {(l.entity_type || l.entity_id) && (
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className="max-w-[180px] truncate" title={l.entity_type || '—'}>{l.entity_type || '—'}</span>
+                          {l.entity_id && (
+                            <span className="max-w-[180px] truncate rounded-md bg-muted/50 px-1.5 py-0.5 font-mono" title={l.entity_id}>
+                              {l.entity_id}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       {l.metadata && Object.keys(l.metadata).length > 0 && (
-                        <pre className="mt-2 text-[11px] bg-muted/40 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words">
+                        <pre className="max-h-40 overflow-auto rounded-xl border border-border/60 bg-muted/30 p-3 text-[11px] leading-5 whitespace-pre-wrap break-words text-muted-foreground">
                           {JSON.stringify(l.metadata, null, 2)}
                         </pre>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                    <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
                       {format(new Date(l.created_at), 'MMM d, HH:mm')}
                     </div>
                   </div>
