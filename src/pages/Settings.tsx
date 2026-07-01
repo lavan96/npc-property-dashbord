@@ -249,7 +249,7 @@ export default function Settings() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="settings-page min-h-[calc(100vh-5rem)] space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_32%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.16))] p-3 pb-24 sm:p-5 md:space-y-6 md:p-6 md:pb-8 [&_.rounded-lg]:min-w-0 [&_.rounded-lg]:overflow-hidden [&_.rounded-lg]:rounded-2xl [&_.rounded-lg]:shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] [&_button]:min-w-0 [&_input]:min-w-0 [&_table]:min-w-[720px] [&_td]:min-w-0 [&_textarea]:min-w-0 [&_th]:min-w-0"
+      className="settings-page min-h-[calc(100vh-5rem)] space-y-5 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_32%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.16))] p-3 pb-24 sm:p-5 md:space-y-6 md:p-6 md:pb-8 [&_.rounded-lg]:min-w-0 [&_.rounded-lg]:overflow-hidden [&_.rounded-lg]:rounded-2xl [&_.rounded-lg]:shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] [&_button]:min-w-0 [&_input]:min-w-0 [&_table]:w-full [&_td]:min-w-0 [&_textarea]:min-w-0 [&_th]:min-w-0"
     >
       {/* Developer note: Settings UI-only polish. Touched src/pages/Settings.tsx; intentionally left authentication, permissions, Supabase/API contracts, credential handling, notification registration, migration safeguards, key rotation, pricing/catalog data, and report-generation behaviour untouched. */}
       <DashboardThemeFrame
