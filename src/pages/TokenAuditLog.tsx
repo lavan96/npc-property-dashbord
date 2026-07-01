@@ -66,7 +66,7 @@ function OutcomeBadge({ status, error }: { status: string | null; error: string 
 
 function TokenSummary({ row }: { row: AuditRow }) {
   return (
-    <div className="grid min-w-0 grid-cols-3 gap-1 text-right text-[11px]">
+    <div className="grid min-w-0 grid-cols-3 gap-1 text-right text-[11px]" aria-label={`Requested ${row.requested_tokens.toLocaleString()}, reserved ${row.reserved_tokens.toLocaleString()}, used ${row.used_tokens.toLocaleString()} tokens`}>
       <div className="min-w-0 rounded-lg bg-muted/35 px-1.5 py-1">
         <span className="block truncate text-muted-foreground">Req</span>
         <span className="block truncate font-medium tabular-nums text-foreground" title={`${row.requested_tokens}`}>{row.requested_tokens.toLocaleString()}</span>
@@ -153,6 +153,8 @@ export default function TokenAuditLog() {
             variant="outline"
             size="sm"
             disabled={loading}
+            aria-label="Refresh token audit events"
+            aria-busy={loading}
             className="min-h-11 w-full shrink-0 rounded-xl border-primary/25 bg-background/90 px-4 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.14)] active:translate-y-0 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -208,7 +210,7 @@ export default function TokenAuditLog() {
                     <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-hover:text-primary/80 group-focus-within:text-primary" />
                     <Input
                       id="token-audit-search"
-                      className="min-h-11 min-w-0 rounded-2xl border-border/70 bg-background/90 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] active:scale-[0.995] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
+                      className="min-h-11 min-w-0 rounded-2xl border-border/70 bg-background/90 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] active:scale-[0.995] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
                       placeholder="Search by idempotency key, user, function…"
                       aria-label="Search token audit events by idempotency key, user, or function"
                       value={search}
@@ -218,7 +220,7 @@ export default function TokenAuditLog() {
                   </div>
                 </div>
               </div>
-              <div className="grid shrink-0 grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-card/70 p-2 text-xs shadow-sm sm:min-w-[220px]">
+              <div className="grid shrink-0 grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-card/70 p-2 text-xs shadow-sm sm:min-w-[220px]" aria-label={`Loaded ${rows.length.toLocaleString()} events, ${filtered.length.toLocaleString()} visible`}>
                 <div className="rounded-xl bg-muted/35 px-3 py-2">
                   <span className="block text-muted-foreground">Loaded</span>
                   <span className="font-semibold tabular-nums text-foreground">{rows.length.toLocaleString()}</span>
@@ -236,14 +238,14 @@ export default function TokenAuditLog() {
             </div>
 
             {loading && rows.length > 0 && (
-              <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-xs font-medium text-primary">
+              <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-xs font-medium text-primary" role="status" aria-live="polite">
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                 <span className="min-w-0 truncate">Refreshing token audit events without changing the current filters.</span>
               </div>
             )}
 
             {loadError && (
-              <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between" role="alert">
                 <div className="flex min-w-0 items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span className="min-w-0 break-words">{loadError}</span>
@@ -255,7 +257,7 @@ export default function TokenAuditLog() {
             )}
 
             {isInitialLoading ? (
-              <div className="overflow-hidden rounded-3xl border border-border/70 bg-background/50 shadow-inner">
+              <div className="overflow-hidden rounded-3xl border border-border/70 bg-background/50 shadow-inner" role="status" aria-live="polite" aria-busy="true">
                 <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -276,7 +278,7 @@ export default function TokenAuditLog() {
                 </div>
               </div>
             ) : loadError && rows.length === 0 ? (
-              <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-destructive/25 bg-[radial-gradient(circle_at_top,hsl(var(--destructive)/0.12),transparent_46%),hsl(var(--destructive)/0.07)] px-4 py-10 text-center">
+              <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-destructive/25 bg-[radial-gradient(circle_at_top,hsl(var(--destructive)/0.12),transparent_46%),hsl(var(--destructive)/0.07)] px-4 py-10 text-center" role="alert">
                 <div className="mx-auto max-w-lg space-y-4">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive shadow-sm">
                     <AlertTriangle className="h-7 w-7" />
@@ -293,7 +295,7 @@ export default function TokenAuditLog() {
                 </div>
               </div>
             ) : rows.length === 0 ? (
-              <div className="flex min-h-[20rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.12),transparent_40%),linear-gradient(135deg,hsl(var(--muted)/0.22),hsl(var(--background)/0.72))] px-4 py-12 text-center">
+              <div className="flex min-h-[20rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.12),transparent_40%),linear-gradient(135deg,hsl(var(--muted)/0.22),hsl(var(--background)/0.72))] px-4 py-12 text-center" role="status" aria-live="polite">
                 <div className="mx-auto max-w-lg space-y-5">
                   <div className="mx-auto w-fit rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-primary">Audit ready</div>
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-primary/20 bg-primary/10 text-primary shadow-[0_16px_40px_hsl(var(--primary)/0.12)]">
@@ -313,7 +315,7 @@ export default function TokenAuditLog() {
                 </div>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex min-h-[17rem] items-center justify-center rounded-3xl border border-dashed border-primary/20 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.10),transparent_44%),hsl(var(--primary)/0.04)] px-4 py-10 text-center">
+              <div className="flex min-h-[17rem] items-center justify-center rounded-3xl border border-dashed border-primary/20 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.10),transparent_44%),hsl(var(--primary)/0.04)] px-4 py-10 text-center" role="status" aria-live="polite">
                 <div className="mx-auto max-w-md space-y-4">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
                     <Search className="h-7 w-7" />
@@ -342,7 +344,7 @@ export default function TokenAuditLog() {
                     {filtered.length.toLocaleString()} rows
                   </div>
                 </div>
-                <div className={cn("overflow-x-auto overscroll-x-contain", PREMIUM_SCROLLBAR)}>
+                <div className={cn("overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2", PREMIUM_SCROLLBAR)} role="region" aria-label="Scrollable token audit events table" tabIndex={0}>
                   <Table className="min-w-[1470px] table-fixed" aria-label="Token audit events">
                     <TableHeader className="sticky top-0 z-10">
                       <TableRow className="border-b border-border/70 bg-muted/45 hover:bg-muted/45">
@@ -418,7 +420,7 @@ export default function TokenAuditLog() {
                               >
                                 <FileKey2 className="h-3.5 w-3.5 shrink-0 opacity-70 transition-opacity group-hover/key:opacity-100" />
                                 <span className="min-w-0 truncate">{r.idempotency_key}</span>
-                                <span className="ml-auto hidden shrink-0 rounded-full border border-primary/15 bg-background/70 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-primary/80 group-hover/key:inline-flex group-focus-visible/key:inline-flex">Trail</span>
+                                <span className="ml-auto hidden shrink-0 rounded-full border border-primary/15 bg-background/70 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[0.12em] text-primary/80 group-hover/key:inline-flex group-focus/key:inline-flex">Trail</span>
                               </button>
                             </TableCell>
                             <TableCell className="align-top"><TokenSummary row={r} /></TableCell>
