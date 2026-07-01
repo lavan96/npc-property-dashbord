@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGHLCalendar } from '@/hooks/useGHLCalendar';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface BookingCalendarOption {
   id: string;
@@ -182,31 +183,58 @@ export default function PortalConfig() {
 
   if (isLoading || !config) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <DashboardThemeFrame variant="page" className="flex min-h-[400px] items-center justify-center">
+        <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/80 px-5 py-4 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-slate-950/70">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span>Loading portal configuration…</span>
+        </div>
+      </DashboardThemeFrame>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <DashboardThemeFrame variant="page" className="space-y-6 pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Settings className="h-6 w-6 text-primary" />
-            Portal Configuration
-          </h1>
-          <p className="text-muted-foreground mt-1">Manage your client portal settings, modules, and booking configuration</p>
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="isolate flex min-w-0 flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--background))_54%,hsl(var(--muted)/0.42)_100%)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.20),transparent_34%),linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--background))_58%,hsl(var(--primary)/0.08)_100%)] sm:flex-row sm:items-start sm:justify-between"
+      >
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+        <div className="pointer-events-none absolute -left-16 -top-20 h-44 w-44 rounded-full bg-primary/15 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 bottom-0 h-40 w-40 rounded-full bg-warning/10 blur-3xl" />
+        <div className="relative flex min-w-0 flex-1 items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-sm ring-1 ring-primary/10 dark:bg-primary/15">
+            <Settings className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 space-y-2">
+            <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              Client portal controls
+            </div>
+            <div className="min-w-0 space-y-1">
+              <h1 className="break-words text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                Portal Configuration
+              </h1>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">Manage your client portal settings, modules, and booking configuration</p>
+            </div>
+          </div>
         </div>
-        <Button
-          onClick={() => saveMutation.mutate()}
-          disabled={!hasChanges || saveMutation.isPending}
-        >
-          {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Save Changes
-        </Button>
-      </div>
+        <div className="relative flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+          {hasChanges && (
+            <span className="rounded-full border border-warning/25 bg-warning/10 px-3 py-1 text-center text-xs font-medium text-warning dark:text-warning">
+              Unsaved changes pending
+            </span>
+          )}
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={!hasChanges || saveMutation.isPending}
+            className="min-h-11 rounded-full bg-primary px-5 font-semibold text-primary-foreground shadow-[0_16px_34px_hsl(var(--primary)/0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-[0_20px_44px_hsl(var(--primary)/0.28)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 disabled:translate-y-0 disabled:opacity-55 sm:min-w-[170px]"
+          >
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Save Changes
+          </Button>
+        </div>
+      </DashboardThemeFrame>
 
       <Tabs defaultValue="modules" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
@@ -583,6 +611,6 @@ export default function PortalConfig() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardThemeFrame>
   );
 }
