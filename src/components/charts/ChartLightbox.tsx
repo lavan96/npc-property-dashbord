@@ -3,7 +3,6 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, ChevronLeft, ChevronRight, FileText, ExternalLink, Sparkles, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -50,7 +49,7 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
     <Dialog open={!!chart} onOpenChange={() => onClose()}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[radial-gradient(circle_at_50%_0%,rgba(245,158,11,0.16),transparent_36%),rgba(2,6,23,0.90)] backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-0.75rem)] max-w-7xl sm:max-h-[94dvh] sm:w-[min(96vw,86rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.99),hsl(var(--background)/0.96))] p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-border dark:ring-white/10 backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-0.75rem)] max-w-7xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-amber-300/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.99),hsl(var(--background)/0.96))] p-0 shadow-[0_32px_90px_rgba(0,0,0,0.62)] ring-1 ring-border backdrop-blur-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-h-[calc(100dvh-2rem)] sm:w-[min(96vw,86rem)] dark:ring-white/10">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
           <div className="pointer-events-none absolute -right-24 -top-28 h-56 w-56 rounded-full bg-amber-400/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-28 bottom-10 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
@@ -59,8 +58,8 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
 
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-3 sm:p-6 lg:p-7">
-            <DialogHeader className="border-b border-amber-200/15 pb-4 pr-12 text-left sm:pb-5" aria-live="polite">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-contain p-3 pb-5 sm:p-6 sm:pb-7 lg:p-7">
+            <DialogHeader className="shrink-0 border-b border-amber-200/15 pb-4 pr-12 text-left sm:pb-5" aria-live="polite">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 space-y-2">
                   <DialogTitle className="max-w-4xl break-words text-xl font-bold leading-tight tracking-[-0.035em] text-foreground sm:text-3xl">
@@ -88,14 +87,14 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
               </div>
             </DialogHeader>
 
-            <div className="relative mt-4 min-h-[240px] flex-1 px-0 sm:mt-5 sm:px-14">
-              <div className="relative flex h-[42dvh] min-h-[240px] max-h-[680px] sm:h-[56vh] sm:min-h-[320px] items-center justify-center overflow-hidden rounded-[1.75rem] border border-amber-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/10 sm:p-5 lg:p-7">
+            <div className="relative mt-4 min-h-0 w-full min-w-0 px-0 sm:mt-5 sm:px-14">
+              <div className="relative flex h-[clamp(220px,42dvh,520px)] min-h-0 w-full min-w-0 items-center justify-center overflow-hidden rounded-[1.75rem] border border-amber-200/25 bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/0.14),transparent_42%),linear-gradient(145deg,hsl(222_47%_11%/0.96),hsl(220_40%_6%/0.94))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),inset_0_-24px_60px_rgba(0,0,0,0.28),0_22px_64px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/10 sm:p-5 lg:p-7">
                 <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/65 to-transparent" />
                 <div className="pointer-events-none absolute -left-24 top-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
                 <div className="pointer-events-none absolute -right-20 bottom-8 h-48 w-48 rounded-full bg-amber-400/12 blur-3xl" />
-                <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.25rem] border border-slate-200/85 bg-white p-2 shadow-[0_20px_58px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(15,23,42,0.06)] sm:p-6 lg:p-8 dark:border-white/15">
+                <div className="relative flex h-full w-full min-w-0 items-center justify-center overflow-hidden rounded-[1.25rem] border border-slate-200/85 bg-white p-2 shadow-[0_20px_58px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(15,23,42,0.06)] sm:p-6 lg:p-8 dark:border-white/15">
                   <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.62),transparent_28%,transparent_72%,rgba(15,23,42,0.035))]" />
-                  <div className="relative flex h-full w-full items-center justify-center [&>div]:max-h-full [&>div]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_svg]:max-h-full [&_svg]:max-w-full">
+                  <div className="relative flex h-full min-h-0 w-full min-w-0 items-center justify-center [&>div]:max-h-full [&>div]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_svg]:max-h-full [&_svg]:max-w-full">
                     {renderChartImage(chart)}
                   </div>
                 </div>
@@ -137,13 +136,11 @@ export function ChartLightbox({ chart, onClose, onExport, onPrev, onNext, hasPre
                   <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                   <span className="text-xs font-semibold uppercase tracking-[0.16em] text-foreground/80">Analysis</span>
                 </div>
-                <ScrollArea className="max-h-40 pr-3 sm:max-h-32">
-                  <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground/75 [overflow-wrap:anywhere]">{chart.analysis_text}</p>
-                </ScrollArea>
+                <p className="whitespace-pre-wrap break-words text-xs leading-6 text-foreground/75 [overflow-wrap:anywhere]">{chart.analysis_text}</p>
               </div>
             )}
 
-            <div className="mt-5 flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-5 flex shrink-0 flex-col gap-3 border-t border-border/60 pb-1 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs font-medium text-foreground/70">
                 Use <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">Esc</kbd> to close and <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">←</kbd> <kbd className="rounded border border-border/70 bg-muted/70 px-1.5 py-0.5 font-mono text-[10px] text-foreground">→</kbd> to navigate.
               </p>

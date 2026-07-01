@@ -100,7 +100,7 @@ function ChartBitmapImage({ chart }: { chart: ChartData }) {
     <img
       src={chart.image_data}
       alt={`${chart.title} chart`}
-      className="block h-full w-full object-contain transition-transform duration-300 ease-out group-hover/img:scale-[1.025]"
+      className="block h-full max-h-full w-full max-w-full object-contain object-center"
       onError={() => setHasError(true)}
     />
   );
@@ -128,12 +128,12 @@ function renderChartImage(chart: ChartData) {
           if (!viewBoxMatch && widthMatch && heightMatch) {
             viewBox = `0 0 ${widthMatch[1]} ${heightMatch[1]}`;
           }
-          return `<svg viewBox="${viewBox}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="max-width:100%;max-height:100%;">`;
+          return `<svg viewBox="${viewBox}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="display:block;max-width:100%;max-height:100%;overflow:visible;">`;
         });
         return (
           <div
             dangerouslySetInnerHTML={{ __html: svgContent }}
-            className="h-full w-full overflow-hidden transition-transform duration-300 ease-out group-hover/img:scale-[1.025] [&>svg]:block [&>svg]:h-full [&>svg]:max-h-full [&>svg]:w-full [&>svg]:max-w-full"
+            className="flex h-full min-h-0 w-full min-w-0 items-center justify-center overflow-visible [&>svg]:block [&>svg]:h-full [&>svg]:max-h-full [&>svg]:w-full [&>svg]:max-w-full"
           />
         );
       }
@@ -214,9 +214,9 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
         </div>
       </CardHeader>
 
-      <CardContent className="flex flex-1 flex-col space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
+      <CardContent className="flex min-h-0 flex-1 flex-col space-y-4 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
         <div
-          className={`group/img relative cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 ring-2 ring-amber-400/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_34px_rgba(245,158,11,0.22)]' : ''}`}
+          className={`group/img relative min-w-0 cursor-pointer overflow-hidden rounded-2xl border bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(145deg,hsl(var(--background))_0%,hsl(var(--muted)/0.38)_100%)] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_14px_32px_rgba(15,23,42,0.08)] transition-all duration-300 hover:border-amber-300/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.12)] dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_36%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.16)_100%)] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25' : 'border-border/60'} ${selectionMode && isSelected ? 'border-amber-300/90 ring-2 ring-amber-400/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_42px_rgba(15,23,42,0.14),0_0_34px_rgba(245,158,11,0.22)]' : ''}`}
           onClick={() => onExpand(chart)}
           role="button"
           tabIndex={0}
@@ -228,7 +228,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
             }
           }}
         >
-          <div className="relative flex h-48 w-full min-[420px]:h-56 items-center justify-center overflow-hidden rounded-xl border border-border dark:border-white/70 bg-card/95 dark:bg-white/95 p-4 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.012] sm:h-60 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_12px_28px_rgba(0,0,0,0.20)]">
+          <div className="relative flex aspect-[16/10] w-full min-w-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-3 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05),inset_0_12px_28px_rgba(15,23,42,0.035)] transition-transform duration-300 group-hover/img:scale-[1.006] sm:p-4 dark:border-white/10 dark:bg-white dark:shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08),inset_0_12px_28px_rgba(15,23,42,0.035)] [&>div]:max-h-full [&>div]:max-w-full [&_img]:max-h-full [&_img]:max-w-full [&_svg]:max-h-full [&_svg]:max-w-full">
             {renderChartImage(chart)}
           </div>
           <div className="pointer-events-none absolute inset-2 rounded-xl ring-1 ring-inset ring-slate-950/5 transition-all duration-300 group-hover/img:ring-amber-400/25 dark:ring-white/10" />
