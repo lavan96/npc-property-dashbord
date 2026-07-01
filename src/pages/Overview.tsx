@@ -38,7 +38,6 @@ import {
   LineChart,
   Line,
   ResponsiveContainer,
-  Legend
 } from 'recharts';
 
 const COLORS = [
@@ -91,11 +90,119 @@ const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_1
 const EXECUTIVE_KPI_CARD = 'group relative min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
 const EXECUTIVE_KPI_WARNING_CARD = 'border-amber-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-amber-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-amber-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-amber-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-amber-300/15 [&_.dashboard-kpi-title]:text-amber-900/80 dark:[&_.dashboard-kpi-title]:text-amber-100/80 [&_.dashboard-kpi-title+div]:border-amber-400/35 [&_.dashboard-kpi-title+div]:bg-amber-500/15 [&_.dashboard-kpi-title+div]:text-amber-600 dark:[&_.dashboard-kpi-title+div]:text-amber-300';
 const EXECUTIVE_KPI_DATA_CARD = 'border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,rgba(245,158,11,0.06)_48%,hsl(var(--card))_100%)] after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_36%)] hover:border-primary/35 dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.94)_0%,rgba(30,41,59,0.76)_54%,rgba(15,23,42,0.94)_100%)]';
-const CHART_CARD = `${PREMIUM_CARD} group min-w-0 overflow-hidden bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
+const CHART_CARD = `${PREMIUM_CARD} group min-w-0 overflow-visible bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
 const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-primary/8 via-transparent to-transparent px-4 py-4 md:px-5';
 const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-primary before:shadow-[0_0_14px_rgba(245,158,11,0.55)]';
 const CHART_CONTENT = 'px-3 pb-5 pt-5 md:px-5';
 const OVERVIEW_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+
+type OverviewPieDatum = Record<string, unknown>;
+
+const asFiniteNumber = (value: unknown): number | null => {
+  const numeric = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN;
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const firstDisplayValue = (datum: OverviewPieDatum | undefined, keys: string[]): string | null => {
+  if (!datum) return null;
+  for (const key of keys) {
+    const value = datum[key];
+    if (typeof value === 'string' && value.trim()) return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return null;
+};
+
+const getPieDatumValue = (datum: OverviewPieDatum | undefined): number | null => {
+  if (!datum) return null;
+  for (const key of ['value', 'count', 'total']) {
+    const value = asFiniteNumber(datum[key]);
+    if (value !== null) return value;
+  }
+  return null;
+};
+
+const formatOverviewPercent = (value: number | null): string | null => (
+  value !== null && Number.isFinite(value) ? `${value.toFixed(1)}%` : null
+);
+
+function PremiumPieTooltip({ active, payload, unit = 'properties' }: any) {
+  if (!active || !payload?.length) return null;
+
+  const entry = payload[0] || {};
+  const datum = (entry.payload || {}) as OverviewPieDatum;
+  const label = firstDisplayValue(datum, ['name', 'label', 'type', 'status', 'category']) || (typeof entry.name === 'string' ? entry.name : null);
+  const value = getPieDatumValue(datum) ?? asFiniteNumber(entry.value);
+  const explicitPercent = asFiniteNumber(datum.percentage) ?? asFiniteNumber(datum.percent);
+  const computedPercent = typeof entry.percent === 'number' ? entry.percent * 100 : null;
+  const percent = formatOverviewPercent(explicitPercent ?? computedPercent);
+  const colour = typeof entry.color === 'string' ? entry.color : typeof datum.fill === 'string' ? datum.fill : OVERVIEW_CHART_COLORS.brand;
+
+  if (!label && value === null && !percent) return null;
+
+  return (
+    <div className="premium-chart-tooltip min-w-[150px] rounded-xl border border-primary/30 bg-white/95 px-3.5 py-3 text-foreground shadow-[0_16px_38px_rgba(15,23,42,0.18)] backdrop-blur-md dark:border-amber-300/35 dark:bg-[rgba(15,15,20,0.96)] dark:text-white dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
+      {label && (
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.45)]" style={{ backgroundColor: colour }} />
+          <span className="text-primary dark:text-amber-200">{label}</span>
+        </div>
+      )}
+      {value !== null && (
+        <div className="text-sm font-semibold tabular-nums text-foreground dark:text-white">
+          {value.toLocaleString('en-AU')}{unit ? ` ${unit}` : ''}
+        </div>
+      )}
+      {percent && <div className="mt-1 text-xs font-medium text-muted-foreground dark:text-slate-300">{percent} of visible total</div>}
+    </div>
+  );
+}
+
+function renderOverviewPieLabel(labelKey: 'type' | 'status', data: { count: number }[], isMobile: boolean) {
+  return (props: any) => {
+    const total = data.reduce((sum, item) => sum + item.count, 0);
+    const percentageValue = total > 0 ? (props.count / total) * 100 : 0;
+    if (percentageValue < 5) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = (props.outerRadius || 90) + (isMobile ? 16 : 24);
+    const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
+    const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="hsl(var(--foreground))"
+        textAnchor={x > props.cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={isMobile ? 9 : 11}
+        fontWeight="600"
+        style={{ paintOrder: 'stroke', stroke: 'hsl(var(--card))', strokeWidth: 3, textShadow: '0 1px 3px rgba(0,0,0,0.35)' }}
+      >
+        {props[labelKey]} ({percentageValue.toFixed(1)}%)
+      </text>
+    );
+  };
+}
+
+function OverviewPieLegend({ data, labelKey }: { data: Array<Record<string, any> & { count: number }>; labelKey: 'type' | 'status' }) {
+  const total = data.reduce((sum, item) => sum + item.count, 0);
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-border/60 bg-muted/25 px-3 py-3 dark:border-white/10 dark:bg-white/[0.04]">
+      {data.map((entry, index) => {
+        const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
+        const label = entry[labelKey];
+        return (
+          <div key={label} className="flex min-w-0 items-center gap-1.5 rounded-full border border-border/60 bg-background/75 px-2.5 py-1.5 text-[10px] shadow-sm dark:border-white/10 dark:bg-slate-950/70 md:text-xs">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full md:h-3 md:w-3" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+            <span className="max-w-[9rem] truncate font-medium text-foreground">{label}</span>
+            <span className="shrink-0 text-muted-foreground">({entry.count.toLocaleString('en-AU')} · {pct}%)</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function OverviewSection({
   eyebrow,
@@ -601,78 +708,32 @@ export default function Overview() {
             <CardHeader className={CHART_HEADER}>
               <CardTitle className={CHART_TITLE}>Property Types</CardTitle>
             </CardHeader>
-            <CardContent className={CHART_CONTENT}>
-              <ResponsiveContainer width="100%" height={isMobile ? 280 : 350}>
-                <PieChart margin={isMobile ? { top: 20, right: 10, bottom: 60, left: 10 } : { top: 40, right: 20, bottom: 80, left: 20 }}>
+            <CardContent className={`${CHART_CONTENT} flex h-full flex-col overflow-visible`}>
+              <div className="overview-chart-container relative min-h-[300px] overflow-visible md:min-h-[360px]">
+                <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={isMobile ? { top: 24, right: 18, bottom: 24, left: 18 } : { top: 36, right: 42, bottom: 36, left: 42 }}>
                   <Pie
                     data={propertyTypeData}
                     cx="50%"
-                    cy="40%"
+                    cy="50%"
                     labelLine={!isMobile}
-                    label={(props: any) => {
-                      const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
-                      const percentage = total > 0 ? ((props.count / total) * 100).toFixed(1) : '0.0';
-                      if (parseFloat(percentage) < 5) return null;
-                      const RADIAN = Math.PI / 180;
-                      const radius = (props.outerRadius || 100) + (isMobile ? 14 : 22);
-                      const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-                      const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
-                      return (
-                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={isMobile ? 9 : 11} fontWeight="500">
-                          {props.type} ({percentage}%)
-                        </text>
-                      );
-                    }}
-                    outerRadius={isMobile ? 70 : 100}
+                    label={renderOverviewPieLabel('type', propertyTypeData, isMobile)}
+                    outerRadius={isMobile ? 78 : 108}
                     fill="#8884d8"
                     dataKey="count"
                     stroke="hsl(var(--card))"
                     strokeWidth={2}
-                    activeShape={{ outerRadius: isMobile ? 76 : 108 } as any}
-
+                    activeShape={{ outerRadius: isMobile ? 86 : 118 } as any}
                   >
                     {propertyTypeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value: number) => {
-                      const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
-                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                      return [`${value} properties (${percentage}%)`];
-                    }}
-                    labelFormatter={(label, payload) => {
-                      const data = payload?.[0]?.payload;
-                      return data ? `Property Type: ${data.type}` : 'Property Type';
-                    }}
-                    contentStyle={premiumTooltipStyle}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={isMobile ? 50 : 60}
-                    wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
-                    content={() => (
-                      <div className="flex flex-wrap justify-center gap-2 rounded-xl bg-muted/30 px-2 py-2 md:gap-3">
-                        {propertyTypeData.map((entry, index) => {
-                          const total = propertyTypeData.reduce((sum, item) => sum + item.count, 0);
-                          const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
-                          return (
-                            <div key={entry.type} className="flex items-center gap-1.5 rounded-full bg-background/70 px-2 py-1 shadow-sm ring-1 ring-border/50">
-                              <div
-                                className="h-2.5 w-2.5 rounded-full md:h-3 md:w-3"
-                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                              />
-                              <span className="text-[10px] md:text-xs text-muted-foreground">
-                                {entry.type} ({entry.count} · {pct}%)
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  />
+                  <Tooltip content={<PremiumPieTooltip unit="properties" />} wrapperStyle={{ zIndex: 50, pointerEvents: 'none' }} />
                 </PieChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </div>
+              <OverviewPieLegend data={propertyTypeData} labelKey="type" />
             </CardContent>
           </Card>
         </div>
@@ -724,77 +785,32 @@ export default function Overview() {
             <CardHeader className={CHART_HEADER}>
               <CardTitle className={CHART_TITLE}>Property Status</CardTitle>
             </CardHeader>
-            <CardContent className={CHART_CONTENT}>
-              <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
-                <PieChart margin={isMobile ? { top: 20, right: 10, bottom: 60, left: 10 } : { top: 40, right: 20, bottom: 80, left: 20 }}>
+            <CardContent className={`${CHART_CONTENT} flex h-full flex-col overflow-visible`}>
+              <div className="overview-chart-container relative min-h-[280px] overflow-visible md:min-h-[330px]">
+                <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={isMobile ? { top: 24, right: 18, bottom: 24, left: 18 } : { top: 36, right: 42, bottom: 36, left: 42 }}>
                   <Pie
                     data={categoryData}
                     cx="50%"
-                    cy="40%"
+                    cy="50%"
                     labelLine={!isMobile}
-                    label={(props: any) => {
-                      const total = categoryData.reduce((sum, item) => sum + item.count, 0);
-                      const percentage = total > 0 ? ((props.count / total) * 100).toFixed(1) : '0.0';
-                      if (parseFloat(percentage) < 5) return null;
-                      const RADIAN = Math.PI / 180;
-                      const radius = (props.outerRadius || 90) + (isMobile ? 14 : 22);
-                      const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-                      const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
-                      return (
-                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > props.cx ? 'start' : 'end'} dominantBaseline="central" fontSize={isMobile ? 9 : 11} fontWeight="500">
-                          {props.status} ({percentage}%)
-                        </text>
-                      );
-                    }}
-                    outerRadius={isMobile ? 65 : 90}
+                    label={renderOverviewPieLabel('status', categoryData, isMobile)}
+                    outerRadius={isMobile ? 74 : 100}
                     fill="#8884d8"
                     dataKey="count"
                     stroke="hsl(var(--card))"
                     strokeWidth={2}
-                    activeShape={{ outerRadius: isMobile ? 76 : 108 } as any}
+                    activeShape={{ outerRadius: isMobile ? 82 : 110 } as any}
                   >
                     {categoryData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value: number) => {
-                      const total = categoryData.reduce((sum, item) => sum + item.count, 0);
-                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                      return [`${value} properties (${percentage}%)`];
-                    }}
-                    labelFormatter={(label, payload) => {
-                      const data = payload?.[0]?.payload;
-                      return data ? `Status: ${data.status}` : 'Status';
-                    }}
-                    contentStyle={premiumTooltipStyle}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={isMobile ? 50 : 60}
-                    wrapperStyle={{ paddingTop: '10px', fontSize: isMobile ? '10px' : '12px' }}
-                    content={() => (
-                      <div className="flex flex-wrap justify-center gap-2 rounded-xl bg-muted/30 px-2 py-2 md:gap-3">
-                        {categoryData.map((entry, index) => {
-                          const total = categoryData.reduce((sum, item) => sum + item.count, 0);
-                          const pct = total > 0 ? ((entry.count / total) * 100).toFixed(1) : '0.0';
-                          return (
-                            <div key={entry.status} className="flex items-center gap-1.5 rounded-full bg-background/70 px-2 py-1 shadow-sm ring-1 ring-border/50">
-                              <div
-                                className="h-2.5 w-2.5 rounded-full md:h-3 md:w-3"
-                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                              />
-                              <span className="text-[10px] md:text-xs text-muted-foreground">
-                                {entry.status} ({entry.count} · {pct}%)
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  />
+                  <Tooltip content={<PremiumPieTooltip unit="properties" />} wrapperStyle={{ zIndex: 50, pointerEvents: 'none' }} />
                 </PieChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </div>
+              <OverviewPieLegend data={categoryData} labelKey="status" />
             </CardContent>
           </Card>
         </div>
