@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import {
   Upload, Download, Loader2, Eye, Save, FileSpreadsheet, AlertTriangle, CheckCircle2,
 } from 'lucide-react';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 
 interface CsvRow {
   partner_email: string;
@@ -110,35 +111,39 @@ export default function FinancePortalBulkImport() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileSpreadsheet className="h-6 w-6 text-primary" />
-            Bulk Client Assignment
+    <DashboardThemeFrame variant="page" className="space-y-6 p-4 sm:p-6">
+      <DashboardThemeFrame variant="hero" as="header" className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight sm:text-3xl">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm shadow-primary/10">
+              <FileSpreadsheet className="h-5 w-5" />
+            </span>
+            <span className="truncate">Bulk Client Assignment</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
             Upload a CSV to assign clients to finance partners in bulk with permission templates.
           </p>
         </div>
-        <Button variant="outline" onClick={downloadSample} className="gap-2">
+        <Button variant="outline" onClick={downloadSample} className="min-h-10 gap-2 rounded-xl border-border/70 bg-card/70 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-primary">
           <Download className="h-4 w-4" /> Download CSV Template
         </Button>
-      </div>
+      </DashboardThemeFrame>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>1. Upload or paste CSV</CardTitle>
-          <CardDescription>
+      <DashboardThemeFrame variant="section" className="p-0">
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
+          <CardTitle className="text-lg tracking-tight">1. Upload or paste CSV</CardTitle>
+          <CardDescription className="leading-6">
             Required: <code className="text-primary">partner_email</code>. One of <code className="text-primary">client_email</code> or <code className="text-primary">client_name</code>.
             Optional: <code className="text-primary">permission_template</code> = <code>default</code> | <code>view_only</code> | <code>view_edit</code> | <code>full_access</code>.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 p-4 sm:p-5">
           <Input
             type="file"
             accept=".csv,text/csv"
             onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            className="h-10 rounded-xl border-border/70 bg-background/75"
           />
           <Textarea
             rows={8}
@@ -150,22 +155,24 @@ export default function FinancePortalBulkImport() {
               setResults([]);
               setSummary(null);
             }}
-            className="font-mono text-xs"
+            className="rounded-xl border-border/70 bg-background/75 font-mono text-xs shadow-inner focus-visible:ring-primary/35"
           />
           {rows.length > 0 && (
-            <div className="text-sm text-muted-foreground">
+            <div className="inline-flex rounded-full border border-success/20 bg-success/10 px-3 py-1 text-sm text-success">
               Parsed <strong className="text-foreground">{rows.length}</strong> data rows.
             </div>
           )}
         </CardContent>
       </Card>
+      </DashboardThemeFrame>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>2. Preview & commit</CardTitle>
-          <CardDescription>Always dry-run first to validate matches before applying changes.</CardDescription>
+      <DashboardThemeFrame variant="section" className="p-0">
+      <Card className="border-0 bg-transparent shadow-none">
+        <CardHeader className="border-b border-border/60 bg-gradient-to-r from-card/80 to-muted/25 p-4 sm:p-5">
+          <CardTitle className="text-lg tracking-tight">2. Preview & commit</CardTitle>
+          <CardDescription className="leading-6">Always dry-run first to validate matches before applying changes.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => submit(true)} disabled={previewing || rows.length === 0} className="gap-2">
               {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
@@ -183,7 +190,7 @@ export default function FinancePortalBulkImport() {
           </div>
 
           {summary && (
-            <Alert variant={summary.errors > 0 && summary.errors === summary.total ? 'destructive' : 'default'}>
+            <Alert variant={summary.errors > 0 && summary.errors === summary.total ? 'destructive' : 'default'} className="rounded-2xl border-border/70 bg-card/80">
               {summary.errors > 0 ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
               <AlertTitle>{dryRun ? 'Preview' : 'Import'} Result</AlertTitle>
               <AlertDescription>
@@ -193,10 +200,10 @@ export default function FinancePortalBulkImport() {
           )}
 
           {results.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
+            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <Table className="min-w-[860px]">
+                <TableHeader className="bg-muted/35">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead className="w-16">Row</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Partner</TableHead>
@@ -207,7 +214,7 @@ export default function FinancePortalBulkImport() {
                 </TableHeader>
                 <TableBody>
                   {results.map(r => (
-                    <TableRow key={r.row}>
+                    <TableRow key={r.row} className="transition-colors hover:bg-primary/5">
                       <TableCell className="font-mono text-xs">{r.row}</TableCell>
                       <TableCell>
                         <StatusBadge status={r.status} />
@@ -224,7 +231,8 @@ export default function FinancePortalBulkImport() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </DashboardThemeFrame>
+    </DashboardThemeFrame>
   );
 }
 
