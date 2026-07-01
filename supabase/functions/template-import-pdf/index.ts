@@ -135,7 +135,22 @@ function importManifestSummary(manifests: any) {
     ? manifests.pdf_import_job
     : null;
 
-  if (!pdf) return { has_pdf_import_job: false };
+  if (!pdf) {
+    return {
+      has_pdf_import_job: false,
+      page_context_manifest_available: false,
+      page_context_source: 'missing_pdf_import_job',
+    };
+  }
+
+  const jobId = typeof pdf.job_id === 'string' && pdf.job_id.length > 0 ? pdf.job_id : null;
+  const explicitPageManifestPath = typeof pdf.per_page_docling_manifest_path === 'string' && pdf.per_page_docling_manifest_path.length > 0
+    ? pdf.per_page_docling_manifest_path
+    : null;
+  const derivedPageManifestPath = !explicitPageManifestPath && jobId
+    ? `${jobId}/pages-manifest.json`
+    : null;
+  const resolvedPageManifestPath = explicitPageManifestPath ?? derivedPageManifestPath ?? null;
 
   return {
     has_pdf_import_job: true,
@@ -147,16 +162,20 @@ function importManifestSummary(manifests: any) {
     per_page_docling_artifact_version: pdf.per_page_docling_artifact_version ?? null,
     per_page_docling_parent_manifest_version: pdf.per_page_docling_parent_manifest_version ?? null,
     per_page_docling_global_artifact_copy_version: pdf.per_page_docling_global_artifact_copy_version ?? null,
-    per_page_docling_manifest_path: pdf.per_page_docling_manifest_path ?? null,
+    per_page_docling_manifest_path: resolvedPageManifestPath,
+    per_page_docling_manifest_path_explicit: explicitPageManifestPath,
+    per_page_docling_manifest_path_derived: derivedPageManifestPath,
     per_page_docling_page_count: pdf.per_page_docling_page_count ?? null,
     per_page_docling_validation_ok: pdf.per_page_docling_validation?.ok ?? null,
     per_page_docling_validation_problem_count: Array.isArray(pdf.per_page_docling_validation?.problems)
       ? pdf.per_page_docling_validation.problems.length
       : null,
-    page_context_manifest_available: typeof pdf.per_page_docling_manifest_path === 'string' && pdf.per_page_docling_manifest_path.length > 0,
-    page_context_source: typeof pdf.per_page_docling_manifest_path === 'string' && pdf.per_page_docling_manifest_path.length > 0
+    page_context_manifest_available: Boolean(resolvedPageManifestPath),
+    page_context_source: explicitPageManifestPath
       ? 'per_page_docling_manifest_path'
-      : 'legacy_docling_path',
+      : derivedPageManifestPath
+        ? 'derived_job_pages_manifest_path'
+        : 'legacy_docling_path',
     mode: pdf.mode ?? null,
     page_count: pdf.page_count ?? null,
     consumer_guardrail_version: pdf.consumer_guardrail_version ?? null,
@@ -935,27 +954,67 @@ Deno.serve(async (req) => {
         ? importManifests.pdf_import_job
         : null;
 
-      const explicitPdfPageManifestPath = typeof pdfImportJob?.per_page_docling_manifest_path === 'string'
+      const importManifestSummaryMeta = meta.import_manifests_summary && typeof meta.import_manifests_summary === 'object'
+        ? meta.import_manifests_summary
+        : null;
+
+      const pdfJobId = typeof pdfImportJob?.job_id === 'string' && pdfImportJob.job_id.length > 0
+        ? pdfImportJob.job_id
+        : typeof importManifestSummaryMeta?.job_id === 'string' && importManifestSummaryMeta.job_id.length > 0
+          ? importManifestSummaryMeta.job_id
+          : null;
+
+      let pdfJobResultPayload: any = null;
+      if (pdfJobId) {
+        const { data: pdfJob, error: pdfJobErr } = await admin
+          .from('pdf_import_jobs')
+          .select('id,result_payload,diagnostics_path,engine_version')
+          .eq('id', pdfJobId)
+          .maybeSingle();
+
+        if (pdfJobErr) {
+          logDbError('get_artifacts.pdf_import_jobs.lookup', pdfJobErr);
+        } else if (pdfJob?.result_payload && typeof pdfJob.result_payload === 'object') {
+          pdfJobResultPayload = pdfJob.result_payload;
+        }
+      }
+
+      const explicitPdfPageManifestPath = typeof pdfImportJob?.per_page_docling_manifest_path === 'string' && pdfImportJob.per_page_docling_manifest_path.length > 0
         ? pdfImportJob.per_page_docling_manifest_path
         : null;
 
-      const derivedPdfPageManifestPath = !explicitPdfPageManifestPath && typeof pdfImportJob?.job_id === 'string'
-        ? `${pdfImportJob.job_id}/pages-manifest.json`
+      const metaSummaryPdfPageManifestPath = typeof importManifestSummaryMeta?.per_page_docling_manifest_path === 'string' && importManifestSummaryMeta.per_page_docling_manifest_path.length > 0
+        ? importManifestSummaryMeta.per_page_docling_manifest_path
         : null;
 
-      let pdfPageManifestPath = explicitPdfPageManifestPath ?? derivedPdfPageManifestPath;
-      let pdfPageManifest = await readPdfDiagnosticsJsonArtifact(admin, pdfPageManifestPath);
+      const jobPayloadPdfPageManifestPath = typeof pdfJobResultPayload?.per_page_docling_manifest_path === 'string' && pdfJobResultPayload.per_page_docling_manifest_path.length > 0
+        ? pdfJobResultPayload.per_page_docling_manifest_path
+        : null;
 
-      // Phase 7A.4 recovery:
-      // Some live imports have the parent pages-manifest.json in pdf-import-diagnostics,
-      // but the import manifest does not carry per_page_docling_manifest_path.
-      // Recover the manifest from {job_id}/pages-manifest.json so Review Quality,
-      // Visual QA, and Repair can receive page contexts/source rasters.
-      if (!pdfPageManifest && derivedPdfPageManifestPath && pdfPageManifestPath !== derivedPdfPageManifestPath) {
-        const recovered = await readPdfDiagnosticsJsonArtifact(admin, derivedPdfPageManifestPath);
-        if (recovered) {
-          pdfPageManifestPath = derivedPdfPageManifestPath;
-          pdfPageManifest = recovered;
+      const derivedPdfPageManifestPath = pdfJobId
+        ? `${pdfJobId}/pages-manifest.json`
+        : null;
+
+      const manifestCandidates = [
+        ['per_page_docling_manifest_path', explicitPdfPageManifestPath],
+        ['meta_import_manifests_summary_path', metaSummaryPdfPageManifestPath],
+        ['pdf_import_jobs_result_payload_path', jobPayloadPdfPageManifestPath],
+        ['derived_job_pages_manifest_path', derivedPdfPageManifestPath],
+      ]
+        .filter((entry): entry is [string, string] => Boolean(entry[1]))
+        .filter((entry, index, arr) => arr.findIndex((candidate) => candidate[1] === entry[1]) === index);
+
+      let pdfPageManifestPath: string | null = null;
+      let pdfPageManifest: any = null;
+      let pdfPageManifestSource = 'missing';
+
+      for (const [source, candidatePath] of manifestCandidates) {
+        const candidateManifest = await readPdfDiagnosticsJsonArtifact(admin, candidatePath);
+        if (candidateManifest) {
+          pdfPageManifestPath = candidatePath;
+          pdfPageManifest = candidateManifest;
+          pdfPageManifestSource = source;
+          break;
         }
       }
 
@@ -988,14 +1047,17 @@ Deno.serve(async (req) => {
         pdfPageContexts,
         pdfPageContextSummary,
         pageContextEntrypoint: {
-          available: Boolean(pdfPageManifestPath && pdfPageManifest && pdfPageContextSummary.ok),
-          source: pdfPageManifestPath ? 'per_page_docling_manifest_path' : 'legacy_docling_path',
+          available: Boolean(pdfPageManifestPath && pdfPageManifest && pdfPageContexts.length > 0),
+          source: pdfPageManifestSource,
           manifest_path: pdfPageManifestPath,
+          manifest_candidates: manifestCandidates.map(([source, path]) => ({ source, path })),
           page_count: pdfPageManifestSummary?.page_count ?? null,
           validation_ok: pdfPageManifestSummary?.validation_ok ?? null,
           parent_global_paths_ok: pdfPageManifestSummary?.parent_global_paths_ok ?? null,
           page_contexts_ok: pdfPageContextSummary.ok,
+          page_contexts_usable: Boolean(pdfPageManifestPath && pdfPageManifest && pdfPageContexts.length > 0),
           page_context_count: pdfPageContexts.length,
+          page_context_problems: pdfPageContextSummary.problems ?? [],
         },
         artifactPaths: {
           cdir: meta.cdir_artifact_path ?? null,
