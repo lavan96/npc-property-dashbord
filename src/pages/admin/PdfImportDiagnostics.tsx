@@ -131,10 +131,10 @@ const METRIC_VALUE_CLASS = "mt-2 text-2xl font-bold tracking-tight text-foregrou
 
 const STATUS_COLOR: Record<StatusValue, string> = {
   queued: 'bg-muted text-muted-foreground',
-  uploading: 'bg-blue-500/10 text-blue-500',
-  parsing: 'bg-blue-500/10 text-blue-500',
-  mapping: 'bg-blue-500/10 text-blue-500',
-  finalizing: 'bg-blue-500/10 text-blue-500',
+  uploading: 'bg-warning/10 text-warning',
+  parsing: 'bg-warning/10 text-warning',
+  mapping: 'bg-warning/10 text-warning',
+  finalizing: 'bg-warning/10 text-warning',
   succeeded: 'bg-success/10 text-success',
   failed: 'bg-destructive/10 text-destructive',
   cancelled: 'bg-muted text-muted-foreground',
@@ -552,14 +552,26 @@ export default function PdfImportDiagnostics() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-12">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                    <TableCell colSpan={15} className="py-14">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-5 text-center shadow-sm">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden="true" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">Loading Docling diagnostics</div>
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">Fetching attempt summaries, stages, SSIM, cost telemetry, and diagnostic bundle availability.</div>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
-                      No imports match the current filter.
+                    <TableCell colSpan={15} className="py-14">
+                      <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-muted/20 p-5 text-center shadow-sm">
+                        <Activity className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">No imports match the current filters</div>
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">Adjust the status, engine, or version filters to inspect other Docling import attempts.</div>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (

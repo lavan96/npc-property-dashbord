@@ -786,9 +786,9 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
 
             {/* Progress */}
             {progress && (
-              <div className="rounded-2xl border border-primary/20 bg-card/80 p-4 shadow-sm">
+              <div className="rounded-2xl border border-warning/30 bg-warning/5 p-4 shadow-sm">
                 <div className="flex justify-between gap-3 text-xs text-muted-foreground">
-                  <span className="min-w-0 truncate font-medium text-foreground">{progressDetails.label}</span>
+                  <span className="min-w-0 truncate font-semibold text-foreground">{progressDetails.label}</span>
                   <span className="whitespace-nowrap tabular-nums">{percent}% · {progressDetails.eta}</span>
                 </div>
                 <Progress value={percent} className="mt-3" />
