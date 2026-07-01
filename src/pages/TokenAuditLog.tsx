@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Clock3, DatabaseZap, FileKey2, Filter, RefreshCw, Search, ShieldCheck, WalletCards } from "lucide-react";
+import { AlertTriangle, Clock3, DatabaseZap, FileKey2, Filter, Loader2, RefreshCw, Search, ShieldCheck, WalletCards } from "lucide-react";
 import { format } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
 
@@ -235,6 +235,13 @@ export default function TokenAuditLog() {
               <span className="min-w-0 truncate">Click an idempotency key to inspect the reserve / commit / cancel trail.</span>
             </div>
 
+            {loading && rows.length > 0 && (
+              <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-xs font-medium text-primary">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                <span className="min-w-0 truncate">Refreshing token audit events without changing the current filters.</span>
+              </div>
+            )}
+
             {loadError && (
               <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-start gap-2">
@@ -248,47 +255,75 @@ export default function TokenAuditLog() {
             )}
 
             {isInitialLoading ? (
-              <div className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-3">
-                <div className="flex items-center justify-between gap-3 px-1">
-                  <Skeleton className="h-4 w-36 rounded-lg" />
-                  <Skeleton className="h-4 w-24 rounded-lg" />
+              <div className="overflow-hidden rounded-3xl border border-border/70 bg-background/50 shadow-inner">
+                <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Loading audit events</p>
+                      <p className="text-xs text-muted-foreground">Fetching the latest Mission Control ledger entries.</p>
+                    </div>
+                  </div>
+                  <Skeleton className="hidden h-7 w-24 rounded-full sm:block" />
                 </div>
-                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-xl" />)}
+                <div className="space-y-3 p-4">
+                  <div className="grid gap-3 sm:grid-cols-[1.1fr_0.7fr_1.4fr_1fr]">
+                    {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-4 rounded-lg" />)}
+                  </div>
+                  {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-2xl" />)}
+                </div>
               </div>
             ) : loadError && rows.length === 0 ? (
-              <div className="flex min-h-[16rem] items-center justify-center rounded-3xl border border-destructive/25 bg-destructive/10 px-4 py-10 text-center">
-                <div className="mx-auto max-w-md space-y-3">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
-                    <AlertTriangle className="h-6 w-6" />
+              <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-destructive/25 bg-[radial-gradient(circle_at_top,hsl(var(--destructive)/0.12),transparent_46%),hsl(var(--destructive)/0.07)] px-4 py-10 text-center">
+                <div className="mx-auto max-w-lg space-y-4">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive shadow-sm">
+                    <AlertTriangle className="h-7 w-7" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">Unable to load token audit events.</p>
-                  <p className="break-words text-xs leading-5 text-destructive">{loadError}</p>
-                  <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={load} disabled={loading}>Retry</Button>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Unable to load token audit events.</p>
+                    <p className="break-words text-xs leading-5 text-destructive">{loadError}</p>
+                    <p className="text-xs leading-5 text-muted-foreground">The audit ledger has not been changed. Retry will request the same filtered view again.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10" onClick={load} disabled={loading}>
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                    Retry
+                  </Button>
                 </div>
               </div>
             ) : rows.length === 0 ? (
-              <div className="flex min-h-[18rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_42%),hsl(var(--muted)/0.18)] px-4 py-12 text-center">
-                <div className="mx-auto max-w-sm space-y-3">
+              <div className="flex min-h-[20rem] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.12),transparent_40%),linear-gradient(135deg,hsl(var(--muted)/0.22),hsl(var(--background)/0.72))] px-4 py-12 text-center">
+                <div className="mx-auto max-w-lg space-y-5">
                   <div className="mx-auto w-fit rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-primary">Audit ready</div>
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
-                    <FileKey2 className="h-7 w-7" />
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-primary/20 bg-primary/10 text-primary shadow-[0_16px_40px_hsl(var(--primary)/0.12)]">
+                    <FileKey2 className="h-8 w-8" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">No events recorded.</p>
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    Mission Control reserve, commit and cancel events will appear here once available. Use the filter, search and Refresh controls to interrogate the audit ledger.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-base font-semibold text-foreground">No events recorded.</p>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      Mission Control reserve, commit and cancel events will appear here once available. Filters and search are ready to inspect new audit records.
+                    </p>
+                  </div>
+                  <div className="grid gap-2 text-left text-xs text-muted-foreground sm:grid-cols-3">
+                    <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">Filter by event type</div>
+                    <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">Search keys or users</div>
+                    <div className="rounded-2xl border border-border/60 bg-background/70 px-3 py-2">Refresh for latest</div>
+                  </div>
                 </div>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex min-h-[16rem] items-center justify-center rounded-3xl border border-dashed border-primary/20 bg-primary/5 px-4 py-10 text-center">
-                <div className="mx-auto max-w-md space-y-3">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
-                    <Search className="h-6 w-6" />
+              <div className="flex min-h-[17rem] items-center justify-center rounded-3xl border border-dashed border-primary/20 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.10),transparent_44%),hsl(var(--primary)/0.04)] px-4 py-10 text-center">
+                <div className="mx-auto max-w-md space-y-4">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                    <Search className="h-7 w-7" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">No matching audit events.</p>
-                  <p className="break-words text-xs leading-5 text-muted-foreground">
-                    No token audit events match “{search.trim()}”. Adjust the search by idempotency key, user or function.
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">No matching audit events.</p>
+                    <p className="break-words text-xs leading-5 text-muted-foreground">
+                      No token audit events match “{search.trim()}”. Adjust the search by idempotency key, user or function, or change the event type filter.
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
