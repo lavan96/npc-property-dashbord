@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Clock3, DatabaseZap, FileKey2, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Clock3, DatabaseZap, FileKey2, Filter, RefreshCw, Search, ShieldCheck, WalletCards } from "lucide-react";
 import { format } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
 
@@ -45,6 +45,41 @@ function EventBadge({ event }: { event: string }) {
     <Badge variant="outline" className={cn("max-w-full rounded-full px-2.5 py-0.5 capitalize", className)} title={event}>
       <span className="min-w-0 truncate">{event}</span>
     </Badge>
+  );
+}
+
+function OutcomeBadge({ status, error }: { status: string | null; error: string | null }) {
+  const label = error ? "error" : status || "recorded";
+  const normalized = label.toLowerCase();
+  const className = error || ["failed", "error", "cancelled", "canceled"].some((v) => normalized.includes(v))
+    ? "border-destructive/25 bg-destructive/10 text-destructive"
+    : ["success", "committed", "complete", "completed", "ok"].some((v) => normalized.includes(v))
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : "border-primary/20 bg-primary/10 text-primary";
+
+  return (
+    <Badge variant="outline" className={cn("max-w-full rounded-full px-2.5 py-0.5 capitalize", className)} title={label}>
+      <span className="min-w-0 truncate">{label}</span>
+    </Badge>
+  );
+}
+
+function TokenSummary({ row }: { row: AuditRow }) {
+  return (
+    <div className="grid min-w-0 grid-cols-3 gap-1 text-right text-[11px]">
+      <div className="min-w-0 rounded-lg bg-muted/35 px-1.5 py-1">
+        <span className="block truncate text-muted-foreground">Req</span>
+        <span className="block truncate font-medium tabular-nums text-foreground" title={`${row.requested_tokens}`}>{row.requested_tokens.toLocaleString()}</span>
+      </div>
+      <div className="min-w-0 rounded-lg bg-amber-500/10 px-1.5 py-1">
+        <span className="block truncate text-amber-700/80 dark:text-amber-300/80">Res</span>
+        <span className="block truncate font-semibold tabular-nums text-amber-700 dark:text-amber-300" title={`${row.reserved_tokens}`}>{row.reserved_tokens.toLocaleString()}</span>
+      </div>
+      <div className="min-w-0 rounded-lg bg-emerald-500/10 px-1.5 py-1">
+        <span className="block truncate text-emerald-700/80 dark:text-emerald-300/80">Used</span>
+        <span className="block truncate font-semibold tabular-nums text-emerald-700 dark:text-emerald-300" title={`${row.used_tokens}`}>{row.used_tokens.toLocaleString()}</span>
+      </div>
+    </div>
   );
 }
 
@@ -145,28 +180,53 @@ export default function TokenAuditLog() {
             </div>
           </CardHeader>
           <CardContent className="min-w-0 space-y-5 p-4 sm:p-6">
-            <DashboardThemeFrame variant="toolbar" className="min-w-0 items-stretch justify-between gap-3 border-primary/10 bg-muted/25 p-2.5 sm:items-center">
-              <Select value={eventFilter} onValueChange={setEventFilter} disabled={loading}>
-                <SelectTrigger className="min-h-10 w-full rounded-2xl border-border/70 bg-background/85 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/30 sm:w-[180px]" aria-label="Filter token audit events by type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All events</SelectItem>
-                  <SelectItem value="reserve">Reserve</SelectItem>
-                  <SelectItem value="commit">Commit</SelectItem>
-                  <SelectItem value="cancel">Cancel</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="group relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                <Input
-                  className="min-h-10 min-w-0 rounded-2xl border-border/70 bg-background/85 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/30 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
-                  placeholder="Search by idempotency key, user, function…"
-                  aria-label="Search token audit events by idempotency key, user, or function"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  disabled={loading && rows.length === 0}
-                />
+            <DashboardThemeFrame variant="toolbar" className="min-w-0 flex-col items-stretch gap-4 border-primary/10 bg-[linear-gradient(135deg,hsl(var(--muted)/0.30),hsl(var(--background)/0.72))] p-3 shadow-inner sm:p-4 lg:flex-row lg:items-end lg:justify-between">
+              <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-end">
+                <div className="min-w-0 shrink-0 space-y-2 md:w-[220px]">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="token-audit-event-filter">
+                    <Filter className="h-3.5 w-3.5 text-primary" />
+                    Event type
+                  </label>
+                  <Select value={eventFilter} onValueChange={setEventFilter} disabled={loading}>
+                    <SelectTrigger id="token-audit-event-filter" className="min-h-11 w-full rounded-2xl border-border/70 bg-background/90 px-3 shadow-sm transition-all duration-200 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus:ring-2 focus:ring-primary/30" aria-label="Filter token audit events by type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All events</SelectItem>
+                      <SelectItem value="reserve">Reserve</SelectItem>
+                      <SelectItem value="commit">Commit</SelectItem>
+                      <SelectItem value="cancel">Cancel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" htmlFor="token-audit-search">
+                    <Search className="h-3.5 w-3.5 text-primary" />
+                    Keyword search
+                  </label>
+                  <div className="group relative min-w-0">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                    <Input
+                      id="token-audit-search"
+                      className="min-h-11 min-w-0 rounded-2xl border-border/70 bg-background/90 pl-10 pr-3 shadow-sm transition-all duration-200 placeholder:text-muted-foreground/75 hover:border-primary/35 hover:bg-background hover:shadow-[0_10px_24px_rgba(15,23,42,0.06)] focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/30"
+                      placeholder="Search by idempotency key, user, function…"
+                      aria-label="Search token audit events by idempotency key, user, or function"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      disabled={loading && rows.length === 0}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid shrink-0 grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-card/70 p-2 text-xs shadow-sm sm:min-w-[220px]">
+                <div className="rounded-xl bg-muted/35 px-3 py-2">
+                  <span className="block text-muted-foreground">Loaded</span>
+                  <span className="font-semibold tabular-nums text-foreground">{rows.length.toLocaleString()}</span>
+                </div>
+                <div className="rounded-xl bg-primary/10 px-3 py-2">
+                  <span className="block text-primary/80">Visible</span>
+                  <span className="font-semibold tabular-nums text-primary">{filtered.length.toLocaleString()}</span>
+                </div>
               </div>
             </DashboardThemeFrame>
 
@@ -232,21 +292,33 @@ export default function TokenAuditLog() {
                 </div>
               </div>
             ) : (
-              <div className="min-w-0 overflow-hidden rounded-2xl border border-border/70 bg-background/45">
+              <div className="min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-background/50 shadow-[inset_0_1px_0_hsl(var(--background)/0.85)] dark:bg-slate-950/40">
+                <div className="flex min-w-0 flex-col gap-3 border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.32),hsl(var(--card)/0.68))] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                      <WalletCards className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">Audit event ledger</p>
+                      <p className="truncate text-xs text-muted-foreground">Scrollable table with full audit metadata and drilldown by idempotency key.</p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 rounded-full border border-border/60 bg-background/75 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    {filtered.length.toLocaleString()} rows
+                  </div>
+                </div>
                 <div className={cn("overflow-x-auto overscroll-x-contain", PREMIUM_SCROLLBAR)}>
-                  <Table className="min-w-[1320px] table-fixed" aria-label="Token audit events">
-                    <TableHeader>
-                      <TableRow className="bg-muted/35 hover:bg-muted/35">
-                        <TableHead className="w-[150px]">Time</TableHead>
-                        <TableHead className="w-[110px]">Event</TableHead>
-                        <TableHead className="w-[190px]">User</TableHead>
-                        <TableHead className="w-[210px]">Function</TableHead>
-                        <TableHead className="w-[250px]">Idempotency key</TableHead>
-                        <TableHead className="w-[112px] text-right">Requested</TableHead>
-                        <TableHead className="w-[112px] text-right">Reserved</TableHead>
-                        <TableHead className="w-[100px] text-right">Used</TableHead>
-                        <TableHead className="w-[112px] text-right">Available</TableHead>
-                        <TableHead className="w-[185px]">Status / Reason</TableHead>
+                  <Table className="min-w-[1470px] table-fixed" aria-label="Token audit events">
+                    <TableHeader className="sticky top-0 z-10">
+                      <TableRow className="border-b border-border/70 bg-muted/45 hover:bg-muted/45">
+                        <TableHead className="w-[170px] py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Timestamp</TableHead>
+                        <TableHead className="w-[120px] py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Type</TableHead>
+                        <TableHead className="w-[210px] py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">User</TableHead>
+                        <TableHead className="w-[230px] py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Function / kind</TableHead>
+                        <TableHead className="w-[280px] py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Idempotency key</TableHead>
+                        <TableHead className="w-[180px] py-3 text-right text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tokens</TableHead>
+                        <TableHead className="w-[120px] py-3 text-right text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Available</TableHead>
+                        <TableHead className="w-[220px] py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Status / outcome</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -256,22 +328,27 @@ export default function TokenAuditLog() {
                           <TableRow
                             key={r.id}
                             className={cn(
-                              "group border-l-2 border-l-transparent transition-all duration-200 hover:border-l-primary/60 hover:bg-primary/5 hover:shadow-[inset_4px_0_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/5",
+                              "group border-l-2 border-l-transparent transition-all duration-200 odd:bg-background/20 hover:border-l-primary/60 hover:bg-primary/5 hover:shadow-[inset_4px_0_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/5",
                               isOpen && "border-l-primary bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.16)]",
                             )}
                           >
                             <TableCell className="align-top text-xs text-muted-foreground">
-                              <span className="block whitespace-nowrap font-medium text-foreground" title={r.created_at}>{format(new Date(r.created_at), "MMM d, HH:mm:ss")}</span>
-                              <span className="block truncate" title={r.created_at}>{new Date(r.created_at).toLocaleString()}</span>
+                              <div className="flex min-w-0 gap-2">
+                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary/70 shadow-[0_0_0_4px_hsl(var(--primary)/0.10)]" aria-hidden="true" />
+                                <div className="min-w-0">
+                                  <span className="block whitespace-nowrap font-medium text-foreground" title={r.created_at}>{format(new Date(r.created_at), "MMM d, HH:mm:ss")}</span>
+                                  <span className="block truncate" title={r.created_at}>{new Date(r.created_at).toLocaleString()}</span>
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell className="align-top"><EventBadge event={r.event} /></TableCell>
                             <TableCell className="min-w-0 align-top text-xs">
                               <span className="block truncate font-medium text-foreground" title={r.user_id ?? undefined}>{r.user_id ? (users[r.user_id] ?? r.user_id.slice(0, 8)) : "—"}</span>
-                              {r.user_id && <span className="block truncate pt-1 text-muted-foreground" title={r.user_id}>{r.user_id}</span>}
+                              {r.user_id && <span className="block truncate pt-1 font-mono text-[11px] text-muted-foreground" title={r.user_id}>{r.user_id}</span>}
                             </TableCell>
                             <TableCell className="min-w-0 align-top text-xs">
                               <span className="block truncate font-medium" title={r.function_name ?? undefined}>{r.function_name ?? "—"}</span>
-                              {r.kind && <span className="mt-1 inline-flex max-w-full rounded-full border border-border/60 bg-muted/45 px-2 py-0.5 text-[11px] text-muted-foreground"><span className="truncate" title={r.kind}>{r.kind}</span></span>}
+                              {r.kind && <span className="mt-1 inline-flex max-w-full rounded-full border border-border/60 bg-muted/45 px-2 py-0.5 font-mono text-[11px] text-muted-foreground"><span className="truncate" title={r.kind}>{r.kind}</span></span>}
                             </TableCell>
                             <TableCell className="min-w-0 align-top">
                               <button
@@ -287,14 +364,12 @@ export default function TokenAuditLog() {
                                 <span className="min-w-0 truncate">{r.idempotency_key}</span>
                               </button>
                             </TableCell>
-                            <TableCell className="align-top text-right tabular-nums text-muted-foreground">{r.requested_tokens.toLocaleString()}</TableCell>
-                            <TableCell className="align-top text-right font-semibold tabular-nums text-amber-700 dark:text-amber-300">{r.reserved_tokens.toLocaleString()}</TableCell>
-                            <TableCell className="align-top text-right font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{r.used_tokens.toLocaleString()}</TableCell>
+                            <TableCell className="align-top"><TokenSummary row={r} /></TableCell>
                             <TableCell className="align-top text-right tabular-nums text-muted-foreground">{r.available_tokens.toLocaleString()}</TableCell>
                             <TableCell className="min-w-0 align-top text-xs">
-                              <span className="block truncate font-medium text-foreground" title={r.status ?? undefined}>{r.status ?? "—"}</span>
-                              {r.reason ? <span className="block truncate pt-1 text-muted-foreground" title={r.reason}>{r.reason}</span> : null}
-                              {r.error_message ? <span className="block truncate pt-1 text-destructive" title={r.error_message}>{r.error_message}</span> : null}
+                              <OutcomeBadge status={r.status} error={r.error_message} />
+                              {r.reason ? <span className="block truncate pt-1.5 text-muted-foreground" title={r.reason}>{r.reason}</span> : null}
+                              {r.error_message ? <span className="block truncate pt-1.5 text-destructive" title={r.error_message}>{r.error_message}</span> : null}
                             </TableCell>
                           </TableRow>
                         );
