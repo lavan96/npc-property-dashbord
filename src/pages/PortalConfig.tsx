@@ -374,59 +374,73 @@ export default function PortalConfig() {
               <CardDescription>Configure the appointment booking system for the client portal</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 rounded-lg border border-primary/20 bg-primary/5">
-                <div>
-                  <p className="font-medium">Enable Booking Module</p>
-                  <p className="text-sm text-muted-foreground">Allow clients to book appointments through the portal</p>
+              <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 shadow-sm dark:border-primary/25 dark:bg-primary/10 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-semibold text-foreground">Enable Booking Module</p>
+                  <p className="break-words text-sm text-muted-foreground">Allow clients to book appointments through the portal</p>
                 </div>
-                <Switch
-                  checked={config.module_booking}
-                  onCheckedChange={(checked) => updateConfig({ module_booking: checked })}
-                />
+                <div className="flex shrink-0 items-center justify-between gap-3 rounded-full border border-primary/20 bg-card/75 px-3 py-2 dark:bg-slate-950/60 sm:justify-end">
+                  <span className="text-xs font-medium text-muted-foreground">{config.module_booking ? 'Enabled' : 'Disabled'}</span>
+                  <Switch
+                    checked={config.module_booking}
+                    onCheckedChange={(checked) => updateConfig({ module_booking: checked })}
+                    aria-label="Enable Booking Module"
+                    className="data-[state=checked]:bg-primary"
+                  />
+                </div>
               </div>
 
               {config.module_booking && (
                 <>
-                  <Separator />
+                  <Separator className="bg-border/70" />
 
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-4 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
                     {/* Multi-calendar manager */}
-                    <div className="space-y-3">
-                      <Label>Available Calendars for Clients</Label>
-                      <p className="text-xs text-muted-foreground">Add GHL calendars that clients can choose from when booking. Clients select one calendar per booking.</p>
+                    <div className="min-w-0 space-y-3">
+                      <div className="space-y-1">
+                        <Label className="text-sm font-semibold text-foreground">Available Calendars for Clients</Label>
+                        <p className="break-words text-xs leading-5 text-muted-foreground">Add GHL calendars that clients can choose from when booking. Clients select one calendar per booking.</p>
+                      </div>
                       
                       {/* Existing calendars list */}
                       {(config.booking_calendars || []).length > 0 && (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {config.booking_calendars.map((bc, idx) => (
-                            <div key={bc.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
-                              <CalendarDays className="h-4 w-4 text-primary shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{bc.name}</p>
-                                {bc.description && <p className="text-xs text-muted-foreground truncate">{bc.description}</p>}
-                                <p className="text-xs text-muted-foreground font-mono">{bc.id}</p>
+                            <div key={bc.id} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-card/75 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/55 lg:flex-row lg:items-center">
+                              <div className="flex min-w-0 flex-1 items-start gap-3">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:bg-primary/15">
+                                  <CalendarDays className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0 space-y-1">
+                                  <p className="break-words text-sm font-semibold text-foreground">{bc.name}</p>
+                                  {bc.description && <p className="break-words text-xs text-muted-foreground">{bc.description}</p>}
+                                  <p className="break-all font-mono text-xs text-muted-foreground">{bc.id}</p>
+                                </div>
                               </div>
-                              <Input
-                                className="w-48 text-xs"
-                                placeholder="Label shown to clients..."
-                                value={bc.description || ''}
-                                onChange={(e) => {
-                                  const updated = [...config.booking_calendars];
-                                  updated[idx] = { ...updated[idx], description: e.target.value };
-                                  updateConfig({ booking_calendars: updated });
-                                }}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => {
-                                  const updated = config.booking_calendars.filter((_, i) => i !== idx);
-                                  updateConfig({ booking_calendars: updated });
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex min-w-0 flex-col gap-2 sm:flex-row lg:w-[22rem] lg:shrink-0">
+                                <Input
+                                  className="min-h-10 min-w-0 flex-1 rounded-xl border-border/70 bg-background/80 text-xs shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/70"
+                                  placeholder="Label shown to clients..."
+                                  value={bc.description || ''}
+                                  onChange={(e) => {
+                                    const updated = [...config.booking_calendars];
+                                    updated[idx] = { ...updated[idx], description: e.target.value };
+                                    updateConfig({ booking_calendars: updated });
+                                  }}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  aria-label={`Remove ${bc.name}`}
+                                  className="shrink-0 border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => {
+                                    const updated = config.booking_calendars.filter((_, i) => i !== idx);
+                                    updateConfig({ booking_calendars: updated });
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -440,7 +454,7 @@ export default function PortalConfig() {
                           <p className="text-xs text-muted-foreground italic">All available GHL calendars have been added.</p>
                         );
                         return (
-                          <div className="flex items-center gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
                             <Select
                               value=""
                               onValueChange={(val) => {
@@ -452,7 +466,7 @@ export default function PortalConfig() {
                                 }
                               }}
                             >
-                              <SelectTrigger className="flex-1">
+                              <SelectTrigger className="min-h-11 min-w-0 flex-1 rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60">
                                 <SelectValue placeholder="Add a GHL calendar..." />
                               </SelectTrigger>
                               <SelectContent>
@@ -469,16 +483,16 @@ export default function PortalConfig() {
                     </div>
                   </div>
 
-                  <Separator />
+                  <Separator className="bg-border/70" />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Slot Duration (minutes)</Label>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35">
+                      <Label className="text-sm font-semibold text-foreground">Slot Duration (minutes)</Label>
                       <Select
                         value={String(config.booking_slot_duration)}
                         onValueChange={(val) => updateConfig({ booking_slot_duration: Number(val) })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -491,39 +505,41 @@ export default function PortalConfig() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Minimum Lead Time (hours)</Label>
+                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35">
+                      <Label className="text-sm font-semibold text-foreground">Minimum Lead Time (hours)</Label>
                       <Input
                         type="number"
                         min={0}
                         max={168}
                         value={config.booking_lead_time_hours}
                         onChange={(e) => updateConfig({ booking_lead_time_hours: Number(e.target.value) })}
+                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
                       />
                       <p className="text-xs text-muted-foreground">How far in advance clients must book</p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>Max Advance Booking (days)</Label>
+                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35">
+                      <Label className="text-sm font-semibold text-foreground">Max Advance Booking (days)</Label>
                       <Input
                         type="number"
                         min={1}
                         max={90}
                         value={config.booking_max_advance_days}
                         onChange={(e) => updateConfig({ booking_max_advance_days: Number(e.target.value) })}
+                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
                       />
                       <p className="text-xs text-muted-foreground">How far ahead clients can book</p>
                     </div>
                   </div>
 
-                  <Separator />
+                  <Separator className="bg-border/70" />
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
                     <h4 className="font-medium text-sm flex items-center gap-2">
                       <Mail className="h-4 w-4 text-primary" />
                       Email Notifications
                     </h4>
-                    <div className="flex items-center justify-between">
+                    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 bg-card/70 p-3 dark:border-white/10 dark:bg-slate-950/55 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-medium">Send Client Confirmation</p>
                         <p className="text-xs text-muted-foreground">Email the client a booking confirmation</p>
@@ -531,30 +547,33 @@ export default function PortalConfig() {
                       <Switch
                         checked={config.booking_confirmation_email}
                         onCheckedChange={(checked) => updateConfig({ booking_confirmation_email: checked })}
+                        aria-label="Send Client Confirmation"
+                        className="data-[state=checked]:bg-primary"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Team Notification Email</Label>
+                      <Label className="text-sm font-semibold text-foreground">Team Notification Email</Label>
                       <Input
                         type="email"
                         value={config.booking_team_notification_email || ''}
                         onChange={(e) => updateConfig({ booking_team_notification_email: e.target.value || null })}
                         placeholder="team@yourcompany.com"
+                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
                       />
                       <p className="text-xs text-muted-foreground">Receive an email when a client books an appointment</p>
                     </div>
                   </div>
 
-                  <Separator />
+                  <Separator className="bg-border/70" />
 
-                  <div className="space-y-2">
-                    <Label>Booking Introduction Text</Label>
+                  <div className="space-y-2 rounded-2xl border border-primary/15 bg-primary/5 p-4 dark:border-primary/20 dark:bg-primary/10 sm:p-5">
+                    <Label className="text-sm font-semibold text-foreground">Booking Introduction Text</Label>
                     <Textarea
                       value={config.booking_intro_text || ''}
                       onChange={(e) => updateConfig({ booking_intro_text: e.target.value })}
                       placeholder="Schedule a consultation with our team..."
-                      rows={3}
-                      className="resize-none"
+                      rows={4}
+                      className="min-h-[120px] resize-none rounded-xl border-border/70 bg-card/90 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/70"
                     />
                   </div>
                 </>
