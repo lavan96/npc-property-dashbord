@@ -60,7 +60,6 @@ const navigationItems = [
   { title: 'Listings', url: '/listings', icon: Building2, moduleKey: 'listings' },
   { title: 'Commercial / Industrial', url: '/commercial', icon: Building2, moduleKey: '__always__' },
   { title: 'Calendar', url: '/calendar', icon: Calendar, moduleKey: 'calendar' },
-  { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
   { title: 'Reports', url: '/reports', icon: BarChart3, moduleKey: 'reports' },
   { title: 'Generated Reports', url: '/generated-reports', icon: FileText, moduleKey: 'generated_reports' },
   { title: 'Cash Flow Analysis', url: '/cash-flow-analysis', icon: Activity, moduleKey: 'cash_flow' },
@@ -88,7 +87,7 @@ const navigationItems = [
 const navigationGroups = [
   {
     title: 'Main Dashboard',
-    itemTitles: ['Overview', 'Listings', 'Commercial / Industrial', 'Calendar', 'Sources'],
+    itemTitles: ['Overview', 'Listings', 'Commercial / Industrial', 'Calendar'],
   },
   {
     title: 'Reports & Analysis',
@@ -133,6 +132,7 @@ const adminGroup = {
     'PDF Import Diagnostics',
     'BC Segment Engine',
     'Reclassify Property',
+    'Sources',
   ],
 };
 
@@ -159,6 +159,7 @@ const adminItems = [
   { title: 'PDF Import Diagnostics', url: '/admin/pdf-import-diagnostics', icon: Activity, moduleKey: '__superadmin_only__' },
   { title: 'BC Segment Engine', url: '/admin/bc-segment-engine', icon: Gauge, moduleKey: '__superadmin_only__' },
   { title: 'Reclassify Property', url: '/admin/reclassify-property', icon: Database, moduleKey: '__superadmin_only__' },
+  { title: 'Sources', url: '/sources', icon: Mail, moduleKey: 'sources' },
 ];
 
 export function DashboardSidebar() {
