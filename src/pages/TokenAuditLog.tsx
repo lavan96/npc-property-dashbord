@@ -91,15 +91,15 @@ export default function TokenAuditLog() {
 
   return (
     <>
-      <DashboardThemeFrame variant="page" className="min-h-[calc(100vh-5rem)] space-y-7 p-3 sm:p-5 lg:p-6">
-        <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--background))_55%,hsl(var(--primary)/0.10))] p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-7">
+      <DashboardThemeFrame variant="page" className="max-w-none space-y-6 pt-1 sm:space-y-7 sm:pt-2">
+        <DashboardThemeFrame as="header" variant="hero" className="flex min-w-0 flex-col gap-5 border-primary/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.20),transparent_30%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_56%,hsl(var(--primary)/0.12))] p-5 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-primary/10 dark:shadow-black/35 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8">
           <div className="flex min-w-0 items-start gap-4">
-            <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
+            <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)] ring-1 ring-primary/15">
               <ShieldCheck className="h-7 w-7" />
               <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-emerald-500" aria-hidden="true" />
             </div>
             <div className="min-w-0 space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
                 <DatabaseZap className="h-3.5 w-3.5" />
                 Mission Control event ledger
               </div>
@@ -107,7 +107,7 @@ export default function TokenAuditLog() {
                 <h1 className="min-w-0 truncate text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                   Token Audit Log
                 </h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
                   Every Mission Control reserve / commit / cancel event, per user, per agency.
                 </p>
               </div>
@@ -118,7 +118,7 @@ export default function TokenAuditLog() {
             variant="outline"
             size="sm"
             disabled={loading}
-            className="min-h-10 w-full shrink-0 rounded-xl border-primary/25 bg-background/85 px-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
+            className="min-h-11 w-full shrink-0 rounded-xl border-primary/25 bg-background/90 px-4 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(var(--primary)/0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 sm:w-auto"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
