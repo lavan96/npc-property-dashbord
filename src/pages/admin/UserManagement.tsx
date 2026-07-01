@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Users, Mail, Plus, Key, AlertCircle, UserPlus } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { PermissionsGrid } from '@/components/admin/PermissionsGrid';
 import { ResetPasswordDialog } from '@/components/admin/ResetPasswordDialog';
 import { SoftDeletedUsersPanel } from '@/components/admin/SoftDeletedUsersPanel';
@@ -398,54 +399,81 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="space-y-6 p-4 pb-8 sm:p-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            User Management
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] p-5 shadow-[0_18px_55px_rgba(15,23,42,0.10)] dark:shadow-black/30 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
+      >
+        <div className="min-w-0 space-y-1">
+          <h1 className="flex min-w-0 items-center gap-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-inner">
+              <Users className="h-6 w-6" />
+            </span>
+            <span className="truncate">User Management</span>
           </h1>
-          <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Manage users, roles, and permissions
+          </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
           {/* Create Sub-Admin Button */}
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                className="w-full border-primary/25 bg-background/70 shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:w-auto"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Sub-Admin
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create Sub-Admin</DialogTitle>
+            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-black/20">
+              <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <Plus className="h-5 w-5 text-primary" />
+                  Create Sub-Admin
+                </DialogTitle>
                 <DialogDescription>Create a new sub-admin account with specific permissions.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Username *</Label>
-                    <Input value={createUsername} onChange={(e) => setCreateUsername(e.target.value)} placeholder="username" />
+              <div className="space-y-5 p-6">
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Account details</h3>
+                    <p className="text-xs text-muted-foreground">Set the required sign-in details and mailbox routing for this sub-admin.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Password *</Label>
-                    <Input type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} placeholder="Min 6 characters" />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Username *</Label>
+                      <Input value={createUsername} onChange={(e) => setCreateUsername(e.target.value)} placeholder="username" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Password *</Label>
+                      <Input type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} placeholder="Min 6 characters" />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Email <span className="text-destructive">*</span></Label>
+                      <Input type="email" required value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="user@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Personal Mailbox (optional)</Label>
+                      <Input type="email" value={createMailbox} onChange={(e) => setCreateMailbox(e.target.value)} placeholder="mailbox@example.com" />
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email <span className="text-destructive">*</span></Label>
-                    <Input type="email" required value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="user@example.com" />
+                <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
+                  <div>
+                    <Label>Module Permissions</Label>
+                    <p className="text-xs text-muted-foreground">Choose the modules this sub-admin can access. Existing permission logic is unchanged.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Personal Mailbox (optional)</Label>
-                    <Input type="email" value={createMailbox} onChange={(e) => setCreateMailbox(e.target.value)} placeholder="mailbox@example.com" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Module Permissions</Label>
                   <PermissionsGrid
                     modules={modules}
                     permissions={createPermissions}
@@ -453,7 +481,7 @@ export default function UserManagement() {
                     onApplyPreset={setCreatePermissions}
                   />
                 </div>
-                <Button onClick={handleCreateSubAdmin} disabled={creating} className="w-full">
+                <Button onClick={handleCreateSubAdmin} disabled={creating} className="w-full shadow-lg shadow-primary/15">
                   {creating ? 'Creating...' : 'Create Sub-Admin'}
                 </Button>
               </div>
@@ -463,39 +491,51 @@ export default function UserManagement() {
           {/* Invite User Button */}
           <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 focus-visible:ring-primary/40 sm:w-auto">
                 <UserPlus className="h-4 w-4 mr-2" />
                 Invite User
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Invite New User</DialogTitle>
+            <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto border-primary/15 bg-card/95 p-0 shadow-2xl shadow-black/20">
+              <DialogHeader className="border-b border-border/60 bg-gradient-to-r from-primary/10 via-card to-card px-6 py-5">
+                <DialogTitle className="flex items-center gap-2 text-xl">
+                  <UserPlus className="h-5 w-5 text-primary" />
+                  Invite New User
+                </DialogTitle>
                 <DialogDescription>Send an invitation to join the dashboard with specific permissions.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email *</Label>
-                    <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" />
+              <div className="space-y-5 p-6">
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Invitation details</h3>
+                    <p className="text-xs text-muted-foreground">Enter the recipient and choose the existing invite delivery method.</p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Email *</Label>
+                      <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Username (optional)</Label>
+                      <Input value={inviteUsername} onChange={(e) => setInviteUsername(e.target.value)} placeholder="Leave blank to use email" />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Username (optional)</Label>
-                    <Input value={inviteUsername} onChange={(e) => setInviteUsername(e.target.value)} placeholder="Leave blank to use email" />
+                    <Label>Invite Method</Label>
+                    <Select value={inviteType} onValueChange={(v: 'magic_link' | 'temp_password') => setInviteType(v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="magic_link"><div className="flex items-center gap-2"><Mail className="h-4 w-4" />Magic Link</div></SelectItem>
+                        <SelectItem value="temp_password"><div className="flex items-center gap-2"><Key className="h-4 w-4" />Temporary Password</div></SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Invite Method</Label>
-                  <Select value={inviteType} onValueChange={(v: 'magic_link' | 'temp_password') => setInviteType(v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="magic_link"><div className="flex items-center gap-2"><Mail className="h-4 w-4" />Magic Link</div></SelectItem>
-                      <SelectItem value="temp_password"><div className="flex items-center gap-2"><Key className="h-4 w-4" />Temporary Password</div></SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Module Permissions</Label>
+                <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
+                  <div>
+                    <Label>Module Permissions</Label>
+                    <p className="text-xs text-muted-foreground">Assign starting module access for the invited user. Existing permission logic is unchanged.</p>
+                  </div>
                   <PermissionsGrid
                     modules={modules}
                     permissions={invitePermissions}
@@ -503,14 +543,14 @@ export default function UserManagement() {
                     onApplyPreset={setInvitePermissions}
                   />
                 </div>
-                <Button onClick={handleSendInvite} disabled={inviteSending} className="w-full">
+                <Button onClick={handleSendInvite} disabled={inviteSending} className="w-full shadow-lg shadow-primary/15">
                   {inviteSending ? 'Sending...' : 'Send Invitation'}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Bulk Actions */}
       <BulkUserActions
@@ -523,31 +563,73 @@ export default function UserManagement() {
       />
 
       {/* Users List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>Manage user accounts and their access levels</CardDescription>
+      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] ring-1 ring-primary/5 dark:border-white/10 dark:bg-slate-950/70 dark:shadow-black/25">
+        <CardHeader className="border-b border-border/60 bg-gradient-to-r from-muted/35 via-card to-primary/5 px-5 py-5 dark:border-white/10 dark:from-slate-950/70 dark:via-slate-950/50 dark:to-primary/10 sm:px-6">
+          <CardTitle className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">All Users</CardTitle>
+          <CardDescription className="text-sm leading-6">Manage user accounts and their access levels</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading users...</div>
+            <div className="space-y-3 p-5" role="status" aria-live="polite">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Loading users...</p>
+                  <p className="text-xs text-muted-foreground">Fetching user accounts and access levels.</p>
+                </div>
+                <div className="h-9 w-24 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+              </div>
+              <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/60">
+                {[0, 1, 2, 3].map((row) => (
+                  <div key={row} className="grid min-w-[980px] grid-cols-[48px_220px_150px_220px_150px_160px_130px_260px] items-center gap-0 border-b border-border/50 px-5 py-4 last:border-b-0">
+                    <div className="h-4 w-4 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-36 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                      <div className="h-3 w-44 animate-pulse rounded bg-muted/80 motion-reduce:animate-none" />
+                    </div>
+                    <div className="h-6 w-24 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+                    <div className="h-6 w-40 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+                    <div className="h-7 w-24 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
+                    <div className="h-4 w-28 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                    <div className="h-4 w-20 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                    <div className="ml-auto flex gap-2">
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
+                      <div className="h-9 w-9 animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 p-8 text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                <Users className="h-7 w-7" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold text-foreground">No users found</h3>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  User accounts will appear here when they are returned by the existing user-management service.
+                </p>
+              </div>
+            </div>
           ) : (
-            <Table>
+            <Table className="min-w-[980px]" aria-label="All users">
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
+                <TableRow className="border-border/70 bg-muted/45 hover:bg-muted/45 dark:border-white/10 dark:bg-slate-900/70">
+                  <TableHead className="w-12 pl-5">
                     <Checkbox
                       checked={selectedUserIds.size === users.length && users.length > 0}
                       onCheckedChange={handleSelectAll}
+                      aria-label="Select all users"
                     />
                   </TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Mailbox</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Login</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">User</TableHead>
+                  <TableHead className="min-w-[150px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Role</TableHead>
+                  <TableHead className="min-w-[220px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Mailbox</TableHead>
+                  <TableHead className="min-w-[150px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Status</TableHead>
+                  <TableHead className="min-w-[160px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Last Login</TableHead>
+                  <TableHead className="min-w-[130px] text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Created</TableHead>
+                  <TableHead className="min-w-[260px] pr-5 text-right text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -642,6 +724,6 @@ export default function UserManagement() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardThemeFrame>
   );
 }
