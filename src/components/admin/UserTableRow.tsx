@@ -46,30 +46,30 @@ export function UserTableRow({
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
 
   return (
-    <TableRow className={selected ? 'bg-muted/30' : ''}>
-      <TableCell>
+    <TableRow className={selected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-primary/5'}>
+      <TableCell className="pl-5">
         <Checkbox checked={selected} onCheckedChange={() => onToggleSelect?.(u.id)} />
       </TableCell>
-      <TableCell>
-        <div>
-          <div className="font-medium flex items-center gap-2">
-            {u.username}
+      <TableCell className="max-w-[260px] py-4">
+        <div className="min-w-0 space-y-1">
+          <div className="flex min-w-0 items-center gap-2 font-semibold text-foreground">
+            <span className="truncate" title={u.username}>{u.username}</span>
             {isSelf && <Badge variant="outline" className="text-xs">You</Badge>}
           </div>
-          <div className="text-sm text-muted-foreground">{u.email || 'No email'}</div>
+          <div className="truncate text-sm text-muted-foreground" title={u.email || 'No email'}>{u.email || 'No email'}</div>
         </div>
       </TableCell>
-      <TableCell>
-        <div className="flex gap-1">
+      <TableCell className="py-4">
+        <div className="flex flex-wrap gap-1.5">
           {hasSuperadmin && <Badge className="bg-amber-500"><Crown className="h-3 w-3 mr-1" />Superadmin</Badge>}
           {hasAdmin && !hasSuperadmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" />Admin</Badge>}
           {!hasSuperadmin && !hasAdmin && <Badge variant="outline">User</Badge>}
         </div>
       </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
+      <TableCell className="max-w-[260px] py-4">
+        <div className="flex min-w-0 items-center gap-2">
           {u.personal_mailbox ? (
-            <span className="text-sm">{u.personal_mailbox}</span>
+            <span className="truncate text-sm" title={u.personal_mailbox}>{u.personal_mailbox}</span>
           ) : (
             <span className="text-sm text-muted-foreground italic">Not set</span>
           )}
@@ -78,7 +78,7 @@ export function UserTableRow({
           </Button>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="py-4">
         <div className="flex items-center gap-2">
           <Switch checked={u.is_active} onCheckedChange={(v) => onToggleActive(u.id, v)} disabled={isSelf} />
           <span className={u.is_active ? 'text-green-600' : 'text-muted-foreground'}>
@@ -86,7 +86,7 @@ export function UserTableRow({
           </span>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="py-4">
         {u.last_login_at ? (
           <div className="flex items-center gap-1 text-sm text-muted-foreground" title={new Date(u.last_login_at).toLocaleString()}>
             <Clock className="h-3 w-3" />
@@ -96,10 +96,10 @@ export function UserTableRow({
           <span className="text-xs text-muted-foreground italic">Never</span>
         )}
       </TableCell>
-      <TableCell className="text-muted-foreground text-sm">
+      <TableCell className="py-4 text-sm text-muted-foreground">
         {new Date(u.created_at).toLocaleDateString()}
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="py-4 pr-5 text-right">
         <TooltipProvider>
           <div className="flex items-center justify-end gap-1">
             {!hasSuperadmin && !isSelf && (
