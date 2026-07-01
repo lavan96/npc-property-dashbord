@@ -20,6 +20,8 @@ import {
 } from "@/lib/pushNotifications";
 import {
   settingsCardClass,
+  settingsCx,
+  settingsPillButtonClass,
   settingsSwitchClass,
 } from "@/components/settings/settingsUi";
 
@@ -164,7 +166,11 @@ export function PushNotificationToggle() {
                 variant="outline"
                 onClick={() => handleToggle(true)}
                 disabled={working}
-                className="w-full rounded-full border-primary/35 font-semibold shadow-sm hover:border-primary/60 sm:w-auto"
+                aria-busy={working}
+                className={settingsCx(
+                  settingsPillButtonClass,
+                  "w-full border-primary/35 shadow-sm hover:border-primary/60 sm:w-auto",
+                )}
               >
                 {working ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

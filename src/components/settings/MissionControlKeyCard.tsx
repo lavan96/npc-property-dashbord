@@ -205,6 +205,7 @@ export function MissionControlKeyCard() {
                 variant="secondary"
                 onClick={testConnection}
                 disabled={testing || !info?.configured}
+                aria-busy={testing}
                 className={settingsPillButtonClass}
               >
                 {testing ? (
@@ -301,6 +302,7 @@ export function MissionControlKeyCard() {
             <Button
               onClick={rotate}
               disabled={rotating}
+              aria-busy={rotating}
               className={settingsCx(
                 settingsPillButtonClass,
                 settingsPrimaryButtonClass,

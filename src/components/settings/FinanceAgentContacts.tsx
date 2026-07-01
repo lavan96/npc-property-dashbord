@@ -56,6 +56,7 @@ import {
   settingsDangerButtonClass,
   settingsDialogClass,
   settingsInputClass,
+  settingsInteractiveRowClass,
   settingsPanelClass,
   settingsPillButtonClass,
   settingsPrimaryButtonClass,
@@ -425,7 +426,7 @@ export function FinanceAgentContacts() {
             </p>
           </div>
         ) : (
-          <div className="min-w-0 overflow-x-auto rounded-2xl border border-border/60 bg-background/35 dark:border-white/10">
+          <div className="min-h-0 min-w-0 overflow-x-auto overscroll-x-contain rounded-2xl border border-border/60 bg-background/35 [scrollbar-gutter:stable] dark:border-white/10">
             <Table className="min-w-[760px] table-fixed">
               <TableHeader>
                 <TableRow>
@@ -438,7 +439,10 @@ export function FinanceAgentContacts() {
               </TableHeader>
               <TableBody>
                 {contacts.map((contact) => (
-                  <TableRow key={contact.id}>
+                  <TableRow
+                    key={contact.id}
+                    className={settingsInteractiveRowClass}
+                  >
                     <TableCell className="align-top font-medium">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <span className="min-w-0 break-words">
@@ -447,7 +451,10 @@ export function FinanceAgentContacts() {
                         {contact.is_default && (
                           <Badge
                             variant="default"
-                            className="shrink-0 gap-1 rounded-full bg-primary text-xs text-primary-foreground"
+                            className={settingsCx(
+                              settingsBadgePillClass,
+                              "gap-1 bg-primary text-xs text-primary-foreground",
+                            )}
                           >
                             <Star className="h-3 w-3 mr-1" />
                             Default
@@ -482,7 +489,10 @@ export function FinanceAgentContacts() {
                             ? "secondary"
                             : "outline"
                         }
-                        className="rounded-full capitalize"
+                        className={settingsCx(
+                          settingsBadgePillClass,
+                          "capitalize",
+                        )}
                       >
                         {contact.contact_type}
                       </Badge>
@@ -497,7 +507,11 @@ export function FinanceAgentContacts() {
                               setDefaultMutation.mutate(contact.id)
                             }
                             title="Set as default"
-                            className="rounded-full hover:bg-primary/10 hover:text-primary"
+                            aria-label={`Set ${contact.name} as default finance contact`}
+                            className={settingsCx(
+                              settingsPillButtonClass,
+                              "hover:bg-primary/10 hover:text-primary",
+                            )}
                           >
                             <Star className="h-4 w-4" />
                           </Button>
@@ -506,7 +520,11 @@ export function FinanceAgentContacts() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenEdit(contact)}
-                          className="rounded-full hover:bg-primary/10 hover:text-primary"
+                          aria-label={`Edit ${contact.name}`}
+                          className={settingsCx(
+                            settingsPillButtonClass,
+                            "hover:bg-primary/10 hover:text-primary",
+                          )}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -514,6 +532,7 @@ export function FinanceAgentContacts() {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteMutation.mutate(contact.id)}
+                          aria-label={`Delete ${contact.name}`}
                           className={settingsDangerButtonClass}
                         >
                           <Trash2 className="h-4 w-4" />

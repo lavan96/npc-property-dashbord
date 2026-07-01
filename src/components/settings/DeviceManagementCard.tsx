@@ -35,6 +35,7 @@ import {
   settingsBadgePillClass,
   settingsCardClass,
   settingsDangerButtonClass,
+  settingsInteractiveRowClass,
   settingsPillButtonClass,
   settingsSubtlePanelClass,
   settingsCx,
@@ -138,6 +139,8 @@ export function DeviceManagementCard() {
             size="sm"
             onClick={() => load(true)}
             disabled={loading || refreshing}
+            aria-label="Refresh active devices"
+            aria-busy={refreshing}
             className={settingsCx(settingsPillButtonClass, "w-full sm:w-auto")}
           >
             <RefreshCw
@@ -173,7 +176,10 @@ export function DeviceManagementCard() {
             return (
               <div
                 key={device.id}
-                className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between"
+                className={settingsCx(
+                  settingsInteractiveRowClass,
+                  "flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between",
+                )}
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
@@ -214,6 +220,11 @@ export function DeviceManagementCard() {
                     isCurrent
                       ? "Sign out to revoke this device"
                       : "Revoke device"
+                  }
+                  aria-label={
+                    isCurrent
+                      ? "Current device cannot be revoked here"
+                      : `Revoke ${device.device_label || device.platform || "device"}`
                   }
                   className={settingsDangerButtonClass}
                 >

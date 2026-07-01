@@ -37,6 +37,7 @@ import {
   settingsBadgePillClass,
   settingsCardClass,
   settingsCx,
+  settingsInteractiveRowClass,
   settingsPanelClass,
   settingsPillButtonClass,
 } from "@/components/settings/settingsUi";
@@ -99,6 +100,8 @@ export function PricingCatalogCard() {
             size="sm"
             onClick={refresh}
             disabled={loading}
+            aria-label="Refresh pricing and catalog"
+            aria-busy={loading}
             className={settingsCx(settingsPillButtonClass, "w-full sm:w-auto")}
           >
             <RefreshCw
@@ -158,7 +161,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
         {catalog.roles.map((r) => (
           <div
             key={r.slug}
-            className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm sm:flex-row sm:items-start sm:justify-between"
+            className={settingsCx(
+              settingsInteractiveRowClass,
+              "flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm sm:flex-row sm:items-start sm:justify-between",
+            )}
           >
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -203,7 +209,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
         {catalog.addons.map((a) => (
           <div
             key={a.slug}
-            className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm sm:flex-row sm:items-start sm:justify-between"
+            className={settingsCx(
+              settingsInteractiveRowClass,
+              "flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm sm:flex-row sm:items-start sm:justify-between",
+            )}
           >
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -246,7 +255,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
         {catalog.setups.map((s) => (
           <div
             key={s.slug}
-            className="min-w-0 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm"
+            className={settingsCx(
+              settingsInteractiveRowClass,
+              "rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm",
+            )}
           >
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <span className="min-w-0 break-words text-sm font-medium">
@@ -289,7 +301,10 @@ function CatalogBody({ catalog }: { catalog: MissionControlCatalog }) {
           {catalog.reports.map((r) => (
             <div
               key={r.slug}
-              className="flex min-w-0 items-start justify-between gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm"
+              className={settingsCx(
+                settingsInteractiveRowClass,
+                "flex items-start justify-between gap-3 rounded-2xl border border-border/60 bg-card/70 p-3 shadow-sm",
+              )}
             >
               <div className="min-w-0">
                 <div className="min-w-0 break-words text-sm font-medium">

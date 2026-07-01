@@ -19,7 +19,9 @@ import { PasswordStrengthMeter } from "@/components/ui/password-strength-meter";
 import { invokeSecureFunction } from "@/lib/secureInvoke";
 import {
   settingsCardClass,
+  settingsCx,
   settingsInputClass,
+  settingsPrimaryButtonClass,
 } from "@/components/settings/settingsUi";
 
 export function ProfileCredentials() {
@@ -257,7 +259,7 @@ export function ProfileCredentials() {
               newUsername === profile.username ||
               !newUsername.trim()
             }
-            className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
+            className={settingsCx(settingsPrimaryButtonClass, "w-full")}
           >
             {updatingUsername && (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -337,7 +339,7 @@ export function ProfileCredentials() {
               !newPassword ||
               !confirmPassword
             }
-            className="w-full bg-primary font-semibold text-primary-foreground shadow-[0_12px_30px_hsl(var(--primary)/0.20)] hover:bg-primary-hover"
+            className={settingsCx(settingsPrimaryButtonClass, "w-full")}
           >
             {updatingPassword && (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

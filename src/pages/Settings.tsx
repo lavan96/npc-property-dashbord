@@ -44,7 +44,10 @@ import {
   settingsAccentCardClass,
   settingsBadgePillClass,
   settingsCardClass,
+  settingsCx,
   settingsInputClass,
+  settingsPillButtonClass,
+  settingsPrimaryButtonClass,
   settingsSwitchClass,
 } from "@/components/settings/settingsUi";
 
@@ -482,7 +485,10 @@ export default function Settings() {
                   variant={themeMode === "light" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setThemeMode("light")}
-                  className="rounded-full font-semibold sm:flex-none"
+                  className={settingsCx(
+                    settingsPillButtonClass,
+                    "sm:flex-none",
+                  )}
                 >
                   Light
                 </Button>
@@ -490,7 +496,10 @@ export default function Settings() {
                   variant={themeMode === "dark" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setThemeMode("dark")}
-                  className="rounded-full font-semibold sm:flex-none"
+                  className={settingsCx(
+                    settingsPillButtonClass,
+                    "sm:flex-none",
+                  )}
                 >
                   Dark
                 </Button>
@@ -498,7 +507,10 @@ export default function Settings() {
                   variant={themeMode === "system" ? "default" : "outline"}
                   size="sm"
                   onClick={() => setThemeMode("system")}
-                  className="rounded-full font-semibold sm:flex-none"
+                  className={settingsCx(
+                    settingsPillButtonClass,
+                    "sm:flex-none",
+                  )}
                 >
                   System
                 </Button>
@@ -526,7 +538,7 @@ export default function Settings() {
                   <SelectTrigger className="min-w-0 focus:ring-primary">
                     <SelectValue placeholder="Select booking timezone" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[min(22rem,var(--radix-select-content-available-height))]">
                     <SelectItem value="Australia/Sydney">
                       Sydney (AEST/AEDT)
                     </SelectItem>
@@ -579,7 +591,7 @@ export default function Settings() {
                   <SelectTrigger className="min-w-0 focus:ring-primary">
                     <SelectValue placeholder="Select timezone" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[min(22rem,var(--radix-select-content-available-height))]">
                     <SelectItem value="Australia/Sydney">
                       Australia/Sydney (AEST/AEDT)
                     </SelectItem>
@@ -629,7 +641,7 @@ export default function Settings() {
 
             <Separator />
 
-            <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+            <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
               <div className="min-w-0 space-y-1">
                 <h4 className="text-sm font-medium">Browser Notifications</h4>
                 <p className="text-xs text-muted-foreground">
@@ -657,7 +669,7 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
-          <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+          <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">Auto-refresh Data</h4>
               <p className="text-xs text-muted-foreground">
@@ -676,7 +688,7 @@ export default function Settings() {
           {settings.autoRefresh && (
             <>
               <Separator />
-              <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+              <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
                 <div className="min-w-0 space-y-1">
                   <h4 className="text-sm font-medium">Refresh Interval</h4>
                   <p className="text-xs text-muted-foreground">
@@ -685,7 +697,7 @@ export default function Settings() {
                 </div>
                 <div className="w-28 shrink-0">
                   <Input
-                    className="focus-visible:ring-primary"
+                    className={settingsInputClass}
                     type="number"
                     min="1"
                     max="60"
@@ -713,7 +725,7 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
-          <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35">
+          <div className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-2xl border border-border/60 bg-background/45 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center">
             <div className="min-w-0 space-y-1">
               <h4 className="text-sm font-medium">Auto-Continue Reports</h4>
               <p className="text-xs text-muted-foreground">
@@ -741,7 +753,7 @@ export default function Settings() {
                 </div>
                 <div className="w-28 shrink-0">
                   <Input
-                    className="focus-visible:ring-primary"
+                    className={settingsInputClass}
                     type="number"
                     min="1"
                     max="5"
@@ -767,7 +779,7 @@ export default function Settings() {
                 </div>
                 <div className="w-28 shrink-0">
                   <Input
-                    className="focus-visible:ring-primary"
+                    className={settingsInputClass}
                     type="number"
                     min="10"
                     max="60"
@@ -794,7 +806,12 @@ export default function Settings() {
         <Button
           onClick={saveAllSettings}
           disabled={isSaving || !canEditSettings}
-          className="w-full md:w-auto"
+          aria-busy={isSaving}
+          className={settingsCx(
+            settingsPillButtonClass,
+            settingsPrimaryButtonClass,
+            "w-full md:w-auto",
+          )}
         >
           {isSaving && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
           {!canEditSettings ? "View Only" : "Save Settings"}
