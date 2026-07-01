@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardThemeFrame } from "@/components/layout/DashboardThemeFrame";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, CheckCircle2, Clock3, DatabaseZap, FileKey2, Filter, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck, WalletCards, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, DatabaseZap, FileKey2, Filter, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck, Sparkles, WalletCards, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { TokenEventDetailsDrawer } from "@/components/billing/TokenEventDetailsDrawer";
 
@@ -83,6 +83,61 @@ function TokenSummary({ row }: { row: AuditRow }) {
   );
 }
 
+function AuditEventMobileCard({ row, userLabel, isOpen, onOpen }: { row: AuditRow; userLabel: string; isOpen: boolean; onOpen: () => void }) {
+  return (
+    <article className={cn(
+      "min-w-0 rounded-3xl border border-border/70 bg-card/90 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_42px_hsl(var(--foreground)/0.08)]",
+      isOpen && "border-primary/35 bg-primary/10 shadow-[0_0_0_1px_hsl(var(--primary)/0.14)]",
+    )}>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="truncate text-sm font-semibold text-foreground" title={row.created_at}>{format(new Date(row.created_at), "MMM d, yyyy • HH:mm:ss")}</p>
+          <p className="truncate text-xs text-muted-foreground" title={row.created_at}>{new Date(row.created_at).toLocaleString()}</p>
+        </div>
+        <EventBadge event={row.event} />
+      </div>
+
+      <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
+        <div className="min-w-0 rounded-2xl border border-border/55 bg-background/70 px-3 py-2">
+          <span className="block text-muted-foreground">User</span>
+          <span className="mt-1 block truncate font-medium text-foreground" title={row.user_id ?? userLabel}>{userLabel}</span>
+        </div>
+        <div className="min-w-0 rounded-2xl border border-border/55 bg-background/70 px-3 py-2">
+          <span className="block text-muted-foreground">Function / kind</span>
+          <span className="mt-1 block truncate font-medium text-foreground" title={row.function_name ?? undefined}>{row.function_name ?? "—"}</span>
+          {row.kind ? <span className="mt-1 block truncate font-mono text-[11px] text-muted-foreground" title={row.kind}>{row.kind}</span> : null}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="mt-3 flex min-h-10 w-full min-w-0 items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2 text-left font-mono text-xs text-primary shadow-sm transition-all duration-200 hover:border-primary/45 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
+        title={row.idempotency_key}
+        aria-label={`Open token audit trail for ${row.idempotency_key}`}
+        onClick={onOpen}
+      >
+        <FileKey2 className="h-4 w-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate">{row.idempotency_key}</span>
+        <span className="shrink-0 rounded-full border border-primary/15 bg-background/70 px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-[0.12em]">Trail</span>
+      </button>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_0.8fr]">
+        <TokenSummary row={row} />
+        <div className="rounded-2xl border border-border/55 bg-background/70 px-3 py-2 text-right text-xs">
+          <span className="block text-muted-foreground">Available</span>
+          <span className="mt-1 block font-semibold tabular-nums text-foreground">{row.available_tokens.toLocaleString()}</span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+        <OutcomeBadge status={row.status} error={row.error_message} />
+        {row.reason ? <span className="min-w-0 truncate text-xs text-muted-foreground" title={row.reason}>{row.reason}</span> : null}
+        {row.error_message ? <span className="min-w-0 truncate text-xs text-destructive" title={row.error_message}>{row.error_message}</span> : null}
+      </div>
+    </article>
+  );
+}
+
 const PREMIUM_SCROLLBAR = "[scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:bg-transparent";
 
 const EVENT_STATES = [
@@ -126,6 +181,17 @@ export default function TokenAuditLog() {
         .some((v) => String(v ?? "").toLowerCase().includes(q)),
     );
   }, [rows, search, users]);
+
+  const eventCounts = useMemo(() => {
+    return rows.reduce(
+      (acc, row) => {
+        if (row.event === "reserve" || row.event === "commit" || row.event === "cancel") acc[row.event] += 1;
+        if (row.error_message) acc.errors += 1;
+        return acc;
+      },
+      { reserve: 0, commit: 0, cancel: 0, errors: 0 },
+    );
+  }, [rows]);
 
   const isInitialLoading = loading && rows.length === 0;
   const activeFilterLabel = eventFilter === "all" ? "All events" : eventFilter;
@@ -249,6 +315,20 @@ export default function TokenAuditLog() {
               </div>
             </DashboardThemeFrame>
 
+            <div className="grid min-w-0 gap-3 md:grid-cols-4" aria-label="Token audit event totals">
+              {[
+                { label: "Reserve", value: eventCounts.reserve, className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" },
+                { label: "Commit", value: eventCounts.commit, className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+                { label: "Cancel", value: eventCounts.cancel, className: "border-destructive/20 bg-destructive/10 text-destructive" },
+                { label: "Errors", value: eventCounts.errors, className: "border-primary/20 bg-primary/10 text-primary" },
+              ].map((item) => (
+                <div key={item.label} className={cn("rounded-3xl border px-4 py-3 shadow-sm", item.className)}>
+                  <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] opacity-80"><Sparkles className="h-3.5 w-3.5" />{item.label}</span>
+                  <span className="mt-2 block text-2xl font-semibold tabular-nums">{item.value.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+
             <div className="grid min-w-0 gap-3 rounded-3xl border border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.78),hsl(var(--muted)/0.24))] p-3 text-xs shadow-sm sm:grid-cols-3">
               <div className="rounded-2xl border border-border/50 bg-background/70 px-4 py-3">
                 <span className="block text-muted-foreground">Current view</span>
@@ -371,7 +451,18 @@ export default function TokenAuditLog() {
                     {filtered.length.toLocaleString()} rows
                   </div>
                 </div>
-                <div className={cn("overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2", PREMIUM_SCROLLBAR)} role="region" aria-label="Scrollable token audit events table" tabIndex={0}>
+                <div className="space-y-3 p-3 lg:hidden" aria-label="Token audit event cards">
+                  {filtered.map((r) => (
+                    <AuditEventMobileCard
+                      key={r.id}
+                      row={r}
+                      userLabel={r.user_id ? (users[r.user_id] ?? r.user_id.slice(0, 8)) : "—"}
+                      isOpen={activeKey === r.idempotency_key}
+                      onOpen={() => setActiveKey(r.idempotency_key)}
+                    />
+                  ))}
+                </div>
+                <div className={cn("hidden overflow-x-auto overscroll-x-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 lg:block", PREMIUM_SCROLLBAR)} role="region" aria-label="Scrollable token audit events table" tabIndex={0}>
                   <Table className="min-w-[1470px] table-fixed" aria-label="Token audit events">
                     <TableHeader className="sticky top-0 z-10">
                       <TableRow className="border-b border-border/70 bg-muted/45 hover:bg-muted/45">
