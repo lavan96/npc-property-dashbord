@@ -20,7 +20,7 @@ import {
 import { format } from 'date-fns';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip as RTooltip, BarChart, Bar, Legend,
+  Tooltip as RTooltip, BarChart, Bar, Legend, LabelList,
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
@@ -76,17 +76,17 @@ interface AuditEntry {
   created_at: string;
 }
 
-const ACTION_TONE: Record<string, string> = {
-  login_success: 'text-success',
-  login_failed: 'text-destructive',
-  logout: 'text-muted-foreground',
-  document_uploaded: 'text-primary',
-  document_deleted: 'text-destructive',
-  message_sent: 'text-primary',
-  invite_sent: 'text-primary',
-  invite_accepted: 'text-success',
-  access_revoked: 'text-destructive',
-  access_reinstated: 'text-success',
+const ACTION_BADGE_CLASS: Record<string, string> = {
+  login_success: 'border-success/20 bg-success/10 text-success',
+  login_failed: 'border-destructive/20 bg-destructive/10 text-destructive',
+  logout: 'border-border/70 bg-muted/60 text-muted-foreground',
+  document_uploaded: 'border-primary/20 bg-primary/10 text-primary',
+  document_deleted: 'border-destructive/20 bg-destructive/10 text-destructive',
+  message_sent: 'border-primary/20 bg-primary/10 text-primary',
+  invite_sent: 'border-primary/20 bg-primary/10 text-primary',
+  invite_accepted: 'border-success/20 bg-success/10 text-success',
+  access_revoked: 'border-destructive/20 bg-destructive/10 text-destructive',
+  access_reinstated: 'border-success/20 bg-success/10 text-success',
 };
 
 function formatBytes(b: number): string {
@@ -364,17 +364,30 @@ export default function FinancePortalAnalytics() {
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
                   <div className="h-80 rounded-2xl border border-border/60 bg-background/45 p-3">
+                    {actionList.length === 0 ? (
+                      <EmptyAnalyticsState
+                        icon={<TrendingUp className="h-5 w-5" />}
+                        title="No action breakdown"
+                        description="No auditable actions were recorded for this date range."
+                      />
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={actionList} layout="vertical" margin={{ left: 80 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
-                        <YAxis type="category" dataKey="action" stroke="hsl(var(--muted-foreground))" fontSize={11} width={140} />
+                      <BarChart data={actionList} layout="vertical" margin={{ top: 8, right: 36, left: 76, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.7} horizontal={false} />
+                        <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} allowDecimals={false} />
+                        <YAxis type="category" dataKey="action" stroke="hsl(var(--muted-foreground))" fontSize={11} width={148} tickLine={false} axisLine={{ stroke: 'hsl(var(--border))' }} tickMargin={8} />
                         <RTooltip
-                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
+                          contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, boxShadow: '0 18px 40px hsl(var(--foreground) / 0.12)', fontSize: 12 }}
+                          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 700 }}
+                          itemStyle={{ color: 'hsl(var(--foreground))' }}
                         />
-                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]}>
+                          <LabelList dataKey="count" position="right" className="fill-muted-foreground text-[11px] font-semibold" />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -389,8 +402,8 @@ export default function FinancePortalAnalytics() {
                     <CardTitle className="text-lg tracking-tight">Audit Log Search</CardTitle>
                     <CardDescription className="leading-6">Search across actions, entity types, and metadata.</CardDescription>
                   </div>
-                  <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
-                    <div className="relative w-full lg:w-80">
+                  <div className="grid w-full grid-cols-1 gap-2 lg:w-auto lg:grid-cols-[minmax(16rem,20rem)_13rem_auto]">
+                    <div className="relative min-w-0">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         value={auditSearch}
@@ -401,7 +414,7 @@ export default function FinancePortalAnalytics() {
                       />
                     </div>
                     <Select value={auditAction} onValueChange={setAuditAction}>
-                      <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35 lg:w-52"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-10 w-full rounded-xl border-border/70 bg-background/75 shadow-sm focus:ring-primary/35"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All actions</SelectItem>
                         {Object.keys(data.action_counts).sort().map(a => (
@@ -437,14 +450,18 @@ export default function FinancePortalAnalytics() {
                               {format(new Date(a.created_at), 'MMM d, HH:mm:ss')}
                             </TableCell>
                             <TableCell className="px-4 py-3">
-                              <Badge variant="outline" className="text-[10px] capitalize">{a.actor_type}</Badge>
+                              <Badge variant="outline" className="max-w-[140px] truncate rounded-full border-border/70 bg-background/70 text-[10px] capitalize text-muted-foreground" title={a.actor_type}>{a.actor_type}</Badge>
                             </TableCell>
-                            <TableCell className={`max-w-[220px] truncate px-4 py-3 text-sm font-semibold ${ACTION_TONE[a.action] || ''}`} title={a.action}>
-                              {a.action}
+                            <TableCell className="max-w-[240px] px-4 py-3">
+                              <Badge variant="outline" className={`max-w-full truncate rounded-full text-[10px] font-semibold ${ACTION_BADGE_CLASS[a.action] || 'border-border/70 bg-muted/50 text-muted-foreground'}`} title={a.action}>
+                                {a.action}
+                              </Badge>
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                              {a.entity_type || '—'}
-                              {a.entity_id && <span className="ml-1 font-mono">{a.entity_id.slice(0, 8)}</span>}
+                            <TableCell className="max-w-[240px] px-4 py-3 text-xs text-muted-foreground">
+                              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                <span className="max-w-[120px] truncate" title={a.entity_type || '—'}>{a.entity_type || '—'}</span>
+                                {a.entity_id && <span className="max-w-[96px] truncate rounded-md bg-muted/50 px-1.5 py-0.5 font-mono" title={a.entity_id}>{a.entity_id.slice(0, 8)}</span>}
+                              </div>
                             </TableCell>
                             <TableCell className="max-w-[160px] truncate px-4 py-3 font-mono text-xs text-muted-foreground" title={a.ip_address || '—'}>{a.ip_address || '—'}</TableCell>
                           </TableRow>
