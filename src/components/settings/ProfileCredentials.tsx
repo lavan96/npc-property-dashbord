@@ -1,16 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { User, Key, RefreshCw, AlertCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-import { validatePassword } from '@/utils/passwordValidation';
-import { PasswordStrengthMeter } from '@/components/ui/password-strength-meter';
-import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import { User, Key, RefreshCw, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { validatePassword } from "@/utils/passwordValidation";
+import { PasswordStrengthMeter } from "@/components/ui/password-strength-meter";
+import { invokeSecureFunction } from "@/lib/secureInvoke";
+import {
+  settingsCardClass,
+  settingsCx,
+  settingsInputClass,
+  settingsPanelClass,
+  settingsPrimaryButtonClass,
+  settingsSubtlePanelClass,
+} from "@/components/settings/settingsUi";
 
 export function ProfileCredentials() {
   const { user } = useAuth();
@@ -24,15 +38,15 @@ export function ProfileCredentials() {
   const [loading, setLoading] = useState(true);
 
   // Username update
-  const [newUsername, setNewUsername] = useState('');
+  const [newUsername, setNewUsername] = useState("");
   const [updatingUsername, setUpdatingUsername] = useState(false);
 
   // Password update
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingPassword, setUpdatingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
+  const [passwordError, setPasswordError] = useState("");
 
   useEffect(() => {
     fetchProfile();
@@ -40,20 +54,20 @@ export function ProfileCredentials() {
 
   const fetchProfile = async () => {
     try {
-      const { data } = await invokeSecureFunction('admin-user-management', {
-        action: 'get_own_profile'
+      const { data } = await invokeSecureFunction("admin-user-management", {
+        action: "get_own_profile",
       });
 
       if (data?.success && data.user) {
         setProfile({
           username: data.user.username,
           email: data.user.email,
-          role: data.user.role
+          role: data.user.role,
         });
         setNewUsername(data.user.username);
       }
     } catch (err) {
-      console.error('Failed to fetch profile:', err);
+      console.error("Failed to fetch profile:", err);
     } finally {
       setLoading(false);
     }
@@ -66,20 +80,22 @@ export function ProfileCredentials() {
       toast({
         title: "Invalid Username",
         description: "Username must be at least 3 characters.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     setUpdatingUsername(true);
     try {
-      const { data } = await invokeSecureFunction('admin-user-management', {
-        action: 'update_own_credentials',
-        new_username: newUsername.trim()
+      const { data } = await invokeSecureFunction("admin-user-management", {
+        action: "update_own_credentials",
+        new_username: newUsername.trim(),
       });
 
       if (data?.success) {
-        setProfile(prev => prev ? { ...prev, username: newUsername.trim() } : prev);
+        setProfile((prev) =>
+          prev ? { ...prev, username: newUsername.trim() } : prev,
+        );
         toast({
           title: "Username Updated",
           description: "Your username has been changed successfully.",
@@ -88,14 +104,14 @@ export function ProfileCredentials() {
         toast({
           title: "Error",
           description: data?.error || "Failed to update username.",
-          variant: "destructive"
+          variant: "destructive",
         });
       }
     } catch (err) {
       toast({
         title: "Error",
         description: "Failed to update username. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setUpdatingUsername(false);
@@ -103,46 +119,48 @@ export function ProfileCredentials() {
   };
 
   const handleUpdatePassword = async () => {
-    setPasswordError('');
+    setPasswordError("");
 
     if (!currentPassword) {
-      setPasswordError('Current password is required');
+      setPasswordError("Current password is required");
       return;
     }
 
     // Validate password strength
     const validation = validatePassword(newPassword);
     if (!validation.isValid) {
-      setPasswordError(validation.error || 'Password does not meet requirements');
+      setPasswordError(
+        validation.error || "Password does not meet requirements",
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError("Passwords do not match");
       return;
     }
 
     setUpdatingPassword(true);
     try {
-      const { data } = await invokeSecureFunction('admin-user-management', {
-        action: 'update_own_credentials',
+      const { data } = await invokeSecureFunction("admin-user-management", {
+        action: "update_own_credentials",
         current_password: currentPassword,
-        new_password: newPassword
+        new_password: newPassword,
       });
 
       if (data?.success) {
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
         toast({
           title: "Password Updated",
           description: "Your password has been changed successfully.",
         });
       } else {
-        setPasswordError(data?.error || 'Failed to update password');
+        setPasswordError(data?.error || "Failed to update password");
       }
     } catch (err) {
-      setPasswordError('Failed to update password. Please try again.');
+      setPasswordError("Failed to update password. Please try again.");
     } finally {
       setUpdatingPassword(false);
     }
@@ -150,15 +168,17 @@ export function ProfileCredentials() {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className={settingsCardClass}>
+        <CardHeader className="space-y-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
             <User className="h-5 w-5" />
             Profile & Credentials
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-sm text-muted-foreground">Loading...</div>
+          <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            Loading...
+          </div>
         </CardContent>
       </Card>
     );
@@ -169,37 +189,45 @@ export function ProfileCredentials() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className={settingsCardClass}>
+      <CardHeader className="space-y-2">
+        <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
           <User className="h-5 w-5" />
           Profile & Credentials
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="max-w-2xl break-words leading-6">
           Update your username and password
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="min-w-0 space-y-6">
         {/* Current Info */}
-        <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Current Username</span>
-            <span className="font-medium">{profile.username}</span>
+        <div className="min-w-0 space-y-3 rounded-2xl border border-border/60 bg-muted/35 p-4 shadow-inner dark:border-white/10 dark:bg-slate-900/35">
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <span className="text-sm text-muted-foreground">
+              Current Username
+            </span>
+            <span className="min-w-0 break-words text-right font-medium">
+              {profile.username}
+            </span>
           </div>
           {profile.email && (
-            <div className="flex items-center justify-between">
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <span className="text-sm text-muted-foreground">Email</span>
-              <span className="font-medium">{profile.email}</span>
+              <span className="min-w-0 break-all text-right font-medium">
+                {profile.email}
+              </span>
             </div>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <span className="text-sm text-muted-foreground">Role</span>
-            <span className="font-medium">
-              {profile.role === 'super_admin' 
-                ? 'Super Administrator' 
-                : profile.role === 'sub_admin' 
-                  ? 'Administrator' 
-                  : profile.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            <span className="min-w-0 break-words text-right font-medium">
+              {profile.role === "super_admin"
+                ? "Super Administrator"
+                : profile.role === "sub_admin"
+                  ? "Administrator"
+                  : profile.role
+                      .replace("_", " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
             </span>
           </div>
         </div>
@@ -207,12 +235,12 @@ export function ProfileCredentials() {
         <Separator />
 
         {/* Update Username */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium flex items-center gap-2">
+        <div className={settingsCx(settingsPanelClass, "space-y-4")}>
+          <h4 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
             <User className="h-4 w-4" />
             Change Username
           </h4>
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="new-username">New Username</Label>
             <Input
               id="new-username"
@@ -220,14 +248,24 @@ export function ProfileCredentials() {
               onChange={(e) => setNewUsername(e.target.value)}
               placeholder="Enter new username"
               disabled={updatingUsername}
+              className={settingsInputClass}
             />
+            <p className="text-xs leading-5 text-muted-foreground">
+              Username must be at least 3 characters.
+            </p>
           </div>
           <Button
             onClick={handleUpdateUsername}
-            disabled={updatingUsername || newUsername === profile.username || !newUsername.trim()}
-            className="w-full"
+            disabled={
+              updatingUsername ||
+              newUsername === profile.username ||
+              !newUsername.trim()
+            }
+            className={settingsCx(settingsPrimaryButtonClass, "w-full")}
           >
-            {updatingUsername && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            {updatingUsername && (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            )}
             Update Username
           </Button>
         </div>
@@ -235,20 +273,25 @@ export function ProfileCredentials() {
         <Separator />
 
         {/* Update Password */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium flex items-center gap-2">
+        <div className={settingsCx(settingsPanelClass, "space-y-4")}>
+          <h4 className="flex min-w-0 items-center gap-2 text-sm font-semibold">
             <Key className="h-4 w-4" />
             Change Password
           </h4>
 
           {passwordError && (
-            <Alert variant="destructive">
+            <Alert
+              variant="destructive"
+              className="min-w-0 overflow-hidden rounded-2xl"
+            >
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{passwordError}</AlertDescription>
+              <AlertDescription className="break-words">
+                {passwordError}
+              </AlertDescription>
             </Alert>
           )}
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="current-password">Current Password</Label>
             <Input
               id="current-password"
@@ -257,10 +300,11 @@ export function ProfileCredentials() {
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="Enter current password"
               disabled={updatingPassword}
+              className={settingsInputClass}
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="new-password">New Password</Label>
             <Input
               id="new-password"
@@ -269,11 +313,14 @@ export function ProfileCredentials() {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter new password (min 8 characters)"
               disabled={updatingPassword}
+              className={settingsInputClass}
             />
-            <PasswordStrengthMeter password={newPassword} />
+            <div className={settingsCx(settingsSubtlePanelClass, "rounded-xl")}>
+              <PasswordStrengthMeter password={newPassword} />
+            </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label htmlFor="confirm-password">Confirm New Password</Label>
             <Input
               id="confirm-password"
@@ -282,15 +329,23 @@ export function ProfileCredentials() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm new password"
               disabled={updatingPassword}
+              className={settingsInputClass}
             />
           </div>
 
           <Button
             onClick={handleUpdatePassword}
-            disabled={updatingPassword || !currentPassword || !newPassword || !confirmPassword}
-            className="w-full"
+            disabled={
+              updatingPassword ||
+              !currentPassword ||
+              !newPassword ||
+              !confirmPassword
+            }
+            className={settingsCx(settingsPrimaryButtonClass, "w-full")}
           >
-            {updatingPassword && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
+            {updatingPassword && (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            )}
             Update Password
           </Button>
         </div>
