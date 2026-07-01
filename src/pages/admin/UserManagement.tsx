@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Users, Mail, Plus, Key, AlertCircle, UserPlus } from 'lucide-react';
 import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { PermissionsGrid } from '@/components/admin/PermissionsGrid';
 import { ResetPasswordDialog } from '@/components/admin/ResetPasswordDialog';
 import { SoftDeletedUsersPanel } from '@/components/admin/SoftDeletedUsersPanel';
@@ -398,22 +399,37 @@ export default function UserManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <DashboardThemeFrame
+      as="main"
+      variant="page"
+      className="space-y-6 p-4 pb-8 sm:p-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Users className="h-8 w-8" />
-            User Management
+      <DashboardThemeFrame
+        as="header"
+        variant="hero"
+        className="flex flex-col gap-5 border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] p-5 shadow-[0_18px_55px_rgba(15,23,42,0.10)] dark:shadow-black/30 sm:p-6 lg:flex-row lg:items-center lg:justify-between"
+      >
+        <div className="min-w-0 space-y-1">
+          <h1 className="flex min-w-0 items-center gap-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-inner">
+              <Users className="h-6 w-6" />
+            </span>
+            <span className="truncate">User Management</span>
           </h1>
-          <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Manage users, roles, and permissions
+          </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
           {/* Create Sub-Admin Button */}
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                className="w-full border-primary/25 bg-background/70 shadow-sm transition-all hover:border-primary/45 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 sm:w-auto"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Sub-Admin
               </Button>
@@ -463,7 +479,7 @@ export default function UserManagement() {
           {/* Invite User Button */}
           <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30 focus-visible:ring-primary/40 sm:w-auto">
                 <UserPlus className="h-4 w-4 mr-2" />
                 Invite User
               </Button>
@@ -510,7 +526,7 @@ export default function UserManagement() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </DashboardThemeFrame>
 
       {/* Bulk Actions */}
       <BulkUserActions
@@ -642,6 +658,6 @@ export default function UserManagement() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardThemeFrame>
   );
 }
