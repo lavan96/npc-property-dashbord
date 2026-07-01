@@ -33,9 +33,9 @@ type Overview = {
 };
 
 const SEVERITY_CLASS: Record<Severity, string> = {
-  ok:       'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
-  notice:   'bg-sky-500/15 text-sky-500 border-sky-500/30',
-  warn:     'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  ok:       'border-success/25 bg-success-light/70 text-success',
+  notice:   'border-[hsl(var(--info)/0.24)] bg-[hsl(var(--info-light)/0.72)] text-[hsl(var(--info))]',
+  warn:     'border-warning/30 bg-warning-light/70 text-warning',
   critical: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
