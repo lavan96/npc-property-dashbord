@@ -7,11 +7,11 @@ const Table = React.forwardRef<
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
   <div
-    className="responsive-table-scroll relative w-full overflow-x-auto overflow-y-hidden rounded-md border border-border/60 bg-card/40 [-webkit-overflow-scrolling:touch]"
+    className="luxury-table-wrapper responsive-table-scroll relative w-full overflow-x-auto overflow-y-hidden rounded-md border border-border/60 bg-card/40 [-webkit-overflow-scrolling:touch]"
   >
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn("luxury-table w-full caption-bottom text-sm", className)}
       {...props}
     />
   </div>
@@ -23,7 +23,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("bg-muted/35 [&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("luxury-table-header bg-muted/35 [&_tr]:border-b", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -61,7 +61,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-border/60 transition-colors hover:bg-muted/35 data-[state=selected]:bg-primary/10",
+      "luxury-table-row border-b border-border/60 transition-colors hover:bg-muted/35 data-[state=selected]:bg-primary/10",
       className
     )}
     {...props}

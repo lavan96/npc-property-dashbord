@@ -77,4 +77,19 @@ describe("resolveBrandTokens", () => {
     expect(tokens.light["--success"]).toMatchInlineSnapshot(`"142 71% 45%"`);
     expect(tokens.dark["--destructive"]).toMatchInlineSnapshot(`"0 84% 60%"`);
   });
+
+  it("keeps light surfaces stable when custom brand colours are selected", () => {
+    const config: BrandConfig = {
+      ...defaultBrandConfig,
+      primaryColor: "285 90% 45%",
+      accentColor: "205 95% 45%",
+    };
+    const tokens = resolveBrandTokens(config);
+    expect(tokens.light["--primary"]).toBe("285 90% 45%");
+    expect(tokens.light["--accent"]).toBe("205 95% 45%");
+    expect(tokens.light["--background"]).toBe("42 58% 95%");
+    expect(tokens.light["--card"]).toBe("38 100% 98%");
+    expect(tokens.light["--dashboard-surface"]).toBe("38 100% 98%");
+    expect(tokens.light["--sidebar-background"]).toBe("39 55% 93%");
+  });
 });
