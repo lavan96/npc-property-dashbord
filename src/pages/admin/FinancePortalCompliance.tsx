@@ -111,6 +111,16 @@ export default function FinancePortalCompliance() {
 
   const printPdf = () => {
     if (rows.length === 0) { toast.error('Run a report first'); return; }
+    const rootStyles = getComputedStyle(document.documentElement);
+    const cssToken = (name: string, fallback: string) => rootStyles.getPropertyValue(name).trim() || fallback;
+    const printToken = (name: string, fallback: string) => `hsl(${cssToken(name, fallback)})`;
+    const printForeground = printToken('--foreground', '215 50% 18%');
+    const printBackground = printToken('--background', '0 0% 100%');
+    const printCard = printToken('--card', '0 0% 100%');
+    const printPrimary = printToken('--primary', '38 45% 53%');
+    const printMuted = printToken('--muted', '42 22% 92%');
+    const printMutedForeground = printToken('--muted-foreground', '215 16% 47%');
+    const printBorder = printToken('--border', '214 32% 91%');
     const partnerLabel = partnerId === 'all' ? 'All Partners' : partners.find(p => p.id === partnerId)?.name || 'Partner';
     const summaryHtml = Object.entries(summary)
       .sort((a, b) => b[1] - a[1])
@@ -132,15 +142,24 @@ export default function FinancePortalCompliance() {
     w.document.write(`
       <!doctype html><html><head><meta charset="utf-8"><title>Finance Portal Compliance Report</title>
       <style>
-        body { font-family: -apple-system, system-ui, sans-serif; color: #0D264D; margin: 24px; }
-        h1 { color: #0D264D; border-bottom: 3px solid #BF9B50; padding-bottom: 8px; margin-bottom: 4px; }
-        h2 { color: #BF9B50; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-top: 24px; }
-        .meta { color: #555; font-size: 12px; margin-bottom: 16px; }
+        :root {
+          --print-background: ${printBackground};
+          --print-card: ${printCard};
+          --print-foreground: ${printForeground};
+          --print-primary: ${printPrimary};
+          --print-muted: ${printMuted};
+          --print-muted-foreground: ${printMutedForeground};
+          --print-border: ${printBorder};
+        }
+        body { font-family: -apple-system, system-ui, sans-serif; color: var(--print-foreground); background: var(--print-background); margin: 24px; }
+        h1 { color: var(--print-foreground); border-bottom: 3px solid var(--print-primary); padding-bottom: 8px; margin-bottom: 4px; }
+        h2 { color: var(--print-primary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-top: 24px; }
+        .meta { color: var(--print-muted-foreground); font-size: 12px; margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        th, td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
-        th { background: #f4f1ea; color: #0D264D; font-weight: 600; }
-        tr:nth-child(even) { background: #fafafa; }
-        .footer { margin-top: 32px; font-size: 10px; color: #888; text-align: center; }
+        th, td { padding: 6px 8px; border-bottom: 1px solid var(--print-border); text-align: left; vertical-align: top; }
+        th { background: var(--print-muted); color: var(--print-foreground); font-weight: 600; }
+        tr:nth-child(even) { background: var(--print-card); }
+        .footer { margin-top: 32px; font-size: 10px; color: var(--print-muted-foreground); text-align: center; }
       </style></head><body>
       <h1>Finance Portal — Compliance Report</h1>
       <div class="meta">
