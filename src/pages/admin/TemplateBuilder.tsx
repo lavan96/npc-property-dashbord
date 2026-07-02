@@ -437,9 +437,11 @@ export default function TemplateBuilder() {
                     })()}
                     {tpl.tier && <Badge variant="outline">{tpl.tier}</Badge>}
                     <Badge variant="outline">v{tpl.version}</Badge>
-                    <Badge variant="outline">
-                      {pageCount} page{pageCount === 1 ? '' : 's'}
-                    </Badge>
+                    {tpl.schema && (
+                      <Badge variant="outline">
+                        {pageCount} page{pageCount === 1 ? '' : 's'}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex gap-2 pt-2">
                     <Button

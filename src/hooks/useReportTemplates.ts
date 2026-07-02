@@ -33,6 +33,43 @@ export interface ReportTemplateRow {
   updated_at: string;
 }
 
+/**
+ * Lightweight row for the Template Builder / Templates landing lists.
+ *
+ * IMPORTANT: the list intentionally omits the heavy `schema` (and `config`)
+ * JSONB. Some templates created from PDF imports carry multi-hundred-MB
+ * schemas (embedded raster data), and selecting `*` for every row makes the
+ * list query detoast/serialise all of them — which blows past Postgres'
+ * statement timeout and makes the whole page fail to load (both the
+ * `manage-templates` edge function → 500 and the direct fallback → error).
+ * The landing lists only need scalar metadata, so we never fetch `schema`
+ * here. Per-template `schema` is still fetched on demand by
+ * `useReportTemplate(id)` in the editor.
+ */
+export interface ReportTemplateListRow {
+  id: string;
+  name: string;
+  description: string | null;
+  report_type: string | null;
+  tier: string | null;
+  version: number;
+  is_active: boolean;
+  is_default: boolean;
+  is_draft?: boolean | null;
+  approval_status?: string | null;
+  locked_for_review?: boolean;
+  thumbnail_url: string | null;
+  engine?: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Never populated by the list query; kept optional for shared consumers. */
+  schema?: ReportTemplate | null;
+}
+
+/** Scalar-only column set for list queries — deliberately excludes `schema`/`config`. */
+const TEMPLATE_LIST_SELECT =
+  'id,name,description,report_type,tier,version,is_active,is_default,is_draft,approval_status,locked_for_review,thumbnail_url,engine,created_at,updated_at';
+
 function normaliseRow(raw: any): ReportTemplateRow {
   try {
     return {
@@ -52,13 +89,13 @@ function normaliseRow(raw: any): ReportTemplateRow {
   }
 }
 
-async function listTemplatesDirectly(): Promise<ReportTemplateRow[]> {
+async function listTemplatesDirectly(): Promise<ReportTemplateListRow[]> {
   const { data, error } = await supabase
     .from('report_templates' as any)
-    .select('*')
+    .select(TEMPLATE_LIST_SELECT)
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as any[]).map(normaliseRow);
+  return ((data ?? []) as any[]) as ReportTemplateListRow[];
 }
 
 async function getTemplateDirectly(id: string): Promise<ReportTemplateRow> {
@@ -73,17 +110,18 @@ async function getTemplateDirectly(id: string): Promise<ReportTemplateRow> {
 
 // ─── List ─────────────────────────────────────────────────────────────────────
 export function useReportTemplates() {
-  return useQuery({
+  return useQuery<ReportTemplateListRow[]>({
     queryKey: LIST_KEY,
     queryFn: async () => {
       try {
         const { data, error } = await invokeSecureFunction('manage-templates', {
           operation: 'list',
           table: 'report_templates',
-          listOptions: { orderBy: 'updated_at', orderAsc: false },
+          // Scalar-only select: never pull the heavy `schema` JSONB for the list.
+          listOptions: { select: TEMPLATE_LIST_SELECT, orderBy: 'updated_at', orderAsc: false },
         });
         if (error) throw new Error(error.message);
-        const records = ((data?.records || []) as any[]).map(normaliseRow);
+        const records = ((data?.records || []) as any[]) as ReportTemplateListRow[];
         if (records.length > 0) return records;
       } catch (error) {
         console.warn('[templates] manage-templates list failed; trying direct template list fallback.', error);
