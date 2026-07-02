@@ -121,12 +121,12 @@ const ACTION_TYPE_LABELS: Record<string, { label: string; tone: ActionTone; grou
   user_permissions_changed: { label: 'Permissions Changed', tone: 'warning', group: 'Users' },
   user_deactivated: { label: 'User Deactivated', tone: 'destructive', group: 'Users' },
   user_activated: { label: 'User Activated', tone: 'success', group: 'Users' },
-  // White label
-  whitelabel_settings_updated: { label: 'Whitelabel Updated', tone: 'accent', group: 'White Label' },
-  whitelabel_logo_changed: { label: 'Logo Changed', tone: 'accent', group: 'White Label' },
-  whitelabel_logo_uploaded: { label: 'Logo Uploaded', tone: 'accent', group: 'White Label' },
-  whitelabel_logo_removed: { label: 'Logo Removed', tone: 'warning', group: 'White Label' },
-  whitelabel_theme_changed: { label: 'Theme Changed', tone: 'accent', group: 'White Label' },
+  // Legacy white-label activity keys shown as Branding in the UI
+  whitelabel_settings_updated: { label: 'Branding Updated', tone: 'accent', group: 'Branding' },
+  whitelabel_logo_changed: { label: 'Logo Changed', tone: 'accent', group: 'Branding' },
+  whitelabel_logo_uploaded: { label: 'Logo Uploaded', tone: 'accent', group: 'Branding' },
+  whitelabel_logo_removed: { label: 'Logo Removed', tone: 'warning', group: 'Branding' },
+  whitelabel_theme_changed: { label: 'Theme Changed', tone: 'accent', group: 'Branding' },
   // Bulk
   bulk_generation_started: { label: 'Bulk Started', tone: 'info', group: 'Bulk' },
   bulk_generation_completed: { label: 'Bulk Completed', tone: 'success', group: 'Bulk' },
@@ -209,7 +209,7 @@ const ENTITY_OPTIONS: MSOption[] = [
   { value: 'automation_switch', label: 'Automation', group: 'System' },
   { value: 'user', label: 'Users', group: 'System' },
   { value: 'session', label: 'Sessions', group: 'System' },
-  { value: 'whitelabel_settings', label: 'White Label', group: 'System' },
+  { value: 'whitelabel_settings', label: 'Branding', group: 'System' },
   { value: 'data_import', label: 'Data Imports', group: 'System' },
   { value: 'bulk_generation_job', label: 'Bulk Jobs', group: 'System' },
 ];

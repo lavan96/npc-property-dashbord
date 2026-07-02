@@ -55,7 +55,7 @@ export function getBrandAccessibilityChecks(config: BrandConfig): BrandAccessibi
       label: 'Brand asset coverage',
       detail: config.authLogo && (config.sidebarLogo || config.sidebarIcon) && config.favicon
         ? 'All primary slots have assets assigned.'
-        : 'Consider adding auth, sidebar, and favicon assets for a fully white-labeled experience.',
+        : 'Consider adding auth, sidebar, and favicon assets for a complete branded experience.',
       status: config.authLogo && (config.sidebarLogo || config.sidebarIcon) && config.favicon ? 'pass' : 'warning',
     },
   ];

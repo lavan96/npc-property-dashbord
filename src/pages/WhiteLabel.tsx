@@ -974,7 +974,7 @@ export default function WhiteLabel() {
       <PageHero
         eyebrow="BRAND STUDIO"
         title="Branding"
-        subtitle="Control logos, colours, browser identity, email signature, and theme defaults across the dashboard."
+        subtitle="Manage logos, colours, browser identity, email signature, and dashboard theme defaults."
         imageVariant="branding"
         actions={brandingDraftActions}
       />
@@ -990,7 +990,7 @@ export default function WhiteLabel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved brand changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your draft differs from the saved white-label settings. Leave now to discard the current draft, or stay and keep editing.
+              Your draft differs from the saved brand settings. Leave now to discard the current draft, or stay and keep editing.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1141,8 +1141,8 @@ export default function WhiteLabel() {
               <Monitor className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg">Company Name</CardTitle>
-              <CardDescription className="break-words">This will appear in the browser tab and sidebar</CardDescription>
+              <CardTitle className="text-lg">Brand name</CardTitle>
+              <CardDescription className="break-words">This appears in the browser tab and dashboard shell.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1171,8 +1171,8 @@ export default function WhiteLabel() {
               <Palette className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg">Color Theme</CardTitle>
-              <CardDescription className="break-words">Customize the primary and accent colors of the dashboard</CardDescription>
+              <CardTitle className="text-lg">Brand colours</CardTitle>
+              <CardDescription className="break-words">Choose primary actions and accent highlights without changing the approved dashboard surfaces.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1181,9 +1181,9 @@ export default function WhiteLabel() {
             {/* Primary Color */}
             <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
               <div className="min-w-0 space-y-1">
-                <Label className="text-sm font-medium">Primary Color</Label>
+                <Label className="text-sm font-medium">Primary colour</Label>
                 <p className="text-xs text-muted-foreground">
-                  Used for buttons, links, and key UI elements
+                  Used for primary buttons, focus rings, active navigation, and chart emphasis
                 </p>
               </div>
               <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
@@ -1249,9 +1249,9 @@ export default function WhiteLabel() {
             {/* Accent Color */}
             <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
               <div className="min-w-0 space-y-1">
-                <Label className="text-sm font-medium">Accent Color</Label>
+                <Label className="text-sm font-medium">Accent colour</Label>
                 <p className="text-xs text-muted-foreground">
-                  Used for highlights and secondary emphasis
+                  Used for secondary emphasis, preview accents, and supporting chart colours
                 </p>
               </div>
               <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
@@ -1325,8 +1325,8 @@ export default function WhiteLabel() {
               {currentTheme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </div>
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg">Dark Mode</CardTitle>
-              <CardDescription className="break-words">Choose the default theme for your dashboard</CardDescription>
+              <CardTitle className="text-lg">Theme default</CardTitle>
+              <CardDescription className="break-words">Choose the default dashboard theme while preserving the existing theme toggle behaviour.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1414,8 +1414,8 @@ export default function WhiteLabel() {
 
       <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <CardTitle>Live Multi-Surface Preview</CardTitle>
-          <CardDescription>Review all surfaces together, then isolate auth, sidebar, or browser-tab styling before saving.</CardDescription>
+          <CardTitle>Live brand preview</CardTitle>
+          <CardDescription>Review dashboard, portal, browser identity, and email signature surfaces before saving.</CardDescription>
         </CardHeader>
         <CardContent>
           <BrandPreviewShowcase settings={draftSettings} />
