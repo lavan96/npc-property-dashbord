@@ -471,10 +471,6 @@ export default function Agreements() {
             <FileSignature className="h-4 w-4" />
           </span>
         </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:hidden xl:grid">
-          {renderDocuSignTimelineDate("Sent", agreement.docusign_sent_at, "Not sent", CalendarDays)}
-          {renderDocuSignTimelineDate("Signed", agreement.docusign_signed_at, "Pending", FileCheck2)}
-        </div>
       </div>
     );
   };
