@@ -169,7 +169,7 @@ export function ReminderActions({
   const editDialog = isEditable && canEdit ? (
     <Dialog open={showEdit} onOpenChange={(o) => { if (!o) requestCloseEdit(); else setShowEdit(true); }}>
       <DialogContent
-        className="max-h-[90vh] max-w-md overflow-y-auto overflow-x-hidden rounded-2xl border-brand-300/20 bg-background/95 dark:bg-background/95 text-foreground dark:text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30"
+        className="max-h-[90vh] max-w-md overflow-y-auto overflow-x-hidden rounded-2xl border-brand-300/20 bg-background/95 dark:bg-background/95 text-foreground dark:text-foreground shadow-[0_28px_90px_rgba(0,0,0,0.48),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30"
         onClick={(e) => e.stopPropagation()}
       >
         <DialogHeader>
@@ -185,7 +185,7 @@ export function ReminderActions({
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="Reminder title"
-              className="rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-slate-100 placeholder:text-muted-foreground shadow-inner hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              className="rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-foreground placeholder:text-muted-foreground shadow-inner hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             />
           </div>
           <div className="space-y-1.5">
@@ -193,7 +193,7 @@ export function ReminderActions({
             <Textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
-              className="min-h-[90px] rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-slate-100 placeholder:text-muted-foreground shadow-inner hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              className="min-h-[90px] rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-foreground placeholder:text-muted-foreground shadow-inner hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               placeholder="Add notes..."
             />
           </div>
@@ -202,12 +202,12 @@ export function ReminderActions({
             <div className="flex gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="flex-1 justify-start gap-2 rounded-xl border-brand-300/15 bg-background/35 dark:bg-black/35 text-foreground dark:text-slate-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
+                  <Button variant="outline" className="flex-1 justify-start gap-2 rounded-xl border-brand-300/15 bg-background/35 dark:bg-black/35 text-foreground dark:text-foreground hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                     <CalendarIcon className="h-4 w-4" />
                     {editDueDate ? format(editDueDate, 'MMM d, yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto rounded-xl border-brand-300/20 bg-background/95 dark:bg-background/95 p-0 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur" align="start" sideOffset={8}>
+                <PopoverContent className="w-auto rounded-xl border-brand-300/20 bg-background/95 dark:bg-background/95 p-0 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur" align="start" sideOffset={8}>
                   <Calendar
                     mode="single"
                     selected={editDueDate}
@@ -221,7 +221,7 @@ export function ReminderActions({
                 type="time"
                 value={editDueTime}
                 onChange={(e) => setEditDueTime(e.target.value)}
-                className="w-28 rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-slate-100 shadow-inner hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                className="w-28 rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-foreground shadow-inner hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               />
             </div>
           </div>
@@ -229,10 +229,10 @@ export function ReminderActions({
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-muted-foreground">Priority</label>
               <Select value={editPriority} onValueChange={setEditPriority}>
-                <SelectTrigger className="rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-slate-100 shadow-inner hover:border-brand-300/35 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black">
+                <SelectTrigger className="rounded-xl border-brand-300/15 bg-background/40 dark:bg-black/40 text-foreground dark:text-foreground shadow-inner hover:border-brand-300/35 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-brand-300/20 bg-background/95 dark:bg-background/95 p-1 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+                <SelectContent className="rounded-xl border-brand-300/20 bg-background/95 dark:bg-background/95 p-1 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
                   <SelectItem value="low" className="rounded-lg focus:bg-success/15 focus:text-success-foreground">Low</SelectItem>
                   <SelectItem value="medium" className="rounded-lg focus:bg-brand-400/15 focus:text-brand-100">Medium</SelectItem>
                   <SelectItem value="high" className="rounded-lg focus:bg-destructive/15 focus:text-destructive-foreground">High</SelectItem>
@@ -251,7 +251,7 @@ export function ReminderActions({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={requestCloseEdit} className="rounded-xl border-border/70 bg-background/25 dark:bg-black/25 text-foreground dark:text-slate-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">Cancel</Button>
+          <Button variant="outline" onClick={requestCloseEdit} className="rounded-xl border-border/70 bg-background/25 dark:bg-black/25 text-foreground dark:text-foreground hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">Cancel</Button>
           <Button
             onClick={handleSaveEdit}
             disabled={!editTitle.trim() || updateMutation.isPending}
@@ -285,7 +285,7 @@ export function ReminderActions({
               key={d}
               variant="outline"
               size="sm"
-              className="h-8 rounded-xl border-brand-300/20 bg-background/30 dark:bg-black/30 text-xs font-semibold text-foreground dark:text-slate-200 hover:border-brand-300/45 hover:bg-brand-400/12 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              className="h-8 rounded-xl border-brand-300/20 bg-background/30 dark:bg-black/30 text-xs font-semibold text-foreground dark:text-foreground hover:border-brand-300/45 hover:bg-brand-400/12 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               disabled={snoozeMutation.isPending}
               onClick={() => handleSnooze(d)}
             >
@@ -296,12 +296,12 @@ export function ReminderActions({
         <div className="flex items-center gap-1.5">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 flex-1 justify-start gap-1.5 rounded-xl border-brand-300/20 bg-background/30 dark:bg-black/30 text-xs font-semibold text-foreground dark:text-slate-200 hover:border-brand-300/45 hover:bg-brand-400/12 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
+              <Button variant="outline" size="sm" className="h-8 flex-1 justify-start gap-1.5 rounded-xl border-brand-300/20 bg-background/30 dark:bg-black/30 text-xs font-semibold text-foreground dark:text-foreground hover:border-brand-300/45 hover:bg-brand-400/12 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                 <CalendarIcon className="h-3 w-3" />
                 {customSnoozeDate ? format(customSnoozeDate, 'MMM d, yyyy') : 'Custom date...'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto rounded-xl border-brand-300/20 bg-background/95 dark:bg-background/95 p-0 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur" align="start" sideOffset={8}>
+            <PopoverContent className="w-auto rounded-xl border-brand-300/20 bg-background/95 dark:bg-background/95 p-0 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur" align="start" sideOffset={8}>
               <Calendar
                 mode="single"
                 selected={customSnoozeDate}
@@ -353,7 +353,7 @@ export function ReminderActions({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 rounded-full text-muted-foreground dark:text-slate-300 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            className="h-8 w-8 rounded-full text-muted-foreground dark:text-foreground hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             title="Edit"
             onClick={() => setShowEdit(true)}
           >

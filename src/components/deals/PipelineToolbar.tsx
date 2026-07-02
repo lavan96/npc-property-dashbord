@@ -200,7 +200,7 @@ export function PipelineToolbar({
             placeholder="Search client, stage, person..."
             value={filters.search}
             onChange={(e) => update({ search: e.target.value })}
-            className="h-12 rounded-2xl border-brand-200/15 bg-gradient-to-r from-card dark:from-zinc-950/95 via-card dark:via-zinc-950/80 to-card dark:to-zinc-900/70 pl-14 pr-11 text-sm font-medium text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_42px_rgba(0,0,0,0.24)] outline-none placeholder:text-muted-foreground/85 hover:border-brand-200/25 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/30 focus-visible:ring-offset-0"
+            className="h-12 rounded-2xl border-brand-200/15 bg-gradient-to-r from-card dark:from-background/95 via-card dark:via-background/80 to-card dark:to-background/70 pl-14 pr-11 text-sm font-medium text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_42px_rgba(0,0,0,0.24)] outline-none placeholder:text-muted-foreground/85 hover:border-brand-200/25 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/30 focus-visible:ring-offset-0"
           />
           {filters.search && (
             <button
@@ -278,7 +278,7 @@ export function PipelineToolbar({
       {/* Row 2: Expandable filter controls */}
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
         <CollapsibleContent>
-          <div id="deal-pipeline-filters" className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-brand-300/20 bg-gradient-to-br from-card dark:from-zinc-950/90 via-card dark:via-zinc-950/80 to-brand-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
+          <div id="deal-pipeline-filters" className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-brand-300/20 bg-gradient-to-br from-card dark:from-background/90 via-card dark:via-background/80 to-brand-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
             {/* Deal Type Chips */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">

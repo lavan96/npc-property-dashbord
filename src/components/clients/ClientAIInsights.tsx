@@ -191,14 +191,14 @@ Provide a JSON response with this structure:
 
             {/* Strengths */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+              <div className="flex items-center gap-2 text-sm font-medium text-success">
                 <TrendingUp className="h-4 w-4" />
                 Strengths
               </div>
               <ul className="space-y-1">
                 {insights.strengths.map((strength, i) => (
                   <li key={i} className="text-sm flex items-start gap-2">
-                    <span className="text-green-500 mt-1">•</span>
+                    <span className="text-success-foreground0 mt-1">•</span>
                     {strength}
                   </li>
                 ))}
@@ -207,14 +207,14 @@ Provide a JSON response with this structure:
 
             {/* Opportunities */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-600">
+              <div className="flex items-center gap-2 text-sm font-medium text-info">
                 <Lightbulb className="h-4 w-4" />
                 Opportunities
               </div>
               <ul className="space-y-1">
                 {insights.opportunities.map((opp, i) => (
                   <li key={i} className="text-sm flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
+                    <span className="text-info-foreground0 mt-1">•</span>
                     {opp}
                   </li>
                 ))}
@@ -223,14 +223,14 @@ Provide a JSON response with this structure:
 
             {/* Risks */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-orange-600">
+              <div className="flex items-center gap-2 text-sm font-medium text-warning">
                 <AlertTriangle className="h-4 w-4" />
                 Risks
               </div>
               <ul className="space-y-1">
                 {insights.risks.map((risk, i) => (
                   <li key={i} className="text-sm flex items-start gap-2">
-                    <span className="text-orange-500 mt-1">•</span>
+                    <span className="text-warning-foreground0 mt-1">•</span>
                     {risk}
                   </li>
                 ))}
@@ -239,13 +239,13 @@ Provide a JSON response with this structure:
 
             {/* Recommendations */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium text-purple-600">
+              <div className="flex items-center gap-2 text-sm font-medium text-accent">
                 <Target className="h-4 w-4" />
                 Recommendations
               </div>
               <ul className="space-y-2">
                 {insights.recommendations.map((rec, i) => (
-                  <li key={i} className="text-sm p-2 bg-purple-500/5 rounded-lg border border-purple-500/20">
+                  <li key={i} className="text-sm p-2 bg-accent/5 rounded-lg border border-accent/20">
                     {rec}
                   </li>
                 ))}

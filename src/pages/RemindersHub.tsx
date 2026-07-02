@@ -222,7 +222,7 @@ export default function RemindersHub() {
                 <Loader2 className="h-5 w-5 animate-spin text-brand-200" />
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground dark:text-slate-100">Loading Reminders Hub</p>
+                <p className="text-sm font-semibold text-foreground dark:text-foreground">Loading Reminders Hub</p>
                 <p className="text-xs text-muted-foreground">Preparing client follow-ups, team reminders, and milestone timelines.</p>
               </div>
             </div>
@@ -243,7 +243,7 @@ export default function RemindersHub() {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.06),transparent_28%),linear-gradient(180deg,#030303_0%,#0f1117_48%,#050507_100%)] p-3 text-foreground dark:text-slate-100 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
+    <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.06),transparent_28%),linear-gradient(180deg,#030303_0%,#0f1117_48%,#050507_100%)] p-3 text-foreground dark:text-foreground scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
       <div className="mx-auto min-w-0 max-w-7xl space-y-5 sm:space-y-6">
         {/* Page Header */}
         <div className="relative overflow-hidden rounded-[1.75rem] border border-brand-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(0,0,0,0.72)_34%,rgba(15,23,42,0.58))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.42)] backdrop-blur sm:p-6">
@@ -259,7 +259,7 @@ export default function RemindersHub() {
                 Daily command hub
               </div>
               <h1 className="bg-gradient-to-r from-white via-brand-100 to-brand-300 bg-clip-text text-2xl font-bold tracking-tight text-transparent drop-shadow-[0_0_22px_rgba(245,158,11,0.16)] sm:text-4xl">Reminders Hub</h1>
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground dark:text-slate-300 sm:text-base">
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground dark:text-foreground sm:text-base">
                 All reminders, follow-ups, and deal milestones in one place.
               </p>
             </div>
@@ -302,7 +302,7 @@ export default function RemindersHub() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground dark:text-muted-foreground">
                 {format(now, 'EEEE, dd MMMM yyyy')}
               </p>
-              <p className="max-w-5xl whitespace-normal break-words text-sm font-medium leading-6 text-foreground dark:text-slate-100 sm:text-base sm:leading-7">
+              <p className="max-w-5xl whitespace-normal break-words text-sm font-medium leading-6 text-foreground dark:text-foreground sm:text-base sm:leading-7">
                 {briefing}
               </p>
             </div>
@@ -319,7 +319,7 @@ export default function RemindersHub() {
                 <AlertTriangle className="h-4 w-4" />
               </div>
             </div>
-            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.overdue > 0 ? 'text-destructive' : 'text-foreground dark:text-slate-100')}>{stats.overdue}</p>
+            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.overdue > 0 ? 'text-destructive' : 'text-foreground dark:text-foreground')}>{stats.overdue}</p>
             <div className={cn('mt-3 h-0.5 rounded-full transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]', stats.overdue > 0 ? 'bg-destructive/60' : 'bg-brand-300/25')} />
           </CardContent>
         </Card>
@@ -331,7 +331,7 @@ export default function RemindersHub() {
                 <Clock className="h-4 w-4" />
               </div>
             </div>
-            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.today > 0 ? 'text-brand-300' : 'text-foreground dark:text-slate-100')}>{stats.today}</p>
+            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.today > 0 ? 'text-brand-300' : 'text-foreground dark:text-foreground')}>{stats.today}</p>
             <div className="mt-3 h-0.5 rounded-full bg-brand-300/35 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
@@ -343,7 +343,7 @@ export default function RemindersHub() {
                 <CalendarDays className="h-4 w-4" />
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight text-foreground dark:text-slate-100 sm:text-4xl">{stats.thisWeek}</p>
+            <p className="text-3xl font-bold tracking-tight text-foreground dark:text-foreground sm:text-4xl">{stats.thisWeek}</p>
             <div className="mt-3 h-0.5 rounded-full bg-brand-300/30 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
@@ -355,7 +355,7 @@ export default function RemindersHub() {
                 <Sparkles className="h-4 w-4" />
               </div>
             </div>
-            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.highPriority > 0 ? 'text-destructive' : 'text-foreground dark:text-slate-100')}>{stats.highPriority}</p>
+            <p className={cn('text-3xl font-bold tracking-tight sm:text-4xl', stats.highPriority > 0 ? 'text-destructive' : 'text-foreground dark:text-foreground')}>{stats.highPriority}</p>
             <div className={cn('mt-3 h-0.5 rounded-full transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]', stats.highPriority > 0 ? 'bg-destructive/60' : 'bg-brand-300/25')} />
           </CardContent>
         </Card>
@@ -367,7 +367,7 @@ export default function RemindersHub() {
                 <TrendingUp className="h-4 w-4" />
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight text-foreground dark:text-slate-100 sm:text-4xl">{stats.total}</p>
+            <p className="text-3xl font-bold tracking-tight text-foreground dark:text-foreground sm:text-4xl">{stats.total}</p>
             <div className="mt-3 h-0.5 rounded-full bg-success/30 transition-all duration-200 group-hover:shadow-[0_0_18px_rgba(245,158,11,0.35)]" />
           </CardContent>
         </Card>
@@ -379,7 +379,7 @@ export default function RemindersHub() {
           <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/50 to-transparent" />
           <TabsTrigger
             value="client"
-            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
+            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
           >
             <span className="flex min-w-0 items-center justify-center gap-2">
               <Bell className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-105" />
@@ -388,7 +388,7 @@ export default function RemindersHub() {
           </TabsTrigger>
           <TabsTrigger
             value="team"
-            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
+            className="group relative h-11 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_28px_rgba(245,158,11,0.28),inset_0_1px_0_rgba(255,255,255,0.45)] sm:h-12 sm:px-5 sm:text-sm"
           >
             <span className="flex min-w-0 items-center justify-center gap-2">
               <Users className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=active]:scale-105" />
@@ -425,14 +425,14 @@ export default function RemindersHub() {
             <Tabs value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)} className="min-w-0 flex-1">
               <TabsList aria-label="Reminder timeframe" className="relative inline-flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-2xl border border-brand-300/10 bg-[linear-gradient(135deg,rgba(0,0,0,0.58),rgba(15,23,42,0.58))] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30">
                 <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/45 to-transparent" />
-                <TabsTrigger value="all" className="h-9 min-w-16 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-20 sm:text-sm">All</TabsTrigger>
-                <TabsTrigger value="overdue" className="h-9 min-w-24 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive-foreground motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-28 sm:text-sm">
+                <TabsTrigger value="all" className="h-9 min-w-16 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-20 sm:text-sm">All</TabsTrigger>
+                <TabsTrigger value="overdue" className="h-9 min-w-24 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive-foreground motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-28 sm:text-sm">
                   Overdue {stats.overdue > 0 && <Badge variant="destructive" className="ml-1 h-4 px-1 text-[9px] shadow-[0_0_12px_rgba(248,113,113,0.28)]">{stats.overdue}</Badge>}
                 </TabsTrigger>
-                <TabsTrigger value="today" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Today</TabsTrigger>
-                <TabsTrigger value="week" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Week</TabsTrigger>
-                <TabsTrigger value="month" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Month</TabsTrigger>
-                <TabsTrigger value="later" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Later</TabsTrigger>
+                <TabsTrigger value="today" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Today</TabsTrigger>
+                <TabsTrigger value="week" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Week</TabsTrigger>
+                <TabsTrigger value="month" className="h-9 min-w-28 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-32 sm:text-sm">This Month</TabsTrigger>
+                <TabsTrigger value="later" className="h-9 min-w-20 rounded-xl border border-transparent px-3 text-xs font-semibold text-muted-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/20 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-200/45 data-[state=active]:bg-[linear-gradient(135deg,#fbbf24,#d97706)] data-[state=active]:text-black data-[state=active]:shadow-[0_0_22px_rgba(245,158,11,0.22),inset_0_1px_0_rgba(255,255,255,0.35)] sm:h-10 sm:min-w-24 sm:text-sm">Later</TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -441,7 +441,7 @@ export default function RemindersHub() {
                 <SelectTrigger
                   aria-label="Filter reminders by source"
                   className={cn(
-                    'h-11 min-w-0 w-full rounded-xl border bg-background dark:bg-black/45 px-3 text-xs font-semibold text-foreground dark:text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black sm:w-[170px] sm:flex-none',
+                    'h-11 min-w-0 w-full rounded-xl border bg-background dark:bg-black/45 px-3 text-xs font-semibold text-foreground dark:text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black sm:w-[170px] sm:flex-none',
                     sourceFilter !== 'all'
                       ? 'border-brand-300/45 bg-brand-400/12 text-brand-100 shadow-[0_0_22px_rgba(245,158,11,0.14)]'
                       : 'border-brand-400/15'
@@ -450,7 +450,7 @@ export default function RemindersHub() {
                   <Filter className="mr-2 h-3.5 w-3.5 shrink-0 text-brand-200/80" />
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+                <SelectContent className="rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
                   <SelectItem value="all">All Sources</SelectItem>
                   <SelectItem value="client_reminder">Client Reminders</SelectItem>
                   <SelectItem value="follow_up">Follow-Ups</SelectItem>
@@ -462,7 +462,7 @@ export default function RemindersHub() {
                 <SelectTrigger
                   aria-label="Filter reminders by priority"
                   className={cn(
-                    'h-11 min-w-0 w-full rounded-xl border bg-background dark:bg-black/45 px-3 text-xs font-semibold text-foreground dark:text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black sm:w-[150px] sm:flex-none',
+                    'h-11 min-w-0 w-full rounded-xl border bg-background dark:bg-black/45 px-3 text-xs font-semibold text-foreground dark:text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 motion-safe:hover:-translate-y-px focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black sm:w-[150px] sm:flex-none',
                     priorityFilter !== 'all'
                       ? 'border-brand-300/45 bg-brand-400/12 text-brand-100 shadow-[0_0_22px_rgba(245,158,11,0.14)]'
                       : 'border-brand-400/15'
@@ -471,7 +471,7 @@ export default function RemindersHub() {
                   <Sparkles className="mr-2 h-3.5 w-3.5 shrink-0 text-brand-200/80" />
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+                <SelectContent className="rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
                   <SelectItem value="all">All Priorities</SelectItem>
                   <SelectItem value="high">High</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -500,7 +500,7 @@ export default function RemindersHub() {
                   </div>
                 </div>
                 <div className="max-w-md space-y-2">
-                  <p className="text-base font-semibold tracking-tight text-foreground dark:text-slate-100 sm:text-lg">No reminders match your filters</p>
+                  <p className="text-base font-semibold tracking-tight text-foreground dark:text-foreground sm:text-lg">No reminders match your filters</p>
                   <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
                     Your selected reminder view is clear. Adjust the timeframe, source, or priority filters to widen the command hub view.
                   </p>
@@ -554,7 +554,7 @@ export default function RemindersHub() {
                                 ? 'bg-success/30 shadow-[0_0_14px_rgba(45,212,191,0.42)]'
                           : 'bg-brand-300 shadow-[0_0_12px_rgba(245,158,11,0.55)]'
                       )} />
-                      <h3 className="truncate text-sm font-semibold text-foreground dark:text-slate-100">{groupLabel}</h3>
+                      <h3 className="truncate text-sm font-semibold text-foreground dark:text-foreground">{groupLabel}</h3>
                     </div>
                     <Badge
                       variant="outline"
@@ -645,9 +645,9 @@ export default function RemindersHub() {
                                     </Badge>
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground dark:text-muted-foreground">
-                                    <span className="max-w-full truncate rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/20 px-2 py-0.5 font-medium text-foreground dark:text-slate-200 sm:max-w-[220px]">{reminder.client_name}</span>
+                                    <span className="max-w-full truncate rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/20 px-2 py-0.5 font-medium text-foreground dark:text-foreground sm:max-w-[220px]">{reminder.client_name}</span>
                                     <span className="hidden text-brand-300/35 min-[420px]:inline">•</span>
-                                    <span className="inline-flex min-w-0 max-w-full items-center gap-1 truncate rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-slate-300">
+                                    <span className="inline-flex min-w-0 max-w-full items-center gap-1 truncate rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-muted-foreground dark:text-foreground">
                                       {SOURCE_ICONS[reminder.source]}
                                       <span className="truncate">{reminder.source_label}</span>
                                     </span>
@@ -676,7 +676,7 @@ export default function RemindersHub() {
                                   <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:mb-1">Due</p>
                                   <p className={cn(
                                     'text-[11px] font-semibold sm:text-xs',
-                                    isOverdue ? 'text-destructive' : isDueToday ? 'text-brand-200' : reminder.status === 'completed' ? 'text-success' : 'text-muted-foreground dark:text-slate-300'
+                                    isOverdue ? 'text-destructive' : isDueToday ? 'text-brand-200' : reminder.status === 'completed' ? 'text-success' : 'text-muted-foreground dark:text-foreground'
                                   )}>
                                     {isOverdue
                                       ? `${Math.abs(daysUntil)}d overdue`

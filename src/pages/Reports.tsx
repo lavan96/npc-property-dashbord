@@ -399,8 +399,8 @@ export default function Reports() {
                     const topPct = totalListings > 0 ? ((top.count / totalListings) * 100).toFixed(0) : '0';
                     const ratio = second.count > 0 ? (top.count / second.count).toFixed(1) : '—';
                     return (
-                      <div className="reports-suburb-insight flex items-start gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
-                        <Lightbulb className="h-4 w-4 mt-0.5 text-yellow-500 shrink-0" />
+                      <div className="reports-suburb-insight flex items-start gap-2 p-3 rounded-2xl bg-brand-500/10 border border-brand-500/25">
+                        <Lightbulb className="h-4 w-4 mt-0.5 text-brand-500 shrink-0" />
                         <p className="text-xs text-foreground">
                           <span className="font-semibold">{top.suburb}</span> leads with {topPct}% of all listings ({top.count}), {ratio}× the volume of the next suburb ({second.suburb} at {second.count}).
                           {suburbChartData.length >= 3 && ` The top 3 suburbs account for ${totalListings > 0 ? (((suburbChartData[0].count + suburbChartData[1].count + suburbChartData[2].count) / totalListings) * 100).toFixed(0) : 0}% of total activity.`}
@@ -482,8 +482,8 @@ export default function Reports() {
                     const dominant = propertyTypeChartData.reduce((max, d) => d.count > max.count ? d : max, propertyTypeChartData[0]);
                     const dominantPct = totalListings > 0 ? ((dominant.count / totalListings) * 100).toFixed(0) : '0';
                     return (
-                      <div className="reports-types-insight flex items-center gap-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25">
-                        <Lightbulb className="h-4 w-4 text-yellow-500 shrink-0" />
+                      <div className="reports-types-insight flex items-center gap-2 p-3 rounded-2xl bg-brand-500/10 border border-brand-500/25">
+                        <Lightbulb className="h-4 w-4 text-brand-500 shrink-0" />
                         <p className="text-xs text-foreground">
                           <span className="font-semibold">{dominant.type}</span> properties dominate at <span className="font-semibold">{dominantPct}%</span> of all listings ({dominant.count} of {totalListings}).
                         </p>
@@ -645,7 +645,7 @@ export default function Reports() {
             <Card className="ci-card-premium reports-state-card reports-state-card-warning">
               <CardContent className="p-6">
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
-                  <span className="rounded-full border border-amber-500/25 bg-amber-500/10 p-3 text-amber-600 dark:text-amber-300">
+                  <span className="rounded-full border border-brand-500/25 bg-brand-500/10 p-3 text-brand-600 dark:text-brand-300">
                     <AlertTriangle className="h-5 w-5" />
                   </span>
                   <p className="text-sm font-medium text-foreground">Investment Report Generator encountered an error. Please refresh the page.</p>

@@ -201,7 +201,7 @@ export function BorrowingCapacityStep({ clientId, clientName }: BorrowingCapacit
               <p className="text-sm font-medium">Monthly Surplus</p>
               <p className="text-xs text-muted-foreground">Available for loan servicing</p>
             </div>
-            <p className={`text-xl font-bold ${(latestAssessment.monthly_surplus || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-xl font-bold ${(latestAssessment.monthly_surplus || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
               ${(latestAssessment.monthly_surplus || 0).toLocaleString()}
             </p>
           </div>
@@ -231,9 +231,9 @@ export function BorrowingCapacityStep({ clientId, clientName }: BorrowingCapacit
 
       {/* Warnings */}
       {latestAssessment.warnings && (latestAssessment.warnings as string[]).length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800">
+        <Card className="border-brand-200 bg-brand-50/50 dark:bg-brand-950/20 dark:border-brand-800">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-700 dark:text-amber-400">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-brand-700 dark:text-brand-400">
               <AlertTriangle className="h-4 w-4" />
               Warnings
             </CardTitle>
@@ -241,7 +241,7 @@ export function BorrowingCapacityStep({ clientId, clientName }: BorrowingCapacit
           <CardContent>
             <ul className="space-y-1">
               {(latestAssessment.warnings as string[]).map((warning, idx) => (
-                <li key={idx} className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                <li key={idx} className="text-sm text-brand-700 dark:text-brand-400 flex items-start gap-2">
                   <span>•</span>
                   <span>{warning}</span>
                 </li>
@@ -256,7 +256,7 @@ export function BorrowingCapacityStep({ clientId, clientName }: BorrowingCapacit
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 text-success" />
               Recommendations
             </CardTitle>
           </CardHeader>

@@ -63,7 +63,7 @@ export function LenderPacketHistoryCard({ fileId }: { fileId: string }) {
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   {r.missing_required_count > 0 ? (
-                    <Badge variant="outline" className="text-amber-500 border-amber-500/30">
+                    <Badge variant="outline" className="text-brand-500 border-brand-500/30">
                       <AlertTriangle className="h-3 w-3 mr-1" /> {r.missing_required_count} gap{r.missing_required_count === 1 ? '' : 's'}
                     </Badge>
                   ) : (

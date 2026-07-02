@@ -34,7 +34,7 @@ function agingTone(iso: string | null | undefined) {
   const hrs = (Date.now() - new Date(iso).getTime()) / 3600_000;
   const label = formatDistanceToNowStrict(new Date(iso));
   if (hrs >= 168) return { label, cls: 'bg-destructive/15 text-destructive border-destructive/30' };
-  if (hrs >= 72)  return { label, cls: 'bg-amber-500/15 text-amber-500 border-amber-500/30' };
+  if (hrs >= 72)  return { label, cls: 'bg-brand-500/15 text-brand-500 border-brand-500/30' };
   return { label, cls: 'bg-muted text-muted-foreground' };
 }
 
@@ -62,9 +62,9 @@ const FINANCE_STATUS_LABEL: Record<string, string> = {
 const STATUS_TONE: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   active: 'bg-primary/15 text-primary border-primary/30',
-  on_hold: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  on_hold: 'bg-brand-500/15 text-brand-500 border-brand-500/30',
   at_risk: 'bg-destructive/15 text-destructive border-destructive/30',
-  settled: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
+  settled: 'bg-success/15 text-success-foreground0 border-success/30',
   cancelled: 'bg-muted text-muted-foreground',
 };
 
@@ -94,8 +94,8 @@ function urgencyTone(date: string | null | undefined) {
   if (!date) return 'text-muted-foreground';
   const days = Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
   if (days < 0) return 'text-destructive';
-  if (days <= 5) return 'text-amber-500';
-  return 'text-emerald-500';
+  if (days <= 5) return 'text-brand-500';
+  return 'text-success-foreground0';
 }
 
 export default function FinancePortalPurchaseFiles() {

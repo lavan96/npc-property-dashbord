@@ -157,11 +157,11 @@ export function TimeAllocationDashboard({ events, calendars, currentWeek, select
           <div className="text-xs text-muted-foreground">Total Time</div>
         </Card>
         <Card className="p-3 text-center">
-          <div className="text-lg font-bold text-blue-400">{totalEvents}</div>
+          <div className="text-lg font-bold text-info">{totalEvents}</div>
           <div className="text-xs text-muted-foreground">Events</div>
         </Card>
         <Card className="p-3 text-center">
-          <div className="text-lg font-bold text-amber-400">
+          <div className="text-lg font-bold text-brand-400">
             {totalEvents > 0 ? (totalHours / totalEvents * 60).toFixed(0) : 0}m
           </div>
           <div className="text-xs text-muted-foreground">Avg Duration</div>

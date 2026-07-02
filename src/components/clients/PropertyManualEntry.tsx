@@ -459,10 +459,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
             </Card>
 
             {/* Deal Sourcing Section */}
-            <Card className="border-emerald-500/20">
+            <Card className="border-success/20">
               <CardContent className="pt-4">
                 <div className="space-y-4">
-                  <h4 className="text-sm font-medium flex items-center gap-2 text-emerald-600">
+                  <h4 className="text-sm font-medium flex items-center gap-2 text-success">
                     <Award className="h-4 w-4" />
                     Deal Sourcing
                   </h4>
@@ -532,10 +532,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
 
             {/* SMSF Details - Only shown when SMSF is selected */}
             {formData.property_type === 'smsf' && (
-              <Card className="border-amber-500/30 bg-amber-500/5">
+              <Card className="border-brand-500/30 bg-brand-500/5">
                 <CardContent className="pt-4">
                   <div className="space-y-4">
-                    <h4 className="text-sm font-medium flex items-center gap-2 text-amber-600">
+                    <h4 className="text-sm font-medium flex items-center gap-2 text-brand-600">
                       <Shield className="h-4 w-4" />
                       SMSF Details & Compliance
                     </h4>
@@ -604,19 +604,19 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                           <SelectContent>
                             <SelectItem value="compliant">
                               <span className="flex items-center gap-2">
-                                <span className="h-2 w-2 rounded-full bg-green-500" />
+                                <span className="h-2 w-2 rounded-full bg-success" />
                                 Compliant
                               </span>
                             </SelectItem>
                             <SelectItem value="pending_audit">
                               <span className="flex items-center gap-2">
-                                <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                                <span className="h-2 w-2 rounded-full bg-brand-500" />
                                 Pending Audit
                               </span>
                             </SelectItem>
                             <SelectItem value="non_compliant">
                               <span className="flex items-center gap-2">
-                                <span className="h-2 w-2 rounded-full bg-red-500" />
+                                <span className="h-2 w-2 rounded-full bg-destructive" />
                                 Non-Compliant
                               </span>
                             </SelectItem>
@@ -639,10 +639,10 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
 
             {/* Rental Property Details - Only shown when Rental is selected */}
             {formData.property_type === 'rental' && (
-              <Card className="border-blue-500/30 bg-blue-500/5">
+              <Card className="border-info/30 bg-info/5">
                 <CardContent className="pt-4">
                   <div className="space-y-4">
-                    <h4 className="text-sm font-medium flex items-center gap-2 text-blue-600">
+                    <h4 className="text-sm font-medium flex items-center gap-2 text-info">
                       <Key className="h-4 w-4" />
                       Rental Details (You Are a Tenant)
                     </h4>
@@ -784,7 +784,7 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Monthly Rental Income</span>
-                      <span className="font-medium text-emerald-500">
+                      <span className="font-medium text-success-foreground0">
                         {formatCurrency(monthlyRentalIncome)}
                       </span>
                     </div>
@@ -847,13 +847,13 @@ export function PropertyManualEntry({ clientId, onComplete }: PropertyManualEntr
                   <>
                     <div className="flex justify-between text-sm font-medium">
                       <span>Net Monthly Cashflow</span>
-                      <span className={netMonthlyCashflow >= 0 ? 'text-emerald-500' : 'text-destructive'}>
+                      <span className={netMonthlyCashflow >= 0 ? 'text-success-foreground0' : 'text-destructive'}>
                         {formatCurrency(netMonthlyCashflow)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Net Monthly Rental Position</span>
-                      <span className={netMonthlyRentalPosition >= 0 ? 'text-emerald-500' : 'text-destructive'}>
+                      <span className={netMonthlyRentalPosition >= 0 ? 'text-success-foreground0' : 'text-destructive'}>
                         {formatCurrency(netMonthlyRentalPosition)}
                       </span>
                     </div>

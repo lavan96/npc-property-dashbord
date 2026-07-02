@@ -41,8 +41,8 @@ interface Manifest {
 }
 
 const QUALITY_TONE: Record<string, { tone: string; label: string }> = {
-  ok:        { tone: 'bg-emerald-500/15 text-emerald-500', label: 'OK' },
-  warning:   { tone: 'bg-amber-500/15 text-amber-500',     label: 'Warning' },
+  ok:        { tone: 'bg-success/15 text-success-foreground0', label: 'OK' },
+  warning:   { tone: 'bg-brand-500/15 text-brand-500',     label: 'Warning' },
   error:     { tone: 'bg-destructive/15 text-destructive', label: 'Error' },
   unchecked: { tone: 'bg-muted text-muted-foreground',     label: 'Unchecked' },
 };
@@ -276,7 +276,7 @@ export function LenderPacketDialog({ open, onOpenChange, fileId }: Props) {
                 </Badge>
               )}
               {warnCount > 0 && (
-                <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/20">
+                <Badge className="bg-brand-500/15 text-brand-500 border-brand-500/20">
                   <AlertTriangle className="h-3 w-3 mr-1" /> {warnCount} warning(s)
                 </Badge>
               )}

@@ -34,7 +34,7 @@ export default function GamePlan() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="relative min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.18)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-sm dark:shadow-black/10 dark:border-white/10 dark:bg-slate-950/85 dark:shadow-black/35 sm:p-5 lg:p-6"
+      className="relative min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.18)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-sm dark:shadow-black/10 dark:border-white/10 dark:bg-background/85 dark:shadow-black/35 sm:p-5 lg:p-6"
     >
       {/* Header */}
       <DashboardThemeFrame
@@ -69,7 +69,7 @@ export default function GamePlan() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 space-y-4">
         <DashboardThemeFrame
           variant="toolbar"
-          className="overflow-x-auto rounded-2xl border-primary/15 bg-card/65 p-1.5 shadow-inner shadow-sm dark:shadow-black/5 dark:bg-slate-950/45 dark:shadow-black/20"
+          className="overflow-x-auto rounded-2xl border-primary/15 bg-card/65 p-1.5 shadow-inner shadow-sm dark:shadow-black/5 dark:bg-background/45 dark:shadow-black/20"
         >
           <TabsList className="grid h-auto w-full min-w-max grid-cols-2 gap-1 bg-transparent p-0 sm:min-w-0 md:w-auto">
             <TabsTrigger
@@ -101,7 +101,7 @@ export default function GamePlan() {
           <DashboardThemeFrame
             as="section"
             variant="section"
-            className="border-primary/10 bg-card/55 p-3 shadow-xl shadow-sm dark:shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20 sm:p-4 md:p-5"
+            className="border-primary/10 bg-card/55 p-3 shadow-xl shadow-sm dark:shadow-black/5 dark:bg-background/35 dark:shadow-black/20 sm:p-4 md:p-5"
           >
             <GamePlanList
               plans={plans}
@@ -116,7 +116,7 @@ export default function GamePlan() {
           <DashboardThemeFrame
             as="section"
             variant="section"
-            className="border-primary/10 bg-card/55 p-3 shadow-xl shadow-sm dark:shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20 sm:p-4 md:p-5"
+            className="border-primary/10 bg-card/55 p-3 shadow-xl shadow-sm dark:shadow-black/5 dark:bg-background/35 dark:shadow-black/20 sm:p-4 md:p-5"
           >
             <AssignedTasksTab />
           </DashboardThemeFrame>

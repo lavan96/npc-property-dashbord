@@ -53,7 +53,7 @@ export function DataIntegrityPanel({
       ? 'validating'
       : 'idle';
   const statusShellClasses = {
-    idle: 'border-border/80 bg-muted/80 text-foreground dark:border-border dark:bg-background/50 dark:text-slate-300',
+    idle: 'border-border/80 bg-muted/80 text-foreground dark:border-border dark:bg-background/50 dark:text-foreground',
     validating: 'border-info/80 bg-info/80 text-info dark:border-info/70 dark:bg-info/40 dark:text-info',
     passed: 'border-success/80 bg-success/80 text-success dark:border-success/70 dark:bg-success/40 dark:text-success',
     warning: 'border-brand-200/80 bg-brand-50/80 text-brand-700 dark:border-brand-900/70 dark:bg-brand-950/40 dark:text-brand-300',
@@ -67,7 +67,7 @@ export function DataIntegrityPanel({
   return (
     <Card
       className={cn(
-        'relative overflow-hidden border-border/70 bg-gradient-to-br from-card via-card to-slate-50/70 shadow-sm ring-1 ring-black/5 dark:to-slate-950/60 dark:ring-white/10',
+        'relative overflow-hidden border-border/70 bg-gradient-to-br from-card via-card to-muted/70 shadow-sm ring-1 ring-black/5 dark:to-background/60 dark:ring-white/10',
         className
       )}
     >

@@ -65,7 +65,7 @@ export function AirtableTableSelector({ value, onChange }: AirtableTableSelector
   };
 
   return (
-    <div className="flex min-w-[220px] items-center gap-2 rounded-full border border-border/55 bg-card/75 px-2.5 py-1 shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/45 md:min-w-[260px]">
+    <div className="flex min-w-[220px] items-center gap-2 rounded-full border border-border/55 bg-card/75 px-2.5 py-1 shadow-sm transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 dark:border-white/10 dark:bg-background/45 md:min-w-[260px]">
       <Database className="h-4 w-4 text-primary shrink-0" />
       <Select
         value={effectiveValue}

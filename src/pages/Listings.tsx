@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils';
 
 const LISTINGS_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
 const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-background/35 dark:shadow-black/25';
-const LISTINGS_STATE_CARD = 'relative overflow-hidden rounded-[1.75rem] border border-border/60 bg-gradient-to-br from-card/95 via-card/85 to-primary/[0.045] px-6 py-12 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:from-slate-950/85 dark:via-slate-950/70 dark:to-primary/10 dark:shadow-black/35';
+const LISTINGS_STATE_CARD = 'relative overflow-hidden rounded-[1.75rem] border border-border/60 bg-gradient-to-br from-card/95 via-card/85 to-primary/[0.045] px-6 py-12 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:from-background/85 dark:via-background/70 dark:to-primary/10 dark:shadow-black/35';
 const LISTINGS_STATE_ICON = 'mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-[0_14px_34px_rgba(245,158,11,0.14)]';
 const LISTINGS_CARD_SURFACE = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-background/80 dark:shadow-black/30';
 const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
@@ -124,7 +124,7 @@ const ListingsStatePanel = ({ icon: Icon, eyebrow, title, description, children,
 
 const ListingsLoadingSkeleton = ({ isMobile }: { isMobile: boolean }) => (
   <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`} aria-busy="true" aria-live="polite">
-    <section className={`${LISTINGS_SECTION_SURFACE} relative overflow-hidden bg-gradient-to-br from-card/95 via-card/80 to-primary/5 dark:from-slate-950/80 dark:via-slate-950/55 dark:to-primary/10`}>
+    <section className={`${LISTINGS_SECTION_SURFACE} relative overflow-hidden bg-gradient-to-br from-card/95 via-card/80 to-primary/5 dark:from-background/80 dark:via-background/55 dark:to-primary/10`}>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
@@ -568,7 +568,7 @@ export default function Listings() {
   return (
     <div className={`${LISTINGS_SHELL} space-y-5 md:space-y-7`}>
       {/* Header */}
-      <section className={`${LISTINGS_SECTION_SURFACE} relative overflow-hidden bg-gradient-to-br from-card/95 via-card/80 to-primary/5 dark:from-slate-950/80 dark:via-slate-950/55 dark:to-primary/10`}>
+      <section className={`${LISTINGS_SECTION_SURFACE} relative overflow-hidden bg-gradient-to-br from-card/95 via-card/80 to-primary/5 dark:from-background/80 dark:via-background/55 dark:to-primary/10`}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 max-w-3xl">
@@ -661,7 +661,7 @@ export default function Listings() {
       </section>
 
       {/* Search and Filters */}
-      <section className={`${LISTINGS_SECTION_SURFACE} space-y-6 bg-gradient-to-br from-card/95 via-card/80 to-brand-50/40 ring-1 ring-brand-400/10 dark:from-slate-950/70 dark:via-slate-950/50 dark:to-brand-950/10`}>
+      <section className={`${LISTINGS_SECTION_SURFACE} space-y-6 bg-gradient-to-br from-card/95 via-card/80 to-brand-50/40 ring-1 ring-brand-400/10 dark:from-background/70 dark:via-background/50 dark:to-brand-950/10`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
           <div className="group relative min-w-0 flex-1">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex w-14 items-center justify-center">
@@ -835,7 +835,7 @@ export default function Listings() {
                   <TableRow
                     className={cn(
                       "group relative border-b border-border/50 bg-card/80 transition-all duration-200 odd:bg-card/92 even:bg-muted/[0.22] hover:bg-gradient-to-r hover:from-primary/[0.095] hover:via-primary/[0.045] hover:to-transparent hover:shadow-[inset_0_1px_0_hsl(var(--primary)/0.12),inset_0_-1px_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/[0.06] dark:border-white/10 dark:odd:bg-background/62 dark:even:bg-white/[0.025] dark:hover:from-primary/10 dark:hover:via-white/[0.04]",
-                      selectedListings.has(listing.id) && "bg-gradient-to-r from-primary/[0.13] via-primary/[0.075] to-card shadow-[inset_5px_0_0_hsl(var(--primary)),inset_0_1px_0_hsl(var(--primary)/0.18),0_10px_28px_rgba(245,158,11,0.10)] hover:from-primary/[0.16] hover:via-primary/[0.09] dark:from-primary/15 dark:via-primary/10 dark:to-slate-950/55"
+                      selectedListings.has(listing.id) && "bg-gradient-to-r from-primary/[0.13] via-primary/[0.075] to-card shadow-[inset_5px_0_0_hsl(var(--primary)),inset_0_1px_0_hsl(var(--primary)/0.18),0_10px_28px_rgba(245,158,11,0.10)] hover:from-primary/[0.16] hover:via-primary/[0.09] dark:from-primary/15 dark:via-primary/10 dark:to-background/55"
                     )}
                   >
                     {/* preserve original cells */}

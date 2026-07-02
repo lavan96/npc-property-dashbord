@@ -23,19 +23,19 @@ import { cn } from '@/lib/utils';
 const FN = 'finance-portal-client-tasks';
 
 const TYPE_META: Record<string, { label: string; icon: any; tone: string }> = {
-  document_upload:         { label: 'Document upload',         icon: FileText,    tone: 'bg-sky-500/15 text-sky-500 border-sky-500/30' },
-  lender_condition_action: { label: 'Lender condition action', icon: ShieldCheck, tone: 'bg-amber-500/15 text-amber-500 border-amber-500/30' },
-  signature_request:       { label: 'Signature request',       icon: PenSquare,   tone: 'bg-violet-500/15 text-violet-500 border-violet-500/30' },
+  document_upload:         { label: 'Document upload',         icon: FileText,    tone: 'bg-info/15 text-info-foreground0 border-info/30' },
+  lender_condition_action: { label: 'Lender condition action', icon: ShieldCheck, tone: 'bg-brand-500/15 text-brand-500 border-brand-500/30' },
+  signature_request:       { label: 'Signature request',       icon: PenSquare,   tone: 'bg-accent/15 text-accent-foreground0 border-accent/30' },
   information_request:     { label: 'Information request',     icon: HelpCircle,  tone: 'bg-muted text-muted-foreground border-border' },
-  decision_required:       { label: 'Decision required',       icon: AlertCircle, tone: 'bg-rose-500/15 text-rose-500 border-rose-500/30' },
-  payment_required:        { label: 'Payment required',        icon: Coins,       tone: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30' },
+  decision_required:       { label: 'Decision required',       icon: AlertCircle, tone: 'bg-destructive/15 text-destructive-foreground0 border-destructive/30' },
+  payment_required:        { label: 'Payment required',        icon: Coins,       tone: 'bg-success/15 text-success-foreground0 border-success/30' },
   other:                   { label: 'Other',                   icon: Inbox,       tone: 'bg-muted text-muted-foreground border-border' },
 };
 
 const STATUS_META: Record<string, { label: string; tone: string }> = {
   pending:     { label: 'Pending',     tone: 'bg-muted text-muted-foreground' },
-  in_progress: { label: 'In progress', tone: 'bg-sky-500/15 text-sky-500' },
-  completed:   { label: 'Completed',   tone: 'bg-emerald-500/15 text-emerald-500' },
+  in_progress: { label: 'In progress', tone: 'bg-info/15 text-info-foreground0' },
+  completed:   { label: 'Completed',   tone: 'bg-success/15 text-success-foreground0' },
   dismissed:   { label: 'Dismissed',   tone: 'bg-muted text-muted-foreground line-through' },
   expired:     { label: 'Expired',     tone: 'bg-destructive/15 text-destructive' },
 };

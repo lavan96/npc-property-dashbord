@@ -15,9 +15,9 @@ import { cn } from '@/lib/utils';
 
 
 const cleanupDialogShell =
-  'overflow-hidden border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/98 via-card dark:via-zinc-900/95 to-background dark:to-black/95 p-0 text-foreground dark:text-zinc-50 shadow-2xl shadow-sm dark:shadow-black/50 sm:max-w-2xl';
+  'overflow-hidden border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/98 via-card dark:via-background/95 to-background dark:to-black/95 p-0 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/50 sm:max-w-2xl';
 const cleanupSectionCard =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-success/35 before:to-transparent';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-success/35 before:to-transparent';
 const cleanupTriggerBase =
   'group gap-2 border-success/20 bg-success/10 text-success-foreground shadow-lg shadow-sm dark:shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-success/40 hover:bg-success/15 hover:text-success-foreground hover:shadow-success/10 focus-visible:ring-2 focus-visible:ring-success/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 
@@ -173,7 +173,7 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
             <ShieldCheck className="h-3 w-3" />
             Data Quality Utility
           </div>
-          <DialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
+          <DialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-foreground">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-success/25 bg-success/10 text-success shadow-inner shadow-success/40">
               <UserCheck className="h-5 w-5" />
             </span>
@@ -184,7 +184,7 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
         <div className="space-y-5 px-6 py-5">
           <Card className={cleanupSectionCard}>
             <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-success/10 via-transparent to-info/10 pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-50"><DatabaseZap className="h-4 w-4 text-success" />What This Does</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-foreground"><DatabaseZap className="h-4 w-4 text-success" />What This Does</CardTitle>
               <CardDescription className="text-xs text-muted-foreground dark:text-muted-foreground">
                 Syncs contact names from GoHighLevel CRM
               </CardDescription>
@@ -201,7 +201,7 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
 
           <div className="flex items-center justify-between rounded-3xl border border-border dark:border-white/10 bg-white/[0.03] p-4 shadow-inner shadow-sm dark:shadow-black/20">
             <div className="space-y-0.5">
-              <Label htmlFor="force-update" className="text-sm font-semibold text-foreground dark:text-zinc-100">
+              <Label htmlFor="force-update" className="text-sm font-semibold text-foreground dark:text-foreground">
                 Force Update All
               </Label>
               <p className="text-xs text-muted-foreground dark:text-muted-foreground">
@@ -218,7 +218,7 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
 
           {isRunning && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm text-foreground dark:text-zinc-100">
+              <div className="flex items-center justify-between text-sm text-foreground dark:text-foreground">
                 <span>Processing batch {currentBatch}...</span>
                 <span className="text-muted-foreground dark:text-muted-foreground">
                   {processedCount} / {totalRecords || '?'} records
@@ -230,7 +230,7 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
                   <CheckCircle className="h-3 w-3 text-success" />
                   {updatedCount} updated
                 </Badge>
-                <Badge variant="outline" className="gap-1 rounded-full border-border dark:border-white/10 bg-white/[0.03] text-muted-foreground dark:text-zinc-300">
+                <Badge variant="outline" className="gap-1 rounded-full border-border dark:border-white/10 bg-white/[0.03] text-muted-foreground dark:text-foreground">
                   <AlertCircle className="h-3 w-3 text-muted-foreground" />
                   {processedCount - updatedCount} skipped
                 </Badge>

@@ -102,11 +102,11 @@ const VALUE_OPTIONS = {
 
 
 const alertDialogShell =
-  'max-h-[80vh] max-w-3xl overflow-y-auto border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/98 via-card dark:via-zinc-900/95 to-background dark:to-black/95 p-0 text-foreground dark:text-zinc-50 shadow-2xl shadow-sm dark:shadow-black/50';
+  'max-h-[80vh] max-w-3xl overflow-y-auto border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/98 via-card dark:via-background/95 to-background dark:to-black/95 p-0 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/50';
 const alertSectionCard =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/35 before:to-transparent';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/35 before:to-transparent';
 const alertControl =
-  'rounded-2xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all placeholder:text-muted-foreground hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+  'rounded-2xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/25 transition-all placeholder:text-muted-foreground hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 const alertPrimaryButton =
   'rounded-2xl bg-gradient-to-r from-brand-300 via-brand-400 to-brand-500 font-semibold text-black shadow-lg shadow-brand-500/20 transition-all hover:-translate-y-0.5 hover:from-brand-200 hover:via-brand-300 hover:to-brand-400 hover:shadow-brand-500/30 disabled:translate-y-0 disabled:opacity-50';
 
@@ -518,7 +518,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
                 <BellRing className="h-3 w-3" />
                 Operational Monitoring
               </div>
-              <DialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
+              <DialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-foreground">
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-500/10 text-brand-200 shadow-inner shadow-brand-950/40">
                   <Bell className="h-5 w-5" />
                 </span>
@@ -530,7 +530,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
               {/* Email Configuration */}
               <Card className={alertSectionCard}>
                 <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-info/10 via-transparent to-brand-500/10 pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-50">
+                  <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-foreground">
                     <Mail className="w-4 h-4" />
                     Email Notifications
                   </CardTitle>
@@ -566,7 +566,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
               {/* Create New Rule */}
               <Card className={alertSectionCard}>
                 <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-brand-500/10 via-transparent to-accent/10 pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-50">
+                  <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-foreground">
                     <Plus className="w-4 h-4" />
                     Create Alert Rule
                   </CardTitle>
@@ -688,7 +688,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
               {/* Active Rules */}
               <Card className={alertSectionCard}>
                 <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-accent/10 via-transparent to-info/10 pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-50">
+                  <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-foreground">
                     <Settings className="w-4 h-4" />
                     Active Rules ({rules.length})
                   </CardTitle>
@@ -705,7 +705,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
                                 <Icon className={`h-4 w-4 ${rule.is_positive ? 'text-success' : 'text-brand-300'}`} />
                               </div>
                               <div>
-                                <p className="text-sm font-semibold text-foreground dark:text-zinc-100">{rule.name}</p>
+                                <p className="text-sm font-semibold text-foreground dark:text-foreground">{rule.name}</p>
                                 <div className="flex items-center gap-2">
                                   <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                                     {rule.condition_type} {rule.condition_operator.replace('_', ' ')} {rule.condition_value}
@@ -747,7 +747,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
               <Card className={alertSectionCard}>
                 <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-brand-500/10 via-transparent to-success/10 pb-3">
                   <div className="flex items-center justify-between rounded-3xl border border-border dark:border-white/10 bg-white/[0.03] p-4">
-                    <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-50">
+                    <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-foreground">
                       <Zap className="w-4 h-4" />
                       Recent Alerts
                     </CardTitle>
@@ -777,7 +777,7 @@ export const CallAlerts = ({ calls, onAlertTriggered, triggerClassName }: CallAl
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className="truncate text-sm font-semibold text-foreground dark:text-zinc-100">{alert.rule_name}</p>
+                              <p className="truncate text-sm font-semibold text-foreground dark:text-foreground">{alert.rule_name}</p>
                               {!alert.is_read && (
                                 <Badge variant="secondary" className={callLogBadgeTone('warning', 'h-4 text-[10px]')}>New</Badge>
                               )}

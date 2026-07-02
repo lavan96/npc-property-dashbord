@@ -396,7 +396,7 @@ export default function FinancePortalLenderIntelligence() {
             Selected {selectedRates.length}/{MAX_COMPARE}. {selectedRates.length < MIN_COMPARE ? `Choose at least ${MIN_COMPARE} products to enable comparison.` : 'Ready to compare.'}
           </div>
           {compareWarning && (
-            <Alert className="border-amber-300 bg-amber-50 text-amber-900">
+            <Alert className="border-brand-300 bg-brand-50 text-brand-900">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Comparison data warning</AlertTitle>
               <AlertDescription>{compareWarning}</AlertDescription>
@@ -498,7 +498,7 @@ export default function FinancePortalLenderIntelligence() {
                         <TableCell className="text-right tabular-nums">{fmtAUD(monthlyRepayment(rate.rate, loanAmount, rate.repayment_type))}</TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-[280px]">
                           <div className="line-clamp-2">{rate.fees || rate.notes || (rate.features || []).map(titleCase).join(', ') || 'No notes supplied'}</div>
-                          {missing.length > 0 && <div className="text-amber-700 mt-1">Missing: {missing.join(', ')}</div>}
+                          {missing.length > 0 && <div className="text-brand-700 mt-1">Missing: {missing.join(', ')}</div>}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           <div>{fmtDate(rate.last_updated || rate.fetched_at)}</div>

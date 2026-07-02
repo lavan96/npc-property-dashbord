@@ -30,11 +30,11 @@ const DEFAULT_TEST_NUMBERS = [
 
 
 const utilityControl =
-  'rounded-2xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all placeholder:text-muted-foreground hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+  'rounded-2xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/25 transition-all placeholder:text-muted-foreground hover:border-brand-300/35 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 const utilityPopoverShell =
-  'w-80 overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/98 via-card dark:via-zinc-900/95 to-background dark:to-black/95 p-0 text-foreground dark:text-zinc-50 shadow-2xl shadow-sm dark:shadow-black/50';
+  'w-80 overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/98 via-card dark:via-background/95 to-background dark:to-black/95 p-0 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/50';
 const destructiveDialogShell =
-  'overflow-hidden border border-destructive/20 bg-gradient-to-br from-card dark:from-zinc-950/98 via-card dark:via-zinc-900/95 to-background dark:to-black/95 p-0 text-foreground dark:text-zinc-50 shadow-2xl shadow-destructive/30 sm:max-w-lg';
+  'overflow-hidden border border-destructive/20 bg-gradient-to-br from-card dark:from-background/98 via-card dark:via-background/95 to-background dark:to-black/95 p-0 text-foreground dark:text-foreground shadow-2xl shadow-destructive/30 sm:max-w-lg';
 
 interface CleanupTestCallsProps {
   onComplete?: () => void;
@@ -138,7 +138,7 @@ export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flush
               <FlaskConical className="h-3 w-3" />
               Controlled Testing
             </div>
-            <h4 className="text-sm font-semibold text-foreground dark:text-zinc-50">Test Phone Numbers</h4>
+            <h4 className="text-sm font-semibold text-foreground dark:text-foreground">Test Phone Numbers</h4>
             <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">Calls from these numbers will be removed when flushing test calls.</p>
           </div>
           <div className="space-y-4 p-4">
@@ -168,7 +168,7 @@ export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flush
                     key={number}
                     className="flex items-center justify-between rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2 transition-colors hover:border-info/25 hover:bg-info/10"
                   >
-                    <span className="font-mono text-sm text-foreground dark:text-zinc-100">{number}</span>
+                    <span className="font-mono text-sm text-foreground dark:text-foreground">{number}</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -217,12 +217,12 @@ export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flush
                 <ShieldAlert className="h-3 w-3" />
                 Destructive Action
               </div>
-              <AlertDialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">Flush Test Calls</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-foreground">Flush Test Calls</AlertDialogTitle>
               <AlertDialogDescription className="space-y-3 text-muted-foreground dark:text-muted-foreground">
               <p>
                 This will permanently delete all call logs from the following test phone numbers:
               </p>
-              <ul className="max-h-32 space-y-1 overflow-y-auto rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/30 p-3 font-mono text-sm text-foreground dark:text-zinc-100">
+              <ul className="max-h-32 space-y-1 overflow-y-auto rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/30 p-3 font-mono text-sm text-foreground dark:text-foreground">
                 {testNumbers.map((number) => (
                   <li key={number}>{number}</li>
                 ))}
@@ -235,7 +235,7 @@ export const CleanupTestCalls = ({ onComplete, testNumbersButtonClassName, flush
           </div>
           <div className="px-6 py-5">
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading} className="rounded-2xl border-border dark:border-white/10 bg-white/[0.03] text-muted-foreground dark:text-zinc-300 hover:bg-white/10 hover:text-zinc-50">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isLoading} className="rounded-2xl border-border dark:border-white/10 bg-white/[0.03] text-muted-foreground dark:text-foreground hover:bg-white/10 hover:text-zinc-50">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCleanup}
               disabled={isLoading}

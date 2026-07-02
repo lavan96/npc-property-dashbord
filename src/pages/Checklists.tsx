@@ -26,7 +26,7 @@ const ChecklistLoadingState = ({ message }: { message: string }) => (
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-400/10 text-brand-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
         <Loader2 className="h-7 w-7 animate-spin" />
       </div>
-      <p className="text-sm font-semibold text-foreground dark:text-zinc-100">{message}</p>
+      <p className="text-sm font-semibold text-foreground dark:text-foreground">{message}</p>
       <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">Preparing the workflow workspace</p>
     </CardContent>
   </Card>
@@ -56,11 +56,11 @@ export default function Checklists() {
       <DashboardThemeFrame as="main" variant="page" className="flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-primary/15 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.16),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] p-4 text-foreground shadow-2xl shadow-sm dark:shadow-black/30 md:p-6">
         <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82)_52%,hsl(var(--primary)/0.12))] p-5 shadow-inner shadow-sm dark:shadow-black/10">
           <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-300/30 bg-gradient-to-br from-brand-300/20 via-card dark:via-zinc-950 to-background dark:to-black text-brand-200">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-300/30 bg-gradient-to-br from-brand-300/20 via-card dark:via-background to-background dark:to-black text-brand-200">
               <ClipboardList className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="break-words text-3xl font-bold tracking-tight text-foreground dark:text-zinc-50">Checklists</h1>
+              <h1 className="break-words text-3xl font-bold tracking-tight text-foreground dark:text-foreground">Checklists</h1>
               <p className="text-muted-foreground dark:text-muted-foreground">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
@@ -78,11 +78,11 @@ export default function Checklists() {
       <DashboardThemeFrame as="main" variant="page" className="flex max-h-[calc(100vh-2rem)] min-h-0 max-w-7xl flex-col space-y-6 overflow-hidden rounded-3xl border border-primary/15 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))] p-4 text-foreground shadow-2xl shadow-sm dark:shadow-black/30 md:p-6">
         <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82)_52%,hsl(var(--primary)/0.12))] p-5 shadow-inner shadow-sm dark:shadow-black/10">
           <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-300/30 bg-gradient-to-br from-brand-300/20 via-card dark:via-zinc-950 to-background dark:to-black text-brand-200">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-300/30 bg-gradient-to-br from-brand-300/20 via-card dark:via-background to-background dark:to-black text-brand-200">
               <ClipboardList className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="break-words text-3xl font-bold tracking-tight text-foreground dark:text-zinc-50">Checklists</h1>
+              <h1 className="break-words text-3xl font-bold tracking-tight text-foreground dark:text-foreground">Checklists</h1>
               <p className="text-muted-foreground dark:text-muted-foreground">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
@@ -194,7 +194,7 @@ export default function Checklists() {
             <div className="flex min-w-0 items-start gap-3.5">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-300/20 bg-background/35 dark:bg-black/35 text-xl shadow-inner shadow-brand-950/20">{instance.icon}</span>
               <div className="min-w-0">
-                <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-foreground dark:text-zinc-50 transition-colors group-hover:text-brand-50">{instance.name}</h3>
+                <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-foreground dark:text-foreground transition-colors group-hover:text-brand-50">{instance.name}</h3>
                 <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">
                   <Clock className="h-3 w-3 text-brand-300/75" />
                   {new Date(instance.created_at).toLocaleDateString()}
@@ -226,11 +226,11 @@ export default function Checklists() {
       <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--background)/0.82)_52%,hsl(var(--primary)/0.12))] p-5 shadow-inner shadow-sm dark:shadow-black/10">
         <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand-300/30 bg-gradient-to-br from-brand-300/20 via-card dark:via-zinc-950 to-background dark:to-black text-brand-200 shadow-[0_18px_42px_rgba(245,158,11,0.16)]">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand-300/30 bg-gradient-to-br from-brand-300/20 via-card dark:via-background to-background dark:to-black text-brand-200 shadow-[0_18px_42px_rgba(245,158,11,0.16)]">
               <ClipboardList className="h-7 w-7" />
             </div>
             <div className="min-w-0">
-              <h1 className="break-words text-3xl font-bold tracking-tight text-foreground dark:text-zinc-50 md:text-4xl">Checklists</h1>
+              <h1 className="break-words text-3xl font-bold tracking-tight text-foreground dark:text-foreground md:text-4xl">Checklists</h1>
               <p className="mt-1 text-sm leading-6 text-muted-foreground dark:text-muted-foreground md:text-base">Manage checklist templates and track operational workflows</p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function Checklists() {
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-400/10 text-brand-200 shadow-[0_18px_45px_rgba(245,158,11,0.16)]">
                   <ClipboardList className="h-8 w-8" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-zinc-50">No active checklists</h3>
+                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-foreground">No active checklists</h3>
                 <p className="mb-5 text-sm text-muted-foreground dark:text-muted-foreground">Generate one from a template to get started</p>
                 <Button variant="secondary" className="border border-brand-300/20 bg-brand-400/10 text-brand-100 transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-400/20 hover:text-brand-50 hover:shadow-[0_12px_28px_rgba(245,158,11,0.14)] focus-visible:ring-2 focus-visible:ring-brand-300/60 motion-reduce:transition-none" onClick={() => setActiveTab('templates')}>
                   <LayoutTemplate className="h-4 w-4 mr-2" /> View Templates
@@ -295,7 +295,7 @@ export default function Checklists() {
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-success/25 bg-success/10 text-success shadow-[0_18px_45px_rgba(16,185,129,0.16)]">
                   <CheckCircle2 className="h-8 w-8" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-zinc-50">No completed checklists yet</h3>
+                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-foreground">No completed checklists yet</h3>
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground">Completed checklists will appear here</p>
               </CardContent>
             </Card>
@@ -314,7 +314,7 @@ export default function Checklists() {
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-600/25 bg-brand-900/20 text-4xl shadow-[0_18px_45px_rgba(120,53,15,0.18)]">
                   <span aria-hidden="true">📦</span>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-zinc-50">No archived checklists</h3>
+                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-foreground">No archived checklists</h3>
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground">Archived checklists are stored here for reference</p>
               </CardContent>
             </Card>
@@ -329,7 +329,7 @@ export default function Checklists() {
         <TabsContent value="templates" className="space-y-5 rounded-2xl border border-brand-500/10 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(9,9,11,0.72))] p-4 shadow-xl shadow-sm dark:shadow-black/20 max-h-[calc(100vh-17rem)] overflow-y-auto overscroll-contain pr-2 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)]">
           <div className="flex flex-col gap-4 rounded-2xl border border-brand-500/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.1),rgba(0,0,0,0.42)_42%,rgba(0,0,0,0.72))] p-4 shadow-inner shadow-brand-950/10 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground dark:text-zinc-50">Checklist Templates</h2>
+              <h2 className="text-xl font-semibold tracking-tight text-foreground dark:text-foreground">Checklist Templates</h2>
               <p className="mt-1 text-sm leading-6 text-muted-foreground dark:text-muted-foreground">Reusable blueprints for generating checklists</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -351,31 +351,31 @@ export default function Checklists() {
                       <Plus className="h-3 w-3" /> New Template
                     </Button>
                   </DialogTrigger>
-                <DialogContent className="max-h-[min(85vh,720px)] w-[calc(100vw-2rem)] overflow-y-auto rounded-3xl overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-brand-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/40">
+                <DialogContent className="max-h-[min(85vh,720px)] w-[calc(100vw-2rem)] overflow-y-auto rounded-3xl overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-brand-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/40">
                   <DialogHeader className="rounded-2xl border border-brand-500/10 bg-background/35 dark:bg-black/35 p-4 shadow-inner shadow-brand-950/10">
-                    <DialogTitle className="text-2xl font-bold tracking-tight text-foreground dark:text-zinc-50">Create New Template</DialogTitle>
+                    <DialogTitle className="text-2xl font-bold tracking-tight text-foreground dark:text-foreground">Create New Template</DialogTitle>
                     <DialogDescription className="text-muted-foreground dark:text-muted-foreground">Build a reusable checklist template from scratch</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 rounded-2xl border border-border dark:border-white/5 bg-background/70 dark:bg-background/70 p-4">
                     <div className="flex flex-col gap-3 sm:flex-row">
                       <div className="w-20">
                         <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-muted-foreground">Icon</Label>
-                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} aria-label="Template icon" className="mt-1 border-brand-500/15 bg-background/35 dark:bg-black/35 text-center text-xl text-foreground dark:text-zinc-100 focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
+                        <Input value={newIcon} onChange={e => setNewIcon(e.target.value)} aria-label="Template icon" className="mt-1 border-brand-500/15 bg-background/35 dark:bg-black/35 text-center text-xl text-foreground dark:text-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
                       </div>
                       <div className="flex-1">
                         <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-muted-foreground">Name</Label>
-                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" aria-label="Template name" className="mt-1 border-brand-500/15 bg-background/35 dark:bg-black/35 text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
+                        <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Daily Operations" aria-label="Template name" className="mt-1 border-brand-500/15 bg-background/35 dark:bg-black/35 text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
                         <p className="mt-1.5 text-[11px] text-muted-foreground dark:text-muted-foreground">Give this blueprint a clear operational name.</p>
                       </div>
                     </div>
                     <div>
                       <Label className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-muted-foreground">Description (optional)</Label>
-                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} aria-label="Template description" className="mt-1 border-brand-500/15 bg-background/35 dark:bg-black/35 text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
+                      <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this checklist for?" rows={2} aria-label="Template description" className="mt-1 border-brand-500/15 bg-background/35 dark:bg-black/35 text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black" />
                       <p className="mt-1.5 text-[11px] text-muted-foreground dark:text-muted-foreground">Use this to clarify when the template should be generated or followed.</p>
                     </div>
                   </div>
                   <DialogFooter className="flex-col gap-2 sm:flex-row">
-                    <Button variant="ghost" className="w-full text-muted-foreground dark:text-zinc-300 transition-all duration-200 sm:w-auto hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-brand-300/55 motion-reduce:transition-none" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+                    <Button variant="ghost" className="w-full text-muted-foreground dark:text-foreground transition-all duration-200 sm:w-auto hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-brand-300/55 motion-reduce:transition-none" onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
                     <Button className="w-full bg-gradient-to-r from-brand-500 to-brand-400 font-semibold text-black shadow-[0_12px_28px_rgba(245,158,11,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:from-brand-400 hover:to-brand-300 hover:shadow-[0_16px_34px_rgba(245,158,11,0.3)] focus-visible:ring-2 focus-visible:ring-brand-300/70 motion-reduce:transition-none sm:w-auto" onClick={handleCreateTemplate} disabled={!newName.trim()}>Create Template</Button>
                   </DialogFooter>
                 </DialogContent>
@@ -392,7 +392,7 @@ export default function Checklists() {
                 <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-400/10 text-brand-200 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
                   <LayoutTemplate className="h-8 w-8" />
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-zinc-50">No templates yet</h3>
+                <h3 className="mb-2 text-lg font-semibold text-foreground dark:text-foreground">No templates yet</h3>
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground">Create your first checklist template or import one</p>
               </CardContent>
             </Card>
@@ -421,7 +421,7 @@ export default function Checklists() {
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-300/20 bg-background/35 dark:bg-black/35 text-2xl shadow-inner shadow-brand-950/20">{template.icon}</span>
                         <div className="min-w-0">
                           <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                            <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-foreground dark:text-zinc-50 transition-colors group-hover:text-brand-50">{template.name}</h3>
+                            <h3 className="line-clamp-2 break-words text-base font-semibold leading-snug text-foreground dark:text-foreground transition-colors group-hover:text-brand-50">{template.name}</h3>
                             <Badge variant="outline" className="rounded-full border-brand-300/25 bg-brand-300/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand-200">
                               Template
                             </Badge>
@@ -441,7 +441,7 @@ export default function Checklists() {
                           </Badge>
                         )}
                         {template.cron_enabled && template.cron_description && (
-                          <Badge variant="outline" className="rounded-full border-border/45 bg-card/70 dark:bg-background/70 px-2 py-1 text-[10px] font-medium text-muted-foreground dark:text-zinc-300">
+                          <Badge variant="outline" className="rounded-full border-border/45 bg-card/70 dark:bg-background/70 px-2 py-1 text-[10px] font-medium text-muted-foreground dark:text-foreground">
                             {template.cron_description}
                           </Badge>
                         )}
@@ -461,13 +461,13 @@ export default function Checklists() {
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-3xl border-destructive/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(3,3,3,0.98))] text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/40">
+                          <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-3xl border-destructive/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(3,3,3,0.98))] text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/40">
                             <AlertDialogHeader>
-                              <AlertDialogTitle className="text-foreground dark:text-zinc-50">Delete Template</AlertDialogTitle>
+                              <AlertDialogTitle className="text-foreground dark:text-foreground">Delete Template</AlertDialogTitle>
                               <AlertDialogDescription className="text-muted-foreground dark:text-muted-foreground">Delete "{template.name}"? Existing generated checklists won't be affected.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-                              <AlertDialogCancel className="border-border dark:border-white/10 bg-background/40 dark:bg-black/40 text-foreground dark:text-zinc-200 hover:bg-white/5">Cancel</AlertDialogCancel>
+                              <AlertDialogCancel className="border-border dark:border-white/10 bg-background/40 dark:bg-black/40 text-foreground dark:text-foreground hover:bg-white/5">Cancel</AlertDialogCancel>
                               <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => mutations.deleteTemplate.mutate(template.id)}>Delete</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>

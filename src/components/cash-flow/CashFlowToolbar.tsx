@@ -41,7 +41,7 @@ export function CashFlowToolbar({
   };
 
   return (
-    <Card className="border-slate-200/80 bg-background/95 shadow-sm">
+    <Card className="border-border/80 bg-background/95 shadow-sm">
       <CardContent className="space-y-3 p-3 md:p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground xl:w-44">

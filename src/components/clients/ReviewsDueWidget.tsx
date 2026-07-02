@@ -70,7 +70,7 @@ export function ReviewsDueWidget() {
       case 'overdue':
         return <Badge variant="destructive" className="text-xs">Overdue</Badge>;
       case 'due-soon':
-        return <Badge variant="default" className="text-xs bg-amber-500">Due Soon</Badge>;
+        return <Badge variant="default" className="text-xs bg-brand-500">Due Soon</Badge>;
       default:
         return <Badge variant="secondary" className="text-xs">Upcoming</Badge>;
     }
@@ -124,7 +124,7 @@ export function ReviewsDueWidget() {
               </Badge>
             )}
             {dueSoonCount > 0 && (
-              <Badge className="text-xs bg-amber-500">
+              <Badge className="text-xs bg-brand-500">
                 {dueSoonCount} This Week
               </Badge>
             )}
@@ -149,7 +149,7 @@ export function ReviewsDueWidget() {
                     onClick={() => navigate(`/clients?clientId=${client.id}`)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${status === 'overdue' ? 'bg-destructive/10' : status === 'due-soon' ? 'bg-amber-500/10' : 'bg-muted'}`}>
+                      <div className={`p-2 rounded-full ${status === 'overdue' ? 'bg-destructive/10' : status === 'due-soon' ? 'bg-brand-500/10' : 'bg-muted'}`}>
                         {status === 'overdue' ? (
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         ) : (

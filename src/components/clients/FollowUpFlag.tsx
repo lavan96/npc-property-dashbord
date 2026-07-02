@@ -183,11 +183,11 @@ export function FollowUpFlag({ clientId, followUpDate, invalidateKeys = [], size
                 'transition-colors',
                 isOverdue
                   ? 'fill-destructive/20 text-destructive'
-                  : 'fill-amber-400/20 text-amber-500'
+                  : 'fill-brand-400/20 text-brand-500'
               )}
             />
           ) : (
-            <Bell className={cn(iconSize, 'text-muted-foreground hover:text-amber-500 transition-colors')} />
+            <Bell className={cn(iconSize, 'text-muted-foreground hover:text-brand-500 transition-colors')} />
           )}
           {isOverdue && (
             <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
@@ -217,7 +217,7 @@ export function FollowUpFlag({ clientId, followUpDate, invalidateKeys = [], size
         {isFlagged && parsedDate && (
           <div className={cn(
             'mx-3 mt-2 px-2 py-1.5 rounded text-xs text-center',
-            isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-600'
+            isOverdue ? 'bg-destructive/10 text-destructive' : 'bg-brand-500/10 text-brand-600'
           )}>
             {isOverdue ? 'Overdue: ' : 'Scheduled: '}
             {format(parsedDate, 'EEEE, MMM d, yyyy')}

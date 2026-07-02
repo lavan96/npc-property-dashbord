@@ -55,7 +55,7 @@ const priorityColors: Record<string, string> = {
 
 
 const premiumTeamPanel = 'relative overflow-hidden rounded-[1.5rem] border border-brand-300/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.84),rgba(2,6,23,0.94))] shadow-[0_22px_70px_rgba(0,0,0,0.32)] backdrop-blur';
-const premiumTeamInput = 'rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-slate-100 placeholder:text-muted-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+const premiumTeamInput = 'rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-foreground placeholder:text-muted-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 
 const reminderTypes = [
   { value: 'task', label: 'Task' },
@@ -177,14 +177,14 @@ export function TeamRemindersSection() {
   };
 
   return (
-    <div className="min-w-0 space-y-4 overflow-x-hidden text-foreground dark:text-slate-100">
+    <div className="min-w-0 space-y-4 overflow-x-hidden text-foreground dark:text-foreground">
       {/* Add Button / Form */}
       {showAdd ? (
         <Card className={cn(premiumTeamPanel, 'border-brand-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.92)_42%,rgba(0,0,0,0.72))]')}>
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/65 to-transparent" />
           <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-brand-300/10 blur-3xl" />
           <CardHeader className="relative pb-3">
-            <CardTitle className="flex items-center gap-3 text-sm font-semibold text-foreground dark:text-slate-100">
+            <CardTitle className="flex items-center gap-3 text-sm font-semibold text-foreground dark:text-foreground">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-400/10 text-brand-100 shadow-[0_0_26px_rgba(245,158,11,0.14)]">
                 <Users className="h-4 w-4" />
               </span>
@@ -285,7 +285,7 @@ export function TeamRemindersSection() {
                   </>
                 )}
               </Button>
-              <Button variant="outline" onClick={resetForm} className="h-11 rounded-xl border-border/70 bg-background dark:bg-black/25 px-5 font-semibold text-foreground dark:text-slate-200 transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 sm:w-auto">Cancel</Button>
+              <Button variant="outline" onClick={resetForm} className="h-11 rounded-xl border-border/70 bg-background dark:bg-black/25 px-5 font-semibold text-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 sm:w-auto">Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -305,7 +305,7 @@ export function TeamRemindersSection() {
               <Loader2 className="h-5 w-5 animate-spin" />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-foreground dark:text-slate-100">Loading team reminders</p>
+              <p className="text-sm font-semibold text-foreground dark:text-foreground">Loading team reminders</p>
               <p className="text-xs text-muted-foreground">Checking internal tasks and team coordination items.</p>
             </div>
           </CardContent>
@@ -322,7 +322,7 @@ export function TeamRemindersSection() {
               </div>
             </div>
             <div className="max-w-md space-y-2">
-              <p className="text-base font-semibold tracking-tight text-foreground dark:text-slate-100 sm:text-lg">No team reminders yet</p>
+              <p className="text-base font-semibold tracking-tight text-foreground dark:text-foreground sm:text-lg">No team reminders yet</p>
               <p className="text-xs leading-5 text-muted-foreground sm:text-sm">Create reminders for internal tasks and team coordination</p>
             </div>
           </CardContent>
@@ -465,7 +465,7 @@ export function TeamRemindersSection() {
                         <Button size="sm" className="h-8 flex-1 rounded-lg bg-brand-400 text-xs font-semibold text-black hover:bg-brand-300" onClick={handleSaveEdit} disabled={!editTitle.trim() || updateMutation.isPending}>
                           {updateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8 rounded-lg border-border/70 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100" onClick={() => setEditingId(null)}>Cancel</Button>
+                        <Button size="sm" variant="outline" className="h-8 rounded-lg border-border/70 bg-background dark:bg-black/25 text-xs text-foreground dark:text-foreground hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100" onClick={() => setEditingId(null)}>Cancel</Button>
                       </div>
                     </div>
                   )}
@@ -488,7 +488,7 @@ export function TeamRemindersSection() {
                             key={d}
                             variant="outline"
                             size="sm"
-                            className="h-8 rounded-lg border-brand-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100"
+                            className="h-8 rounded-lg border-brand-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-foreground hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100"
                             disabled={snoozeMutation.isPending}
                             onClick={() => handleSnooze(reminder.id, d)}
                           >
@@ -499,12 +499,12 @@ export function TeamRemindersSection() {
                       <div className="flex items-center gap-1.5">
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 flex-1 justify-start gap-1.5 rounded-lg border-brand-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100">
+                            <Button variant="outline" size="sm" className="h-8 flex-1 justify-start gap-1.5 rounded-lg border-brand-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-foreground hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100">
                               <CalendarIcon className="h-3 w-3" />
                               {customSnoozeDate ? format(customSnoozeDate, 'MMM d, yyyy') : 'Custom date...'}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-0 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)]" align="start">
+                          <PopoverContent className="w-auto rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-0 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)]" align="start">
                             <Calendar
                               mode="single"
                               selected={customSnoozeDate}
@@ -518,7 +518,7 @@ export function TeamRemindersSection() {
                         {customSnoozeDate && (
                           <Button
                             size="sm"
-                            className="h-8 rounded-lg border-brand-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-slate-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100"
+                            className="h-8 rounded-lg border-brand-300/15 bg-background dark:bg-black/25 text-xs text-foreground dark:text-foreground hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100"
                             disabled={snoozeMutation.isPending}
                             onClick={() => handleSnooze(reminder.id, 'custom', customSnoozeDate)}
                           >

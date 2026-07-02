@@ -168,26 +168,26 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
             <p className="text-xl font-bold">{coachingStats.comparisonsAvailable}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/5 to-card">
+        <Card className="bg-gradient-to-br from-brand-500/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-amber-500/10">
-                <Users className="w-3.5 h-3.5 text-amber-500" />
+              <div className="p-1.5 rounded-lg bg-brand-500/10">
+                <Users className="w-3.5 h-3.5 text-brand-500" />
               </div>
               <span className="text-xs text-muted-foreground">Need Coaching</span>
             </div>
-            <p className="text-xl font-bold text-amber-500">{coachingStats.agentsNeedingCoaching}</p>
+            <p className="text-xl font-bold text-brand-500">{coachingStats.agentsNeedingCoaching}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-emerald-500/5 to-card">
+        <Card className="bg-gradient-to-br from-success/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                <Award className="w-3.5 h-3.5 text-emerald-500" />
+              <div className="p-1.5 rounded-lg bg-success/10">
+                <Award className="w-3.5 h-3.5 text-success-foreground0" />
               </div>
               <span className="text-xs text-muted-foreground">Top Performers</span>
             </div>
-            <p className="text-xl font-bold text-emerald-500">{coachingStats.topPerformers}</p>
+            <p className="text-xl font-bold text-success-foreground0">{coachingStats.topPerformers}</p>
           </CardContent>
         </Card>
       </div>
@@ -243,9 +243,9 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
 
                         <div className="grid md:grid-cols-2 gap-4">
                           {/* Unsuccessful Call */}
-                          <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                          <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
                             <div className="flex items-center gap-2 mb-2">
-                              <XCircle className="w-4 h-4 text-red-500" />
+                              <XCircle className="w-4 h-4 text-destructive-foreground0" />
                               <span className="text-sm font-medium">Needs Improvement</span>
                             </div>
                             <p className="text-xs text-muted-foreground mb-1">
@@ -264,9 +264,9 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
                           </div>
 
                           {/* Successful Call */}
-                          <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                          <div className="p-3 rounded-lg bg-success/5 border border-success/20">
                             <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                              <CheckCircle className="w-4 h-4 text-success-foreground0" />
                               <span className="text-sm font-medium">Successful Approach</span>
                             </div>
                             <p className="text-xs text-muted-foreground mb-1">
@@ -288,7 +288,7 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
                         {/* Learning Points Preview */}
                         <div className="mt-3 pt-3 border-t">
                           <div className="flex items-center gap-2 mb-2">
-                            <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                            <Lightbulb className="w-3.5 h-3.5 text-brand-500" />
                             <span className="text-xs font-medium">Key Learning Points:</span>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -336,10 +336,10 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
               ) : (
                 <div className="space-y-4">
                   {bestPractices.map((practice, idx) => (
-                    <div key={idx} className="p-4 rounded-lg border bg-emerald-500/5 border-emerald-500/20">
+                    <div key={idx} className="p-4 rounded-lg border bg-success/5 border-success/20">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-full bg-emerald-500/10">
-                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                        <div className="p-2 rounded-full bg-success/10">
+                          <CheckCircle className="w-4 h-4 text-success-foreground0" />
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium mb-1">{practice.practice}</h4>
@@ -381,10 +381,10 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
                 {/* Unsuccessful Call Detail */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <XCircle className="w-5 h-5 text-red-500" />
+                    <XCircle className="w-5 h-5 text-destructive-foreground0" />
                     <h3 className="font-semibold">Unsuccessful Call</h3>
                   </div>
-                  <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20 space-y-3">
+                  <div className="p-4 rounded-lg bg-destructive/5 border border-destructive/20 space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <Users className="w-4 h-4" />
                       <span>Agent: {selectedComparison.unsuccessfulCall.agent_name || 'Unknown'}</span>
@@ -395,7 +395,7 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
                     </div>
                     {selectedComparison.unsuccessfulCall.negative_sentiment_moment && (
                       <div className="p-3 rounded bg-muted">
-                        <p className="text-xs font-medium text-red-500 mb-1 flex items-center gap-1">
+                        <p className="text-xs font-medium text-destructive-foreground0 mb-1 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           Critical Moment:
                         </p>
@@ -423,10 +423,10 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
                 {/* Successful Call Detail */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-emerald-500" />
+                    <CheckCircle className="w-5 h-5 text-success-foreground0" />
                     <h3 className="font-semibold">Successful Call</h3>
                   </div>
-                  <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20 space-y-3">
+                  <div className="p-4 rounded-lg bg-success/5 border border-success/20 space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <Users className="w-4 h-4" />
                       <span>Agent: {selectedComparison.successfulCall.agent_name || 'Unknown'}</span>
@@ -437,7 +437,7 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
                     </div>
                     {selectedComparison.successfulCall.summary && (
                       <div className="p-3 rounded bg-muted">
-                        <p className="text-xs font-medium text-emerald-500 mb-1">Summary:</p>
+                        <p className="text-xs font-medium text-success-foreground0 mb-1">Summary:</p>
                         <p className="text-sm">{selectedComparison.successfulCall.summary}</p>
                       </div>
                     )}
@@ -446,15 +446,15 @@ export const ComparativeCoaching = ({ calls }: ComparativeCoachingProps) => {
               </div>
 
               {/* Learning Points */}
-              <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <div className="p-4 rounded-lg bg-brand-500/5 border border-brand-500/20">
                 <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb className="w-5 h-5 text-amber-500" />
+                  <Lightbulb className="w-5 h-5 text-brand-500" />
                   <h3 className="font-semibold">Learning Points</h3>
                 </div>
                 <ul className="space-y-2">
                   {selectedComparison.learningPoints.map((point, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-brand-500 mt-0.5 shrink-0" />
                       <span>{point}</span>
                     </li>
                   ))}

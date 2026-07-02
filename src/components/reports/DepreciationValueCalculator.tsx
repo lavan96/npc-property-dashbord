@@ -589,7 +589,7 @@ export function DepreciationValueCalculator({
             <>
                 {/* Property Age Context */}
                 {result.propertyAge > 0 && (
-                  <Alert className={result.isExtrapolated ? "border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20" : "border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20"}>
+                  <Alert className={result.isExtrapolated ? "border-brand-500/50 bg-brand-50/50 dark:bg-brand-950/20" : "border-info/50 bg-info/50 dark:bg-info/20"}>
                     <Info className="h-4 w-4" />
                     <AlertTitle className="text-sm font-medium">
                       {result.isExtrapolated ? 'Extrapolated Projection' : 'Age-Adjusted Projection'}

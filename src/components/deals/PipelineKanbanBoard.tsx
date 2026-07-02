@@ -134,9 +134,9 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
         {/* Header: Client name + type */}
         <div className="flex items-start justify-between gap-2.5">
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="line-clamp-2 break-words text-[15px] font-bold leading-snug tracking-[-0.01em] text-foreground dark:text-zinc-50 drop-shadow-sm">{deal.client_name}</p>
+            <p className="line-clamp-2 break-words text-[15px] font-bold leading-snug tracking-[-0.01em] text-foreground dark:text-foreground drop-shadow-sm">{deal.client_name}</p>
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className={pipelineBadgeClass('neutral', true, 'h-5 text-foreground dark:text-zinc-200 dark:text-zinc-200')}>
+              <Badge variant="outline" className={pipelineBadgeClass('neutral', true, 'h-5 text-foreground dark:text-foreground dark:text-foreground')}>
                 <span className="shrink-0 text-brand-200">{getDealTypeIcon(deal.deal_type)}</span>
                 <span className="truncate">{getDealTypeLabel(deal.deal_type)}</span>
               </Badge>
@@ -153,7 +153,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
           <Badge variant="outline" className={pipelineBadgeClass('gold', true, 'h-5 shrink-0 rounded-md px-1.5 text-[9px]')}>
             S{deal.current_stage_number}
           </Badge>
-          <span className="min-w-0 truncate text-[11px] font-semibold text-foreground dark:text-zinc-200">{deal.current_stage}</span>
+          <span className="min-w-0 truncate text-[11px] font-semibold text-foreground dark:text-foreground">{deal.current_stage}</span>
         </div>
 
         {/* Progress bar */}
@@ -172,7 +172,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
             <div className="min-w-0 rounded-lg border border-border dark:border-white/10 bg-white/[0.045] px-2 py-1.5 text-[10px] text-muted-foreground">
               <div className="flex min-w-0 items-center gap-1">
                 <DollarSign className="h-3 w-3 shrink-0 text-brand-200" />
-                <span className="truncate font-mono text-[12px] font-black text-foreground dark:text-zinc-50">{formatCurrency(deal.total_contract_price)}</span>
+                <span className="truncate font-mono text-[12px] font-black text-foreground dark:text-foreground">{formatCurrency(deal.total_contract_price)}</span>
               </div>
             </div>
           )}
@@ -204,7 +204,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
           </div>
           {nextAction && (
             <p className="line-clamp-2 break-words rounded-lg border border-border dark:border-white/10 bg-background dark:bg-black/15 px-2 py-1.5 text-[10px] leading-snug text-muted-foreground">
-              <span className="font-bold text-foreground dark:text-zinc-200">Next:</span> {nextAction}
+              <span className="font-bold text-foreground dark:text-foreground">Next:</span> {nextAction}
             </p>
           )}
         </div>
@@ -256,7 +256,7 @@ function KanbanColumn({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="text-sm">{column.icon}</span>
-            <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-foreground dark:text-zinc-100">{column.label}</h3>
+            <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-foreground dark:text-foreground">{column.label}</h3>
           </div>
           <div className="flex items-center gap-1">
             {urgentCount > 0 && (
@@ -293,7 +293,7 @@ function KanbanColumn({
             {deals.length === 0 ? (
               <div className="flex h-32 flex-col items-center justify-center rounded-[1rem] border border-dashed border-brand-200/15 bg-white/[0.025] px-4 text-center text-[11px] text-muted-foreground dark:text-muted-foreground">
                 <span className="text-lg opacity-60">{column.icon}</span>
-                <span className="mt-1 font-semibold not-italic text-muted-foreground dark:text-zinc-300">Stage is empty</span>
+                <span className="mt-1 font-semibold not-italic text-muted-foreground dark:text-foreground">Stage is empty</span>
                 <span className="mt-0.5 text-[10px]">No deals currently sit in this stage.</span>
               </div>
             ) : (
@@ -361,7 +361,7 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
   return (
     <div className="min-h-0 min-w-0 space-y-3 overflow-hidden">
       {/* Board summary bar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-[1.1rem] border border-brand-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035)_42%,rgba(0,0,0,0.18))] px-4 py-3 text-xs text-muted-foreground dark:text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <div className="flex flex-wrap items-center gap-3 rounded-[1.1rem] border border-brand-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035)_42%,rgba(0,0,0,0.18))] px-4 py-3 text-xs text-muted-foreground dark:text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
         <span>{deals.length} deal{deals.length !== 1 ? 's' : ''} across {activeColumns.length} stages</span>
         <span className="text-border">|</span>
         <span className="font-mono">{formatCurrency(stats.totalValue)} pipeline value</span>

@@ -49,17 +49,17 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
   if (!comparison) return null;
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
-    if (rank === 2) return <div className="h-5 w-5 rounded-full bg-gray-300 flex items-center justify-center text-xs">2</div>;
-    if (rank === 3) return <div className="h-5 w-5 rounded-full bg-amber-600 flex items-center justify-center text-xs">3</div>;
+    if (rank === 1) return <Trophy className="h-5 w-5 text-brand-500" />;
+    if (rank === 2) return <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-xs">2</div>;
+    if (rank === 3) return <div className="h-5 w-5 rounded-full bg-brand-600 flex items-center justify-center text-xs">3</div>;
     return <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-xs">{rank}</div>;
   };
 
   const getRiskColor = (level: string) => {
     switch (level?.toLowerCase()) {
-      case 'low': return 'text-green-600';
-      case 'medium': return 'text-yellow-600';
-      case 'high': return 'text-red-600';
+      case 'low': return 'text-success';
+      case 'medium': return 'text-brand-600';
+      case 'high': return 'text-destructive';
       default: return 'text-muted-foreground';
     }
   };
@@ -293,7 +293,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-sm flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-green-600" />
+                            <AlertTriangle className="h-4 w-4 text-success" />
                             Lowest Risk
                           </CardTitle>
                         </CardHeader>
@@ -311,7 +311,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
                       <Card>
                         <CardHeader>
                           <CardTitle className="text-sm flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
                             Highest Risk
                           </CardTitle>
                         </CardHeader>
@@ -411,7 +411,7 @@ export function ComparisonViewer({ isOpen, onClose, comparison }: ComparisonView
             {redFlags && redFlags.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2 text-red-600">
+                  <CardTitle className="text-lg flex items-center gap-2 text-destructive">
                     <AlertTriangle className="h-5 w-5" />
                     Red Flags & Concerns
                   </CardTitle>

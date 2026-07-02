@@ -217,7 +217,7 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
             <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
               <div>
                 <span className="text-muted-foreground">Balance:</span>
-                <span className="ml-1 font-medium text-red-600">
+                <span className="ml-1 font-medium text-destructive">
                   {formatCurrency(liability.current_balance || 0)}
                 </span>
               </div>
@@ -270,16 +270,16 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
       {existingLiabilities.length > 0 ? (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-3">
-            <Card className="bg-red-50 border-red-200">
+            <Card className="bg-destructive/10 border-destructive/30">
               <CardContent className="pt-4">
                 <p className="text-xs text-muted-foreground">Total Liabilities</p>
-                <p className="text-lg font-bold text-red-600">{formatCurrency(totalLiabilities)}</p>
+                <p className="text-lg font-bold text-destructive">{formatCurrency(totalLiabilities)}</p>
               </CardContent>
             </Card>
-            <Card className="bg-amber-50 border-amber-200">
+            <Card className="bg-brand-50 border-brand-200">
               <CardContent className="pt-4">
                 <p className="text-xs text-muted-foreground">Monthly Repayments</p>
-                <p className="text-lg font-bold text-amber-600">{formatCurrency(totalMonthlyRepayments)}</p>
+                <p className="text-lg font-bold text-brand-600">{formatCurrency(totalMonthlyRepayments)}</p>
               </CardContent>
             </Card>
           </div>
@@ -297,7 +297,7 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
                 <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                   <div>
                     <span className="text-muted-foreground">Balance:</span>
-                    <span className="ml-1 font-medium text-red-600">{formatCurrency(liability.current_balance || 0)}</span>
+                    <span className="ml-1 font-medium text-destructive">{formatCurrency(liability.current_balance || 0)}</span>
                   </div>
                   {liability.monthly_repayment > 0 && (
                     <div>
@@ -337,16 +337,16 @@ export function LiabilityManualEntry({ clientId, onComplete }: LiabilityManualEn
 
           {/* Summary Cards */}
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <Card className="bg-red-50 border-red-200">
+            <Card className="bg-destructive/10 border-destructive/30">
               <CardContent className="pt-4">
                 <p className="text-xs text-muted-foreground">Total Liabilities</p>
-                <p className="text-lg font-bold text-red-600">{formatCurrency(totalLiabilities)}</p>
+                <p className="text-lg font-bold text-destructive">{formatCurrency(totalLiabilities)}</p>
               </CardContent>
             </Card>
-            <Card className="bg-amber-50 border-amber-200">
+            <Card className="bg-brand-50 border-brand-200">
               <CardContent className="pt-4">
                 <p className="text-xs text-muted-foreground">Monthly Repayments</p>
-                <p className="text-lg font-bold text-amber-600">{formatCurrency(totalMonthlyRepayments)}</p>
+                <p className="text-lg font-bold text-brand-600">{formatCurrency(totalMonthlyRepayments)}</p>
               </CardContent>
             </Card>
           </div>

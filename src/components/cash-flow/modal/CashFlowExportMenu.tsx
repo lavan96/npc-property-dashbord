@@ -42,14 +42,14 @@ export function CashFlowExportMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] max-w-[380px] overflow-hidden border bg-background p-0 shadow-xl">
-        <div className="border-b bg-gradient-to-br from-card dark:from-slate-950 via-card dark:via-slate-900 to-slate-800 p-4 text-foreground dark:text-white">
+        <div className="border-b bg-gradient-to-br from-card dark:from-background via-card dark:via-background to-background p-4 text-foreground dark:text-white">
           <DropdownMenuLabel className="p-0 text-sm text-foreground dark:text-white">Export & Publish</DropdownMenuLabel>
-          <p className="mt-1 text-xs text-muted-foreground dark:text-slate-300">Package this analysis for download, print, or client delivery.</p>
+          <p className="mt-1 text-xs text-muted-foreground dark:text-foreground">Package this analysis for download, print, or client delivery.</p>
         </div>
 
         <div className="grid gap-1 p-2">
           <DropdownMenuItem onClick={onExportExcel} className="min-h-10 cursor-pointer rounded-xl">
-            <Download className="mr-2 h-4 w-4 text-emerald-600" />
+            <Download className="mr-2 h-4 w-4 text-success" />
             Export Excel
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onExportPdf()} className="min-h-10 cursor-pointer rounded-xl">
@@ -72,11 +72,11 @@ export function CashFlowExportMenu({
             />
           </div>
           <DropdownMenuItem onClick={onPrintView} className="min-h-10 cursor-pointer rounded-xl">
-            <Printer className="mr-2 h-4 w-4 text-slate-600" />
+            <Printer className="mr-2 h-4 w-4 text-muted-foreground" />
             Print View
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onSendToClient} className="min-h-10 cursor-pointer rounded-xl">
-            <Send className="mr-2 h-4 w-4 text-blue-600" />
+            <Send className="mr-2 h-4 w-4 text-info" />
             Send to Client
           </DropdownMenuItem>
         </div>

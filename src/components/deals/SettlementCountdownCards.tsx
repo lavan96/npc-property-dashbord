@@ -27,16 +27,16 @@ export function SettlementCountdownCards({ deals, onDealClick }: Props) {
 
   const getBucket = (days: number) => {
     if (days < 0) return { label: 'OVERDUE', color: 'bg-destructive/10 border-destructive/30 text-destructive', ring: 'ring-destructive/20' };
-    if (days <= 7) return { label: '7 DAYS', color: 'bg-red-500/10 border-red-500/30 text-red-600', ring: 'ring-red-500/20' };
-    if (days <= 14) return { label: '14 DAYS', color: 'bg-amber-500/10 border-amber-500/30 text-amber-600', ring: 'ring-amber-500/20' };
-    if (days <= 30) return { label: '30 DAYS', color: 'bg-blue-500/10 border-blue-500/30 text-blue-600', ring: 'ring-blue-500/20' };
+    if (days <= 7) return { label: '7 DAYS', color: 'bg-destructive/10 border-destructive/30 text-destructive', ring: 'ring-destructive/20' };
+    if (days <= 14) return { label: '14 DAYS', color: 'bg-brand-500/10 border-brand-500/30 text-brand-600', ring: 'ring-brand-500/20' };
+    if (days <= 30) return { label: '30 DAYS', color: 'bg-info/10 border-info/30 text-info', ring: 'ring-info/20' };
     return { label: `${days}d`, color: 'bg-muted border-border text-muted-foreground', ring: '' };
   };
 
   if (upcoming.length === 0) return null;
 
   return (
-    <Card className="overflow-hidden border-amber-200/15 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),rgba(24,24,27,0.86))] shadow-[0_18px_46px_rgba(0,0,0,0.22)]">
+    <Card className="overflow-hidden border-brand-200/15 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),rgba(24,24,27,0.86))] shadow-[0_18px_46px_rgba(0,0,0,0.22)]">
       <CardHeader className="pb-2 pt-3 px-3 sm:px-4">
         <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
           <Clock className="h-4 w-4 text-primary" />
@@ -52,7 +52,7 @@ export function SettlementCountdownCards({ deals, onDealClick }: Props) {
               <div
                 key={deal.id}
                 className={cn(
-                  'rounded-lg border p-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/45 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22),0_0_18px_rgba(245,158,11,0.14)]',
+                  'rounded-lg border p-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300/45 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22),0_0_18px_rgba(245,158,11,0.14)]',
                   bucket.color,
                   onDealClick && 'hover:ring-2 ' + bucket.ring
                 )}

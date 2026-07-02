@@ -146,14 +146,14 @@ export default function CashFlowAnalysis() {
     const score = report.investment_score?.overall_score;
     if (!score) return null;
     
-    if (score >= 85) return { grade: 'A+', color: 'bg-emerald-500' };
-    if (score >= 75) return { grade: 'A', color: 'bg-green-500' };
-    if (score >= 65) return { grade: 'B+', color: 'bg-lime-500' };
-    if (score >= 55) return { grade: 'B', color: 'bg-yellow-500' };
-    if (score >= 50) return { grade: 'C+', color: 'bg-amber-500' };
-    if (score >= 45) return { grade: 'C', color: 'bg-orange-500' };
-    if (score >= 35) return { grade: 'D', color: 'bg-red-400' };
-    return { grade: 'F', color: 'bg-red-600' };
+    if (score >= 85) return { grade: 'A+', color: 'bg-success' };
+    if (score >= 75) return { grade: 'A', color: 'bg-success' };
+    if (score >= 65) return { grade: 'B+', color: 'bg-success' };
+    if (score >= 55) return { grade: 'B', color: 'bg-brand-500' };
+    if (score >= 50) return { grade: 'C+', color: 'bg-brand-500' };
+    if (score >= 45) return { grade: 'C', color: 'bg-warning' };
+    if (score >= 35) return { grade: 'D', color: 'bg-destructive/60' };
+    return { grade: 'F', color: 'bg-destructive' };
   };
 
   const FULL_REPORT_SELECT = 'id, property_address, property_listing_id, report_content, created_at, current_version, report_scope, status, manual_overrides, financial_calculations, demographics_data, economic_data, investment_score, location_intelligence';

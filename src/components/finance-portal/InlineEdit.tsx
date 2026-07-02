@@ -75,7 +75,7 @@ export function InlineEdit({
         type="button"
         onClick={commit}
         disabled={saving}
-        className="text-emerald-500 hover:text-emerald-400 disabled:opacity-50"
+        className="text-success-foreground0 hover:text-success disabled:opacity-50"
       ><Check className="h-3.5 w-3.5" /></button>
       <button
         type="button"

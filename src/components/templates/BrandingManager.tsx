@@ -384,7 +384,7 @@ export function BrandingManager({ profiles, isLoading }: BrandingManagerProps) {
           {profiles.map((profile) => (
             <Card key={profile.id} className="relative">
               {profile.is_default && (
-                <Badge className="absolute top-2 right-2 bg-yellow-500">
+                <Badge className="absolute top-2 right-2 bg-brand-500">
                   <Star className="h-3 w-3 mr-1" />
                   Default
                 </Badge>

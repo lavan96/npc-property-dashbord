@@ -1434,14 +1434,14 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger 
                 value="investment" 
-                className="flex items-center gap-2 data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="flex items-center gap-2 data-[state=active]:bg-brand-400 data-[state=active]:text-black"
               >
                 <FileText className="h-4 w-4" />
                 Investment Report
               </TabsTrigger>
               <TabsTrigger 
                 value="cashflow" 
-                className="flex items-center gap-2 data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="flex items-center gap-2 data-[state=active]:bg-brand-400 data-[state=active]:text-black"
               >
                 <TrendingUp className="h-4 w-4" />
                 Cash Flow Analysis
@@ -1519,8 +1519,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-orange-500/10">
-                            <Calculator className="h-5 w-5 text-orange-600" />
+                          <div className="p-2 rounded-lg bg-warning/10">
+                            <Calculator className="h-5 w-5 text-warning" />
                           </div>
                           <div className="text-left">
                             <div className="flex items-center gap-2">
@@ -1645,7 +1645,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
 
                         {/* Show currently applied value */}
                         {overrides.stampDuty && overrides.stampDuty > 0 && (
-                          <div className="flex items-center gap-2 text-green-600 text-sm p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                          <div className="flex items-center gap-2 text-success text-sm p-2 rounded-lg bg-success/10 border border-success/20">
                             <Check className="h-4 w-4" />
                             <span>Stamp Duty: ${overrides.stampDuty.toLocaleString()} applied to analysis</span>
                           </div>
@@ -1678,8 +1678,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-green-500/10">
-                            <Calculator className="h-5 w-5 text-green-600" />
+                          <div className="p-2 rounded-lg bg-success/10">
+                            <Calculator className="h-5 w-5 text-success" />
                           </div>
                           <div className="text-left">
                             <div className="flex items-center gap-2">
@@ -1804,8 +1804,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-amber-500/10">
-                            <Banknote className="h-5 w-5 text-amber-600" />
+                          <div className="p-2 rounded-lg bg-brand-500/10">
+                            <Banknote className="h-5 w-5 text-brand-600" />
                           </div>
                           <div className="text-left">
                             <p className="font-semibold text-foreground">Mortgage Repayment Calculator</p>
@@ -1934,17 +1934,17 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         }, 0);
                         const isValid = Math.abs(totalPercent - 100) < 0.01;
                         return (
-                          <div className={`flex items-center gap-2 p-2 rounded-lg ${isValid ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
-                            <span className={`text-sm font-medium ${isValid ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                          <div className={`flex items-center gap-2 p-2 rounded-lg ${isValid ? 'bg-success/10 dark:bg-success/30' : 'bg-destructive/10 dark:bg-destructive/30'}`}>
+                            <span className={`text-sm font-medium ${isValid ? 'text-success dark:text-success' : 'text-destructive dark:text-destructive'}`}>
                               Total: {totalPercent.toFixed(1)}%
                             </span>
                             {!isValid && (
-                              <span className="text-xs text-red-600 dark:text-red-400">
+                              <span className="text-xs text-destructive dark:text-destructive">
                                 (Must equal 100%)
                               </span>
                             )}
                             {isValid && (
-                              <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              <Check className="h-4 w-4 text-success dark:text-success" />
                             )}
                           </div>
                         );
@@ -2023,8 +2023,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                       
                       {/* Custom Stage Month Selection */}
                       {schedulePreset === 'custom' && (
-                        <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                          <h5 className="text-sm font-medium mb-3 text-blue-900 dark:text-blue-100">Custom Stage Positioning</h5>
+                        <div className="p-4 bg-info/10 dark:bg-info/30 rounded-lg border border-info/30 dark:border-info/30">
+                          <h5 className="text-sm font-medium mb-3 text-info dark:text-info-foreground">Custom Stage Positioning</h5>
                           <div className="grid grid-cols-2 gap-3">
                             {[
                               { index: 0, label: 'Deposit' },
@@ -2063,7 +2063,7 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                               );
                             })}
                           </div>
-                          <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
+                          <p className="text-xs text-info dark:text-info mt-3">
                             Note: Month 1 is reserved for Land Interest Charge. Stages can occur in the same month.
                           </p>
                         </div>
@@ -2203,8 +2203,8 @@ export function ManualDataOverrideModal({ report, isOpen, onClose, onSave }: Man
                         className="w-full flex items-center justify-between p-4 h-auto hover:bg-muted/50"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-green-500/10">
-                            <Table className="h-5 w-5 text-green-600" />
+                          <div className="p-2 rounded-lg bg-success/10">
+                            <Table className="h-5 w-5 text-success" />
                           </div>
                           <div className="text-left">
                             <p className="font-semibold text-foreground">Depreciation Schedule Builder</p>

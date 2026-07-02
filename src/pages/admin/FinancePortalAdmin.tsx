@@ -253,7 +253,7 @@ export default function FinancePortalAdmin() {
             </div>
           </div>
         </div>
-        <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-slate-950/55">
+        <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-background/55">
           <Button
             onClick={() => setCreateOpen(true)}
             className="min-h-10 flex-1 gap-2 rounded-xl shadow-md shadow-primary/20 ring-2 ring-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25 focus-visible:ring-primary/40 sm:flex-none"
@@ -351,7 +351,7 @@ export default function FinancePortalAdmin() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35">
               <Table className="min-w-[1080px]" aria-label="Finance contacts portal access table">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">

@@ -32,8 +32,8 @@ function getStatusBadge(status: string, startTime: string) {
   if (status === 'cancelled') return <Badge variant="destructive" className="text-[10px]">Cancelled</Badge>;
   if (status === 'noshow' || status === 'no_show') return <Badge variant="destructive" className="text-[10px]">No Show</Badge>;
   if (isPast(start) && status !== 'cancelled') return <Badge variant="secondary" className="text-[10px]">Completed</Badge>;
-  if (isToday(start)) return <Badge className="bg-amber-500/10 text-amber-600 text-[10px]">Today</Badge>;
-  if (isFuture(start)) return <Badge className="bg-green-500/10 text-green-600 text-[10px]">Upcoming</Badge>;
+  if (isToday(start)) return <Badge className="bg-brand-500/10 text-brand-600 text-[10px]">Today</Badge>;
+  if (isFuture(start)) return <Badge className="bg-success/10 text-success text-[10px]">Upcoming</Badge>;
   return <Badge variant="outline" className="text-[10px]">{status}</Badge>;
 }
 

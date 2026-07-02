@@ -423,9 +423,9 @@ export function ClientReportsTab({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
-      case 'pending': return <Clock className="h-3.5 w-3.5 text-yellow-500" />;
-      case 'failed': return <AlertCircle className="h-3.5 w-3.5 text-red-500" />;
+      case 'completed': return <CheckCircle2 className="h-3.5 w-3.5 text-success-foreground0" />;
+      case 'pending': return <Clock className="h-3.5 w-3.5 text-brand-500" />;
+      case 'failed': return <AlertCircle className="h-3.5 w-3.5 text-destructive-foreground0" />;
       default: return null;
     }
   };

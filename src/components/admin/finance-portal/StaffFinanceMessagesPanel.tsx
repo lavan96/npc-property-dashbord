@@ -127,10 +127,10 @@ export function StaffFinanceMessagesPanel({ clientId }: Props) {
                     <Badge variant="outline" className="h-4 px-1 text-[9px]">Finance private</Badge>
                   )}
                   {t.visibility_scope === 'finance_client_with_command_visibility' && (
-                    <Badge variant="outline" className="h-4 border-teal-500/30 bg-teal-500/10 px-1 text-[9px] text-teal-700">Client + CC visible</Badge>
+                    <Badge variant="outline" className="h-4 border-success/30 bg-success/10 px-1 text-[9px] text-success">Client + CC visible</Badge>
                   )}
                   {t.finance_allocated && (
-                    <Badge variant="outline" className="h-4 border-amber-500/30 bg-amber-500/10 px-1 text-[9px] text-amber-700">
+                    <Badge variant="outline" className="h-4 border-brand-500/30 bg-brand-500/10 px-1 text-[9px] text-brand-700">
                       {String(t.allocation_status || 'Allocated').replace(/_/g, ' ')}
                     </Badge>
                   )}
@@ -162,10 +162,10 @@ export function StaffFinanceMessagesPanel({ clientId }: Props) {
                 <div className="mt-1 flex flex-wrap gap-1">
                   <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{String(active.thread_type || 'thread').replace(/_/g, ' ')}</Badge>
                   {active.visibility_scope === 'finance_client_with_command_visibility' && (
-                    <Badge variant="outline" className="h-5 border-teal-500/30 bg-teal-500/10 px-1.5 text-[10px] text-teal-700">Client + CC visible</Badge>
+                    <Badge variant="outline" className="h-5 border-success/30 bg-success/10 px-1.5 text-[10px] text-success">Client + CC visible</Badge>
                   )}
                   {active.finance_allocated && (
-                    <Badge variant="outline" className="h-5 border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] text-amber-700">
+                    <Badge variant="outline" className="h-5 border-brand-500/30 bg-brand-500/10 px-1.5 text-[10px] text-brand-700">
                       {String(active.allocation_status || 'Allocated').replace(/_/g, ' ')}
                     </Badge>
                   )}

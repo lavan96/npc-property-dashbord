@@ -70,12 +70,12 @@ export function ClientPurchaseFilesPanel({ clientId }: { clientId: string }) {
         const deadlineTone = days != null && days <= 2
           ? 'bg-destructive/10 text-destructive border-destructive/20'
           : days != null && days <= 7
-            ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+            ? 'bg-brand-500/10 text-brand-700 dark:text-brand-400 border-brand-500/20'
             : 'bg-muted text-muted-foreground';
         const riskTone = f.risk_level === 'high'
           ? 'bg-destructive/10 text-destructive border-destructive/20'
           : f.risk_level === 'medium'
-            ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+            ? 'bg-brand-500/10 text-brand-700 dark:text-brand-400 border-brand-500/20'
             : '';
         return (
           <Link

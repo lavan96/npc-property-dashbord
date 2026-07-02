@@ -365,12 +365,12 @@ export function InvestmentReportEditor({ report, isOpen, onClose, onSave }: Inve
         <DialogFooter className="flex-shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {hasChanges ? (
-              <Badge variant="outline" className="text-orange-600 border-orange-200">
+              <Badge variant="outline" className="text-warning border-warning/30">
                 <AlertCircle className="h-3 w-3 mr-1" />
                 Unsaved changes
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-green-600 border-green-200">
+              <Badge variant="outline" className="text-success border-success/30">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 All changes saved
               </Badge>

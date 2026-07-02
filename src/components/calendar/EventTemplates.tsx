@@ -408,13 +408,13 @@ function TemplateButton({
         'hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm',
         'active:scale-[0.98]',
         isLoading && 'opacity-50 cursor-not-allowed',
-        isRecentlyCreated && 'border-green-500 bg-green-500/10'
+        isRecentlyCreated && 'border-success/30 bg-success/10'
       )}
       style={{ borderLeftWidth: '3px', borderLeftColor: template.color }}
     >
       {/* Success indicator */}
       {isRecentlyCreated && (
-        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center animate-in zoom-in">
+        <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-success flex items-center justify-center animate-in zoom-in">
           <CheckCircle2 className="h-3 w-3 text-foreground" />
         </div>
       )}

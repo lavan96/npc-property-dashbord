@@ -173,8 +173,8 @@ export function createMarkdownComponents(citations: string[] = []): Components {
           <div className={cn(
             "my-3 rounded-lg border p-3 flex items-start gap-2.5",
             isWarning
-              ? "border-amber-500/25 bg-amber-500/[0.04]"
-              : "border-emerald-500/25 bg-emerald-500/[0.04]"
+              ? "border-brand-500/25 bg-brand-500/[0.04]"
+              : "border-success/25 bg-success/[0.04]"
           )}>
             <span className="text-sm mt-0.5 shrink-0">{isWarning ? '⚠️' : '📈'}</span>
             <p className="text-xs text-foreground/80 leading-relaxed m-0" {...props}>
@@ -355,7 +355,7 @@ export function EnhancedResearchRenderer({
             >
               {copied ? (
                 <>
-                  <Check className="h-3 w-3 text-emerald-500" />
+                  <Check className="h-3 w-3 text-success-foreground0" />
                   Copied
                 </>
               ) : (

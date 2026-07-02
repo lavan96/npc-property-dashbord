@@ -161,9 +161,9 @@ export function AdvancedTab({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Warning Banner */}
-      <Alert variant="default" className="border-amber-500/50 bg-amber-500/5">
-        <AlertTriangle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-700">
+      <Alert variant="default" className="border-brand-500/50 bg-brand-500/5">
+        <AlertTriangle className="h-4 w-4 text-brand-600" />
+        <AlertDescription className="text-brand-700">
           These are optional advanced overrides. Leave empty to use default calculations.
         </AlertDescription>
       </Alert>
@@ -434,7 +434,7 @@ export function AdvancedTab({
                 <Building2 className="h-5 w-5 text-primary" />
                 Construction Schedule
               </h3>
-              <Badge variant={stageTotal === 100 ? 'default' : 'destructive'} className={stageTotal === 100 ? 'bg-green-500' : ''}>
+              <Badge variant={stageTotal === 100 ? 'default' : 'destructive'} className={stageTotal === 100 ? 'bg-success' : ''}>
                 Total: {stageTotal}%
               </Badge>
             </div>
@@ -467,8 +467,8 @@ export function AdvancedTab({
 
             {/* Custom Stage Month Selection (only in custom mode) */}
             {schedulePreset === 'custom' && (
-              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h5 className="text-sm font-medium mb-3 text-blue-900 dark:text-blue-100">Custom Stage Positioning</h5>
+              <div className="mb-4 p-3 bg-info/10 dark:bg-info/30 rounded-lg border border-info/30 dark:border-info/30">
+                <h5 className="text-sm font-medium mb-3 text-info dark:text-info-foreground">Custom Stage Positioning</h5>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   {[
                     { index: 0, label: 'Deposit' },
@@ -545,7 +545,7 @@ export function AdvancedTab({
               <div className="flex h-8 rounded-lg overflow-hidden">
                 {parseFloat(stageDepositPercent) > 0 && (
                   <div 
-                    className="bg-blue-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
+                    className="bg-info flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageDepositPercent}%` }}
                   >
                     {stageDepositPercent}%
@@ -553,7 +553,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageSlabPercent) > 0 && (
                   <div 
-                    className="bg-cyan-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
+                    className="bg-info flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageSlabPercent}%` }}
                   >
                     {stageSlabPercent}%
@@ -561,7 +561,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageFramePercent) > 0 && (
                   <div 
-                    className="bg-teal-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
+                    className="bg-success flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageFramePercent}%` }}
                   >
                     {stageFramePercent}%
@@ -569,7 +569,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageLockupPercent) > 0 && (
                   <div 
-                    className="bg-green-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
+                    className="bg-success flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageLockupPercent}%` }}
                   >
                     {stageLockupPercent}%
@@ -577,7 +577,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageFixingPercent) > 0 && (
                   <div 
-                    className="bg-lime-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
+                    className="bg-success flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageFixingPercent}%` }}
                   >
                     {stageFixingPercent}%
@@ -585,7 +585,7 @@ export function AdvancedTab({
                 )}
                 {parseFloat(stageCompletionPercent) > 0 && (
                   <div 
-                    className="bg-emerald-500 flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
+                    className="bg-success flex items-center justify-center text-xs text-foreground dark:text-white font-medium"
                     style={{ width: `${stageCompletionPercent}%` }}
                   >
                     {stageCompletionPercent}%

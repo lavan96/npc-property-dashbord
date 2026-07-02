@@ -152,10 +152,10 @@ function getDealMilestones(deal: DealWithClient): MilestoneMarker[] {
 
 // ─── Stage segment colors ───
 const STAGE_STATUS_COLORS: Record<string, string> = {
-  complete: 'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]',
-  in_progress: 'bg-gradient-to-r from-amber-400 to-yellow-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]',
-  pending: 'bg-slate-200/80 dark:bg-slate-700/70',
-  skipped: 'bg-slate-100/70 dark:bg-slate-800/70',
+  complete: 'bg-gradient-to-r from-success to-success shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]',
+  in_progress: 'bg-gradient-to-r from-brand-400 to-brand-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]',
+  pending: 'bg-muted/80 dark:bg-slate-700/70',
+  skipped: 'bg-muted/70 dark:bg-background/70',
 };
 
 // ─── Deal Row Component ───
@@ -273,7 +273,7 @@ function DealTimelineRow({
                   );
                 })
               ) : (
-                <div className="h-full w-full rounded-xl bg-slate-200/70 dark:bg-slate-800/70" />
+                <div className="h-full w-full rounded-xl bg-muted/70 dark:bg-background/70" />
               )}
             </div>
           </TooltipProvider>
@@ -383,10 +383,10 @@ function TimelineHeader({
 // ─── Legend ───
 function TimelineLegend() {
   const items = [
-    { label: 'Complete', swatch: 'h-2.5 w-5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500' },
-    { label: 'In progress', swatch: 'h-2.5 w-5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500' },
-    { label: 'Pending', swatch: 'h-2.5 w-5 rounded-full bg-slate-200 ring-1 ring-slate-300 dark:bg-slate-700 dark:ring-slate-600' },
-    { label: 'Skipped', swatch: 'h-2.5 w-5 rounded-full bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700' },
+    { label: 'Complete', swatch: 'h-2.5 w-5 rounded-full bg-gradient-to-r from-success to-success' },
+    { label: 'In progress', swatch: 'h-2.5 w-5 rounded-full bg-gradient-to-r from-brand-400 to-brand-500' },
+    { label: 'Pending', swatch: 'h-2.5 w-5 rounded-full bg-muted ring-1 ring-border dark:bg-slate-700 dark:ring-border' },
+    { label: 'Skipped', swatch: 'h-2.5 w-5 rounded-full bg-muted ring-1 ring-border dark:bg-background dark:ring-border' },
   ];
 
   const markers = [
@@ -510,7 +510,7 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
 
   if (deals.length === 0) {
     return (
-      <DealStatePanel icon={<CalendarDays className="h-7 w-7 text-sky-200" />} eyebrow="Timeline clear" title="No timeline activity yet" description="Deal lifecycle events will appear here when real pipeline records include dates or stage movement." />
+      <DealStatePanel icon={<CalendarDays className="h-7 w-7 text-info" />} eyebrow="Timeline clear" title="No timeline activity yet" description="Deal lifecycle events will appear here when real pipeline records include dates or stage movement." />
     );
   }
 
@@ -562,7 +562,7 @@ export function PipelineTimeline({ deals, isLoading, onDealClick }: Props) {
 
       {/* Timeline chart */}
       <Card className="overflow-hidden border-border/70 bg-card/80 shadow-xl shadow-sm dark:shadow-black/5">
-        <div className="min-w-0 overflow-x-auto scroll-smooth overscroll-x-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70" ref={scrollRef}>
+        <div className="min-w-0 overflow-x-auto scroll-smooth overscroll-x-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-brand-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/70" ref={scrollRef}>
           <div style={{ minWidth: `${Math.max(920, totalDays * 4)}px` }}>
             {/* Header with month markers */}
             <TimelineHeader globalStart={globalStart} globalEnd={globalEnd} totalDays={totalDays} />

@@ -251,7 +251,7 @@ export default function FinancePortalCompliance() {
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-5">
-            <div className="max-h-[60vh] overflow-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+            <div className="max-h-[60vh] overflow-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35">
               <Table className="min-w-[980px]" aria-label="Compliance export results">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">

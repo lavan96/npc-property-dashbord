@@ -184,7 +184,7 @@ export default function PortalConfig() {
   if (isLoading || !config) {
     return (
       <DashboardThemeFrame variant="page" className="flex min-h-[400px] items-center justify-center">
-        <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/80 px-5 py-4 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-slate-950/70">
+        <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/80 px-5 py-4 text-sm text-muted-foreground shadow-sm dark:border-white/10 dark:bg-background/70">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span>Loading portal configuration…</span>
         </div>
@@ -256,7 +256,7 @@ export default function PortalConfig() {
 
         {/* MODULE TOGGLES */}
         <TabsContent value="modules" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
-          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle>Portal Modules</CardTitle>
               <CardDescription>Enable or disable specific sections of the client portal</CardDescription>
@@ -268,7 +268,7 @@ export default function PortalConfig() {
                 return (
                   <div
                     key={item.key}
-                    className="group flex min-w-0 flex-col gap-4 rounded-2xl border border-border/65 bg-background/55 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/5 hover:shadow-[0_14px_34px_hsl(var(--foreground)/0.08)] dark:border-white/10 dark:bg-slate-950/35 dark:hover:bg-primary/10 sm:flex-row sm:items-center sm:justify-between"
+                    className="group flex min-w-0 flex-col gap-4 rounded-2xl border border-border/65 bg-background/55 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-primary/5 hover:shadow-[0_14px_34px_hsl(var(--foreground)/0.08)] dark:border-white/10 dark:bg-background/35 dark:hover:bg-primary/10 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex min-w-0 items-start gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm ring-1 ring-primary/10 transition-colors group-hover:bg-primary group-hover:text-primary-foreground dark:bg-primary/15">
@@ -289,7 +289,7 @@ export default function PortalConfig() {
                         <p className="break-words text-xs leading-5 text-muted-foreground">{item.desc}</p>
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center justify-between gap-3 rounded-full border border-border/60 bg-card/70 px-3 py-2 dark:border-white/10 dark:bg-slate-950/60 sm:justify-end">
+                    <div className="flex shrink-0 items-center justify-between gap-3 rounded-full border border-border/60 bg-card/70 px-3 py-2 dark:border-white/10 dark:bg-background/60 sm:justify-end">
                       <span className="text-xs font-medium text-muted-foreground">{isEnabled ? 'Active' : 'Off'}</span>
                       <Switch
                         checked={isEnabled}
@@ -307,20 +307,20 @@ export default function PortalConfig() {
 
         {/* WELCOME MESSAGE */}
         <TabsContent value="welcome" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
-          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle>Welcome Message</CardTitle>
               <CardDescription>Customise the welcome text shown on the portal dashboard</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="grid gap-5 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+              <div className="grid gap-5 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35 sm:p-5">
                 <div className="space-y-2.5">
                   <Label className="text-sm font-semibold text-foreground">Welcome Title</Label>
                   <Input
                     value={config.welcome_title || ''}
                     onChange={(e) => updateConfig({ welcome_title: e.target.value })}
                     placeholder="Welcome to your Client Portal"
-                    className="min-h-11 rounded-xl border-border/70 bg-card/80 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                    className="min-h-11 rounded-xl border-border/70 bg-card/80 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/60"
                   />
                 </div>
 
@@ -331,7 +331,7 @@ export default function PortalConfig() {
                     onChange={(e) => updateConfig({ welcome_message: e.target.value })}
                     placeholder="Access your property investment details..."
                     rows={6}
-                    className="min-h-[150px] resize-none rounded-xl border-border/70 bg-card/80 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                    className="min-h-[150px] resize-none rounded-xl border-border/70 bg-card/80 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/60"
                   />
                 </div>
 
@@ -341,7 +341,7 @@ export default function PortalConfig() {
                     value={config.welcome_banner_url || ''}
                     onChange={(e) => updateConfig({ welcome_banner_url: e.target.value || null })}
                     placeholder="https://..."
-                    className="min-h-11 min-w-0 rounded-xl border-border/70 bg-card/80 font-mono text-sm text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                    className="min-h-11 min-w-0 rounded-xl border-border/70 bg-card/80 font-mono text-sm text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/60"
                   />
                 </div>
               </div>
@@ -355,7 +355,7 @@ export default function PortalConfig() {
                     value={config.portal_footer_text || ''}
                     onChange={(e) => updateConfig({ portal_footer_text: e.target.value })}
                     placeholder="Secured Portal • End-to-end encrypted"
-                    className="min-h-11 min-w-0 rounded-xl border-border/70 bg-card/90 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/70"
+                    className="min-h-11 min-w-0 rounded-xl border-border/70 bg-card/90 text-foreground shadow-sm transition-colors focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/70"
                   />
                 </div>
               </div>
@@ -365,7 +365,7 @@ export default function PortalConfig() {
 
         {/* BOOKING / CALENDAR */}
         <TabsContent value="booking" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
-          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle className="flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-primary" />
@@ -379,7 +379,7 @@ export default function PortalConfig() {
                   <p className="font-semibold text-foreground">Enable Booking Module</p>
                   <p className="break-words text-sm text-muted-foreground">Allow clients to book appointments through the portal</p>
                 </div>
-                <div className="flex shrink-0 items-center justify-between gap-3 rounded-full border border-primary/20 bg-card/75 px-3 py-2 dark:bg-slate-950/60 sm:justify-end">
+                <div className="flex shrink-0 items-center justify-between gap-3 rounded-full border border-primary/20 bg-card/75 px-3 py-2 dark:bg-background/60 sm:justify-end">
                   <span className="text-xs font-medium text-muted-foreground">{config.module_booking ? 'Enabled' : 'Disabled'}</span>
                   <Switch
                     checked={config.module_booking}
@@ -394,7 +394,7 @@ export default function PortalConfig() {
                 <>
                   <Separator className="bg-border/70" />
 
-                  <div className="grid grid-cols-1 gap-4 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+                  <div className="grid grid-cols-1 gap-4 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35 sm:p-5">
                     {/* Multi-calendar manager */}
                     <div className="min-w-0 space-y-3">
                       <div className="space-y-1">
@@ -406,7 +406,7 @@ export default function PortalConfig() {
                       {(config.booking_calendars || []).length > 0 && (
                         <div className="space-y-3">
                           {config.booking_calendars.map((bc, idx) => (
-                            <div key={bc.id} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-card/75 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/55 lg:flex-row lg:items-center">
+                            <div key={bc.id} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/70 bg-card/75 p-3 shadow-sm dark:border-white/10 dark:bg-background/55 lg:flex-row lg:items-center">
                               <div className="flex min-w-0 flex-1 items-start gap-3">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary dark:bg-primary/15">
                                   <CalendarDays className="h-4 w-4" />
@@ -419,7 +419,7 @@ export default function PortalConfig() {
                               </div>
                               <div className="flex min-w-0 flex-col gap-2 sm:flex-row lg:w-[22rem] lg:shrink-0">
                                 <Input
-                                  className="min-h-10 min-w-0 flex-1 rounded-xl border-border/70 bg-background/80 text-xs shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/70"
+                                  className="min-h-10 min-w-0 flex-1 rounded-xl border-border/70 bg-background/80 text-xs shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/70"
                                   placeholder="Label shown to clients..."
                                   value={bc.description || ''}
                                   onChange={(e) => {
@@ -466,7 +466,7 @@ export default function PortalConfig() {
                                 }
                               }}
                             >
-                              <SelectTrigger className="min-h-11 min-w-0 flex-1 rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60">
+                              <SelectTrigger className="min-h-11 min-w-0 flex-1 rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-background/60">
                                 <SelectValue placeholder="Add a GHL calendar..." />
                               </SelectTrigger>
                               <SelectContent>
@@ -486,13 +486,13 @@ export default function PortalConfig() {
                   <Separator className="bg-border/70" />
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35">
+                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35">
                       <Label className="text-sm font-semibold text-foreground">Slot Duration (minutes)</Label>
                       <Select
                         value={String(config.booking_slot_duration)}
                         onValueChange={(val) => updateConfig({ booking_slot_duration: Number(val) })}
                       >
-                        <SelectTrigger className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60">
+                        <SelectTrigger className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-background/60">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -505,7 +505,7 @@ export default function PortalConfig() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35">
+                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35">
                       <Label className="text-sm font-semibold text-foreground">Minimum Lead Time (hours)</Label>
                       <Input
                         type="number"
@@ -513,12 +513,12 @@ export default function PortalConfig() {
                         max={168}
                         value={config.booking_lead_time_hours}
                         onChange={(e) => updateConfig({ booking_lead_time_hours: Number(e.target.value) })}
-                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/60"
                       />
                       <p className="text-xs text-muted-foreground">How far in advance clients must book</p>
                     </div>
 
-                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35">
+                    <div className="space-y-2 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35">
                       <Label className="text-sm font-semibold text-foreground">Max Advance Booking (days)</Label>
                       <Input
                         type="number"
@@ -526,7 +526,7 @@ export default function PortalConfig() {
                         max={90}
                         value={config.booking_max_advance_days}
                         onChange={(e) => updateConfig({ booking_max_advance_days: Number(e.target.value) })}
-                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/60"
                       />
                       <p className="text-xs text-muted-foreground">How far ahead clients can book</p>
                     </div>
@@ -534,12 +534,12 @@ export default function PortalConfig() {
 
                   <Separator className="bg-border/70" />
 
-                  <div className="space-y-4 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+                  <div className="space-y-4 rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35 sm:p-5">
                     <h4 className="font-medium text-sm flex items-center gap-2">
                       <Mail className="h-4 w-4 text-primary" />
                       Email Notifications
                     </h4>
-                    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 bg-card/70 p-3 dark:border-white/10 dark:bg-slate-950/55 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-border/60 bg-card/70 p-3 dark:border-white/10 dark:bg-background/55 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-medium">Send Client Confirmation</p>
                         <p className="text-xs text-muted-foreground">Email the client a booking confirmation</p>
@@ -558,7 +558,7 @@ export default function PortalConfig() {
                         value={config.booking_team_notification_email || ''}
                         onChange={(e) => updateConfig({ booking_team_notification_email: e.target.value || null })}
                         placeholder="team@yourcompany.com"
-                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60"
+                        className="min-h-11 rounded-xl border-border/70 bg-card/80 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/60"
                       />
                       <p className="text-xs text-muted-foreground">Receive an email when a client books an appointment</p>
                     </div>
@@ -573,7 +573,7 @@ export default function PortalConfig() {
                       onChange={(e) => updateConfig({ booking_intro_text: e.target.value })}
                       placeholder="Schedule a consultation with our team..."
                       rows={4}
-                      className="min-h-[120px] resize-none rounded-xl border-border/70 bg-card/90 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-slate-950/70"
+                      className="min-h-[120px] resize-none rounded-xl border-border/70 bg-card/90 shadow-sm focus-visible:border-primary focus-visible:ring-primary/30 dark:border-white/10 dark:bg-background/70"
                     />
                   </div>
                 </>
@@ -584,7 +584,7 @@ export default function PortalConfig() {
 
         {/* ACCESS LEVEL DEFAULTS */}
         <TabsContent value="access" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
-          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/30">
+          <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
@@ -593,14 +593,14 @@ export default function PortalConfig() {
               <CardDescription>Set the default permissions for new client portal users</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+              <div className="rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35 sm:p-5">
                 <div className="max-w-xl space-y-3">
                   <Label className="text-sm font-semibold text-foreground">Default Access Level for New Users</Label>
                   <Select
                     value={config.default_access_level}
                     onValueChange={(val) => updateConfig({ default_access_level: val })}
                   >
-                    <SelectTrigger className="min-h-11 w-full rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-slate-950/60 md:w-[340px]">
+                    <SelectTrigger className="min-h-11 w-full rounded-xl border-border/70 bg-card/80 shadow-sm focus:ring-primary/30 dark:border-white/10 dark:bg-background/60 md:w-[340px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -629,13 +629,13 @@ export default function PortalConfig() {
 
               <Separator className="bg-border/70" />
 
-              <div className="rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-slate-950/35 sm:p-5">
+              <div className="rounded-2xl border border-border/65 bg-background/55 p-4 dark:border-white/10 dark:bg-background/35 sm:p-5">
                 <div className="mb-4 flex min-w-0 items-center gap-2">
                   <Shield className="h-4 w-4 shrink-0 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground">Access Level Guide</h4>
                 </div>
                 <div className="grid gap-3 text-sm text-muted-foreground lg:grid-cols-3">
-                  <div className="min-w-0 rounded-2xl border border-border/70 bg-card/75 p-4 dark:border-white/10 dark:bg-slate-950/55">
+                  <div className="min-w-0 rounded-2xl border border-border/70 bg-card/75 p-4 dark:border-white/10 dark:bg-background/55">
                     <Badge variant="outline" className="mb-3 border-border/70 bg-muted/40 text-xs text-muted-foreground">Read Only</Badge>
                     <p className="break-words leading-6">Clients can view all enabled portal sections but cannot modify any data. Documents are downloadable but not uploadable.</p>
                   </div>
@@ -657,7 +657,7 @@ export default function PortalConfig() {
       {/* Floating save bar */}
       {hasChanges && (
         <div className="fixed inset-x-4 bottom-4 z-50 flex justify-center sm:bottom-6">
-          <div className="flex w-full max-w-xl flex-col gap-3 rounded-2xl border border-warning/25 bg-card/95 px-4 py-3 shadow-2xl shadow-black/10 ring-1 ring-warning/10 backdrop-blur dark:bg-slate-950/95 dark:shadow-black/40 sm:w-auto sm:flex-row sm:items-center sm:rounded-full sm:px-6" role="status" aria-live="polite">
+          <div className="flex w-full max-w-xl flex-col gap-3 rounded-2xl border border-warning/25 bg-card/95 px-4 py-3 shadow-2xl shadow-black/10 ring-1 ring-warning/10 backdrop-blur dark:bg-background/95 dark:shadow-black/40 sm:w-auto sm:flex-row sm:items-center sm:rounded-full sm:px-6" role="status" aria-live="polite">
             <span className="min-w-0 text-sm text-muted-foreground">You have unsaved changes</span>
             <Button
               size="sm"

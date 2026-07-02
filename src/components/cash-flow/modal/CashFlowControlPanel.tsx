@@ -40,7 +40,7 @@ export function CashFlowControlPanel({
   hasChanges,
 }: CashFlowControlPanelProps) {
   return (
-    <Card className="overflow-hidden border-slate-200/80 bg-gradient-to-br from-background via-muted/20 to-background shadow-sm">
+    <Card className="overflow-hidden border-border/80 bg-gradient-to-br from-background via-muted/20 to-background shadow-sm">
       <CardContent className="space-y-4 p-4 md:p-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-1">
@@ -53,7 +53,7 @@ export function CashFlowControlPanel({
                 <p className="text-xs text-muted-foreground">Compare reports and tune assumptions without changing projection logic.</p>
               </div>
               {hasChanges && (
-                <Badge variant="outline" className="rounded-full border-orange-300 bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
+                <Badge variant="outline" className="rounded-full border-warning/30 bg-warning/10 text-warning dark:bg-warning/30 dark:text-warning">
                   Unsaved assumptions
                 </Badge>
               )}

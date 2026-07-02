@@ -188,15 +188,15 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
                         <TableCell className="py-4">
                           <div className="flex min-w-[150px] items-center gap-2">
                             <Badge variant="outline" className="border-info/25 bg-info/10 text-[10px] font-bold text-info-foreground">S{deal.current_stage_number}</Badge>
-                            <span className="max-w-[180px] truncate text-xs font-medium text-foreground dark:text-zinc-100 sm:text-sm">{deal.current_stage}</span>
+                            <span className="max-w-[180px] truncate text-xs font-medium text-foreground dark:text-foreground sm:text-sm">{deal.current_stage}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[240px] truncate py-4 text-xs text-muted-foreground dark:text-zinc-300 sm:text-sm">
+                        <TableCell className="max-w-[240px] truncate py-4 text-xs text-muted-foreground dark:text-foreground sm:text-sm">
                           {getNextAction(deal)}
                         </TableCell>
                         <TableCell className="py-4 text-xs sm:text-sm">
                           {deal.responsible_person ? (
-                            <span className="block max-w-[180px] break-words rounded-md border border-border dark:border-white/10 bg-white/[0.04] px-2 py-1 font-medium leading-snug text-foreground dark:text-zinc-100">{deal.responsible_person}</span>
+                            <span className="block max-w-[180px] break-words rounded-md border border-border dark:border-white/10 bg-white/[0.04] px-2 py-1 font-medium leading-snug text-foreground dark:text-foreground">{deal.responsible_person}</span>
                           ) : (
                             <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-muted-foreground">—</span>
                           )}

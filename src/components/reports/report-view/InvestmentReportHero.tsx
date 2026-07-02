@@ -40,7 +40,7 @@ export function InvestmentReportHero({
                 <Badge variant="outline" className="capitalize">{reportVariantLabel}</Badge>
                 {isDerivedVariant && <Badge variant="secondary" className="gap-1"><GitBranch className="h-3 w-3" /> Variant</Badge>}
                 {isClientReport && <Badge variant="outline">Client-ready</Badge>}
-                {hasOverrides && <Badge className="gap-1 bg-amber-600 text-foreground dark:text-white hover:bg-amber-600"><AlertCircle className="h-3 w-3" /> {overrideCount} Adjustment{overrideCount !== 1 ? 's' : ''}</Badge>}
+                {hasOverrides && <Badge className="gap-1 bg-brand-600 text-foreground dark:text-white hover:bg-brand-600"><AlertCircle className="h-3 w-3" /> {overrideCount} Adjustment{overrideCount !== 1 ? 's' : ''}</Badge>}
               </div>
 
               <div>
@@ -84,7 +84,7 @@ export function InvestmentReportHero({
               </div>
             ) : (
               <div className="mt-2 flex items-end gap-1">
-                <Star className="mb-1 h-4 w-4 fill-amber-500 text-amber-500" />
+                <Star className="mb-1 h-4 w-4 fill-brand-500 text-brand-500" />
                 <span className={`text-2xl font-bold ${scoreTone}`}>{scoreSummary.score}</span>
                 <span className="pb-1 text-sm text-muted-foreground">/100</span>
               </div>

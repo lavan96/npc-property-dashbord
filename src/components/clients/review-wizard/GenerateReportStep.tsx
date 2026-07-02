@@ -114,10 +114,10 @@ export function GenerateReportStep({
             </div>
             <div className="text-center p-4 bg-muted/50 rounded-lg">
               <Badge className={
-                riskLevel === 'low' ? 'bg-green-500/10 text-green-600' :
-                riskLevel === 'medium' ? 'bg-yellow-500/10 text-yellow-600' :
-                riskLevel === 'high' ? 'bg-orange-500/10 text-orange-600' :
-                'bg-red-500/10 text-red-600'
+                riskLevel === 'low' ? 'bg-success/10 text-success' :
+                riskLevel === 'medium' ? 'bg-brand-500/10 text-brand-600' :
+                riskLevel === 'high' ? 'bg-warning/10 text-warning' :
+                'bg-destructive/10 text-destructive'
               }>
                 {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk
               </Badge>
@@ -128,7 +128,7 @@ export function GenerateReportStep({
               <p className="text-xs text-muted-foreground">Portfolio Value</p>
             </div>
             <div className="text-center p-4 bg-muted/50 rounded-lg">
-              <div className={`text-xl font-bold ${monthlyCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`text-xl font-bold ${monthlyCashflow >= 0 ? 'text-success' : 'text-destructive'}`}>
                 ${monthlyCashflow.toLocaleString()}/mo
               </div>
               <p className="text-xs text-muted-foreground">Net Cash Flow</p>
@@ -142,7 +142,7 @@ export function GenerateReportStep({
             </div>
             <div className="text-sm">
               <span className="text-muted-foreground">Action items: </span>
-              <span className={`font-medium ${highPriorityCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <span className={`font-medium ${highPriorityCount > 0 ? 'text-destructive' : 'text-success'}`}>
                 {highPriorityCount} high priority
               </span>
             </div>
@@ -152,10 +152,10 @@ export function GenerateReportStep({
 
       {/* Owner-Occupied Toggle */}
       {ownerOccupiedCount > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
+        <Card className="border-brand-200 bg-brand-50/50 dark:border-brand-900 dark:bg-brand-950/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Home className="h-5 w-5 text-amber-600" />
+              <Home className="h-5 w-5 text-brand-600" />
               Owner-Occupied Properties
               <TooltipProvider>
                 <Tooltip>
@@ -187,10 +187,10 @@ export function GenerateReportStep({
             </div>
             
             {!includeOwnerOccupied && (
-              <div className="p-3 bg-amber-100/50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="p-3 bg-brand-100/50 dark:bg-brand-900/20 rounded-lg border border-brand-200 dark:border-brand-800">
                 <div className="flex items-start gap-2">
-                  <Building2 className="h-4 w-4 text-amber-600 mt-0.5" />
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                  <Building2 className="h-4 w-4 text-brand-600 mt-0.5" />
+                  <p className="text-xs text-brand-700 dark:text-brand-300">
                     Portfolio metrics now reflect <strong>investment properties only</strong>. 
                     Owner-occupied properties will still appear in property lists but won't affect 
                     portfolio value, LVR, or score calculations.
@@ -203,10 +203,10 @@ export function GenerateReportStep({
       )}
 
       {/* Borrowing Capacity Toggle */}
-      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
+      <Card className="border-info/30 bg-info/50 dark:border-info/30 dark:bg-info/20">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Landmark className="h-5 w-5 text-blue-600" />
+            <Landmark className="h-5 w-5 text-info" />
             Borrowing Capacity Section
             <TooltipProvider>
               <Tooltip>
@@ -238,10 +238,10 @@ export function GenerateReportStep({
           </div>
           
           {!includeBorrowingCapacity && (
-            <div className="p-3 bg-blue-100/50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="p-3 bg-info/50 dark:bg-info/20 rounded-lg border border-info/30 dark:border-info/30">
               <div className="flex items-start gap-2">
-                <Landmark className="h-4 w-4 text-blue-600 mt-0.5" />
-                <p className="text-xs text-blue-700 dark:text-blue-300">
+                <Landmark className="h-4 w-4 text-info mt-0.5" />
+                <p className="text-xs text-info dark:text-info">
                   The Borrowing Capacity section will be <strong>excluded</strong> from the 
                   Portfolio Performance Report PDF. All other sections will remain.
                 </p>
@@ -258,10 +258,10 @@ export function GenerateReportStep({
       />
 
       {/* Custom Instructions for Report */}
-      <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-900 dark:bg-purple-950/20">
+      <Card className="border-accent/30 bg-accent/50 dark:border-accent/30 dark:bg-accent/20">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
-            <MessageSquareText className="h-5 w-5 text-purple-600" />
+            <MessageSquareText className="h-5 w-5 text-accent" />
             Custom Report Instructions
             <TooltipProvider>
               <Tooltip>
@@ -297,7 +297,7 @@ export function GenerateReportStep({
             </div>
           </div>
           {customInstructions && (
-            <p className="text-xs text-purple-600 dark:text-purple-400">
+            <p className="text-xs text-accent dark:text-accent">
               ✓ Custom instructions will be applied to the generated report
             </p>
           )}

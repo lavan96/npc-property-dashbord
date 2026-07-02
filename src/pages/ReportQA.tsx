@@ -1878,8 +1878,8 @@ export default function ReportQA() {
                   hasUploadError
                     ? "border-destructive/25 bg-destructive/10 text-destructive"
                     : uploadProgress.some((item) => item.status === 'uploading' || item.status === 'processing')
-                      ? "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300"
-                      : "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                      ? "border-brand-500/25 bg-brand-500/10 text-brand-600 dark:text-brand-300"
+                      : "border-success/25 bg-success/10 text-success dark:text-success"
                 )}>
                   {hasUploadError
                     ? 'Needs attention'
@@ -1921,7 +1921,7 @@ export default function ReportQA() {
               {isUploading ? (
                 <div className="flex flex-col items-center justify-center gap-2">
                   <span className="report-qa-upload-icon flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16">
-                    <Loader2 className="h-7 w-7 animate-spin text-amber-300" />
+                    <Loader2 className="h-7 w-7 animate-spin text-brand-300" />
                   </span>
                   <p className="text-sm font-semibold text-foreground sm:text-base">Processing report…</p>
                   <p className="max-w-[16rem] text-xs leading-5 text-muted-foreground">Extracting content for AI retrieval</p>
@@ -1932,7 +1932,7 @@ export default function ReportQA() {
                     {hasUploadError ? (
                       <AlertCircle className="h-7 w-7 text-destructive transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
                     ) : isUploadComplete ? (
-                      <CheckCircle2 className="h-7 w-7 text-emerald-500 transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
+                      <CheckCircle2 className="h-7 w-7 text-success-foreground0 transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
                     ) : (
                       <Upload className="h-7 w-7 text-primary transition-transform group-hover:-translate-y-0.5 sm:h-8 sm:w-8" />
                     )}
@@ -2674,8 +2674,8 @@ export default function ReportQA() {
 
             {/* Indexing indicator */}
             {isIndexing && (
-              <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 shadow-sm dark:text-amber-200">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/15">
+              <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-brand-500/25 bg-brand-500/10 px-3 py-2.5 text-sm text-brand-700 shadow-sm dark:text-brand-200">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-brand-500/25 bg-brand-500/15">
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </span>
                 <span className="font-medium">Indexing reports for intelligent retrieval… <span className="font-normal text-muted-foreground">Chat will be available shortly.</span></span>
@@ -2743,7 +2743,7 @@ export default function ReportQA() {
                     onClick={resumeRecording}
                     disabled={isProcessing || isTranscribing}
                     title="Resume recording"
-                    className="report-qa-composer-control report-qa-composer-control-secondary h-11 w-11 flex-shrink-0 border-orange-500 text-orange-500 hover:bg-orange-500/10"
+                    className="report-qa-composer-control report-qa-composer-control-secondary h-11 w-11 flex-shrink-0 border-warning/30 text-warning-foreground0 hover:bg-warning/10"
                   >
                     <Play className="h-4 w-4" />
                   </Button>
@@ -2992,7 +2992,7 @@ export default function ReportQA() {
                                 className="h-7 w-7 p-0"
                                 onClick={() => handleSaveTitle(conv.id, editingTitle)}
                               >
-                                <Check className="h-4 w-4 text-green-600" />
+                                <Check className="h-4 w-4 text-success" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -3300,11 +3300,11 @@ export default function ReportQA() {
                   {isValidatingPDF ? (
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   ) : pdfValidationError ? (
-                    <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                    <Badge variant="outline" className="text-brand-600 border-brand-300 bg-brand-50">
                       Warning
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">
+                    <Badge variant="outline" className="text-success border-success/30 bg-success/10">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       Ready
                     </Badge>
@@ -3337,8 +3337,8 @@ export default function ReportQA() {
               
               {/* Validation warning */}
               {pdfValidationError && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
-                  <p className="text-xs text-amber-700 dark:text-amber-400">{pdfValidationError}</p>
+                <div className="p-3 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-md">
+                  <p className="text-xs text-brand-700 dark:text-brand-400">{pdfValidationError}</p>
                 </div>
               )}
             </div>

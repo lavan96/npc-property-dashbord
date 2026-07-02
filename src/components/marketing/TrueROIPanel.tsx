@@ -95,8 +95,8 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
 
             {/* CPL Gap Alert */}
             {totals.meta_cpl > 0 && totals.true_cpl > 0 && totals.true_cpl > totals.meta_cpl * 1.3 && (
-              <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3">
-                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-2xl border border-brand-500/30 bg-brand-500/10 p-3">
+                <AlertTriangle className="h-4 w-4 text-brand-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-foreground">CPL Gap Detected</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -161,7 +161,7 @@ export function TrueROIPanel({ insights, datePreset }: TrueROIPanelProps) {
                         <TableCell className="text-right font-mono text-sm">{c.total_commission > 0 ? formatCurrency(c.total_commission) : '—'}</TableCell>
                         <TableCell className="text-right font-mono text-sm">
                           {c.roas > 0 ? (
-                            <Badge variant="outline" className={`text-[10px] font-mono ${c.roas >= 1 ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'border-red-500/30 text-red-600 dark:text-red-400'}`}>
+                            <Badge variant="outline" className={`text-[10px] font-mono ${c.roas >= 1 ? 'border-success/30 text-success dark:text-success' : 'border-destructive/30 text-destructive dark:text-destructive'}`}>
                               {c.roas.toFixed(1)}x
                             </Badge>
                           ) : '—'}

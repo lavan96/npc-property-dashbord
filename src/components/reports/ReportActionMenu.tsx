@@ -326,7 +326,7 @@ export function ReportActionMenu({
                     {generatingTier === 'briefing' ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                      <FileText className="h-4 w-4 mr-2 text-info-foreground0" />
                     )}
                     Briefing (~20p)
                   </DropdownMenuItem>

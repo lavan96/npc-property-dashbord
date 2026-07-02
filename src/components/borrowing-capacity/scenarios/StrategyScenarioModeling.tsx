@@ -1764,7 +1764,7 @@ export function StrategyScenarioModeling({
                             <p className="text-xs text-muted-foreground">
                               {Number.isFinite(manualRepayment as number) ? `Manual: ${formatCurrency(effectiveRepayment)}/mo` : `IO: ${formatCurrency(ioRepayment)}/mo`}
                             </p>
-                            <p className="text-sm font-semibold text-emerald-600">
+                            <p className="text-sm font-semibold text-success">
                               Save {formatCurrency(saving)}/mo
                             </p>
                           </div>
@@ -1959,7 +1959,7 @@ export function StrategyScenarioModeling({
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-sm font-semibold ${equity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                              <p className={`text-sm font-semibold ${equity >= 0 ? 'text-success' : 'text-destructive'}`}>
                                 {formatCurrency(equity)}
                               </p>
                               <p className="text-xs text-muted-foreground">equity</p>
@@ -2029,7 +2029,7 @@ export function StrategyScenarioModeling({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Current Equity</span>
-                          <span className={`font-medium ${item.currentEquity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                          <span className={`font-medium ${item.currentEquity >= 0 ? 'text-success' : 'text-destructive'}`}>
                             {formatCurrency(item.currentEquity)}
                           </span>
                         </div>
@@ -2044,7 +2044,7 @@ export function StrategyScenarioModeling({
                         </div>
                         {item.lmiAmount > 0 && (
                           <>
-                            <div className="flex justify-between text-amber-600">
+                            <div className="flex justify-between text-brand-600">
                               <span>Gross Accessible Equity</span>
                               <span>{formatCurrency(item.grossAccessibleEquity)}</span>
                             </div>
@@ -2054,12 +2054,12 @@ export function StrategyScenarioModeling({
                             </div>
                           </>
                         )}
-                        <div className="flex justify-between font-semibold text-emerald-600">
+                        <div className="flex justify-between font-semibold text-success">
                           <span>Net Accessible Equity</span>
                           <span>{formatCurrency(item.accessibleEquity)}</span>
                         </div>
                         {item.lmiAmount > 0 && (
-                          <div className="p-2 rounded bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 mt-1">
+                          <div className="p-2 rounded bg-brand-500/10 border border-brand-500/20 text-xs text-brand-700 dark:text-brand-400 mt-1">
                             ⚠ LVR of {item.targetLVR}% triggers LMI of {formatCurrency(item.lmiAmount)}, reducing usable equity.
                           </div>
                         )}
@@ -2176,7 +2176,7 @@ export function StrategyScenarioModeling({
                         <div className="p-2.5 rounded bg-muted/50 border space-y-1 text-xs">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Deployed (net)</span>
-                            <span className="font-medium tabular-nums text-emerald-600">
+                            <span className="font-medium tabular-nums text-success">
                               +{formatCurrency(item.deployedNet)} cash
                             </span>
                           </div>
@@ -2217,7 +2217,7 @@ export function StrategyScenarioModeling({
                           </div>
                         )}
                         <Separator />
-                        <div className="flex justify-between font-semibold text-lg text-emerald-600">
+                        <div className="flex justify-between font-semibold text-lg text-success">
                           <span>Total Net Accessible Equity</span>
                           <span>{formatCurrency(totalAccessibleEquity)}</span>
                         </div>
@@ -2262,7 +2262,7 @@ export function StrategyScenarioModeling({
                   <span className="text-muted-foreground">
                     Base: {baseInputs.interestRate.toFixed(2)}% → Scenario: {(baseInputs.interestRate + strategy.rateAdjustment).toFixed(2)}%
                   </span>
-                  <span className={`font-medium ${strategy.rateAdjustment <= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                  <span className={`font-medium ${strategy.rateAdjustment <= 0 ? 'text-success' : 'text-destructive'}`}>
                     {strategy.rateAdjustment >= 0 ? '+' : ''}{strategy.rateAdjustment.toFixed(2)}%
                   </span>
                 </div>
@@ -2570,7 +2570,7 @@ export function StrategyScenarioModeling({
                       {acquisitionCapacity.targetPurchasePrice && (
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div><span className="text-muted-foreground">Loan required</span><p className="font-medium">{formatCurrency(acquisitionCapacity.loanRequiredForPurchase || 0)}</p></div>
-                          <div><span className="text-muted-foreground">Net cash after settlement</span><p className={`font-medium ${(acquisitionCapacity.netCashAfterSettlement || 0) >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{formatCurrency(acquisitionCapacity.netCashAfterSettlement || 0)}</p></div>
+                          <div><span className="text-muted-foreground">Net cash after settlement</span><p className={`font-medium ${(acquisitionCapacity.netCashAfterSettlement || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(acquisitionCapacity.netCashAfterSettlement || 0)}</p></div>
                         </div>
                       )}
                       {(acquisitionCapacity.notes ?? []).length > 0 && (
@@ -2590,7 +2590,7 @@ export function StrategyScenarioModeling({
       {/* ═══ IMPACT SUMMARY ═══ */}
 
       <Card className={`border-2 ${
-        capacityChange > 0 ? 'border-emerald-500/30 bg-emerald-500/5' :
+        capacityChange > 0 ? 'border-success/30 bg-success/5' :
         capacityChange < 0 ? 'border-destructive/30 bg-destructive/5' :
         'border-border'
       }`}>
@@ -2699,14 +2699,14 @@ export function StrategyScenarioModeling({
                 <div key={i} className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2">
                     <CheckCircle2 className={`h-3.5 w-3.5 ${
-                      impact.type === 'saving' ? 'text-emerald-600' :
+                      impact.type === 'saving' ? 'text-success' :
                       impact.type === 'cost' ? 'text-destructive' :
                       'text-muted-foreground'
                     }`} />
                     {impact.label}
                   </span>
                   {impact.type !== 'info' && (
-                    <span className={`font-medium ${impact.type === 'saving' ? 'text-emerald-600' : 'text-destructive'}`}>
+                    <span className={`font-medium ${impact.type === 'saving' ? 'text-success' : 'text-destructive'}`}>
                       {impact.type === 'saving' ? '+' : '-'}{formatCurrency(impact.monthlySaving)}/mo
                     </span>
                   )}
@@ -2717,7 +2717,7 @@ export function StrategyScenarioModeling({
                   <Separator />
                   <div className="flex items-center justify-between text-sm font-semibold">
                     <span>Total Monthly Cash Flow Impact</span>
-                    <span className={totalMonthlySaving >= 0 ? 'text-emerald-600' : 'text-destructive'}>
+                    <span className={totalMonthlySaving >= 0 ? 'text-success' : 'text-destructive'}>
                       {totalMonthlySaving >= 0 ? '+' : ''}{formatCurrency(totalMonthlySaving)}/mo
                     </span>
                   </div>
@@ -2758,7 +2758,7 @@ export function StrategyScenarioModeling({
                       true position · engine shows {formatCapacity(baseResult.borrowingCapacity)}
                     </p>
                   )}
-                  <Badge className="text-xs" style={{ backgroundColor: baseBand.bg === 'bg-emerald-500/10' ? '#10b981' : baseBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
+                  <Badge className="text-xs" style={{ backgroundColor: baseBand.bg === 'bg-success/10' ? '#10b981' : baseBand.bg === 'bg-brand-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
                     {baseBand.label}
                   </Badge>
                   <BindingConstraintBadge
@@ -2772,12 +2772,12 @@ export function StrategyScenarioModeling({
 
                 <div className="text-center pt-3">
                   <div className="flex items-center justify-center mb-1">
-                    {trueCapacityChange > 0 && <TrendingUp className="h-5 w-5 text-emerald-600" />}
+                    {trueCapacityChange > 0 && <TrendingUp className="h-5 w-5 text-success" />}
                     {trueCapacityChange < 0 && <TrendingDown className="h-5 w-5 text-destructive" />}
                     {trueCapacityChange === 0 && <Minus className="h-5 w-5 text-muted-foreground" />}
                   </div>
                   <p className={`text-lg font-bold ${
-                    trueCapacityChange > 0 ? 'text-emerald-600' : trueCapacityChange < 0 ? 'text-destructive' : 'text-muted-foreground'
+                    trueCapacityChange > 0 ? 'text-success' : trueCapacityChange < 0 ? 'text-destructive' : 'text-muted-foreground'
                   }`}>
                     {trueCapacityChange !== 0 ? (
                       <>{trueCapacityChange > 0 ? '+' : ''}{formatCapacity(trueCapacityChange)}</>
@@ -2798,7 +2798,7 @@ export function StrategyScenarioModeling({
                 </div>
 
                 <div className={`text-center p-3 rounded-lg border-2 space-y-2 ${
-                  trueCapacityChange > 0 ? 'bg-emerald-500/10 border-emerald-500/30' :
+                  trueCapacityChange > 0 ? 'bg-success/10 border-success/30' :
                   trueCapacityChange < 0 ? 'bg-destructive/10 border-destructive/30' :
                   'bg-secondary/30 border-secondary'
                 }`}>
@@ -2811,7 +2811,7 @@ export function StrategyScenarioModeling({
                       true position · engine shows {formatCapacity(scenarioResult.borrowingCapacity)}
                     </p>
                   )}
-                  <Badge className="text-xs" style={{ backgroundColor: scenarioBand.bg === 'bg-emerald-500/10' ? '#10b981' : scenarioBand.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
+                  <Badge className="text-xs" style={{ backgroundColor: scenarioBand.bg === 'bg-success/10' ? '#10b981' : scenarioBand.bg === 'bg-brand-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}>
                     {scenarioBand.label}
                   </Badge>
                   <BindingConstraintBadge
@@ -2838,7 +2838,7 @@ export function StrategyScenarioModeling({
           <div className="p-3 rounded-lg bg-secondary/30">
             <div className="flex justify-between items-center text-sm">
               <span className="text-muted-foreground">Monthly Surplus</span>
-              <span className={`font-medium ${surplusChange >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+              <span className={`font-medium ${surplusChange >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {formatCurrency(baseResult.monthlySurplus)} → {formatCurrency(scenarioResult.monthlySurplus)}
                 <span className="ml-1 text-xs">
                   ({surplusChange >= 0 ? '+' : ''}{formatCurrency(surplusChange)})
@@ -2854,9 +2854,9 @@ export function StrategyScenarioModeling({
           )}
 
           {validationIssues.length > 0 && (
-            <div className={`p-3 rounded-lg border space-y-2 ${hasBlockingValidationIssues ? 'bg-destructive/10 border-destructive/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+            <div className={`p-3 rounded-lg border space-y-2 ${hasBlockingValidationIssues ? 'bg-destructive/10 border-destructive/30' : 'bg-brand-500/10 border-brand-500/30'}`}>
               <div className="flex items-center gap-2 text-sm font-medium">
-                <AlertTriangle className={`h-4 w-4 ${hasBlockingValidationIssues ? 'text-destructive' : 'text-amber-600'}`} />
+                <AlertTriangle className={`h-4 w-4 ${hasBlockingValidationIssues ? 'text-destructive' : 'text-brand-600'}`} />
                 Scenario validation {hasBlockingValidationIssues ? 'requires action' : 'notes'}
               </div>
               <ul className="space-y-1 text-xs">
@@ -3025,7 +3025,7 @@ export function StrategyScenarioModeling({
               return (
               <div
                 key={preset.id}
-                className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors ${drift?.isStale ? 'border-amber-500/40 bg-amber-500/5' : ''}`}
+                className={`flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors ${drift?.isStale ? 'border-brand-500/40 bg-brand-500/5' : ''}`}
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -3040,7 +3040,7 @@ export function StrategyScenarioModeling({
                     {preset.replayAudit?.baseAssessmentId && ` · Base ${preset.replayAudit.baseAssessmentId.slice(0, 8)}`}
                   </p>
                   {drift?.isStale && (
-                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    <p className="text-[11px] text-brand-700 dark:text-brand-400">
                       Base data changed: {drift.changed.filter(k => k !== 'combined').join(', ')}. Load as historical snapshot or re-save after review.
                     </p>
                   )}

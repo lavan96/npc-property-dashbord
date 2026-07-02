@@ -509,24 +509,24 @@ export function PropertyComparisonModal({
   };
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="h-5 w-5 text-yellow-500" />;
-    if (rank === 2) return <Trophy className="h-5 w-5 text-gray-400" />;
-    if (rank === 3) return <Trophy className="h-5 w-5 text-orange-600" />;
+    if (rank === 1) return <Trophy className="h-5 w-5 text-brand-500" />;
+    if (rank === 2) return <Trophy className="h-5 w-5 text-muted-foreground" />;
+    if (rank === 3) return <Trophy className="h-5 w-5 text-warning" />;
     return <Target className="h-5 w-5 text-muted-foreground" />;
   };
 
   const getRiskColor = (riskLevel: string) => {
     const level = riskLevel.toLowerCase();
-    if (level.includes('low')) return 'text-green-600 bg-green-50 border-green-200';
-    if (level.includes('high')) return 'text-red-600 bg-red-50 border-red-200';
-    return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+    if (level.includes('low')) return 'text-success bg-success/10 border-success/30';
+    if (level.includes('high')) return 'text-destructive bg-destructive/10 border-destructive/30';
+    return 'text-brand-600 bg-brand-50 border-brand-200';
   };
 
   const getSeverityIcon = (severity: string) => {
     const sev = severity.toLowerCase();
-    if (sev.includes('high') || sev.includes('critical')) return <XCircle className="h-4 w-4 text-red-500" />;
-    if (sev.includes('medium')) return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-    return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+    if (sev.includes('high') || sev.includes('critical')) return <XCircle className="h-4 w-4 text-destructive-foreground0" />;
+    if (sev.includes('medium')) return <AlertCircle className="h-4 w-4 text-brand-500" />;
+    return <AlertTriangle className="h-4 w-4 text-warning-foreground0" />;
   };
 
   const copyAnalysis = () => {
@@ -1300,7 +1300,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                             <CardContent className="space-y-4">
                               <div>
                                 <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  <CheckCircle2 className="h-4 w-4 text-success" />
                                   Primary Strengths
                                 </h5>
                                 <ul className="space-y-1">
@@ -1317,7 +1317,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
 
                               <div>
                                 <h5 className="text-sm font-medium mb-2 flex items-center gap-2">
-                                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                                  <AlertCircle className="h-4 w-4 text-warning" />
                                   Primary Concerns
                                 </h5>
                                 <ul className="space-y-1">
@@ -1358,7 +1358,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                           <Card>
                             <CardHeader>
                               <CardTitle className="text-base flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-green-600" />
+                                <TrendingUp className="h-4 w-4 text-success" />
                                 Best Rental Yield
                               </CardTitle>
                             </CardHeader>
@@ -1382,7 +1382,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                           <Card>
                             <CardHeader>
                               <CardTitle className="text-base flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-blue-600" />
+                                <DollarSign className="h-4 w-4 text-info" />
                                 Best Cash Flow
                               </CardTitle>
                             </CardHeader>
@@ -1406,7 +1406,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                           <Card>
                             <CardHeader>
                               <CardTitle className="text-base flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-purple-600" />
+                                <TrendingUp className="h-4 w-4 text-accent" />
                                 Best ROI Projection
                               </CardTitle>
                             </CardHeader>
@@ -1430,7 +1430,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                           <Card>
                             <CardHeader>
                               <CardTitle className="text-base flex items-center gap-2">
-                                <Target className="h-4 w-4 text-orange-600" />
+                                <Target className="h-4 w-4 text-warning" />
                                 Best Value
                               </CardTitle>
                             </CardHeader>
@@ -1494,7 +1494,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         <div className="grid gap-4 md:grid-cols-2">
                           <Card>
                             <CardHeader>
-                              <CardTitle className="text-base text-green-600">Lowest Risk</CardTitle>
+                              <CardTitle className="text-base text-success">Lowest Risk</CardTitle>
                             </CardHeader>
                             <CardContent>
                               <div className="flex items-center justify-between mb-2">
@@ -1509,7 +1509,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
 
                           <Card>
                             <CardHeader>
-                              <CardTitle className="text-base text-red-600">Highest Risk</CardTitle>
+                              <CardTitle className="text-base text-destructive">Highest Risk</CardTitle>
                             </CardHeader>
                             <CardContent>
                               <div className="flex items-center justify-between mb-2">
@@ -1554,7 +1554,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         {analysis.redFlags && analysis.redFlags.length > 0 && (
                           <Card>
                             <CardHeader>
-                              <CardTitle className="text-base text-red-600 flex items-center gap-2">
+                              <CardTitle className="text-base text-destructive flex items-center gap-2">
                                 <XCircle className="h-5 w-5" />
                                 Red Flags & Concerns
                               </CardTitle>
@@ -1590,7 +1590,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <Trophy className="h-5 w-5 text-yellow-500" />
+                          <Trophy className="h-5 w-5 text-brand-500" />
                           Final Recommendation
                         </CardTitle>
                       </CardHeader>
@@ -1598,7 +1598,7 @@ Reason: ${analysis.finalRecommendation?.bestOverall?.reason || 'N/A'}
                         <Card className="border-2 border-primary">
                           <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2">
-                              <Trophy className="h-6 w-6 text-yellow-500" />
+                              <Trophy className="h-6 w-6 text-brand-500" />
                               Best Overall Investment
                             </CardTitle>
                           </CardHeader>

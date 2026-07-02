@@ -219,10 +219,10 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-medium">{employment.employer_name || 'Unknown Employer'}</span>
                 {employment.is_current && (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+                  <span className="text-xs bg-success/15 text-success px-2 py-0.5 rounded">Current</span>
                 )}
                 {!employment.is_current && (
-                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Previous</span>
+                  <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded">Previous</span>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">{employment.occupation_role}</p>
@@ -275,10 +275,10 @@ export function EmploymentManualEntry({ clientId, contacts, onComplete }: Employ
                         <Briefcase className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{emp.employer_name || 'Unknown Employer'}</span>
                         {emp.is_current && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Current</span>
+                          <span className="text-xs bg-success/15 text-success px-2 py-0.5 rounded">Current</span>
                         )}
                         {!emp.is_current && (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Previous</span>
+                          <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded">Previous</span>
                         )}
                         <span className="text-xs text-muted-foreground capitalize">({emp.contact_type})</span>
                       </div>

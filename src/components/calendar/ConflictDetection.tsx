@@ -107,17 +107,17 @@ export function ConflictDetection({ events, onEventClick, selectedDate }: Confli
 
   const getSeverityColor = (severity: 'low' | 'medium' | 'high') => {
     switch (severity) {
-      case 'high': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'medium': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'low': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'high': return 'bg-destructive/20 text-destructive border-destructive/30';
+      case 'medium': return 'bg-brand-500/20 text-brand-400 border-brand-500/30';
+      case 'low': return 'bg-brand-500/20 text-brand-400 border-brand-500/30';
     }
   };
 
   const getSeverityIcon = (severity: 'low' | 'medium' | 'high') => {
     switch (severity) {
-      case 'high': return <AlertTriangle className="h-4 w-4 text-red-400" />;
-      case 'medium': return <AlertTriangle className="h-4 w-4 text-amber-400" />;
-      case 'low': return <AlertTriangle className="h-4 w-4 text-yellow-400" />;
+      case 'high': return <AlertTriangle className="h-4 w-4 text-destructive" />;
+      case 'medium': return <AlertTriangle className="h-4 w-4 text-brand-400" />;
+      case 'low': return <AlertTriangle className="h-4 w-4 text-brand-400" />;
     }
   };
 
@@ -129,16 +129,16 @@ export function ConflictDetection({ events, onEventClick, selectedDate }: Confli
           Conflict Detection
         </h3>
         <Badge variant="outline" className={cn(
-          conflicts.length === 0 ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30'
+          conflicts.length === 0 ? 'bg-success/20 text-success border-success/30' : 'bg-destructive/20 text-destructive border-destructive/30'
         )}>
           {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''}
         </Badge>
       </div>
 
       {conflicts.length === 0 ? (
-        <Card className="p-6 text-center bg-green-500/5 border-green-500/20">
-          <div className="text-green-400 mb-2">✓</div>
-          <p className="text-sm font-medium text-green-400">No Scheduling Conflicts</p>
+        <Card className="p-6 text-center bg-success/5 border-success/20">
+          <div className="text-success mb-2">✓</div>
+          <p className="text-sm font-medium text-success">No Scheduling Conflicts</p>
           <p className="text-xs text-muted-foreground mt-1">All appointments are properly scheduled</p>
         </Card>
       ) : (
@@ -151,9 +151,9 @@ export function ConflictDetection({ events, onEventClick, selectedDate }: Confli
               return (
                 <Card key={idx} className={cn(
                   'p-3 transition-all hover:scale-[1.01]',
-                  conflict.severity === 'high' && 'border-red-500/30 bg-red-500/5',
-                  conflict.severity === 'medium' && 'border-amber-500/30 bg-amber-500/5',
-                  conflict.severity === 'low' && 'border-yellow-500/30 bg-yellow-500/5'
+                  conflict.severity === 'high' && 'border-destructive/30 bg-destructive/5',
+                  conflict.severity === 'medium' && 'border-brand-500/30 bg-brand-500/5',
+                  conflict.severity === 'low' && 'border-brand-500/30 bg-brand-500/5'
                 )}>
                   <div className="flex items-start gap-2 mb-2">
                     {getSeverityIcon(conflict.severity)}
@@ -226,15 +226,15 @@ export function ConflictDetection({ events, onEventClick, selectedDate }: Confli
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 pt-2 border-t">
         <div className="flex items-center gap-1 text-[10px]">
-          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <div className="w-2 h-2 rounded-full bg-destructive" />
           <span className="text-muted-foreground">High (&gt;75%)</span>
         </div>
         <div className="flex items-center gap-1 text-[10px]">
-          <div className="w-2 h-2 rounded-full bg-amber-500" />
+          <div className="w-2 h-2 rounded-full bg-brand-500" />
           <span className="text-muted-foreground">Medium (25-75%)</span>
         </div>
         <div className="flex items-center gap-1 text-[10px]">
-          <div className="w-2 h-2 rounded-full bg-yellow-500" />
+          <div className="w-2 h-2 rounded-full bg-brand-500" />
           <span className="text-muted-foreground">Low (&lt;25%)</span>
         </div>
       </div>

@@ -53,10 +53,10 @@ interface LeadSourceCardProps {
 }
 
 const SOURCE_TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  webhook_auto: { label: 'Auto', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20', icon: '⚡' },
-  manual: { label: 'Manual', color: 'bg-blue-500/10 text-blue-700 border-blue-500/20', icon: '✏️' },
-  csv_import: { label: 'CSV', color: 'bg-amber-500/10 text-amber-700 border-amber-500/20', icon: '📄' },
-  backfill: { label: 'Backfill', color: 'bg-purple-500/10 text-purple-700 border-purple-500/20', icon: '🔄' },
+  webhook_auto: { label: 'Auto', color: 'bg-success/10 text-success border-success/20', icon: '⚡' },
+  manual: { label: 'Manual', color: 'bg-info/10 text-info border-info/20', icon: '✏️' },
+  csv_import: { label: 'CSV', color: 'bg-brand-500/10 text-brand-700 border-brand-500/20', icon: '📄' },
+  backfill: { label: 'Backfill', color: 'bg-accent/10 text-accent border-accent/20', icon: '🔄' },
 };
 
 function getSourceEmoji(source: string) {

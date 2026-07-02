@@ -35,14 +35,14 @@ function KpiCard({
 }) {
   const toneClasses = {
     default: 'border-border bg-card',
-    warning: 'border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card to-card',
+    warning: 'border-brand-500/30 bg-gradient-to-br from-brand-500/5 via-card to-card',
     danger: 'border-destructive/30 bg-gradient-to-br from-destructive/5 via-card to-card',
     success: 'border-success/30 bg-gradient-to-br from-success/5 via-card to-card',
   }[tone || 'default'];
 
   const iconTone = {
     default: 'bg-muted text-muted-foreground',
-    warning: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    warning: 'bg-brand-500/15 text-brand-600 dark:text-brand-400',
     danger: 'bg-destructive/15 text-destructive',
     success: 'bg-success/15 text-success',
   }[tone || 'default'];
@@ -79,7 +79,7 @@ function KpiCard({
 
 function FileRow({ file, badge, badgeTone }: { file: any; badge?: string; badgeTone?: 'warning' | 'danger' | 'default' }) {
   const toneCls = badgeTone === 'danger' ? 'bg-destructive/10 text-destructive border-destructive/20'
-    : badgeTone === 'warning' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+    : badgeTone === 'warning' ? 'bg-brand-500/10 text-brand-700 dark:text-brand-400 border-brand-500/20'
     : 'bg-primary/10 text-primary border-primary/20';
   return (
     <Link
@@ -117,7 +117,7 @@ function WidgetCard({
 }) {
   const accentCls = {
     danger: 'border-destructive/30',
-    warning: 'border-amber-500/30',
+    warning: 'border-brand-500/30',
     success: 'border-success/30',
     default: 'border-border',
   }[accent || 'default'];
@@ -129,7 +129,7 @@ function WidgetCard({
           <div className={cn(
             'h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
             accent === 'danger' ? 'bg-destructive/10 text-destructive'
-              : accent === 'warning' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+              : accent === 'warning' ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400'
               : accent === 'success' ? 'bg-success/10 text-success'
               : 'bg-primary/10 text-primary'
           )}>

@@ -1092,12 +1092,12 @@ export function GstCalculatorCard() {
   const priorityWarnings = gstWarnings.slice(0, 3);
   const statusBadgeClass =
     readinessStatus === "GST Treatment Verified"
-      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
+      ? "border-success/40 bg-success/10 text-success-foreground"
       : readinessStatus === "GST Treatment Review Required"
-        ? "border-red-500/40 bg-red-500/10 text-red-100"
+        ? "border-destructive/40 bg-destructive/10 text-destructive-foreground"
         : readinessStatus === "Preliminary GST Estimate" ||
             sources.treatment === "AI Estimate"
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-100"
+          ? "border-brand-500/40 bg-brand-500/10 text-brand-100"
           : readinessStatus === "GST Assessment Ready"
             ? "border-primary/40 bg-primary/10 text-primary"
             : "border-border/70 bg-muted/20 text-muted-foreground";
@@ -1378,12 +1378,12 @@ export function GstCalculatorCard() {
       </CardHeader>
       <CardContent className="space-y-6">
         {saveNotice && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+          <div className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success-foreground">
             {saveNotice}
           </div>
         )}
         {extractionNotice && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+          <div className="rounded-xl border border-brand-500/30 bg-brand-500/10 p-3 text-sm text-brand-100">
             {extractionNotice}
           </div>
         )}
@@ -1935,7 +1935,7 @@ export function GstCalculatorCard() {
         </Collapsible>
 
         {priorityWarnings.length > 0 && (
-          <section className="rounded-2xl border border-amber-500/40 bg-gradient-to-br from-amber-500/15 to-amber-500/5 p-4 text-xs text-amber-100 shadow-sm">
+          <section className="rounded-2xl border border-brand-500/40 bg-gradient-to-br from-brand-500/15 to-brand-500/5 p-4 text-xs text-brand-100 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <span className="inline-flex items-center gap-1 font-medium">
@@ -2183,8 +2183,8 @@ function TreatmentHero({
           variant="outline"
           className={
             reviewTriggered
-              ? "border-amber-500/40 bg-amber-500/10 text-amber-100"
-              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
+              ? "border-brand-500/40 bg-brand-500/10 text-brand-100"
+              : "border-success/40 bg-success/10 text-success-foreground"
           }
         >
           {reviewTriggered ? "Review required" : readinessStatus}
@@ -2277,7 +2277,7 @@ function FieldConflict({
 }) {
   if (!conflict) return null;
   return (
-    <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">
+    <div className="mt-2 rounded-md border border-brand-500/30 bg-brand-500/10 p-2 text-xs text-brand-100">
       <div>
         New source value available. This field currently uses a saved override.
       </div>

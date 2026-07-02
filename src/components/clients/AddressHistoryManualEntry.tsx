@@ -217,8 +217,8 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="font-medium text-sm truncate">{[addr.address, addr.current_suburb, addr.current_state, addr.current_postcode].filter(Boolean).join(', ') || 'No address'}</span>
-                      {addr.is_current && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded">Current</span>}
-                      {!addr.is_current && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded">Previous</span>}
+                      {addr.is_current && <span className="text-[10px] bg-success/15 text-success dark:bg-success/30 dark:text-success px-2 py-0.5 rounded">Current</span>}
+                      {!addr.is_current && <span className="text-[10px] bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 px-2 py-0.5 rounded">Previous</span>}
                       <span className="text-xs text-muted-foreground capitalize">({addr.contact_type})</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -294,7 +294,7 @@ export function AddressHistoryManualEntry({ clientId, contacts, onComplete }: Ad
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-0.5">
                                     <span className="text-sm font-medium">{[addr.address, addr.current_suburb, addr.current_state, addr.current_postcode].filter(Boolean).join(', ') || 'No address'}</span>
-                                    {addr.is_current && <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded">Current</span>}
+                                    {addr.is_current && <span className="text-[10px] bg-success/15 text-success dark:bg-success/30 dark:text-success px-1.5 py-0.5 rounded">Current</span>}
                                   </div>
                                   <p className="text-xs text-muted-foreground">
                                     {addr.start_date || '?'}{addr.end_date ? ` → ${addr.end_date}` : ' → Present'}

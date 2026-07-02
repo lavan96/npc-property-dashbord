@@ -73,9 +73,9 @@ const scopeOptions = [
 
 const tierOptions = [
   { value: 'all', label: 'All Tiers', icon: ListFilter },
-  { value: 'compass', label: 'Compass (Full)', icon: Compass, iconClassName: 'text-amber-500' },
-  { value: 'briefing', label: 'Briefing (~20p)', icon: FileText, iconClassName: 'text-blue-500' },
-  { value: 'snapshot', label: 'Snapshot (~5p)', icon: Zap, iconClassName: 'text-green-500' },
+  { value: 'compass', label: 'Compass (Full)', icon: Compass, iconClassName: 'text-brand-500' },
+  { value: 'briefing', label: 'Briefing (~20p)', icon: FileText, iconClassName: 'text-info-foreground0' },
+  { value: 'snapshot', label: 'Snapshot (~5p)', icon: Zap, iconClassName: 'text-success-foreground0' },
 ];
 
 const sourceOptions = [
@@ -425,7 +425,7 @@ function FilterField({ label, className = '', children }: { label: string; class
   return (
     <div className={`space-y-2 ${className}`}>
       <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <Star className="h-3 w-3 text-amber-500/80" />
+        <Star className="h-3 w-3 text-brand-500/80" />
         {label}
       </label>
       {children}

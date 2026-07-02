@@ -17,10 +17,10 @@ export function InvestmentReportOverridePanel({ overriddenFields, showOverrides,
     <Collapsible open={showOverrides} onOpenChange={onShowOverridesChange}>
       <Card className="overflow-hidden border-border/80 bg-card shadow-sm">
         <CollapsibleTrigger className="w-full text-left">
-          <CardHeader className="bg-gradient-to-br from-background via-background to-amber-50/40 pb-4 dark:to-amber-950/10">
+          <CardHeader className="bg-gradient-to-br from-background via-background to-brand-50/40 pb-4 dark:to-brand-950/10">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-3">
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-amber-700 shadow-sm dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                <div className="rounded-xl border border-brand-200 bg-brand-50 p-2 text-brand-700 shadow-sm dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-300">
                   <SlidersHorizontal className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
@@ -56,7 +56,7 @@ export function InvestmentReportOverridePanel({ overriddenFields, showOverrides,
                   variant="secondary"
                   className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
                 >
-                  <PenLine className="h-3 w-3 mr-1.5 text-amber-600 dark:text-amber-400" />
+                  <PenLine className="h-3 w-3 mr-1.5 text-brand-600 dark:text-brand-400" />
                   {field.displayName}
                 </Badge>
               ))}

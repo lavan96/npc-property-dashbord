@@ -20,7 +20,7 @@ export function CharacterCount({ current, max, className }: CharacterCountProps)
       className={cn(
         "text-xs transition-colors",
         isError ? "text-destructive font-medium" : 
-        isWarning ? "text-amber-500" : 
+        isWarning ? "text-brand-500" : 
         "text-muted-foreground",
         className
       )}

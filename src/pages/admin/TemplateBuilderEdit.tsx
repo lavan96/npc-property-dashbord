@@ -1753,7 +1753,7 @@ export default function TemplateBuilderEdit() {
                     ? 'bg-success/10 text-success border-success/30 hover:bg-success/20'
                     : lintIssues.some((i) => i.severity === 'error')
                     ? 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20'
-                    : 'bg-amber-500/10 text-amber-600 border-amber-500/30 hover:bg-amber-500/20'
+                    : 'bg-brand-500/10 text-brand-600 border-brand-500/30 hover:bg-brand-500/20'
                 }`}
                 title="Print-safety lint"
               >
@@ -1784,7 +1784,7 @@ export default function TemplateBuilderEdit() {
                           onClick={() => jumpToIssue(iss)}
                           className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
                         >
-                          <div className={`text-[11px] font-medium truncate ${iss.severity === 'error' ? 'text-destructive' : 'text-amber-600'}`}>
+                          <div className={`text-[11px] font-medium truncate ${iss.severity === 'error' ? 'text-destructive' : 'text-brand-600'}`}>
                             <span className="font-mono text-[9px] uppercase tracking-wider mr-1.5 opacity-70">{iss.code}</span>
                             {iss.message}
                           </div>
@@ -2107,7 +2107,7 @@ export default function TemplateBuilderEdit() {
                       <div className="text-muted-foreground">Report type</div>
                       <div className="font-medium">{reportTypeAdapter?.label ?? (reportType || 'Missing')}</div>
                       {reportType && (
-                        <div className={isProductionReportType ? 'mt-0.5 text-[10px] text-success' : 'mt-0.5 text-[10px] text-amber-600'}>
+                        <div className={isProductionReportType ? 'mt-0.5 text-[10px] text-success' : 'mt-0.5 text-[10px] text-brand-600'}>
                           {isProductionReportType ? 'Production enabled' : 'Preview-only'}
                         </div>
                       )}
@@ -2203,7 +2203,7 @@ export default function TemplateBuilderEdit() {
             </div>
           )}
           {softLockUsers.length > 0 && (
-            <div className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700" title={softLockUsers.map((u) => u.name).join(', ')}>
+            <div className="rounded border border-brand-500/30 bg-brand-500/10 px-2 py-1 text-[11px] text-brand-700" title={softLockUsers.map((u) => u.name).join(', ')}>
               {softLockUsers[0].name} is editing this {selectedOverlayId ? 'overlay' : 'block'}
             </div>
           )}
@@ -2219,7 +2219,7 @@ export default function TemplateBuilderEdit() {
             </Button>
           </div>
           <div
-            className={`text-[11px] px-2 py-1 rounded border ${saveConflict ? 'border-destructive/30 bg-destructive/10 text-destructive' : isDirty ? 'border-amber-500/30 bg-amber-500/10 text-amber-700' : 'border-success/30 bg-success/10 text-success'}`}
+            className={`text-[11px] px-2 py-1 rounded border ${saveConflict ? 'border-destructive/30 bg-destructive/10 text-destructive' : isDirty ? 'border-brand-500/30 bg-brand-500/10 text-brand-700' : 'border-success/30 bg-success/10 text-success'}`}
             title={[
               saveConflict?.message,
               lastSavedAt ? `Last saved ${new Date(lastSavedAt).toLocaleString()}` : null,
@@ -2290,7 +2290,7 @@ export default function TemplateBuilderEdit() {
                     </Button>
                     {previewing && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                     {pdfStale && !previewing && (
-                      <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                      <span className="rounded border border-brand-500/40 bg-brand-500/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-700">
                         Out of date — template changed
                       </span>
                     )}
@@ -2451,7 +2451,7 @@ export default function TemplateBuilderEdit() {
               )}
             </div>
           </div>
-          <div className={`rounded-lg border p-3 text-xs ${isProductionReportType ? 'border-success/40 bg-success/5' : reportType ? 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/20 dark:text-amber-200' : 'border-border bg-muted/20 text-muted-foreground'}`}>
+          <div className={`rounded-lg border p-3 text-xs ${isProductionReportType ? 'border-success/40 bg-success/5' : reportType ? 'border-brand-300 bg-brand-50 text-brand-900 dark:bg-brand-950/20 dark:text-brand-200' : 'border-border bg-muted/20 text-muted-foreground'}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="font-medium text-foreground">Report type production support</div>
@@ -2623,7 +2623,7 @@ export default function TemplateBuilderEdit() {
                   </div>
                   <div className="rounded-md border bg-background p-3">
                     <div className="text-muted-foreground">Renderer notes</div>
-                    <div className="mt-1 text-lg font-semibold text-amber-600">{rendererNoteCount}</div>
+                    <div className="mt-1 text-lg font-semibold text-brand-600">{rendererNoteCount}</div>
                   </div>
                   <div className="rounded-md border bg-background p-3">
                     <div className="text-muted-foreground">Block types used</div>
@@ -2638,7 +2638,7 @@ export default function TemplateBuilderEdit() {
                     <h3 className="text-sm font-semibold">Issues by page</h3>
                     <p className="text-xs text-muted-foreground">Click any issue to jump to the affected block or overlay.</p>
                   </div>
-                  <span className={`text-[11px] px-2 py-1 rounded border ${rendererErrorCount > 0 ? 'bg-destructive/10 text-destructive border-destructive/30' : rendererIssueCount > 0 ? 'bg-amber-500/10 text-amber-700 border-amber-500/30' : 'bg-success/10 text-success border-success/30'}`}>
+                  <span className={`text-[11px] px-2 py-1 rounded border ${rendererErrorCount > 0 ? 'bg-destructive/10 text-destructive border-destructive/30' : rendererIssueCount > 0 ? 'bg-brand-500/10 text-brand-700 border-brand-500/30' : 'bg-success/10 text-success border-success/30'}`}>
                     {rendererIssueCount === 0 ? 'All renderers ready' : `${rendererIssueCount} renderer issue${rendererIssueCount === 1 ? '' : 's'}`}
                   </span>
                 </div>
@@ -2669,10 +2669,10 @@ export default function TemplateBuilderEdit() {
                                 key={`${iss.blockId ?? 'page'}-${iss.overlayId ?? idx}-${iss.code}`}
                                 type="button"
                                 onClick={() => jumpToIssue(iss)}
-                                className={`w-full text-left rounded-md border px-3 py-2 transition-colors hover:bg-muted/60 ${iss.severity === 'error' ? 'border-destructive/30 bg-destructive/5' : 'border-amber-500/30 bg-amber-500/5'}`}
+                                className={`w-full text-left rounded-md border px-3 py-2 transition-colors hover:bg-muted/60 ${iss.severity === 'error' ? 'border-destructive/30 bg-destructive/5' : 'border-brand-500/30 bg-brand-500/5'}`}
                               >
                                 <div className="flex items-center gap-2 text-[11px] font-semibold">
-                                  <span className={`rounded px-1.5 py-0.5 uppercase tracking-wider ${iss.severity === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-700'}`}>{iss.severity}</span>
+                                  <span className={`rounded px-1.5 py-0.5 uppercase tracking-wider ${iss.severity === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-brand-500/10 text-brand-700'}`}>{iss.severity}</span>
                                   <span className="font-mono text-[10px] text-muted-foreground">{iss.code}</span>
                                 </div>
                                 <div className={`mt-1 text-xs ${iss.severity === 'error' ? 'text-destructive' : 'text-foreground'}`}>{iss.message}</div>
@@ -2965,7 +2965,7 @@ export default function TemplateBuilderEdit() {
                         {versionCascadeReadiness.totalAnchors} anchor{versionCascadeReadiness.totalAnchors === 1 ? '' : 's'}
                       </span>
                       {versionCascadeReadiness.autoMapSuggestionCount > 0 && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                        <span className="rounded bg-brand-100 px-1.5 py-0.5 text-brand-700 dark:bg-brand-950/30 dark:text-brand-200">
                           {versionCascadeReadiness.autoMapSuggestionCount} auto-map
                         </span>
                       )}

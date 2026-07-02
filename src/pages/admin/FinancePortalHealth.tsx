@@ -145,7 +145,7 @@ export default function FinancePortalHealth() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 sm:p-5">
-              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35">
               <Table className="min-w-[760px]" aria-label="Audit chain integrity sample">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">

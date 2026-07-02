@@ -236,7 +236,7 @@ function ClawbackKPIs({ items }: { items: ClawbackDealInfo[] }) {
       sub: 'Past clawback period',
       icon: CheckCircle2,
       color: 'text-success',
-      bgColor: 'bg-emerald-500/7 border-emerald-500/20',
+      bgColor: 'bg-success/7 border-success/20',
     },
     {
       label: 'Avg Days Left',
@@ -244,7 +244,7 @@ function ClawbackKPIs({ items }: { items: ClawbackDealInfo[] }) {
       sub: 'Active deals',
       icon: Clock,
       color: 'text-chart-6',
-      bgColor: 'bg-cyan-500/7 border-cyan-500/20',
+      bgColor: 'bg-info/7 border-info/20',
     },
     {
       label: 'Trail Commission',
@@ -592,8 +592,8 @@ export function ClawbackRiskMonitor({ deals, isLoading, onDealClick }: Props) {
               all: 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/20',
               active: 'bg-destructive text-destructive-foreground border-destructive shadow-sm shadow-destructive/20',
               expiring_soon: 'bg-warning text-warning-foreground border-warning shadow-sm shadow-warning/20',
-              expired: 'bg-emerald-600 text-foreground dark:text-white border-emerald-600 shadow-sm shadow-emerald-600/20',
-              safe: 'bg-teal-600 text-foreground dark:text-white border-teal-600 shadow-sm shadow-teal-600/20',
+              expired: 'bg-success text-foreground dark:text-white border-success/30 shadow-sm shadow-success/20',
+              safe: 'bg-success text-foreground dark:text-white border-success/30 shadow-sm shadow-success/20',
             };
             return (
               <button
@@ -660,7 +660,7 @@ export function ClawbackRiskMonitor({ deals, isLoading, onDealClick }: Props) {
                 {filteredItems.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-12">
-                      <DealStatePanel compact tone="success" icon={<Shield className="h-7 w-7 text-emerald-200" />} eyebrow="Clawback clear" title="No deals match this filter" description="This clawback view has no matching exposure. Try another filter to review different expiry windows." />
+                      <DealStatePanel compact tone="success" icon={<Shield className="h-7 w-7 text-success" />} eyebrow="Clawback clear" title="No deals match this filter" description="This clawback view has no matching exposure. Try another filter to review different expiry windows." />
                     </TableCell>
                   </TableRow>
                 ) : (

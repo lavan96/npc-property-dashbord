@@ -21,14 +21,14 @@ import { useTeamUsers } from '@/hooks/useTeamUsers';
 const phaseStatusMap: Record<string, { label: string; icon: typeof CircleDot; color: string }> = {
   not_started: { label: 'Not Started', icon: Clock, color: 'text-muted-foreground' },
   in_progress: { label: 'In Progress', icon: CircleDot, color: 'text-primary' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-green-500' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-success-foreground0' },
   blocked: { label: 'Blocked', icon: AlertCircle, color: 'text-destructive' },
 };
 
 const milestoneStatusMap: Record<string, { label: string; icon: typeof CircleDot; color: string }> = {
   not_started: { label: 'Not Started', icon: Clock, color: 'text-muted-foreground' },
   in_progress: { label: 'In Progress', icon: CircleDot, color: 'text-primary' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-green-500' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-success-foreground0' },
   blocked: { label: 'Blocked', icon: AlertCircle, color: 'text-destructive' },
 };
 
@@ -36,7 +36,7 @@ const noteTypeColors: Record<string, string> = {
   general: 'border-border',
   decision: 'border-primary',
   risk: 'border-destructive',
-  idea: 'border-yellow-500',
+  idea: 'border-brand-500',
 };
 
 const PHASE_ICONS = ['📌', '🔬', '🛠️', '🚀', '📦', '🎯', '📣', '🧪', '📋', '⚙️', '💡', '🏆', '🔥', '📈', '🗺️'];
@@ -247,7 +247,7 @@ export function PhaseCard({ phase, milestones, kpis, notes, actions, mutations, 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card
-        className="group/phase overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.14))] shadow-lg shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/40 transition-all duration-300 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none dark:border-white/10 dark:bg-slate-950/60 dark:ring-white/10 dark:shadow-black/25"
+        className="group/phase overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.14))] shadow-lg shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/40 transition-all duration-300 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none dark:border-white/10 dark:bg-background/60 dark:ring-white/10 dark:shadow-black/25"
         style={{ animationDelay: `${index * 100}ms` }}
       >
         {/* Phase color bar */}
@@ -724,7 +724,7 @@ function KPIRow({ kpi: k, mutations }: { kpi: GamePlanKPI; mutations: any }) {
                 className="h-6 w-20 text-xs" autoFocus onKeyDown={e => e.key === 'Enter' && saveValue()} />
               <span className="text-xs text-muted-foreground">/ {k.target_value}{k.unit}</span>
               <Button variant="ghost" size="icon" className="h-5 w-5" onClick={saveValue}>
-                <CheckCircle2 className="h-3 w-3 text-green-500" />
+                <CheckCircle2 className="h-3 w-3 text-success-foreground0" />
               </Button>
             </div>
           ) : (
@@ -744,7 +744,7 @@ function KPIRow({ kpi: k, mutations }: { kpi: GamePlanKPI; mutations: any }) {
           style={{ width: `${pct}%`, background: pct >= 100 ? 'hsl(var(--primary))' : pct >= 60 ? 'hsl(var(--primary))' : 'hsl(var(--warning, 38 92% 50%))' }} />
       </div>
       <div className="text-right mt-0.5">
-        <span className={cn('text-[10px] font-bold', pct >= 100 ? 'text-green-500' : pct >= 60 ? 'text-primary' : 'text-amber-500')}>{pct}%</span>
+        <span className={cn('text-[10px] font-bold', pct >= 100 ? 'text-success-foreground0' : pct >= 60 ? 'text-primary' : 'text-brand-500')}>{pct}%</span>
       </div>
     </div>
   );

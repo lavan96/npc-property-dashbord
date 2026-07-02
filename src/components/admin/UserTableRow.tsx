@@ -45,7 +45,7 @@ export function UserTableRow({
   const hasSuperadmin = u.user_roles?.some(r => r.role === 'superadmin');
   const hasAdmin = u.user_roles?.some(r => r.role === 'admin');
   const actionButtonClass = 'h-9 w-9 rounded-xl border-border/70 bg-background/80 p-0 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary focus-visible:ring-primary/40 motion-reduce:transform-none motion-reduce:transition-none';
-  const cautionActionButtonClass = 'h-9 w-9 rounded-xl border-amber-300/40 bg-amber-500/10 p-0 text-amber-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-amber-500/15 focus-visible:ring-amber-400/40 motion-reduce:transform-none motion-reduce:transition-none dark:text-amber-200';
+  const cautionActionButtonClass = 'h-9 w-9 rounded-xl border-brand-300/40 bg-brand-500/10 p-0 text-brand-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-brand-500/15 focus-visible:ring-brand-400/40 motion-reduce:transform-none motion-reduce:transition-none dark:text-brand-200';
   const destructiveActionButtonClass = 'h-9 w-9 rounded-xl p-0 shadow-sm transition-all hover:-translate-y-0.5 focus-visible:ring-destructive/40 motion-reduce:transform-none motion-reduce:transition-none';
   const userInitials = u.username
     .split(/\s+/)
@@ -84,7 +84,7 @@ export function UserTableRow({
       <TableCell className="py-4">
         <div className="flex flex-wrap gap-1.5">
           {hasSuperadmin && (
-            <Badge className="border border-amber-300/50 bg-amber-500/15 text-amber-700 shadow-sm shadow-amber-500/10 hover:bg-amber-500/20 dark:text-amber-200">
+            <Badge className="border border-brand-300/50 bg-brand-500/15 text-brand-700 shadow-sm shadow-brand-500/10 hover:bg-brand-500/20 dark:text-brand-200">
               <Crown className="h-3 w-3 mr-1" />Superadmin
             </Badge>
           )}
@@ -122,8 +122,8 @@ export function UserTableRow({
             disabled={isSelf}
             aria-label={`${u.is_active ? 'Deactivate' : 'Activate'} ${u.username}`}
           />
-          <span className={u.is_active ? 'inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300' : 'inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/35 px-2.5 py-1 text-xs font-semibold text-muted-foreground'}>
-            <span className={u.is_active ? 'h-1.5 w-1.5 rounded-full bg-emerald-500' : 'h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
+          <span className={u.is_active ? 'inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-xs font-semibold text-success dark:text-success' : 'inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/35 px-2.5 py-1 text-xs font-semibold text-muted-foreground'}>
+            <span className={u.is_active ? 'h-1.5 w-1.5 rounded-full bg-success' : 'h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
             {u.is_active ? 'Active' : 'Inactive'}
           </span>
         </div>

@@ -20,9 +20,9 @@ type Step = {
 };
 
 const OWNER_TONE: Record<string, string> = {
-  client: 'bg-sky-500/15 text-sky-500 border-sky-500/30',
-  broker: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
-  shared: 'bg-violet-500/15 text-violet-500 border-violet-500/30',
+  client: 'bg-info/15 text-info-foreground0 border-info/30',
+  broker: 'bg-brand-500/15 text-brand-500 border-brand-500/30',
+  shared: 'bg-accent/15 text-accent-foreground0 border-accent/30',
 };
 
 export function OnboardingChecklistCard({ fileId }: { fileId: string }) {

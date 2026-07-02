@@ -18,17 +18,17 @@ export function DataCompletenessStep({
   criticalIssues
 }: DataCompletenessStepProps) {
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    if (score >= 40) return 'text-orange-600';
-    return 'text-red-600';
+    if (score >= 80) return 'text-success';
+    if (score >= 60) return 'text-brand-600';
+    if (score >= 40) return 'text-warning';
+    return 'text-destructive';
   };
 
   const getProgressColor = (score: number) => {
-    if (score >= 80) return 'bg-green-500';
-    if (score >= 60) return 'bg-yellow-500';
-    if (score >= 40) return 'bg-orange-500';
-    return 'bg-red-500';
+    if (score >= 80) return 'bg-success';
+    if (score >= 60) return 'bg-brand-500';
+    if (score >= 40) return 'bg-warning';
+    return 'bg-destructive';
   };
 
   return (
@@ -48,13 +48,13 @@ export function DataCompletenessStep({
             </div>
             <div className="text-right space-y-1">
               <div className="flex items-center gap-2 justify-end">
-                <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                <AlertTriangle className="h-4 w-4 text-brand-500" />
                 <span className="text-sm">{totalMissingFields} missing fields</span>
               </div>
               {criticalIssues > 0 && (
                 <div className="flex items-center gap-2 justify-end">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-red-600">{criticalIssues} critical issues</span>
+                  <AlertCircle className="h-4 w-4 text-destructive-foreground0" />
+                  <span className="text-sm text-destructive">{criticalIssues} critical issues</span>
                 </div>
               )}
             </div>
@@ -81,17 +81,17 @@ export function DataCompletenessStep({
                   <p className="font-medium text-sm truncate">{prop.address}</p>
                   <div className="flex items-center gap-2 mt-1">
                     {prop.isRental && (
-                      <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">
+                      <Badge className="bg-info/10 text-info border-info/20 text-xs">
                         Rental (Living Expense)
                       </Badge>
                     )}
                     {prop.isOwnerOccupied && (
-                      <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-xs">
+                      <Badge className="bg-accent/10 text-accent border-accent/20 text-xs">
                         Owner Occupied
                       </Badge>
                     )}
                     {!prop.isRental && !prop.isOwnerOccupied && (
-                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs">
+                      <Badge className="bg-success/10 text-success border-success/20 text-xs">
                         Investment
                       </Badge>
                     )}
@@ -99,9 +99,9 @@ export function DataCompletenessStep({
                 </div>
                 <Badge 
                   variant="outline" 
-                  className={prop.completenessScore >= 80 ? 'text-green-600 border-green-300' : 
-                    prop.completenessScore >= 60 ? 'text-yellow-600 border-yellow-300' :
-                    'text-red-600 border-red-300'}
+                  className={prop.completenessScore >= 80 ? 'text-success border-success/30' : 
+                    prop.completenessScore >= 60 ? 'text-brand-600 border-brand-300' :
+                    'text-destructive border-destructive/30'}
                 >
                   {prop.completenessScore}%
                 </Badge>
@@ -113,7 +113,7 @@ export function DataCompletenessStep({
               {prop.issues.length > 0 && (
                 <div className="space-y-1">
                   {prop.issues.map((issue, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-red-600">
+                    <div key={i} className="flex items-center gap-2 text-xs text-destructive">
                       <AlertCircle className="h-3 w-3" />
                       {issue}
                     </div>
@@ -139,7 +139,7 @@ export function DataCompletenessStep({
               {prop.warnings.length > 0 && (
                 <div className="space-y-1">
                   {prop.warnings.slice(0, 3).map((warning, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs text-yellow-600">
+                    <div key={i} className="flex items-center gap-2 text-xs text-brand-600">
                       <Info className="h-3 w-3" />
                       {warning}
                     </div>
@@ -149,7 +149,7 @@ export function DataCompletenessStep({
 
               {/* All complete */}
               {prop.issues.length === 0 && prop.missingFields.length === 0 && prop.warnings.length === 0 && (
-                <div className="flex items-center gap-2 text-xs text-green-600">
+                <div className="flex items-center gap-2 text-xs text-success">
                   <CheckCircle2 className="h-3 w-3" />
                   All data complete
                 </div>

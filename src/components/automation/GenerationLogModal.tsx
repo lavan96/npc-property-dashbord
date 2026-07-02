@@ -53,7 +53,7 @@ export const GenerationLogModal = ({ open, onOpenChange }: GenerationLogModalPro
     switch (status) {
       case 'completed':
         return (
-          <Badge className="border-green-500/30 bg-green-500/15 text-green-600 shadow-sm dark:text-green-300">
+          <Badge className="border-success/30 bg-success/15 text-success shadow-sm dark:text-success">
             <CheckCircle className="h-3 w-3 mr-1" />
             Completed
           </Badge>

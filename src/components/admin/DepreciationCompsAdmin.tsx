@@ -474,7 +474,7 @@ export function DepreciationCompsAdmin() {
       aria-labelledby="depreciation-comps-title"
       className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-6 sm:px-0"
     >
-      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/90 shadow-sm ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10">
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/90 shadow-sm ring-1 ring-border/40 dark:border-white/10 dark:bg-background/80 dark:ring-white/10">
         <CardHeader className="relative overflow-hidden border-b border-border/60 bg-card/70 px-4 py-5 dark:border-white/10 sm:px-6 lg:px-7">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,hsl(var(--primary)/0.10),transparent_36%,hsl(var(--background)/0.22))]" />
           <div className="relative flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -502,7 +502,7 @@ export function DepreciationCompsAdmin() {
       
         <CardContent className="min-w-0 space-y-6 p-4 sm:p-6 lg:p-7">
           <Tabs defaultValue="list" className="min-w-0 space-y-5" aria-label="Depreciation comparables workspace">
-            <DashboardThemeFrame variant="toolbar" className="overflow-x-auto border-primary/15 bg-background/65 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/40 dark:shadow-black/25">
+            <DashboardThemeFrame variant="toolbar" className="overflow-x-auto border-primary/15 bg-background/65 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-background/40 dark:shadow-black/25">
               <TabsList className="grid min-w-[18rem] flex-1 grid-cols-2 rounded-xl bg-muted/45 p-1 sm:min-w-0">
                 <TabsTrigger
                   value="list"
@@ -521,7 +521,7 @@ export function DepreciationCompsAdmin() {
           
           <TabsContent value="list" className="min-w-0 space-y-4">
             {/* Actions */}
-            <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-2 rounded-2xl border border-border/60 bg-card/55 p-3 shadow-sm dark:border-white/10 dark:bg-background/35 sm:flex-row sm:items-center sm:justify-between">
               <Button
                 onClick={() => setShowAddModal(true)}
                 aria-label="Add depreciation comparable"
@@ -547,7 +547,7 @@ export function DepreciationCompsAdmin() {
               <ScrollArea className="h-[420px]">
                 <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
                   <Table className="min-w-[980px]">
-                    <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-slate-950/90">
+                    <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-background/90">
                       <TableRow className="border-border/70 hover:bg-transparent dark:border-white/10">
                         <TableHead className="whitespace-nowrap font-semibold text-foreground">Price</TableHead>
                         <TableHead className="whitespace-nowrap font-semibold text-foreground">Year</TableHead>
@@ -564,7 +564,7 @@ export function DepreciationCompsAdmin() {
                       {loading ? (
                         <TableRow className="hover:bg-transparent">
                           <TableCell colSpan={9} className="py-12 text-center">
-                            <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-background/65 p-6 text-muted-foreground shadow-inner dark:bg-slate-950/35" role="status" aria-live="polite">
+                            <div className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-background/65 p-6 text-muted-foreground shadow-inner dark:bg-background/35" role="status" aria-live="polite">
                               <Loader2 className="h-6 w-6 animate-spin text-primary" />
                               <p className="text-sm font-medium">Loading comparables...</p>
                             </div>
@@ -573,7 +573,7 @@ export function DepreciationCompsAdmin() {
                       ) : comps.length === 0 ? (
                         <TableRow className="hover:bg-transparent">
                           <TableCell colSpan={9} className="py-14 text-center text-muted-foreground">
-                            <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-primary/25 bg-background/65 p-6 shadow-inner dark:bg-slate-950/35">
+                            <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border border-dashed border-primary/25 bg-background/65 p-6 shadow-inner dark:bg-background/35">
                               <div className="flex h-12 w-12 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
                                 <Database className="h-5 w-5" />
                               </div>
@@ -611,7 +611,7 @@ export function DepreciationCompsAdmin() {
                               {CITY_LABELS[comp.nearest_city]}
                             </TableCell>
                             <TableCell className="max-w-[14rem] truncate text-xs text-muted-foreground" title={PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}>
-                              <span className="inline-flex max-w-full items-center rounded-full border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-200">
+                              <span className="inline-flex max-w-full items-center rounded-full border border-brand-400/25 bg-brand-500/10 px-2.5 py-1 font-medium text-brand-700 dark:text-brand-200">
                                 <span className="truncate">{PURCHASE_CATEGORY_LABELS[comp.purchase_date_category]}</span>
                               </span>
                             </TableCell>
@@ -619,7 +619,7 @@ export function DepreciationCompsAdmin() {
                               <span className="text-primary">${formatNumberWithCommas(dvTotal.toString())}</span>
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-right font-semibold tabular-nums text-foreground">
-                              <span className="text-emerald-700 dark:text-emerald-300">${formatNumberWithCommas(pcTotal.toString())}</span>
+                              <span className="text-success dark:text-success">${formatNumberWithCommas(pcTotal.toString())}</span>
                             </TableCell>
                             <TableCell className="text-right">
                               <Button 
@@ -664,7 +664,7 @@ export function DepreciationCompsAdmin() {
               <DashboardThemeFrame variant="sectionAccent" className="group border-dashed p-1 transition-all duration-200 hover:border-primary/50 motion-reduce:transition-none">
                 <Label
                   htmlFor="csv-upload"
-                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-slate-950/35 motion-reduce:transition-none sm:px-6"
+                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-background/35 motion-reduce:transition-none sm:px-6"
                 >
                   <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
                     <FileSpreadsheet className="h-8 w-8" />
@@ -703,7 +703,7 @@ export function DepreciationCompsAdmin() {
                     <ScrollArea className="h-[220px]">
                       <div className="w-full overflow-x-auto [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
                         <Table className="min-w-[760px]">
-                          <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-slate-950/90">
+                          <TableHeader className="sticky top-0 z-10 bg-muted/70 backdrop-blur dark:bg-background/90">
                             <TableRow className="hover:bg-transparent">
                               {csvPreview[0].map((header, i) => (
                                 <TableHead key={i} className="max-w-[12rem] truncate whitespace-nowrap text-xs font-semibold text-foreground" title={header}>{header}</TableHead>
@@ -750,7 +750,7 @@ export function DepreciationCompsAdmin() {
         
         {/* Add Comp Modal */}
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogContent className="max-h-[min(88vh,760px)] w-[calc(100vw-2rem)] max-w-3xl overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950/95 dark:shadow-black/45">
+          <DialogContent className="max-h-[min(88vh,760px)] w-[calc(100vw-2rem)] max-w-3xl overflow-hidden rounded-3xl border-primary/20 bg-card/95 p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-background/95 dark:shadow-black/45">
             <DialogHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.9))] px-5 py-5 dark:border-white/10 sm:px-6">
               <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight text-foreground">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
@@ -765,7 +765,7 @@ export function DepreciationCompsAdmin() {
             
             <div className="max-h-[calc(min(88vh,760px)-10.5rem)] overflow-y-auto px-5 py-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:px-6">
               <div className="grid gap-5">
-                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
                   <div className="mb-4 min-w-0">
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Property identity</h3>
                   </div>
@@ -796,7 +796,7 @@ export function DepreciationCompsAdmin() {
                   </div>
                 </section>
                 
-                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
                   <div className="mb-4 min-w-0">
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Classification and location</h3>
                   </div>
@@ -873,7 +873,7 @@ export function DepreciationCompsAdmin() {
                 
                 <Separator />
                 
-                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
                   <div className="mb-4 min-w-0">
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Depreciation values</h3>
                   </div>
@@ -893,7 +893,7 @@ export function DepreciationCompsAdmin() {
                   </div>
                 </section>
                 
-                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+                <section className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
                   <div className="mb-4 min-w-0">
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Metadata</h3>
                   </div>
@@ -911,7 +911,7 @@ export function DepreciationCompsAdmin() {
               </div>
             </div>
             
-            <DialogFooter className="border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-slate-950/75 sm:px-6">
+            <DialogFooter className="border-t border-border/60 bg-background/75 px-5 py-4 dark:border-white/10 dark:bg-background/75 sm:px-6">
               <Button
                 variant="outline"
                 onClick={() => setShowAddModal(false)}

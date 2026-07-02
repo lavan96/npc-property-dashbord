@@ -55,10 +55,10 @@ export function ReportLibraryTabs({ isMobile, quantitativeCount, investmentCount
             <TabsTrigger
               key={value}
               value={value}
-              className="group h-auto min-w-[9.5rem] justify-start rounded-xl border border-transparent bg-background/55 p-3 text-left shadow-sm transition-all hover:border-primary/20 hover:bg-background/80 data-[state=active]:border-amber-400/40 data-[state=active]:bg-gradient-to-br data-[state=active]:from-amber-500/15 data-[state=active]:via-background data-[state=active]:to-primary/10 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/10 md:min-w-0 md:p-4"
+              className="group h-auto min-w-[9.5rem] justify-start rounded-xl border border-transparent bg-background/55 p-3 text-left shadow-sm transition-all hover:border-primary/20 hover:bg-background/80 data-[state=active]:border-brand-400/40 data-[state=active]:bg-gradient-to-br data-[state=active]:from-brand-500/15 data-[state=active]:via-background data-[state=active]:to-primary/10 data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/10 md:min-w-0 md:p-4"
             >
               <div className="flex w-full items-start gap-3">
-                <span className="mt-0.5 rounded-lg border border-border/60 bg-card p-2 text-muted-foreground transition-colors group-data-[state=active]:border-amber-400/40 group-data-[state=active]:bg-amber-500/10 group-data-[state=active]:text-amber-700 dark:group-data-[state=active]:text-amber-300">
+                <span className="mt-0.5 rounded-lg border border-border/60 bg-card p-2 text-muted-foreground transition-colors group-data-[state=active]:border-brand-400/40 group-data-[state=active]:bg-brand-500/10 group-data-[state=active]:text-brand-700 dark:group-data-[state=active]:text-brand-300">
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1 space-y-1">

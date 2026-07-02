@@ -111,7 +111,7 @@ const STATUS_CONFIG: Record<
     variant: "outline",
     icon: FileText,
     toneClassName:
-      "border-border bg-muted text-foreground shadow-slate-900/5 dark:border-border/70 dark:bg-background/70 dark:text-slate-200",
+      "border-border bg-muted text-foreground shadow-slate-900/5 dark:border-border/70 dark:bg-background/70 dark:text-foreground",
   },
   sent: {
     label: "Sent",

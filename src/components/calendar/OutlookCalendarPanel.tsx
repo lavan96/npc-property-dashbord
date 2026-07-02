@@ -300,7 +300,7 @@ export function OutlookCalendarPanel({
                 <p>{testResults.eventsList.success ? '✅' : '❌'} List events {testResults.eventsList.success ? `(${testResults.eventsList.count} found)` : `— ${testResults.eventsList.error}`}</p>
               )}
               {testResults.hint && (
-                <p className="text-amber-500 font-medium mt-1">💡 {testResults.hint}</p>
+                <p className="text-brand-500 font-medium mt-1">💡 {testResults.hint}</p>
               )}
             </Card>
           )}
@@ -617,9 +617,9 @@ export function OutlookCalendarPanel({
                         <span className="font-medium truncate max-w-[120px]">{member.username}</span>
                         <div className="flex items-center gap-1">
                           {member.busySlots.length === 0 ? (
-                            <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30">Free</Badge>
+                            <Badge variant="outline" className="text-[10px] text-success-foreground0 border-success/30">Free</Badge>
                           ) : (
-                            <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
+                            <Badge variant="outline" className="text-[10px] text-brand-500 border-brand-500/30">
                               {member.busySlots.length} busy
                             </Badge>
                           )}
@@ -633,7 +633,7 @@ export function OutlookCalendarPanel({
                         <div className="pl-2 space-y-0.5">
                           {member.busySlots.slice(0, 3).map((slot, i) => (
                             <div key={i} className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-amber-500/60 shrink-0" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-brand-500/60 shrink-0" />
                               <span>
                                 {slot.start ? format(parseISO(slot.start), 'h:mm a') : '?'} – {slot.end ? format(parseISO(slot.end), 'h:mm a') : '?'}
                               </span>

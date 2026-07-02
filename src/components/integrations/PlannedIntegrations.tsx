@@ -50,7 +50,7 @@ const plannedIntegrations: PlannedIntegration[] = [
 const getPriorityBadge = (priority: string) => {
   switch (priority) {
     case 'high':
-      return <Badge variant="outline" className="rounded-full border-amber-400/35 bg-amber-500/10 text-amber-700 dark:text-amber-300">High Priority</Badge>;
+      return <Badge variant="outline" className="rounded-full border-brand-400/35 bg-brand-500/10 text-brand-700 dark:text-brand-300">High Priority</Badge>;
     case 'medium':
       return <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary">Medium</Badge>;
     case 'low':
@@ -63,7 +63,7 @@ const getPriorityBadge = (priority: string) => {
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'pending_budget':
-      return <Badge variant="outline" className="rounded-full border-amber-400/35 bg-amber-500/10 text-amber-700 dark:text-amber-300">Pending Budget</Badge>;
+      return <Badge variant="outline" className="rounded-full border-brand-400/35 bg-brand-500/10 text-brand-700 dark:text-brand-300">Pending Budget</Badge>;
     case 'researching':
       return <Badge variant="outline" className="rounded-full border-primary/35 bg-primary/10 text-primary">Researching</Badge>;
     case 'planned':
@@ -91,10 +91,10 @@ export function PlannedIntegrations() {
       </CardHeader>
       <CardContent className="space-y-4 p-4 sm:p-6">
         {/* Important Note */}
-        <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-3 shadow-inner shadow-sm">
-          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-300" />
+        <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-brand-400/25 bg-brand-500/10 p-3 shadow-inner shadow-sm">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand-600 dark:text-brand-300" />
           <div className="min-w-0 text-sm">
-            <p className="font-semibold text-amber-700 dark:text-amber-300">Data Sourcing Note</p>
+            <p className="font-semibold text-brand-700 dark:text-brand-300">Data Sourcing Note</p>
             <p className="text-muted-foreground mt-1">
               Currently, individual comparable sales and rental data in investment reports are based on
               suburb-level statistics. Specific property addresses and transaction details require integration
@@ -110,7 +110,7 @@ export function PlannedIntegrations() {
           {plannedIntegrations.map((integration) => (
             <div
               key={integration.id}
-              className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/65 bg-background/45 p-4 shadow-sm transition-all hover:border-primary/25 hover:bg-primary/5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-start"
+              className="flex min-w-0 flex-col justify-between gap-3 rounded-2xl border border-border/65 bg-background/45 p-4 shadow-sm transition-all hover:border-primary/25 hover:bg-primary/5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/35 sm:flex-row sm:items-start"
             >
               <div className="flex min-w-0 items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-card/80 text-primary shadow-sm">

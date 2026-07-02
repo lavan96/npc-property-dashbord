@@ -265,7 +265,7 @@ export default function FinancePortalCommissions() {
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />Loading commissions…
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35">
               <Table className="min-w-[1050px]" aria-label="Finance portal commissions">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">
@@ -322,7 +322,7 @@ export default function FinancePortalCommissions() {
                 <Loader2 className="h-5 w-5 mr-2 animate-spin" />Loading…
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+              <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35">
               <Table className="min-w-[880px]" aria-label="Finance portal commission statements">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">

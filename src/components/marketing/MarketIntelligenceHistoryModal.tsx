@@ -92,7 +92,7 @@ export const MarketIntelligenceHistoryModal = ({ open, onOpenChange }: MarketInt
     switch (status) {
       case 'completed':
         return (
-          <Badge className="bg-green-500/20 text-green-500 border-green-500/30 text-[10px]">
+          <Badge className="bg-success/20 text-success-foreground0 border-success/30 text-[10px]">
             <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
             Completed
           </Badge>
@@ -106,7 +106,7 @@ export const MarketIntelligenceHistoryModal = ({ open, onOpenChange }: MarketInt
         );
       default:
         return (
-          <Badge variant="outline" className="text-amber-500 border-amber-500/30 text-[10px]">
+          <Badge variant="outline" className="text-brand-500 border-brand-500/30 text-[10px]">
             <Clock className="h-2.5 w-2.5 mr-0.5" />
             {status === 'generating' ? 'Generating' : status}
           </Badge>
@@ -168,7 +168,7 @@ export const MarketIntelligenceHistoryModal = ({ open, onOpenChange }: MarketInt
                          report.audience_segment === 'owner_occupier' ? '🏠 Homebuyer' : '🌐 General'}
                       </Badge>
                       {!report.include_advisory_strategy && (
-                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">
+                        <Badge variant="outline" className="text-[10px] text-brand-600 border-brand-500/30">
                           Strategy excluded
                         </Badge>
                       )}

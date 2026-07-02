@@ -37,11 +37,11 @@ interface LiveCall {
 }
 
 const livePanel =
-  'relative h-full overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
+  'relative h-full overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
 const liveControl =
-  'rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/35 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-success/35 hover:bg-success/10 hover:text-success-foreground focus-visible:ring-2 focus-visible:ring-success/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+  'rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/35 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-success/35 hover:bg-success/10 hover:text-success-foreground focus-visible:ring-2 focus-visible:ring-success/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 const liveCallCard =
-  'group relative cursor-default overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-success/0 before:to-transparent hover:-translate-y-0.5 hover:border-success/40 hover:bg-success/5 hover:shadow-xl hover:shadow-success/10 hover:before:via-success/90';
+  'group relative cursor-default overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-success/0 before:to-transparent hover:-translate-y-0.5 hover:border-success/40 hover:bg-success/5 hover:shadow-xl hover:shadow-success/10 hover:before:via-success/90';
 
 const getLiveStatusTone = (status: string | null) => {
   if (status === 'in-progress') return 'border-l-emerald-400/70';
@@ -152,7 +152,7 @@ export const LiveCallsMonitor = () => {
               <span className="h-1.5 w-1.5 rounded-full bg-success/30 shadow-[0_0_10px_rgba(110,231,183,0.8)] animate-pulse" />
               Realtime Voice Ops
             </div>
-            <CardTitle className="flex items-center gap-3 text-xl text-foreground dark:text-zinc-50 md:text-2xl">
+            <CardTitle className="flex items-center gap-3 text-xl text-foreground dark:text-foreground md:text-2xl">
               <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-success/25 bg-success/10 text-success shadow-inner shadow-success/30">
                 <Radio className="w-4 h-4 text-success relative z-10" />
               {/* Outer pulse ring */}
@@ -219,7 +219,7 @@ export const LiveCallsMonitor = () => {
 
                       <div className="min-w-0 space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="truncate text-base font-semibold text-foreground dark:text-zinc-50">
+                          <span className="truncate text-base font-semibold text-foreground dark:text-foreground">
                             {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
                           <Badge className={call.call_direction === 'inbound' ? callLogBadgeTone('success') : callLogBadgeTone('info')}>

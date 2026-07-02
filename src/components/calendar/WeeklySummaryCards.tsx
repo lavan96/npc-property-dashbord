@@ -52,13 +52,13 @@ function StatCard({ title, value, subtitle, trend, trendValue, trendLabel = 'vs 
 
       {trend && trendValue && (
         <div className="flex items-center gap-1 mt-2">
-          {trend === 'up' && <TrendingUp className="h-3 w-3 text-green-500" />}
-          {trend === 'down' && <TrendingDown className="h-3 w-3 text-red-500" />}
+          {trend === 'up' && <TrendingUp className="h-3 w-3 text-success-foreground0" />}
+          {trend === 'down' && <TrendingDown className="h-3 w-3 text-destructive-foreground0" />}
           {trend === 'neutral' && <Minus className="h-3 w-3 text-muted-foreground" />}
           <span className={cn(
             'text-xs font-medium',
-            trend === 'up' && 'text-green-500',
-            trend === 'down' && 'text-red-500',
+            trend === 'up' && 'text-success-foreground0',
+            trend === 'down' && 'text-destructive-foreground0',
             trend === 'neutral' && 'text-muted-foreground'
           )}>
             {trendValue}
@@ -230,8 +230,8 @@ export function WeeklySummaryCards({ events, currentWeek, selectedDate }: Weekly
         <StatCard
           title="Total Events"
           value={stats.totalEvents}
-          icon={<Calendar className="h-4 w-4 text-blue-500" />}
-          color="bg-blue-500"
+          icon={<Calendar className="h-4 w-4 text-info-foreground0" />}
+          color="bg-info"
           trend={stats.trends.events.direction}
           trendValue={stats.trends.events.value}
           trendLabel={isDateSelected ? 'vs yesterday' : 'vs last week'}
@@ -239,8 +239,8 @@ export function WeeklySummaryCards({ events, currentWeek, selectedDate }: Weekly
         <StatCard
           title="Time Booked"
           value={`${stats.totalHours}h`}
-          icon={<Clock className="h-4 w-4 text-purple-500" />}
-          color="bg-purple-500"
+          icon={<Clock className="h-4 w-4 text-accent-foreground0" />}
+          color="bg-accent"
           trend={stats.trends.hours.direction}
           trendValue={stats.trends.hours.value}
           trendLabel={isDateSelected ? 'vs yesterday' : 'vs last week'}
@@ -249,8 +249,8 @@ export function WeeklySummaryCards({ events, currentWeek, selectedDate }: Weekly
           title="Confirmed"
           value={stats.confirmed}
           subtitle={`${stats.showRate}% show rate`}
-          icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
-          color="bg-green-500"
+          icon={<CheckCircle2 className="h-4 w-4 text-success-foreground0" />}
+          color="bg-success"
           trend={stats.trends.showRate.direction}
           trendValue={stats.trends.showRate.value}
           trendLabel={isDateSelected ? 'vs yesterday' : 'vs last week'}
@@ -258,8 +258,8 @@ export function WeeklySummaryCards({ events, currentWeek, selectedDate }: Weekly
         <StatCard
           title="No Shows"
           value={stats.noShows}
-          icon={<XCircle className="h-4 w-4 text-red-500" />}
-          color="bg-red-500"
+          icon={<XCircle className="h-4 w-4 text-destructive-foreground0" />}
+          color="bg-destructive"
           trend={stats.trends.noShows.direction}
           trendValue={stats.trends.noShows.value}
           trendLabel={isDateSelected ? 'vs yesterday' : 'vs last week'}
@@ -267,8 +267,8 @@ export function WeeklySummaryCards({ events, currentWeek, selectedDate }: Weekly
         <StatCard
           title="Unique Clients"
           value={stats.uniqueContacts}
-          icon={<Users className="h-4 w-4 text-amber-500" />}
-          color="bg-amber-500"
+          icon={<Users className="h-4 w-4 text-brand-500" />}
+          color="bg-brand-500"
           trend={stats.trends.contacts.direction}
           trendValue={stats.trends.contacts.value}
           trendLabel={isDateSelected ? 'vs yesterday' : 'vs last week'}
@@ -277,8 +277,8 @@ export function WeeklySummaryCards({ events, currentWeek, selectedDate }: Weekly
           title={isDateSelected ? 'Day' : 'Busiest Day'}
           value={stats.busiestDay}
           subtitle={`${stats.busiestDayCount} event${stats.busiestDayCount !== 1 ? 's' : ''}`}
-          icon={<Zap className="h-4 w-4 text-orange-500" />}
-          color="bg-orange-500"
+          icon={<Zap className="h-4 w-4 text-warning-foreground0" />}
+          color="bg-warning"
         />
       </div>
     </div>

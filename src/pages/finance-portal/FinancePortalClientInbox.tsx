@@ -87,11 +87,11 @@ const CHANNEL_ICON: Record<string, any> = {
 
 const SOURCE_TONE: Record<string, string> = {
   finance_portal: 'bg-primary/10 text-primary border-primary/20',
-  command_centre: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20',
-  client_portal: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20',
-  ghl: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
-  outbound: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20',
-  note: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
+  command_centre: 'bg-info/10 text-info dark:text-info border-info/20',
+  client_portal: 'bg-info/10 text-info dark:text-info border-info/20',
+  ghl: 'bg-success/10 text-success dark:text-success border-success/20',
+  outbound: 'bg-accent/10 text-accent dark:text-accent border-accent/20',
+  note: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/20',
   activity: 'bg-muted text-muted-foreground border-border',
 };
 
@@ -224,7 +224,7 @@ export default function FinancePortalClientInbox() {
               <Button variant="outline" onClick={() => refetch()}>Try again</Button>
             </div>
           ) : meta.source_errors?.length ? (
-            <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <div className="mb-3 rounded-lg border border-brand-500/30 bg-brand-500/10 p-3 text-sm text-brand-800 dark:text-brand-200">
               Some sources could not be queried: {meta.source_errors.map(e => e.source).join(', ')}. Showing available inbox data.
             </div>
           ) : null}

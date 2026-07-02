@@ -69,20 +69,20 @@ import { callLogBadgeTone } from '@/components/call-logs/badgeStyles';
 
 
 const premiumPageShell = "relative -mx-4 -mt-4 min-h-screen max-w-none overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),radial-gradient(circle_at_80%_8%,hsl(var(--accent)/0.10),transparent_28%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--card))_46%,hsl(var(--background)))] px-4 py-5 text-foreground md:-mx-6 md:-mt-6 md:px-6 md:py-7";
-const premiumPanel = "border-border dark:border-white/10 bg-gradient-to-br from-card/80 dark:from-zinc-950/80 via-background/60 dark:via-black/60 to-card/85 dark:to-zinc-950/85 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl";
-const premiumCard = "border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/80 dark:via-zinc-900/80 to-background/90 dark:to-black/90 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-400/35 hover:shadow-brand-500/10";
-const premiumModalCard = "border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/85 dark:via-zinc-900/85 to-background/95 dark:to-black/95 shadow-lg shadow-sm dark:shadow-black/25";
+const premiumPanel = "border-border dark:border-white/10 bg-gradient-to-br from-card/80 dark:from-background/80 via-background/60 dark:via-black/60 to-card/85 dark:to-background/85 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl";
+const premiumCard = "border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-background/95 via-card/80 dark:via-background/80 to-background/90 dark:to-black/90 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-400/35 hover:shadow-brand-500/10";
+const premiumModalCard = "border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-background/95 via-card/85 dark:via-background/85 to-background/95 dark:to-black/95 shadow-lg shadow-sm dark:shadow-black/25";
 const premiumMutedSurface = "rounded-2xl border border-border dark:border-white/10 bg-background/35 dark:bg-black/35 shadow-inner shadow-sm dark:shadow-black/20";
-const premiumSelectContent = "border-border dark:border-white/10 bg-background/95 dark:bg-background/95 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/40 backdrop-blur-xl";
+const premiumSelectContent = "border-border dark:border-white/10 bg-background/95 dark:bg-background/95 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/40 backdrop-blur-xl";
 const premiumScrollbar = "[scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)]";
-const premiumMetricCard = "group relative overflow-hidden border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/85 dark:via-zinc-900/85 to-background/95 dark:to-black/95 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/45 before:to-transparent hover:-translate-y-1 hover:border-brand-300/40 hover:shadow-2xl hover:shadow-brand-500/10";
+const premiumMetricCard = "group relative overflow-hidden border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-background/95 via-card/85 dark:via-background/85 to-background/95 dark:to-black/95 shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/45 before:to-transparent hover:-translate-y-1 hover:border-brand-300/40 hover:shadow-2xl hover:shadow-brand-500/10";
 const premiumMetricIcon = "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border shadow-inner transition-all duration-300 group-hover:scale-105";
 const premiumMetricLabel = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-muted-foreground";
 const premiumMetricValue = "text-2xl font-bold leading-none tracking-tight md:text-[1.65rem]";
 const premiumControl = "border-border dark:border-white/10 bg-background/35 dark:bg-black/35 text-foreground shadow-inner shadow-sm dark:shadow-black/20 transition-colors hover:border-brand-400/40 hover:bg-brand-400/5 focus-visible:ring-2 focus-visible:ring-brand-400/70";
-const premiumFilterControl = "h-11 rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300/35 hover:bg-brand-300/10 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-brand-300/70";
+const premiumFilterControl = "h-11 rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300/35 hover:bg-brand-300/10 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black focus-visible:ring-2 focus-visible:ring-brand-300/70";
 const premiumFilterControlActive = "border-brand-300/45 bg-brand-300/12 text-brand-50 shadow-brand-500/10";
-const premiumSearchInput = "h-11 rounded-2xl border-border dark:border-white/10 bg-background/55 dark:bg-black/55 pl-11 text-sm text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 hover:border-brand-300/30 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
+const premiumSearchInput = "h-11 rounded-2xl border-border dark:border-white/10 bg-background/55 dark:bg-black/55 pl-11 text-sm text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 hover:border-brand-300/30 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black";
 const premiumActiveFilterBadge = "rounded-full border border-brand-300/35 bg-brand-300/10 px-2.5 py-1 text-xs font-medium text-brand-100 shadow-sm shadow-brand-500/10";
 const premiumActionBase = "min-h-10 justify-center rounded-full border px-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 const premiumReportAction = `${premiumActionBase} border-brand-300/50 bg-gradient-to-r from-brand-300/95 to-brand-500/90 text-brand-950 shadow-brand-500/20 hover:border-brand-100 hover:from-brand-200 hover:to-brand-400 hover:text-brand-950 hover:shadow-lg hover:shadow-brand-500/25 focus-visible:ring-brand-300`;
@@ -90,14 +90,14 @@ const premiumUtilityAction = `${premiumActionBase} border-info/25 bg-info/10 tex
 const premiumQualityAction = `${premiumActionBase} border-success/25 bg-success/10 text-success-foreground hover:border-success/45 hover:bg-success/15 hover:text-success-foreground focus-visible:ring-success`;
 const premiumAlertAction = `${premiumActionBase} border-brand-300/30 bg-brand-400/10 text-brand-100 hover:border-brand-300/55 hover:bg-brand-400/15 hover:text-brand-50 focus-visible:ring-brand-300`;
 const premiumDangerAction = `${premiumActionBase} border-destructive/35 bg-destructive/10 text-destructive hover:border-destructive/55 hover:bg-destructive/15 hover:text-destructive-foreground focus-visible:ring-destructive`;
-const premiumSecondaryAction = `${premiumActionBase} border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-foreground dark:text-zinc-100 hover:border-brand-300/35 hover:bg-brand-300/10 hover:text-brand-50 focus-visible:ring-brand-300`;
+const premiumSecondaryAction = `${premiumActionBase} border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-foreground dark:text-foreground hover:border-brand-300/35 hover:bg-brand-300/10 hover:text-brand-50 focus-visible:ring-brand-300`;
 const premiumTabList = "inline-flex h-auto min-w-max items-center gap-1.5 rounded-[1.35rem] border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-1.5 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl";
 const premiumTabTrigger = "group relative min-h-11 rounded-2xl border border-transparent px-4 py-2.5 text-xs font-medium text-muted-foreground dark:text-muted-foreground transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-brand-300/25 hover:bg-brand-300/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black data-[state=active]:border-brand-300/45 data-[state=active]:bg-gradient-to-r data-[state=active]:from-brand-400/25 data-[state=active]:via-brand-300/15 data-[state=active]:to-brand-500/10 data-[state=active]:text-brand-50 data-[state=active]:shadow-[0_14px_34px_rgba(245,158,11,0.16),inset_0_1px_0_rgba(255,255,255,0.12)] md:text-sm";
-const premiumWorkspaceFrame = "relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card/85 dark:from-zinc-950/85 via-background/70 dark:via-black/70 to-card/90 dark:to-zinc-950/90 p-3 shadow-2xl shadow-sm dark:shadow-black/25 backdrop-blur-xl md:p-4 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/45 before:to-transparent";
+const premiumWorkspaceFrame = "relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card/85 dark:from-background/85 via-background/70 dark:via-black/70 to-card/90 dark:to-background/90 p-3 shadow-2xl shadow-sm dark:shadow-black/25 backdrop-blur-xl md:p-4 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/45 before:to-transparent";
 const premiumInteractiveBadge = "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md";
 const detailTabTrigger = "rounded-2xl border border-transparent px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:border-brand-300/25 hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:border-brand-300/35";
 const detailLabel = "text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground";
-const detailValue = "mt-1 break-words text-sm font-medium text-foreground dark:text-zinc-100";
+const detailValue = "mt-1 break-words text-sm font-medium text-foreground dark:text-foreground";
 
 interface SquadAssistant {
   id: string;
@@ -456,18 +456,18 @@ const CallLogs = () => {
     'customer-busy': { label: 'Busy', color: 'border border-brand-300/30 bg-brand-500/15 text-brand-100 shadow-sm shadow-brand-500/10', icon: Phone },
     'silence-timed-out': { label: 'Silence Timeout', color: 'border border-accent/30 bg-accent/15 text-accent shadow-sm shadow-accent/10', icon: Clock },
     'exceeded-max-duration': { label: 'Max Duration', color: 'border border-accent/30 bg-accent/15 text-accent shadow-sm shadow-accent/10', icon: Clock },
-    'manually-canceled': { label: 'Cancelled', color: 'border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-muted-foreground dark:text-zinc-300 shadow-sm shadow-sm dark:shadow-black/10', icon: XCircle },
+    'manually-canceled': { label: 'Cancelled', color: 'border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-muted-foreground dark:text-foreground shadow-sm shadow-sm dark:shadow-black/10', icon: XCircle },
     // Legacy values
     'completed': { label: 'Completed', color: 'border border-success/30 bg-success/15 text-success shadow-sm shadow-success/10', icon: CheckCircle },
     'no-answer': { label: 'No Answer', color: 'border border-warning/30 bg-warning/15 text-warning shadow-sm shadow-warning/10', icon: Phone },
     'busy': { label: 'Busy', color: 'border border-brand-300/30 bg-brand-500/15 text-brand-100 shadow-sm shadow-brand-500/10', icon: Phone },
     'failed': { label: 'Failed', color: 'border border-destructive/35 bg-destructive/15 text-destructive shadow-sm shadow-destructive/10', icon: XCircle },
-    'cancelled': { label: 'Cancelled', color: 'border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-muted-foreground dark:text-zinc-300 shadow-sm shadow-sm dark:shadow-black/10', icon: XCircle },
+    'cancelled': { label: 'Cancelled', color: 'border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-muted-foreground dark:text-foreground shadow-sm shadow-sm dark:shadow-black/10', icon: XCircle },
     'timeout': { label: 'Timeout', color: 'border border-accent/30 bg-accent/15 text-accent shadow-sm shadow-accent/10', icon: Clock },
   };
 
   const getOutcomeBadge = (outcome: string | null) => {
-    if (!outcome) return <Badge variant="outline" className="rounded-full border-border dark:border-white/15 bg-card/5 dark:bg-white/5 px-2.5 py-1 text-xs text-muted-foreground dark:text-zinc-300">Unknown</Badge>;
+    if (!outcome) return <Badge variant="outline" className="rounded-full border-border dark:border-white/15 bg-card/5 dark:bg-white/5 px-2.5 py-1 text-xs text-muted-foreground dark:text-foreground">Unknown</Badge>;
     const display = OUTCOME_DISPLAY[outcome];
     if (display) {
       const Icon = display.icon;
@@ -477,7 +477,7 @@ const CallLogs = () => {
     const category = getOutcomeCategory(outcome);
     const fallbackColors: Record<string, string> = {
       'error': 'border border-destructive/35 bg-destructive/15 text-destructive shadow-sm shadow-destructive/10',
-      'other': 'border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-muted-foreground dark:text-zinc-300 shadow-sm shadow-sm dark:shadow-black/10',
+      'other': 'border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-muted-foreground dark:text-foreground shadow-sm shadow-sm dark:shadow-black/10',
     };
     const color = fallbackColors[category] || fallbackColors['other'];
     const label = outcome.replace(/[-._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -491,7 +491,7 @@ const CallLogs = () => {
       case 'negative':
         return <Badge className="rounded-full border border-destructive/35 bg-destructive/15 px-2.5 py-1 text-xs text-destructive shadow-sm shadow-destructive/10">Negative</Badge>;
       case 'neutral':
-        return <Badge className="rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-2.5 py-1 text-xs text-muted-foreground dark:text-zinc-300">Neutral</Badge>;
+        return <Badge className="rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-2.5 py-1 text-xs text-muted-foreground dark:text-foreground">Neutral</Badge>;
       case 'mixed':
         return <Badge className="rounded-full border border-brand-300/35 bg-brand-500/15 px-2.5 py-1 text-xs text-brand-200 shadow-sm shadow-brand-500/10">Mixed</Badge>;
       default:
@@ -530,7 +530,7 @@ const CallLogs = () => {
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-brand-100 via-foreground to-brand-300 bg-clip-text text-transparent md:text-5xl">
             Call Logs
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-zinc-300/85">Track and analyze voice agent call outcomes</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-foreground/85">Track and analyze voice agent call outcomes</p>
         </div>
         <DashboardThemeFrame variant="toolbar" className="w-full border-primary/10 bg-background/45 shadow-inner shadow-sm dark:shadow-black/10 lg:w-auto lg:justify-end">
           <div className="flex flex-1 flex-wrap items-center gap-2 lg:flex-none lg:justify-end">
@@ -615,18 +615,18 @@ const CallLogs = () => {
 
       {/* Stats Cards - Responsive grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
-        <Card className={cn(premiumMetricCard, "from-card/95 dark:from-zinc-900/95 via-card/85 dark:via-zinc-950/85")}>
+        <Card className={cn(premiumMetricCard, "from-card/95 dark:from-background/95 via-card/85 dark:via-background/85")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Total</span>
-              <div className={cn(premiumMetricIcon, "border-border/25 bg-muted0/10 text-muted-foreground dark:text-zinc-300")}>
+              <div className={cn(premiumMetricIcon, "border-border/25 bg-muted0/10 text-muted-foreground dark:text-foreground")}>
                 <Phone className="h-4 w-4" />
               </div>
             </div>
-            <p className={cn(premiumMetricValue, "text-foreground dark:text-zinc-50")}>{stats.totalCalls}</p>
+            <p className={cn(premiumMetricValue, "text-foreground dark:text-foreground")}>{stats.totalCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-success/15 via-card/85 dark:via-zinc-950/85 hover:border-success/40 hover:shadow-success/10")}>
+        <Card className={cn(premiumMetricCard, "from-success/15 via-card/85 dark:via-background/85 hover:border-success/40 hover:shadow-success/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Done</span>
@@ -637,7 +637,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-success")}>{stats.completedCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-info/15 via-card/85 dark:via-zinc-950/85 hover:border-info/35 hover:shadow-info/10")}>
+        <Card className={cn(premiumMetricCard, "from-info/15 via-card/85 dark:via-background/85 hover:border-info/35 hover:shadow-info/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Rate</span>
@@ -648,18 +648,18 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-info")}>{stats.successRate}%</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-zinc-800/80 via-card/85 dark:via-zinc-950/85")}>
+        <Card className={cn(premiumMetricCard, "from-background/80 via-card/85 dark:via-background/85")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Avg</span>
-              <div className={cn(premiumMetricIcon, "border-border/25 bg-zinc-400/10 text-muted-foreground dark:text-zinc-300")}>
+              <div className={cn(premiumMetricIcon, "border-border/25 bg-zinc-400/10 text-muted-foreground dark:text-foreground")}>
                 <Clock className="h-4 w-4" />
               </div>
             </div>
-            <p className={cn(premiumMetricValue, "font-mono text-foreground dark:text-zinc-50")}>{formatDuration(stats.avgDuration)}</p>
+            <p className={cn(premiumMetricValue, "font-mono text-foreground dark:text-foreground")}>{formatDuration(stats.avgDuration)}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-brand-500/15 via-card/85 dark:via-zinc-950/85")}>
+        <Card className={cn(premiumMetricCard, "from-brand-500/15 via-card/85 dark:via-background/85")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Cost</span>
@@ -670,7 +670,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-brand-300")}>${stats.totalCost.toFixed(2)}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-success/15 via-card/85 dark:via-zinc-950/85 hover:border-success/35 hover:shadow-success/10")}>
+        <Card className={cn(premiumMetricCard, "from-success/15 via-card/85 dark:via-background/85 hover:border-success/35 hover:shadow-success/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Inbound</span>
@@ -681,7 +681,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-success")}>{stats.inboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-info/15 via-card/85 dark:via-zinc-950/85 hover:border-info/35 hover:shadow-info/10")}>
+        <Card className={cn(premiumMetricCard, "from-info/15 via-card/85 dark:via-background/85 hover:border-info/35 hover:shadow-info/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Outbound</span>
@@ -692,7 +692,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-info")}>{stats.outboundCalls}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-warning/15 via-card/85 dark:via-zinc-950/85 hover:border-warning/40 hover:shadow-warning/10")}>
+        <Card className={cn(premiumMetricCard, "from-warning/15 via-card/85 dark:via-background/85 hover:border-warning/40 hover:shadow-warning/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Voicemail</span>
@@ -703,7 +703,7 @@ const CallLogs = () => {
             <p className={cn(premiumMetricValue, "text-warning")}>{stats.voicemails}</p>
           </CardContent>
         </Card>
-        <Card className={cn(premiumMetricCard, "from-accent/15 via-card/85 dark:via-zinc-950/85 hover:border-accent/35 hover:shadow-accent/10")}>
+        <Card className={cn(premiumMetricCard, "from-accent/15 via-card/85 dark:via-background/85 hover:border-accent/35 hover:shadow-accent/10")}>
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Squad</span>
@@ -855,7 +855,7 @@ const CallLogs = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 rounded-full px-2.5 text-xs text-muted-foreground dark:text-zinc-300 hover:bg-brand-300/10 hover:text-brand-100"
+                className="h-7 rounded-full px-2.5 text-xs text-muted-foreground dark:text-foreground hover:bg-brand-300/10 hover:text-brand-100"
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedAgent('all');
@@ -1032,7 +1032,7 @@ const CallLogs = () => {
                     selected={dateRange}
                     onSelect={setDateRange}
                     numberOfMonths={2}
-                    className="pointer-events-auto bg-transparent text-foreground dark:text-zinc-100"
+                    className="pointer-events-auto bg-transparent text-foreground dark:text-foreground"
                   />
                 </PopoverContent>
               </Popover>
@@ -1050,7 +1050,7 @@ const CallLogs = () => {
         <CardHeader className="pb-4 border-b border-border dark:border-white/10 bg-gradient-to-r from-brand-500/10 via-transparent to-accent/10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground dark:text-zinc-100">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground dark:text-foreground">
                 <BarChart3 className="h-5 w-5 text-brand-300" />
                 Call History
               </CardTitle>
@@ -1093,7 +1093,7 @@ const CallLogs = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 rounded-full px-2.5 text-xs text-muted-foreground dark:text-zinc-300 hover:bg-brand-300/10 hover:text-brand-100"
+                  className="h-7 rounded-full px-2.5 text-xs text-muted-foreground dark:text-foreground hover:bg-brand-300/10 hover:text-brand-100"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedAgent('all');
@@ -1154,7 +1154,7 @@ const CallLogs = () => {
                   role="button"
                   tabIndex={0}
                   aria-label={`Open details for ${call.customer_name || call.phone_number || 'Unknown Caller'}`}
-                  className={`group relative overflow-hidden rounded-2xl border border-border dark:border-white/10 bg-gradient-to-r from-card/95 dark:from-zinc-950/95 via-card/80 dark:via-zinc-900/80 to-background/90 dark:to-black/90 p-3 cursor-pointer shadow-lg shadow-sm dark:shadow-black/20 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-gradient-to-b before:from-transparent before:via-brand-300/35 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/35 hover:bg-brand-300/5 hover:shadow-xl hover:shadow-brand-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-4 ${
+                  className={`group relative overflow-hidden rounded-2xl border border-border dark:border-white/10 bg-gradient-to-r from-card/95 dark:from-background/95 via-card/80 dark:via-background/80 to-background/90 dark:to-black/90 p-3 cursor-pointer shadow-lg shadow-sm dark:shadow-black/20 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-gradient-to-b before:from-transparent before:via-brand-300/35 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/35 hover:bg-brand-300/5 hover:shadow-xl hover:shadow-brand-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:p-4 ${
                     call.is_squad_call ? 'border-l-4 border-l-purple-500' : ''
                   }`}
                   onClick={() => openCallDetail(call)}
@@ -1188,7 +1188,7 @@ const CallLogs = () => {
                       <div className="min-w-0 flex-1">
                         {/* Header row */}
                         <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
-                          <span className="min-w-0 max-w-full truncate text-base font-semibold tracking-tight text-foreground dark:text-zinc-50 sm:text-lg">
+                          <span className="min-w-0 max-w-full truncate text-base font-semibold tracking-tight text-foreground dark:text-foreground sm:text-lg">
                             {call.customer_name || call.phone_number || 'Unknown Caller'}
                           </span>
 
@@ -1210,7 +1210,7 @@ const CallLogs = () => {
 
                           {/* Agent badge for non-squad calls */}
                           {call.agent_name && !call.is_squad_call && (
-                            <Badge className="border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-xs text-foreground dark:text-zinc-200">{call.agent_name}</Badge>
+                            <Badge className="border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 text-xs text-foreground dark:text-foreground">{call.agent_name}</Badge>
                           )}
                         </div>
 
@@ -1240,7 +1240,7 @@ const CallLogs = () => {
                         {/* Meta info row */}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
                           {call.phone_number && call.customer_name && (
-                            <span className="rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-2 py-1 font-mono text-xs text-muted-foreground dark:text-zinc-300">{call.phone_number}</span>
+                            <span className="rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-2 py-1 font-mono text-xs text-muted-foreground dark:text-foreground">{call.phone_number}</span>
                           )}
                           <span className="flex items-center gap-1 rounded-full border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-2 py-1">
                             <Clock className="h-3 w-3 text-brand-200/70" />
@@ -1251,7 +1251,7 @@ const CallLogs = () => {
                                 : '-'
                             }
                           </span>
-                          <span className="flex items-center gap-1 rounded-full border border-border/10 bg-muted/5 px-2 py-1 font-mono text-xs font-semibold text-foreground dark:text-zinc-100">
+                          <span className="flex items-center gap-1 rounded-full border border-border/10 bg-muted/5 px-2 py-1 font-mono text-xs font-semibold text-foreground dark:text-foreground">
                             {formatDuration(call.duration_seconds)}
                           </span>
                           {call.cost !== null && call.cost > 0 && (
@@ -1300,11 +1300,11 @@ const CallLogs = () => {
       {/* Call Detail Modal */}
       <Dialog open={showCallDetail} onOpenChange={handleModalOpenChange}>
         <DialogContent className={cn(
-          "flex flex-col overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-card/98 dark:from-zinc-950/98 via-card/95 dark:via-zinc-950/95 to-background/95 dark:to-black/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl",
+          "flex flex-col overflow-hidden rounded-3xl border-border dark:border-white/10 bg-gradient-to-br from-card/98 dark:from-background/98 via-card/95 dark:via-background/95 to-background/95 dark:to-black/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl",
           isMobile ? "w-[calc(100vw-24px)] max-w-[calc(100vw-24px)] h-[95vh] max-h-[95vh] p-3 rounded-xl" : "w-[calc(100vw-32px)] max-w-4xl h-[85vh] max-h-[85vh]"
         )}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 bg-gradient-to-r from-brand-100 via-zinc-100 to-brand-300 bg-clip-text text-transparent">
+            <DialogTitle className="flex items-center gap-2 bg-gradient-to-r from-brand-100 via-muted to-brand-300 bg-clip-text text-transparent">
               <Phone className="h-5 w-5 text-brand-300" />
               Call Details
             </DialogTitle>
@@ -1621,7 +1621,7 @@ const CallLogs = () => {
                                       {assistant?.name || item.assistant.slice(0, 8)}
                                     </Badge>
                                   </div>
-                                  <pre className="overflow-auto rounded-2xl border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-3 font-mono text-xs text-foreground dark:text-zinc-200">
+                                  <pre className="overflow-auto rounded-2xl border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-3 font-mono text-xs text-foreground dark:text-foreground">
                                     {JSON.stringify(item.data, null, 2)}
                                   </pre>
                                 </div>
@@ -1720,7 +1720,7 @@ const CallLogs = () => {
                       <CardTitle className="text-base">Raw Metadata</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <pre className="overflow-auto rounded-2xl border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-4 font-mono text-xs text-foreground dark:text-zinc-200">
+                      <pre className="overflow-auto rounded-2xl border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-4 font-mono text-xs text-foreground dark:text-foreground">
                         {JSON.stringify(selectedCall.metadata, null, 2)}
                       </pre>
                     </CardContent>

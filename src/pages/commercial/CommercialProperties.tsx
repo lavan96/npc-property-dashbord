@@ -119,11 +119,11 @@ export default function CommercialProperties() {
         <div className="ci-landing-hero">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
-              <div className="mb-4 inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-amber-700 dark:text-amber-300">
+              <div className="mb-4 inline-flex items-center rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-brand-700 dark:text-brand-300">
                 Commercial asset pipeline
               </div>
               <h1 className="flex items-start gap-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-700 shadow-sm dark:text-amber-300">
+                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-brand-500/30 bg-brand-500/10 text-brand-700 shadow-sm dark:text-brand-300">
                   <Building2 className="h-6 w-6" />
                 </span>
                 <span>Commercial & Industrial Properties</span>
@@ -169,14 +169,14 @@ export default function CommercialProperties() {
           <CardContent className="p-0">
           {loading ? (
             <div className="ci-loading-state">
-              <div className="mb-4 h-10 w-10 animate-pulse rounded-2xl border border-amber-500/25 bg-amber-500/10" />
+              <div className="mb-4 h-10 w-10 animate-pulse rounded-2xl border border-brand-500/25 bg-brand-500/10" />
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Loading asset register…</p>
               <p className="mt-2 max-w-sm text-sm text-muted-foreground">Fetching the latest commercial and industrial property records.</p>
             </div>
           ) : rows.length === 0 ? (
             <div className="ci-empty-state">
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/80 shadow-sm">
-                <Building2 className="h-7 w-7 text-amber-600" />
+                <Building2 className="h-7 w-7 text-brand-600" />
               </div>
               <p className="text-xl font-semibold tracking-tight">No commercial or industrial properties yet</p>
               <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Add an asset manually, scrape a listing URL, or parse a PDF/image in the property form.</p>

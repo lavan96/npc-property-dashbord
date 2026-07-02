@@ -53,14 +53,14 @@ interface StrategyRationalePanelProps {
 // Map severity → semantic-token-aware Tailwind classes (no raw colors)
 const SEVERITY_CLASSES: Record<RationaleSeverity, { badge: string; ring: string; text: string }> = {
   positive: {
-    badge: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400',
+    badge: 'bg-success/10 text-success border-success/30 dark:text-success',
     ring: 'border-l-emerald-500',
-    text: 'text-emerald-700 dark:text-emerald-400',
+    text: 'text-success dark:text-success',
   },
   caution: {
-    badge: 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400',
+    badge: 'bg-brand-500/10 text-brand-700 border-brand-500/30 dark:text-brand-400',
     ring: 'border-l-amber-500',
-    text: 'text-amber-700 dark:text-amber-400',
+    text: 'text-brand-700 dark:text-brand-400',
   },
   critical: {
     badge: 'bg-destructive/10 text-destructive border-destructive/30',
@@ -82,8 +82,8 @@ const OWNER_LABEL: Record<'broker' | 'finance' | 'client', string> = {
 
 const OWNER_BADGE: Record<'broker' | 'finance' | 'client', string> = {
   broker: 'bg-primary/10 text-primary border-primary/30',
-  finance: 'bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400',
-  client: 'bg-purple-500/10 text-purple-700 border-purple-500/30 dark:text-purple-400',
+  finance: 'bg-info/10 text-info border-info/30 dark:text-info',
+  client: 'bg-accent/10 text-accent border-accent/30 dark:text-accent',
 };
 
 function buildPlainTextBrief(report: RationaleReport, fmt: (n: number) => string): string {
@@ -371,7 +371,7 @@ export function StrategyRationalePanel({ report, formatCurrency, pdfContext }: S
                               {formatCurrency(leg.amount)}
                             </Badge>
                             {svc !== 0 && (
-                              <Badge variant="outline" className={`text-[10px] ${svc < 0 ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400' : 'bg-destructive/10 text-destructive border-destructive/30'}`}>
+                              <Badge variant="outline" className={`text-[10px] ${svc < 0 ? 'bg-success/10 text-success border-success/30 dark:text-success' : 'bg-destructive/10 text-destructive border-destructive/30'}`}>
                                 {svc < 0 ? '−' : '+'}{formatCurrency(Math.abs(svc))}/mo
                               </Badge>
                             )}
@@ -443,13 +443,13 @@ export function StrategyRationalePanel({ report, formatCurrency, pdfContext }: S
         {/* ── Caveats ─────────────────────────────────────────────── */}
         <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 text-amber-600" />
+            <ShieldAlert className="h-4 w-4 text-brand-600" />
             <h4 className="text-sm font-semibold">Caveats & assumptions</h4>
           </div>
           <ul className="space-y-1.5 pl-6">
             {report.caveats.map((c, i) => (
               <li key={i} className="text-xs text-muted-foreground leading-relaxed flex gap-2">
-                <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                <AlertTriangle className="h-3 w-3 text-brand-600 mt-0.5 shrink-0" />
                 <span>{c}</span>
               </li>
             ))}

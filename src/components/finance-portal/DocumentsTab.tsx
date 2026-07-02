@@ -47,9 +47,9 @@ const CATEGORY_ORDER = [
 
 const STATUS_META: Record<string, { label: string; tone: string; icon: any }> = {
   required:   { label: 'Required',  tone: 'bg-muted text-muted-foreground', icon: Clock },
-  requested:  { label: 'Requested', tone: 'bg-amber-500/15 text-amber-500',  icon: Send },
-  uploaded:   { label: 'Uploaded',  tone: 'bg-sky-500/15 text-sky-500',      icon: FileCheck },
-  verified:   { label: 'Verified',  tone: 'bg-emerald-500/15 text-emerald-500', icon: ShieldCheck },
+  requested:  { label: 'Requested', tone: 'bg-brand-500/15 text-brand-500',  icon: Send },
+  uploaded:   { label: 'Uploaded',  tone: 'bg-info/15 text-info-foreground0',      icon: FileCheck },
+  verified:   { label: 'Verified',  tone: 'bg-success/15 text-success-foreground0', icon: ShieldCheck },
   waived:     { label: 'Waived',    tone: 'bg-muted text-muted-foreground',  icon: AlertCircle },
   expired:    { label: 'Expired',   tone: 'bg-destructive/15 text-destructive', icon: AlertCircle },
 };
@@ -333,11 +333,11 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-5 text-sm">
               <Stat label="Total" value={stats.total} />
-              <Stat label="Outstanding" value={stats.outstanding} tone="text-amber-500" />
-              <Stat label="Requested" value={stats.requested} tone="text-sky-500" />
-              <Stat label="Verified" value={stats.verified} tone="text-emerald-500" />
+              <Stat label="Outstanding" value={stats.outstanding} tone="text-brand-500" />
+              <Stat label="Requested" value={stats.requested} tone="text-info-foreground0" />
+              <Stat label="Verified" value={stats.verified} tone="text-success-foreground0" />
               <Stat label="Quality flags" value={stats.qualityIssues} tone={stats.qualityIssues > 0 ? 'text-destructive' : undefined} />
-              <Stat label="Expiring ≤30d" value={stats.expiringSoon} tone={stats.expiringSoon > 0 ? 'text-amber-500' : undefined} />
+              <Stat label="Expiring ≤30d" value={stats.expiringSoon} tone={stats.expiringSoon > 0 ? 'text-brand-500' : undefined} />
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={analyzeAll} disabled={busy} className="gap-1.5" title="Run quality checks on all linked documents">
@@ -428,8 +428,8 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                               <span className={cn(
                                 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded',
                                 req.quality_status === 'error' && 'bg-destructive/15 text-destructive',
-                                req.quality_status === 'warning' && 'bg-amber-500/15 text-amber-500',
-                                req.quality_status === 'ok' && 'bg-emerald-500/15 text-emerald-500',
+                                req.quality_status === 'warning' && 'bg-brand-500/15 text-brand-500',
+                                req.quality_status === 'ok' && 'bg-success/15 text-success-foreground0',
                               )}>
                                 {req.quality_status === 'ok' ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
                                 {req.quality_status === 'ok' ? 'Quality OK' : `Quality ${req.quality_status}`}
@@ -456,7 +456,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                               {(req.quality_flags || []).slice(0, 3).map((f: any, idx: number) => (
                                 <li key={idx} className={cn(
                                   'text-xs flex items-start gap-1',
-                                  f.severity === 'error' ? 'text-destructive' : 'text-amber-500',
+                                  f.severity === 'error' ? 'text-destructive' : 'text-brand-500',
                                 )}>
                                   <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                                   <span>{f.message}</span>
@@ -479,7 +479,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                               size="icon" variant="ghost" className="h-8 w-8"
                               title="Re-request from client" onClick={() => openRerequest(req)}
                             >
-                              <RefreshCw className="h-4 w-4 text-amber-500" />
+                              <RefreshCw className="h-4 w-4 text-brand-500" />
                             </Button>
                           )}
                           <Select value={req.status} onValueChange={(v) => setStatus(req.id, v)}>
@@ -498,7 +498,7 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                             onClick={() => toggleVerify(req)}
                           >
                             {req.status === 'verified'
-                              ? <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                              ? <ShieldCheck className="h-4 w-4 text-success-foreground0" />
                               : <CheckCircle2 className="h-4 w-4 text-muted-foreground" />}
                           </Button>
                           <Button
@@ -514,12 +514,12 @@ export function DocumentsTab({ fileId, purchaseType }: Props) {
                       </div>
                       {req.finance_portal_documents && (
                         <div className="mt-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs flex items-center gap-1.5">
-                          <FileCheck className="h-3.5 w-3.5 text-emerald-500" />
+                          <FileCheck className="h-3.5 w-3.5 text-success-foreground0" />
                           <span className="truncate">{req.finance_portal_documents.original_filename}</span>
                         </div>
                       )}
                       {req.request_message && req.status === 'requested' && (
-                        <p className="mt-2 text-xs italic text-muted-foreground border-l-2 border-amber-500/40 pl-2">
+                        <p className="mt-2 text-xs italic text-muted-foreground border-l-2 border-brand-500/40 pl-2">
                           "{req.request_message}"
                         </p>
                       )}

@@ -182,7 +182,7 @@ export function DataValidationPanel({ dashboardData, reportsData, className = ''
               )}
 
               {comparison.duplicatesFound > 0 && (
-                <Alert className="border-orange-200 bg-orange-50">
+                <Alert className="border-warning/30 bg-warning/10">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
                     Found {comparison.duplicatesFound} potential duplicate listings
@@ -196,7 +196,7 @@ export function DataValidationPanel({ dashboardData, reportsData, className = ''
                 {Object.entries(comparison.fieldComparison).map(([field, data]) => (
                   <div key={field} className="flex flex-col gap-2 p-3 border rounded-lg sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full shrink-0 ${data.match ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div className={`w-3 h-3 rounded-full shrink-0 ${data.match ? 'bg-success' : 'bg-destructive'}`} />
                       <span className="font-medium capitalize text-sm">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
                     </div>
                     <div className="flex items-center gap-3 text-xs sm:text-sm text-muted-foreground flex-wrap">

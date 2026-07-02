@@ -14,7 +14,7 @@ export function CashFlowEmptyState({ variant, onConfigureReports, onClearFilters
   return (
     <Card className="overflow-hidden border-dashed bg-gradient-to-b from-background to-muted/20 py-12">
       <CardContent className="flex flex-col items-center justify-center px-6 text-center">
-        <div className={`mb-4 rounded-3xl p-4 ${isNoResults ? 'bg-amber-50 text-amber-700' : 'bg-primary/10 text-primary'}`}>
+        <div className={`mb-4 rounded-3xl p-4 ${isNoResults ? 'bg-brand-50 text-brand-700' : 'bg-primary/10 text-primary'}`}>
           {isNoResults ? <FileSearch className="h-12 w-12" /> : <Calculator className="h-12 w-12" />}
         </div>
         <div className="max-w-xl space-y-2">

@@ -34,7 +34,7 @@ export function CopyWithFeedback({
       size="sm"
       className={cn(
         "h-7 px-2 text-xs transition-all",
-        copied && "text-green-600 dark:text-green-400",
+        copied && "text-success dark:text-success",
         className
       )}
       onClick={handleCopy}

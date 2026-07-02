@@ -201,7 +201,7 @@ export function ProfileCredentials() {
       </CardHeader>
       <CardContent className="min-w-0 space-y-6">
         {/* Current Info */}
-        <div className="min-w-0 space-y-3 rounded-2xl border border-border/60 bg-muted/35 p-4 shadow-inner dark:border-white/10 dark:bg-slate-900/35">
+        <div className="min-w-0 space-y-3 rounded-2xl border border-border/60 bg-muted/35 p-4 shadow-inner dark:border-white/10 dark:bg-background/35">
           <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <span className="text-sm text-muted-foreground">
               Current Username

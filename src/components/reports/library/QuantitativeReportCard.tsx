@@ -19,12 +19,12 @@ export function QuantitativeReportCard({ report, generatorLabel, onView, onDownl
     : 'N/A';
 
   return (
-    <Card className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10 dark:bg-slate-950/70">
-      <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-blue-400/10 blur-3xl opacity-0 transition-opacity group-hover:opacity-100" />
+    <Card className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10 dark:bg-background/70">
+      <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-info/10 blur-3xl opacity-0 transition-opacity group-hover:opacity-100" />
 
       <CardHeader className="relative space-y-4 p-4 pb-3">
         <div className="flex items-start justify-between gap-3">
-          <Badge variant="secondary" className="gap-1 bg-blue-100 text-xs text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300">
+          <Badge variant="secondary" className="gap-1 bg-info/15 text-xs text-info hover:bg-info/20 dark:bg-info/30 dark:text-info">
             <BarChart3 className="h-3 w-3" />
             Quantitative
           </Badge>
@@ -75,7 +75,7 @@ function MetricTile({ label, value, icon: Icon }: { label: string; value: string
     <div className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-inner shadow-sm dark:shadow-black/5">
       <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{label}</span>
-        <Icon className="h-3.5 w-3.5 text-blue-600/80 dark:text-blue-300/80" />
+        <Icon className="h-3.5 w-3.5 text-info/80 dark:text-info/80" />
       </div>
       <div className="truncate text-sm font-semibold text-foreground">{value}</div>
     </div>

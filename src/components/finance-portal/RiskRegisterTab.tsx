@@ -29,15 +29,15 @@ const SEVERITIES = ['low','medium','high','critical'];
 
 const SEV_TONE: Record<string, string> = {
   low:      'bg-muted text-muted-foreground border-border',
-  medium:   'bg-sky-500/15 text-sky-500 border-sky-500/30',
-  high:     'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  medium:   'bg-info/15 text-info-foreground0 border-info/30',
+  high:     'bg-brand-500/15 text-brand-500 border-brand-500/30',
   critical: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 const STATUS_TONE: Record<string, string> = {
   open:        'bg-destructive/15 text-destructive border-destructive/30',
-  in_progress: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
-  mitigated:   'bg-sky-500/15 text-sky-500 border-sky-500/30',
-  resolved:    'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
+  in_progress: 'bg-brand-500/15 text-brand-500 border-brand-500/30',
+  mitigated:   'bg-info/15 text-info-foreground0 border-info/30',
+  resolved:    'bg-success/15 text-success-foreground0 border-success/30',
   accepted:    'bg-muted text-muted-foreground border-border',
 };
 
@@ -77,7 +77,7 @@ export function RiskRegisterTab({ fileId }: { fileId: string }) {
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div>
-          <CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-amber-500" />Risk register</CardTitle>
+          <CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-brand-500" />Risk register</CardTitle>
           <p className="text-xs text-muted-foreground mt-1">{open_} open · {critical} critical</p>
         </div>
         <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
@@ -89,7 +89,7 @@ export function RiskRegisterTab({ fileId }: { fileId: string }) {
         {!isLoading && !risks?.length && <p className="text-sm text-muted-foreground">No risks logged.</p>}
         {(risks || []).map(r => (
           <div key={r.id} className="border border-border rounded-lg p-3 flex items-start gap-3">
-            <AlertOctagon className={cn('h-5 w-5 mt-0.5', r.severity === 'critical' ? 'text-destructive' : 'text-amber-500')} />
+            <AlertOctagon className={cn('h-5 w-5 mt-0.5', r.severity === 'critical' ? 'text-destructive' : 'text-brand-500')} />
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">{r.title}</p>
@@ -100,7 +100,7 @@ export function RiskRegisterTab({ fileId }: { fileId: string }) {
                 {r.due_date && <Badge variant="outline">Due {r.due_date}</Badge>}
               </div>
               {r.description && <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{r.description}</p>}
-              {r.resolution_note && <p className="text-xs text-emerald-500 mt-1 flex items-start gap-1"><CheckCircle2 className="h-3 w-3 mt-0.5" />{r.resolution_note}</p>}
+              {r.resolution_note && <p className="text-xs text-success-foreground0 mt-1 flex items-start gap-1"><CheckCircle2 className="h-3 w-3 mt-0.5" />{r.resolution_note}</p>}
             </div>
             <div className="flex flex-col items-end gap-1">
               <Select value={r.status} onValueChange={(v) => setStatus(r.id, v)}>

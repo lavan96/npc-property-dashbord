@@ -274,7 +274,7 @@ export function ProposedLoanSection({
                   {rentalSummary.netAssessable > 0 && (
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">Net Assessable</p>
-                      <p className="text-sm font-semibold text-emerald-600">
+                      <p className="text-sm font-semibold text-success">
                         +{formatCurrency(rentalSummary.netAssessable)}/yr
                       </p>
                     </div>
@@ -419,7 +419,7 @@ export function ProposedLoanSection({
                     )}
                     <div className="border-t pt-1.5 flex justify-between font-semibold">
                       <span>Net Assessable Income</span>
-                      <span className="text-emerald-600">+{formatCurrency(rentalSummary.netAssessable)}/yr</span>
+                      <span className="text-success">+{formatCurrency(rentalSummary.netAssessable)}/yr</span>
                     </div>
                   </div>
                 </div>

@@ -37,11 +37,11 @@ const OUTCOME_COLORS = {
 
 
 const analyticsPanel =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
 const analyticsKpiCard =
   'group relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/35 hover:shadow-brand-500/10';
 const analyticsChartCard =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/45 before:to-transparent hover:border-brand-300/30 hover:shadow-brand-500/10';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/45 before:to-transparent hover:border-brand-300/30 hover:shadow-brand-500/10';
 const chartShell = 'rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/20 p-3';
 const tooltipContentStyle = {
   backgroundColor: 'rgba(9, 9, 11, 0.96)',
@@ -176,7 +176,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
             <Activity className="h-3 w-3" />
             Performance Intelligence
           </div>
-          <CardTitle className="mt-3 flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
+          <CardTitle className="mt-3 flex items-center gap-3 text-2xl text-foreground dark:text-foreground">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-success/25 bg-success/10 text-success shadow-inner shadow-success/40">
               <TrendingUp className="h-5 w-5" />
             </span>
@@ -190,7 +190,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Card className={cn(analyticsKpiCard, 'from-success/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-success/35 hover:shadow-success/10')}>
+        <Card className={cn(analyticsKpiCard, 'from-success/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-success/35 hover:shadow-success/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-success/25 bg-success/10 p-3 shadow-inner shadow-success/40">
@@ -198,12 +198,12 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
               </div>
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Positive Sentiment</p>
-                <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{summaryStats.sentimentScore}%</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{summaryStats.sentimentScore}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(analyticsKpiCard, 'from-info/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-info/35 hover:shadow-info/10')}>
+        <Card className={cn(analyticsKpiCard, 'from-info/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-info/35 hover:shadow-info/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-info/25 bg-info/10 p-3 shadow-inner shadow-info/40">
@@ -211,12 +211,12 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
               </div>
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Success Rate</p>
-                <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{summaryStats.successRate}%</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{summaryStats.successRate}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(analyticsKpiCard, 'from-accent/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-accent/35 hover:shadow-accent/10')}>
+        <Card className={cn(analyticsKpiCard, 'from-accent/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-accent/35 hover:shadow-accent/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-accent/25 bg-accent/10 p-3 shadow-inner shadow-accent/40">
@@ -224,12 +224,12 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
               </div>
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Active Agents</p>
-                <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{summaryStats.uniqueAgents}</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{summaryStats.uniqueAgents}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(analyticsKpiCard, 'from-brand-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95')}>
+        <Card className={cn(analyticsKpiCard, 'from-brand-500/15 via-card dark:via-background/85 to-background dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl border border-brand-300/25 bg-brand-500/10 p-3 shadow-inner shadow-brand-950/40">
@@ -249,7 +249,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
         {/* Sentiment Distribution */}
         <Card className={analyticsChartCard}>
           <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-success/10 via-transparent to-brand-500/10">
-            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-zinc-50">
+            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-foreground">
               <Smile className="h-5 w-5 text-success" />
               Sentiment Distribution
             </CardTitle>
@@ -294,7 +294,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
         {/* Call Outcomes */}
         <Card className={analyticsChartCard}>
           <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-info/10 via-transparent to-success/10">
-            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-zinc-50">
+            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-foreground">
               <TrendingUp className="h-5 w-5 text-info" />
               Call Outcomes
             </CardTitle>
@@ -340,7 +340,7 @@ export const CallAnalyticsDashboard = ({ calls }: CallAnalyticsDashboardProps) =
       {/* Agent Performance */}
       <Card className={analyticsChartCard}>
         <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-accent/10 via-transparent to-brand-500/10">
-          <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-zinc-50">
+          <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-foreground">
             <Users className="h-5 w-5 text-accent" />
             Agent Performance
           </CardTitle>

@@ -100,7 +100,7 @@ const RESOLUTION_STATUS_CONFIG: Record<string, { label: string; color: string; b
 };
 
 const getSeverityColor = (severity: number | null) => {
-  if (!severity) return 'border-border/30 bg-muted0/15 text-muted-foreground dark:text-zinc-300';
+  if (!severity) return 'border-border/30 bg-muted0/15 text-muted-foreground dark:text-foreground';
   if (severity <= 2) return 'border-brand-300/30 bg-brand-500/15 text-brand-300';
   if (severity <= 3) return 'border-warning/30 bg-warning/15 text-warning';
   if (severity <= 4) return 'border-destructive/35 bg-destructive/15 text-destructive';
@@ -117,13 +117,13 @@ const getSeverityLabel = (severity: number | null) => {
 };
 
 const issuePanel =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/80 dark:via-zinc-900/80 to-background/90 dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-background/95 via-card/80 dark:via-background/80 to-background/90 dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
 const issueStatCard =
   'group relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/35 hover:shadow-brand-500/10';
 const issueControl =
-  'rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-brand-300/35 hover:bg-brand-300/10 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black';
+  'rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-brand-300/35 hover:bg-brand-300/10 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black';
 const issueRow =
-  'group relative cursor-pointer overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card/90 dark:from-zinc-950/90 via-card/75 dark:via-zinc-900/75 to-background/85 dark:to-black/85 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-brand-300/0 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/40 hover:bg-brand-400/5 hover:shadow-xl hover:shadow-brand-500/10 hover:before:via-brand-300/90';
+  'group relative cursor-pointer overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card/90 dark:from-background/90 via-card/75 dark:via-background/75 to-background/85 dark:to-black/85 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-brand-300/0 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/40 hover:bg-brand-400/5 hover:shadow-xl hover:shadow-brand-500/10 hover:before:via-brand-300/90';
 
 export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisProps) => {
   const { toast } = useToast();
@@ -252,7 +252,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                 <AlertTriangle className="h-3 w-3" />
                 Exception Management
               </div>
-              <CardTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
+              <CardTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-foreground">
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive shadow-inner shadow-destructive/40">
                   <AlertCircle className="h-5 w-5" />
                 </span>
@@ -272,18 +272,18 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className={cn(issueStatCard, 'from-card/95 dark:from-zinc-900/95 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95')}>
+        <Card className={cn(issueStatCard, 'from-card/95 dark:from-background/95 via-card/85 dark:via-background/85 to-background/95 dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-border/20 bg-zinc-400/10 p-2">
-                <AlertTriangle className="h-4 w-4 text-muted-foreground dark:text-zinc-300" />
+                <AlertTriangle className="h-4 w-4 text-muted-foreground dark:text-foreground" />
               </div>
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Total Issues</span>
             </div>
-            <p className="text-2xl font-bold text-foreground dark:text-zinc-50">{stats.total}</p>
+            <p className="text-2xl font-bold text-foreground dark:text-foreground">{stats.total}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-brand-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95')}>
+        <Card className={cn(issueStatCard, 'from-brand-500/15 via-card/85 dark:via-background/85 to-background/95 dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-brand-300/25 bg-brand-500/10 p-2">
@@ -294,7 +294,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <p className="text-2xl font-bold text-brand-300">{stats.needsReview}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-destructive/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-destructive/40 hover:shadow-destructive/10')}>
+        <Card className={cn(issueStatCard, 'from-destructive/15 via-card/85 dark:via-background/85 to-background/95 dark:to-black/95 hover:border-destructive/40 hover:shadow-destructive/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2">
@@ -305,7 +305,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <p className="text-2xl font-bold text-destructive">{stats.escalated}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-success/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-success/40 hover:shadow-success/10')}>
+        <Card className={cn(issueStatCard, 'from-success/15 via-card/85 dark:via-background/85 to-background/95 dark:to-black/95 hover:border-success/40 hover:shadow-success/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-success/25 bg-success/10 p-2">
@@ -316,7 +316,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <p className="text-2xl font-bold text-success">{stats.resolved}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-accent/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-accent/40 hover:shadow-accent/10')}>
+        <Card className={cn(issueStatCard, 'from-accent/15 via-card/85 dark:via-background/85 to-background/95 dark:to-black/95 hover:border-accent/40 hover:shadow-accent/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="rounded-xl border border-accent/25 bg-accent/10 p-2">
@@ -416,7 +416,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="rounded-full text-muted-foreground dark:text-zinc-300 hover:bg-brand-300/10 hover:text-brand-100"
+                    className="rounded-full text-muted-foreground dark:text-foreground hover:bg-brand-300/10 hover:text-brand-100"
                     onClick={() => {
                       setFilterStatus('all');
                       setFilterRootCause('all');
@@ -427,7 +427,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                     Clear
                   </Button>
                 )}
-                <div className="ml-auto rounded-full border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-3 py-1 text-sm font-medium text-muted-foreground dark:text-zinc-300">
+                <div className="ml-auto rounded-full border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-3 py-1 text-sm font-medium text-muted-foreground dark:text-foreground">
                   {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'}
                 </div>
               </div>
@@ -437,7 +437,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
           {/* Call List */}
           <Card className={issuePanel}>
             <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-destructive/10 via-transparent to-brand-500/10 pb-4">
-              <CardTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
+              <CardTitle className="flex items-center gap-2 text-foreground dark:text-foreground">
                 <AlertCircle className="w-5 h-5 text-brand-300" />
                 Negative Sentiment Calls
               </CardTitle>
@@ -465,7 +465,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                         <div className="relative z-10 flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="truncate text-base font-semibold text-foreground dark:text-zinc-50">
+                              <span className="truncate text-base font-semibold text-foreground dark:text-foreground">
                                 {call.customer_name || call.phone_number || 'Unknown Caller'}
                               </span>
                               {call.escalation_severity && (
@@ -482,7 +482,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                             <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground">
                               <span className="rounded-full border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-2.5 py-1">{call.agent_name || 'Unknown Agent'}</span>
                               <span className="rounded-full border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-2.5 py-1">{call.started_at ? format(new Date(call.started_at), 'MMM d, h:mm a') : '-'}</span>
-                              <span className="rounded-full border border-border/15 bg-zinc-400/10 px-2.5 py-1 font-mono text-xs text-foreground dark:text-zinc-100">{formatDuration(call.duration_seconds)}</span>
+                              <span className="rounded-full border border-border/15 bg-zinc-400/10 px-2.5 py-1 font-mono text-xs text-foreground dark:text-foreground">{formatDuration(call.duration_seconds)}</span>
                             </div>
                             {call.root_cause_category && ROOT_CAUSE_LABELS[call.root_cause_category] && (
                               <div className="mb-2 flex items-center gap-1.5 rounded-full border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 px-2.5 py-1 w-fit">
@@ -523,7 +523,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
         <TabsContent value="recovery" className="mt-4">
           <Card className={issuePanel}>
             <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-brand-500/10 via-transparent to-destructive/10">
-              <CardTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
+              <CardTitle className="flex items-center gap-2 text-foreground dark:text-foreground">
                 <PhoneCall className="w-5 h-5 text-brand-300" />
                 Customer Recovery Queue
               </CardTitle>
@@ -553,7 +553,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="truncate font-semibold text-foreground dark:text-zinc-50">
+                            <span className="truncate font-semibold text-foreground dark:text-foreground">
                               {call.customer_name || call.phone_number || 'Unknown'}
                             </span>
                             <Badge className={cn(callLogBadgeBase, getSeverityColor(call.escalation_severity))}>
@@ -572,7 +572,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                               <Lightbulb className="w-3 h-3" />
                               Recommendation
                             </div>
-                            <p className="line-clamp-1 text-sm text-muted-foreground dark:text-zinc-300">{call.ai_recommendations[0]}</p>
+                            <p className="line-clamp-1 text-sm text-muted-foreground dark:text-foreground">{call.ai_recommendations[0]}</p>
                           </div>
                         )}
                         <ChevronRight className="w-5 h-5 text-muted-foreground dark:text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-brand-200" />
@@ -608,7 +608,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
         <TabsContent value="breakdown" className="mt-4">
           <Card className={issuePanel}>
             <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-accent/10 via-transparent to-brand-500/10">
-              <CardTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
+              <CardTitle className="flex items-center gap-2 text-foreground dark:text-foreground">
                 <TrendingDown className="w-5 h-5 text-accent" />
                 Root Cause Breakdown
               </CardTitle>
@@ -638,7 +638,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Icon className={`w-4 h-4 ${config?.color || 'text-muted-foreground'}`} />
-                              <span className="font-medium text-foreground dark:text-zinc-100">{config?.label || cause}</span>
+                              <span className="font-medium text-foreground dark:text-foreground">{config?.label || cause}</span>
                             </div>
                             <span className="text-sm text-muted-foreground dark:text-muted-foreground">
                               {count} ({percentage.toFixed(0)}%)
@@ -659,7 +659,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
       <Dialog open={!!selectedCall} onOpenChange={(open) => !open && setSelectedCall(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] border-border dark:border-white/10 bg-background/95 dark:bg-background/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl sm:w-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
+            <DialogTitle className="flex items-center gap-2 text-foreground dark:text-foreground">
               <AlertTriangle className="w-5 h-5 text-brand-300" />
               Call Analysis
             </DialogTitle>
@@ -671,21 +671,21 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
                   <label className="text-xs text-muted-foreground dark:text-muted-foreground">Customer</label>
-                  <p className="font-medium text-foreground dark:text-zinc-100">{selectedCall.customer_name || selectedCall.phone_number || 'Unknown'}</p>
+                  <p className="font-medium text-foreground dark:text-foreground">{selectedCall.customer_name || selectedCall.phone_number || 'Unknown'}</p>
                 </div>
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
                   <label className="text-xs text-muted-foreground dark:text-muted-foreground">Agent</label>
-                  <p className="font-medium text-foreground dark:text-zinc-100">{selectedCall.agent_name || 'Unknown'}</p>
+                  <p className="font-medium text-foreground dark:text-foreground">{selectedCall.agent_name || 'Unknown'}</p>
                 </div>
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
                   <label className="text-xs text-muted-foreground dark:text-muted-foreground">Date & Time</label>
-                  <p className="font-medium text-foreground dark:text-zinc-100">
+                  <p className="font-medium text-foreground dark:text-foreground">
                     {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'MMM d, yyyy h:mm a') : '-'}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
                   <label className="text-xs text-muted-foreground dark:text-muted-foreground">Duration</label>
-                  <p className="font-medium text-foreground dark:text-zinc-100">{formatDuration(selectedCall.duration_seconds)}</p>
+                  <p className="font-medium text-foreground dark:text-foreground">{formatDuration(selectedCall.duration_seconds)}</p>
                 </div>
               </div>
 
@@ -743,13 +743,13 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Lightbulb className="w-4 h-4 text-brand-300" />
-                    <span className="font-medium text-foreground dark:text-zinc-100">AI Recommendations</span>
+                    <span className="font-medium text-foreground dark:text-foreground">AI Recommendations</span>
                   </div>
                   <div className="space-y-2">
                     {selectedCall.ai_recommendations.map((rec, idx) => (
                       <div key={idx} className="flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
                         <span className="font-medium text-brand-200">{idx + 1}.</span>
-                        <span className="text-sm text-muted-foreground dark:text-zinc-300">{rec}</span>
+                        <span className="text-sm text-muted-foreground dark:text-foreground">{rec}</span>
                       </div>
                     ))}
                   </div>
@@ -760,7 +760,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               {selectedCall.summary && (
                 <div>
                   <label className="text-xs text-muted-foreground dark:text-muted-foreground mb-1 block">Summary</label>
-                  <p className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3 text-sm text-muted-foreground dark:text-zinc-300">{selectedCall.summary}</p>
+                  <p className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3 text-sm text-muted-foreground dark:text-foreground">{selectedCall.summary}</p>
                 </div>
               )}
 
@@ -768,7 +768,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               <div className="space-y-4 border-t border-border dark:border-white/10 pt-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
-                  <span className="font-medium text-foreground dark:text-zinc-100">Resolution Status</span>
+                  <span className="font-medium text-foreground dark:text-foreground">Resolution Status</span>
                 </div>
                 <Select value={newStatus} onValueChange={setNewStatus}>
                   <SelectTrigger className={issueControl}>
@@ -786,7 +786,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
                   rows={3}
-                  className="rounded-2xl border-border dark:border-white/10 bg-background/35 dark:bg-black/35 text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-brand-300"
+                  className="rounded-2xl border-border dark:border-white/10 bg-background/35 dark:bg-black/35 text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-brand-300"
                 />
               </div>
             </div>

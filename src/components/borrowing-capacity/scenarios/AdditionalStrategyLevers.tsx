@@ -155,7 +155,7 @@ export function AdditionalStrategyLevers({
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Income Adjustment</span>
-                  <span className={`font-medium ${strategy.incomeGrowthPercent >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                  <span className={`font-medium ${strategy.incomeGrowthPercent >= 0 ? 'text-success' : 'text-destructive'}`}>
                     {strategy.incomeGrowthPercent >= 0 ? '+' : ''}{strategy.incomeGrowthPercent}%
                     <span className="text-muted-foreground ml-1 text-xs">
                       ({formatCurrency(baseGrossIncome * (1 + strategy.incomeGrowthPercent / 100))}/yr)
@@ -224,7 +224,7 @@ export function AdditionalStrategyLevers({
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Living Expense Reduction</span>
-                  <span className={`font-medium ${strategy.expenseReductionPercent > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                  <span className={`font-medium ${strategy.expenseReductionPercent > 0 ? 'text-success' : 'text-muted-foreground'}`}>
                     {strategy.expenseReductionPercent > 0 ? `-${strategy.expenseReductionPercent}%` : 'No change'}
                   </span>
                 </div>
@@ -292,7 +292,7 @@ export function AdditionalStrategyLevers({
                   <span className="text-muted-foreground">
                     Base: {baseLoanTermYears}yr → Scenario: {baseLoanTermYears + strategy.loanTermAdjustment}yr
                   </span>
-                  <span className={`font-medium ${strategy.loanTermAdjustment > 0 ? 'text-emerald-600' : strategy.loanTermAdjustment < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  <span className={`font-medium ${strategy.loanTermAdjustment > 0 ? 'text-success' : strategy.loanTermAdjustment < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
                     {strategy.loanTermAdjustment > 0 ? '+' : ''}{strategy.loanTermAdjustment} years
                   </span>
                 </div>
@@ -466,7 +466,7 @@ export function AdditionalStrategyLevers({
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className={`text-sm font-semibold ${equity >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                            <p className={`text-sm font-semibold ${equity >= 0 ? 'text-success' : 'text-destructive'}`}>
                               {formatCurrency(equity)}
                             </p>
                             <p className="text-xs text-muted-foreground">equity</p>
@@ -488,7 +488,7 @@ export function AdditionalStrategyLevers({
                       return (
                         <div key={sp.id} className="flex justify-between text-xs">
                           <span className="text-muted-foreground truncate max-w-[60%]">{sp.address || 'Property'}</span>
-                          <span className="text-emerald-600">{formatCurrency(eq)} equity</span>
+                          <span className="text-success">{formatCurrency(eq)} equity</span>
                         </div>
                       );
                     })}
@@ -499,14 +499,14 @@ export function AdditionalStrategyLevers({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Loans Discharged</span>
-                      <span className="text-emerald-600">-{formatCurrency(sellProperties.reduce((s, p) => s + p.loan_remaining, 0))}</span>
+                      <span className="text-success">-{formatCurrency(sellProperties.reduce((s, p) => s + p.loan_remaining, 0))}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Agent Fees (est. 2%)</span>
                       <span>-{formatCurrency(totalSellValue * 0.02)}</span>
                     </div>
                     <Separator />
-                    <div className="flex justify-between font-semibold text-emerald-600">
+                    <div className="flex justify-between font-semibold text-success">
                       <span>Net Proceeds (est.)</span>
                       <span>{formatCurrency(Math.max(0, totalSellEquityFreed - totalSellValue * 0.02))}</span>
                     </div>
@@ -604,7 +604,7 @@ export function AdditionalStrategyLevers({
                           />
                         </div>
                         {ov && (
-                          <p className={`text-xs ${pct >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                          <p className={`text-xs ${pct >= 0 ? 'text-success' : 'text-destructive'}`}>
                             {pct >= 0 ? '+' : ''}{pct.toFixed(1)}% → {formatCurrency(newVal)}
                           </p>
                         )}

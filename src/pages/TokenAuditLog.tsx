@@ -34,9 +34,9 @@ interface AuditRow {
 function EventBadge({ event }: { event: string }) {
   const className =
     event === "reserve"
-      ? "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+      ? "border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300"
       : event === "commit"
-        ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+        ? "border-success/25 bg-success/10 text-success dark:text-success"
         : event === "cancel"
           ? "border-destructive/25 bg-destructive/10 text-destructive"
           : "border-border/70 bg-muted/60 text-muted-foreground";
@@ -54,7 +54,7 @@ function OutcomeBadge({ status, error }: { status: string | null; error: string 
   const className = error || ["failed", "error", "cancelled", "canceled"].some((v) => normalized.includes(v))
     ? "border-destructive/25 bg-destructive/10 text-destructive"
     : ["success", "committed", "complete", "completed", "ok"].some((v) => normalized.includes(v))
-      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      ? "border-success/25 bg-success/10 text-success dark:text-success"
       : "border-primary/20 bg-primary/10 text-primary";
 
   return (
@@ -71,13 +71,13 @@ function TokenSummary({ row }: { row: AuditRow }) {
         <span className="block truncate text-muted-foreground">Req</span>
         <span className="block truncate font-medium tabular-nums text-foreground" title={`${row.requested_tokens}`}>{row.requested_tokens.toLocaleString()}</span>
       </div>
-      <div className="min-w-0 rounded-lg bg-amber-500/10 px-1.5 py-1">
-        <span className="block truncate text-amber-700/80 dark:text-amber-300/80">Res</span>
-        <span className="block truncate font-semibold tabular-nums text-amber-700 dark:text-amber-300" title={`${row.reserved_tokens}`}>{row.reserved_tokens.toLocaleString()}</span>
+      <div className="min-w-0 rounded-lg bg-brand-500/10 px-1.5 py-1">
+        <span className="block truncate text-brand-700/80 dark:text-brand-300/80">Res</span>
+        <span className="block truncate font-semibold tabular-nums text-brand-700 dark:text-brand-300" title={`${row.reserved_tokens}`}>{row.reserved_tokens.toLocaleString()}</span>
       </div>
-      <div className="min-w-0 rounded-lg bg-emerald-500/10 px-1.5 py-1">
-        <span className="block truncate text-emerald-700/80 dark:text-emerald-300/80">Used</span>
-        <span className="block truncate font-semibold tabular-nums text-emerald-700 dark:text-emerald-300" title={`${row.used_tokens}`}>{row.used_tokens.toLocaleString()}</span>
+      <div className="min-w-0 rounded-lg bg-success/10 px-1.5 py-1">
+        <span className="block truncate text-success/80 dark:text-success/80">Used</span>
+        <span className="block truncate font-semibold tabular-nums text-success dark:text-success" title={`${row.used_tokens}`}>{row.used_tokens.toLocaleString()}</span>
       </div>
     </div>
   );
@@ -141,8 +141,8 @@ function AuditEventMobileCard({ row, userLabel, isOpen, onOpen }: { row: AuditRo
 const PREMIUM_SCROLLBAR = "[scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/35 [&::-webkit-scrollbar-track]:bg-transparent";
 
 const EVENT_STATES = [
-  { label: "Reserve", description: "Holds estimated Mission Control tokens before a job runs.", icon: RotateCcw, tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" },
-  { label: "Commit", description: "Finalises actual token usage after successful completion.", icon: CheckCircle2, tone: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+  { label: "Reserve", description: "Holds estimated Mission Control tokens before a job runs.", icon: RotateCcw, tone: "border-brand-500/20 bg-brand-500/10 text-brand-700 dark:text-brand-300" },
+  { label: "Commit", description: "Finalises actual token usage after successful completion.", icon: CheckCircle2, tone: "border-success/20 bg-success/10 text-success dark:text-success" },
   { label: "Cancel", description: "Releases a reservation when work is cancelled or fails safely.", icon: XCircle, tone: "border-destructive/20 bg-destructive/10 text-destructive" },
 ] as const;
 
@@ -203,7 +203,7 @@ export default function TokenAuditLog() {
           <div className="flex min-w-0 items-start gap-4">
             <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)] ring-1 ring-primary/15">
               <ShieldCheck className="h-7 w-7" />
-              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-emerald-500" aria-hidden="true" />
+              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-success" aria-hidden="true" />
             </div>
             <div className="min-w-0 space-y-2">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary shadow-sm">
@@ -234,7 +234,7 @@ export default function TokenAuditLog() {
           </Button>
         </DashboardThemeFrame>
 
-        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
+        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/35 dark:ring-white/5">
           <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-3">
@@ -317,8 +317,8 @@ export default function TokenAuditLog() {
 
             <div className="grid min-w-0 gap-3 md:grid-cols-4" aria-label="Token audit event totals">
               {[
-                { label: "Reserve", value: eventCounts.reserve, className: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300" },
-                { label: "Commit", value: eventCounts.commit, className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" },
+                { label: "Reserve", value: eventCounts.reserve, className: "border-brand-500/20 bg-brand-500/10 text-brand-700 dark:text-brand-300" },
+                { label: "Commit", value: eventCounts.commit, className: "border-success/20 bg-success/10 text-success dark:text-success" },
                 { label: "Cancel", value: eventCounts.cancel, className: "border-destructive/20 bg-destructive/10 text-destructive" },
                 { label: "Errors", value: eventCounts.errors, className: "border-primary/20 bg-primary/10 text-primary" },
               ].map((item) => (
@@ -436,7 +436,7 @@ export default function TokenAuditLog() {
                 </div>
               </div>
             ) : (
-              <div className="min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-background/50 shadow-[inset_0_1px_0_hsl(var(--background)/0.85)] dark:bg-slate-950/40">
+              <div className="min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-background/50 shadow-[inset_0_1px_0_hsl(var(--background)/0.85)] dark:bg-background/40">
                 <div className="flex min-w-0 flex-col gap-3 border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.32),hsl(var(--card)/0.68))] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -503,8 +503,8 @@ export default function TokenAuditLog() {
                                 <span
                                   className={cn(
                                     "mt-1.5 h-2 w-2 shrink-0 rounded-full shadow-[0_0_0_4px_hsl(var(--primary)/0.10)]",
-                                    eventTone === "amber" && "bg-amber-500",
-                                    eventTone === "emerald" && "bg-emerald-500",
+                                    eventTone === "amber" && "bg-brand-500",
+                                    eventTone === "emerald" && "bg-success",
                                     eventTone === "destructive" && "bg-destructive",
                                     eventTone === "primary" && "bg-primary/70",
                                   )}

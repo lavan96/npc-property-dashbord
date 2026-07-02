@@ -262,7 +262,7 @@ export default function ReportRequests() {
                 Portal Operations
               </div>
               <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground dark:text-white sm:text-5xl">Client Report Requests</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-zinc-300/85 sm:text-base">Manage incoming report requests from portal clients</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-foreground/85 sm:text-base">Manage incoming report requests from portal clients</p>
             </div>
             <div className="rounded-2xl border border-brand-300/15 bg-background/25 dark:bg-black/25 px-4 py-3 text-sm text-muted-foreground dark:text-muted-foreground shadow-inner shadow-sm dark:shadow-black/30">
               <span className="text-2xl font-semibold tabular-nums text-brand-200">{requests.length}</span>
@@ -324,21 +324,21 @@ export default function ReportRequests() {
                 placeholder="Search by client, property, or notes..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-12 rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 pl-11 pr-4 text-sm text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                className="h-12 rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 pl-11 pr-4 text-sm text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger
                 aria-label="Filter report requests by type"
                 className={cn(
-                  'h-12 w-full rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 px-4 text-sm font-medium text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 transition-all duration-200 hover:border-brand-300/30 hover:bg-black/55 focus:border-brand-300/55 focus:ring-2 focus:ring-brand-300/20 focus:ring-offset-2 focus:ring-offset-zinc-950 data-[state=open]:border-brand-300/45 data-[state=open]:bg-brand-300/10 lg:w-60',
+                  'h-12 w-full rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 px-4 text-sm font-medium text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 transition-all duration-200 hover:border-brand-300/30 hover:bg-black/55 focus:border-brand-300/55 focus:ring-2 focus:ring-brand-300/20 focus:ring-offset-2 focus:ring-offset-zinc-950 data-[state=open]:border-brand-300/45 data-[state=open]:bg-brand-300/10 lg:w-60',
                   typeFilter !== 'all' && 'border-brand-300/35 bg-brand-300/10 text-brand-100'
                 )}
               >
                 <Filter className="mr-2 h-3.5 w-3.5 text-brand-200" />
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
-              <SelectContent className="overflow-hidden rounded-2xl border-border dark:border-white/10 bg-background/95 dark:bg-background/95 p-1 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/50 backdrop-blur-xl">
+              <SelectContent className="overflow-hidden rounded-2xl border-border dark:border-white/10 bg-background/95 dark:bg-background/95 p-1 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/50 backdrop-blur-xl">
                 <SelectItem className="rounded-xl font-medium focus:bg-brand-300/10 focus:text-brand-100 data-[highlighted]:bg-brand-300/10 data-[highlighted]:text-brand-100" value="all">All Types</SelectItem>
                 <SelectItem className="rounded-xl focus:bg-brand-300/10 focus:text-brand-100 data-[highlighted]:bg-brand-300/10 data-[highlighted]:text-brand-100" value="portfolio_review">Portfolio Review</SelectItem>
                 <SelectItem className="rounded-xl focus:bg-brand-300/10 focus:text-brand-100 data-[highlighted]:bg-brand-300/10 data-[highlighted]:text-brand-100" value="borrowing_capacity">Borrowing Capacity</SelectItem>
@@ -355,7 +355,7 @@ export default function ReportRequests() {
               <div className="mb-4 rounded-full border border-brand-300/20 bg-brand-300/10 p-3 shadow-[0_0_32px_rgba(245,158,11,0.16)]">
                 <Loader2 className="h-7 w-7 animate-spin text-brand-200" />
               </div>
-              <p className="text-sm font-medium text-foreground dark:text-zinc-200">Loading report requests</p>
+              <p className="text-sm font-medium text-foreground dark:text-foreground">Loading report requests</p>
               <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">Fetching the latest client portal requests…</p>
             </div>
           </div>
@@ -375,7 +375,7 @@ export default function ReportRequests() {
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-brand-300/15 bg-brand-300/10">
                 <Inbox className="h-7 w-7 text-brand-200/50" />
               </div>
-              <p className="font-medium text-muted-foreground dark:text-zinc-300">
+              <p className="font-medium text-muted-foreground dark:text-foreground">
                 {requests.length === 0 ? 'No report requests yet.' : 'No requests match your filters.'}
               </p>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground dark:text-muted-foreground">
@@ -418,15 +418,15 @@ export default function ReportRequests() {
                                 </Badge>
                               </div>
                               <div className="grid gap-1.5 text-xs leading-5 text-muted-foreground dark:text-muted-foreground">
-                                <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-brand-200/75" /><span className="capitalize font-medium text-foreground dark:text-zinc-100">{req.client_name}</span></div>
+                                <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-brand-200/75" /><span className="capitalize font-medium text-foreground dark:text-foreground">{req.client_name}</span></div>
                                 {req.client_email && <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground" /><span className="break-all">{req.client_email}</span></div>}
                                 {req.client_phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground" /><span>{req.client_phone}</span></div>}
                                 {req.property_address && <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground" /><span>{req.property_address}</span></div>}
-                                {req.notes && <div className="flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 px-3 py-2 text-muted-foreground dark:text-zinc-300"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-200/60" /><span className="line-clamp-2">{req.notes}</span></div>}
+                                {req.notes && <div className="flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 px-3 py-2 text-muted-foreground dark:text-foreground"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-200/60" /><span className="line-clamp-2">{req.notes}</span></div>}
                               </div>
                             </div>
                             <div className="shrink-0 self-start rounded-2xl border border-border dark:border-white/10 bg-background/30 dark:bg-black/30 px-3 py-2 text-left shadow-inner shadow-sm dark:shadow-black/25 sm:text-right">
-                              <p className="text-xs font-medium tabular-nums text-foreground dark:text-zinc-200">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
+                              <p className="text-xs font-medium tabular-nums text-foreground dark:text-foreground">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
                               <p className="mt-0.5 text-[10px] text-muted-foreground dark:text-muted-foreground">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
                             </div>
                           </div>
@@ -443,7 +443,7 @@ export default function ReportRequests() {
 
       {/* Detail / Action Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-brand-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-foreground dark:text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-brand-300/40 [&>button:hover]:bg-brand-300/10 [&>button:hover]:text-brand-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-brand-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
+        <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-brand-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-foreground dark:text-foreground shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-brand-300/40 [&>button:hover]:bg-brand-300/10 [&>button:hover]:text-brand-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-brand-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
           <DialogHeader className="border-b border-border dark:border-white/10 bg-white/[0.02] px-4 pb-5 pt-6 text-left sm:px-6">
             <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-foreground dark:text-white">
@@ -487,7 +487,7 @@ export default function ReportRequests() {
 
                 {/* Admin Notes */}
                 <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
-                  <Label className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-zinc-100">
+                  <Label className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-foreground">
                     <MessageSquare className="h-3.5 w-3.5 text-brand-200/75" />
                     Admin Notes
                   </Label>
@@ -497,13 +497,13 @@ export default function ReportRequests() {
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
                     rows={4}
-                    className="max-h-44 min-h-28 resize-y rounded-2xl border-border dark:border-white/10 bg-background/70 dark:bg-background/70 text-sm leading-6 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                    className="max-h-44 min-h-28 resize-y rounded-2xl border-border dark:border-white/10 bg-background/70 dark:bg-background/70 text-sm leading-6 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                   />
                 </div>
 
                 {/* Status Selector */}
                 <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
-                  <Label className="text-sm font-semibold text-foreground dark:text-zinc-100">Update Status</Label>
+                  <Label className="text-sm font-semibold text-foreground dark:text-foreground">Update Status</Label>
                   <div className="flex flex-wrap gap-2.5">
                     {(['pending', 'in_progress', 'completed', 'declined'] as const).map((status) => {
                       const conf = statusConfig[status];
@@ -520,7 +520,7 @@ export default function ReportRequests() {
                           aria-label={`Set request status to ${conf.label}`}
                           onClick={() => handleStatusUpdate(selectedRequest.id, status)}
                           className={cn(
-                            'min-h-10 rounded-full border-border dark:border-white/10 bg-background/60 dark:bg-background/60 px-3.5 text-xs font-semibold text-muted-foreground dark:text-zinc-300 shadow-inner shadow-sm dark:shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
+                            'min-h-10 rounded-full border-border dark:border-white/10 bg-background/60 dark:bg-background/60 px-3.5 text-xs font-semibold text-muted-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
                             buttonTone.idle,
                             isActive && buttonTone.active,
                             isActive && 'pointer-events-none',

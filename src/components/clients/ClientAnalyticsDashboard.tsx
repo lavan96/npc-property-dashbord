@@ -170,8 +170,8 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
       iconClass: analytics.errorCount > 0
         ? 'border-destructive/25 bg-destructive/15 text-destructive dark:text-destructive shadow-destructive/20'
         : 'border-border/20 bg-muted0/10 text-muted-foreground dark:text-muted-foreground shadow-sm dark:shadow-black/10',
-      labelClass: analytics.errorCount > 0 ? 'text-destructive dark:text-destructive-foreground' : 'text-muted-foreground dark:text-slate-300',
-      valueClass: analytics.errorCount > 0 ? 'text-destructive dark:text-destructive-foreground' : 'text-muted-foreground dark:text-slate-300',
+      labelClass: analytics.errorCount > 0 ? 'text-destructive dark:text-destructive-foreground' : 'text-muted-foreground dark:text-foreground',
+      valueClass: analytics.errorCount > 0 ? 'text-destructive dark:text-destructive-foreground' : 'text-muted-foreground dark:text-foreground',
       progressClass: analytics.errorCount > 0
         ? 'bg-destructive/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-destructive [&>div]:via-destructive [&>div]:to-destructive [&>div]:shadow-[0_0_18px_rgba(248,113,113,0.36)]'
         : 'bg-background/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-muted0/50',
@@ -300,7 +300,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
               ) : (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-brand-300/15 bg-brand-300/[0.03] px-4 text-center">
                   <Info className="mb-3 h-8 w-8 text-brand-700 dark:text-brand-100/70" />
-                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No cash flow data yet</p>
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-foreground">No cash flow data yet</p>
                   <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-muted-foreground">Import or add clients to populate this chart.</p>
                 </div>
               )}
@@ -344,7 +344,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
               ) : (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-brand-300/15 bg-brand-300/[0.03] px-4 text-center">
                   <Info className="mb-3 h-8 w-8 text-brand-700 dark:text-brand-100/70" />
-                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No portfolio size data</p>
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-foreground">No portfolio size data</p>
                   <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-muted-foreground">Portfolio values will appear here once client records include property data.</p>
                 </div>
               )}
@@ -384,7 +384,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
               ) : (
                 <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-brand-300/15 bg-brand-300/[0.03] px-4 text-center">
                   <Building2 className="mb-3 h-8 w-8 text-brand-700 dark:text-brand-100/70" />
-                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No property count data</p>
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-foreground">No property count data</p>
                   <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-muted-foreground">Property distribution will populate as client portfolios are added.</p>
                 </div>
               )}
@@ -392,7 +392,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
             {analytics.propertyDistribution.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {analytics.propertyDistribution.map((entry, index) => (
-                  <span key={entry.name} className="inline-flex items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-slate-300">
+                  <span key={entry.name} className="inline-flex items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-foreground">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length] }} />
                     {entry.name}: {entry.value}
                   </span>
@@ -411,7 +411,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
               <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">GoHighLevel Sync Status</CardTitle>
               <p className="mt-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground">Operational health across {clients.length} client records</p>
             </div>
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/70 dark:bg-white/[0.04] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-slate-300">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/70 dark:bg-white/[0.04] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-foreground">
               <span className={`h-2 w-2 rounded-full ${analytics.errorCount > 0 ? 'bg-destructive/60 shadow-[0_0_12px_rgba(248,113,113,0.7)]' : analytics.pendingCount > 0 ? 'bg-brand-300 shadow-[0_0_12px_rgba(251,191,36,0.65)]' : 'bg-success/30 shadow-[0_0_12px_rgba(45,212,191,0.65)]'}`} />
               {analytics.errorCount > 0 ? 'Attention needed' : analytics.pendingCount > 0 ? 'Sync in progress' : 'Healthy'}
             </div>

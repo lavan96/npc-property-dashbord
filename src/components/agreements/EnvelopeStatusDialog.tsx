@@ -43,9 +43,9 @@ const STATUS_TONE: Record<string, { tone: string; icon: any; label: string }> = 
   declined: { tone: 'border-destructive/55 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive-foreground', icon: XCircle, label: 'Declined' },
   voided: { tone: 'border-destructive/55 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive-foreground', icon: AlertTriangle, label: 'Voided' },
   expired: { tone: 'border-destructive/55 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive-foreground', icon: Clock, label: 'Expired' },
-  created: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-slate-200', icon: Clock, label: 'Created' },
-  generated: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-slate-200', icon: FileText, label: 'Generated' },
-  draft: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-slate-200', icon: FileText, label: 'Draft' },
+  created: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground', icon: Clock, label: 'Created' },
+  generated: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground', icon: FileText, label: 'Generated' },
+  draft: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground', icon: FileText, label: 'Draft' },
   autoresponded: { tone: 'border-brand-300/55 bg-brand-500/14 text-brand-900 dark:border-brand-200/35 dark:bg-brand-300/14 dark:text-brand-100', icon: AlertTriangle, label: 'Bounced' },
 };
 
@@ -53,7 +53,7 @@ export function DocuSignStatusBadge({ status }: { status?: string | null }) {
   if (!status) return null;
   const key = status.toLowerCase();
   const cfg = STATUS_TONE[key] || {
-    tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-slate-200',
+    tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground',
     icon: Clock,
     label: status,
   };

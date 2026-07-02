@@ -26,7 +26,7 @@ export function MessageReactions({ messageId, onReact }: MessageReactionsProps) 
         size="sm"
         className={cn(
           "h-7 w-7 p-0 rounded-full",
-          reaction === 'up' && "bg-green-500/20 text-green-600 hover:bg-green-500/30"
+          reaction === 'up' && "bg-success/20 text-success hover:bg-success/30"
         )}
         onClick={() => handleReact('up')}
         title="Helpful"
@@ -38,7 +38,7 @@ export function MessageReactions({ messageId, onReact }: MessageReactionsProps) 
         size="sm"
         className={cn(
           "h-7 w-7 p-0 rounded-full",
-          reaction === 'down' && "bg-red-500/20 text-red-600 hover:bg-red-500/30"
+          reaction === 'down' && "bg-destructive/20 text-destructive hover:bg-destructive/30"
         )}
         onClick={() => handleReact('down')}
         title="Not helpful"

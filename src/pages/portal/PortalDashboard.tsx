@@ -102,9 +102,9 @@ export default function PortalDashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: 'Properties', value: properties.length.toString(), icon: Home, gradient: 'from-primary/10 to-primary/5', iconColor: 'text-primary' },
-              { label: 'Portfolio Value', value: formatCurrency(client?.total_portfolio_value), icon: DollarSign, gradient: 'from-emerald-500/10 to-emerald-500/5', iconColor: 'text-emerald-600 dark:text-emerald-400' },
-              { label: 'Rental Income', value: formatCurrency(client?.total_monthly_rental_income), suffix: '/mo', icon: TrendingUp, gradient: 'from-blue-500/10 to-blue-500/5', iconColor: 'text-blue-600 dark:text-blue-400' },
-              { label: 'Net Cash Flow', value: formatCurrency(client?.net_monthly_cash_flow), suffix: '/mo', icon: Briefcase, gradient: 'from-purple-500/10 to-purple-500/5', iconColor: 'text-purple-600 dark:text-purple-400' },
+              { label: 'Portfolio Value', value: formatCurrency(client?.total_portfolio_value), icon: DollarSign, gradient: 'from-success/10 to-success/5', iconColor: 'text-success dark:text-success' },
+              { label: 'Rental Income', value: formatCurrency(client?.total_monthly_rental_income), suffix: '/mo', icon: TrendingUp, gradient: 'from-info/10 to-info/5', iconColor: 'text-info dark:text-info' },
+              { label: 'Net Cash Flow', value: formatCurrency(client?.net_monthly_cash_flow), suffix: '/mo', icon: Briefcase, gradient: 'from-accent/10 to-accent/5', iconColor: 'text-accent dark:text-accent' },
             ].map((stat) => (
               <Card key={stat.label} className={portalStatCardClassName()}>
                 <CardContent className="pt-6 relative">

@@ -497,7 +497,7 @@ function EditorialCanvasImpl({
         <MousePointer2 className="h-3.5 w-3.5 text-primary" />
         <span className="font-medium">Editor</span>
         {unresolvedPageCommentCount > 0 && (
-          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-700">
+          <span className="rounded-full bg-brand-500/10 px-2 py-0.5 text-[10px] text-brand-700">
             {unresolvedPageCommentCount} page comment{unresolvedPageCommentCount === 1 ? '' : 's'}
           </span>
         )}
@@ -655,7 +655,7 @@ function EditorialCanvasImpl({
                 >
                   {overlayCommentCounts.has(o.id) && (
                     <div
-                      className="absolute -right-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-foreground dark:text-white shadow"
+                      className="absolute -right-2 -top-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-semibold text-foreground dark:text-white shadow"
                       title={`${overlayCommentCounts.get(o.id)} unresolved comment${overlayCommentCounts.get(o.id) === 1 ? '' : 's'}`}
                     >
                       {overlayCommentCounts.get(o.id)}

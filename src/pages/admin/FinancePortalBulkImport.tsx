@@ -202,7 +202,7 @@ export default function FinancePortalBulkImport() {
           )}
 
           {results.length > 0 && (
-            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+            <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35">
               <Table className="min-w-[860px]" aria-label="Bulk import preview results">
                 <TableHeader className="bg-muted/35">
                   <TableRow className="hover:bg-transparent">

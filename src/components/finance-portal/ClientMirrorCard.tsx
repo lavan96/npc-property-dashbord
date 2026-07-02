@@ -14,7 +14,7 @@ interface Props {
 const TIER_STYLE: Record<string, string> = {
   engaged: 'bg-success/15 text-success border-success/30',
   steady: 'bg-primary/15 text-primary border-primary/30',
-  cooling: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  cooling: 'bg-brand-500/15 text-brand-500 border-brand-500/30',
   ghosting: 'bg-destructive/15 text-destructive border-destructive/30',
   unknown: 'bg-muted text-muted-foreground border-border',
 };
@@ -80,9 +80,9 @@ export function ClientMirrorCard({ clientId }: Props) {
 
   if (!data?.portal_user) {
     return (
-      <Card className="border-amber-500/30 bg-amber-500/5">
+      <Card className="border-brand-500/30 bg-brand-500/5">
         <CardContent className="p-6 flex items-start gap-3">
-          <Eye className="h-5 w-5 text-amber-500 mt-0.5" />
+          <Eye className="h-5 w-5 text-brand-500 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium">Client has no active portal account</p>
             <p className="text-xs text-muted-foreground mt-1">

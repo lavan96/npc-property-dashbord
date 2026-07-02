@@ -32,10 +32,10 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
       <div className="fixed inset-x-3 bottom-20 z-50 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
-            <button type="button" className="w-full rounded-2xl border border-amber-400/30 bg-card/95 p-3 text-left shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-slate-950/95">
+            <button type="button" className="w-full rounded-2xl border border-brand-400/30 bg-card/95 p-3 text-left shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-700 dark:text-brand-300">
                     <BarChart3 className="h-5 w-5" />
                   </div>
                   <div>
@@ -51,7 +51,7 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
           <SheetContent side="bottom" className="max-h-[82vh] rounded-t-3xl p-0">
             <SheetHeader className="border-b p-4 text-left">
               <SheetTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-amber-600" />
+                <BarChart3 className="h-5 w-5 text-brand-600" />
                 Comparison Tray
               </SheetTitle>
             </SheetHeader>
@@ -75,10 +75,10 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="rounded-full border border-amber-400/30 bg-card/95 px-4 py-3 text-left shadow-2xl shadow-sm dark:shadow-black/15 backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-primary/20 dark:bg-slate-950/95"
+          className="rounded-full border border-brand-400/30 bg-card/95 px-4 py-3 text-left shadow-2xl shadow-sm dark:shadow-black/15 backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-primary/20 dark:bg-background/95"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-300">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div className="min-w-[12rem]">
@@ -94,12 +94,12 @@ export function ComparisonBasket({ onCompare }: ComparisonBasketProps) {
           </div>
         </button>
       ) : (
-        <Card className="w-[420px] overflow-hidden rounded-3xl border-amber-400/25 bg-card/95 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-slate-950/95">
+        <Card className="w-[420px] overflow-hidden rounded-3xl border-brand-400/25 bg-card/95 shadow-2xl shadow-sm dark:shadow-black/20 backdrop-blur dark:bg-background/95">
           <CardHeader className="border-b border-border/60 pb-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <BarChart3 className="h-5 w-5 text-amber-600" />
+                  <BarChart3 className="h-5 w-5 text-brand-600" />
                   Comparison Tray
                 </CardTitle>
                 <CardDescription>{selectedReports.length} of {MAX_COMPARISON_REPORTS} properties selected</CardDescription>
@@ -180,7 +180,7 @@ function CompareTrayContent({
 function ProgressBar({ value, className = '' }: { value: number; className?: string }) {
   return (
     <div className={`h-1.5 overflow-hidden rounded-full bg-muted ${className}`}>
-      <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-primary transition-all" style={{ width: `${Math.min(value, 100)}%` }} />
+      <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-primary transition-all" style={{ width: `${Math.min(value, 100)}%` }} />
     </div>
   );
 }

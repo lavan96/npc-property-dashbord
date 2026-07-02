@@ -102,19 +102,19 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
   };
 
   const getQualityScoreColor = (score: number): string => {
-    if (score >= 90) return 'text-green-600 dark:text-green-400';
-    if (score >= 75) return 'text-blue-600 dark:text-blue-400';
-    if (score >= 60) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (score >= 90) return 'text-success dark:text-success';
+    if (score >= 75) return 'text-info dark:text-info';
+    if (score >= 60) return 'text-brand-600 dark:text-brand-400';
+    return 'text-destructive dark:text-destructive';
   };
 
   const getQualityTrend = (currentScore: number, previousScore: number | null): JSX.Element | null => {
     if (previousScore === null) return null;
     
     if (currentScore > previousScore) {
-      return <TrendingUp className="h-4 w-4 text-green-600" />;
+      return <TrendingUp className="h-4 w-4 text-success" />;
     } else if (currentScore < previousScore) {
-      return <TrendingDown className="h-4 w-4 text-red-600" />;
+      return <TrendingDown className="h-4 w-4 text-destructive" />;
     }
     return null;
   };
@@ -297,12 +297,12 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
                               <div className="flex items-center gap-1">
                                 {version.validation_count === 0 ? (
                                   <>
-                                    <CheckCircle className="h-3 w-3 text-green-600" />
-                                    <span className="font-medium text-green-600">None</span>
+                                    <CheckCircle className="h-3 w-3 text-success" />
+                                    <span className="font-medium text-success">None</span>
                                   </>
                                 ) : (
                                   <>
-                                    <AlertTriangle className="h-3 w-3 text-yellow-600" />
+                                    <AlertTriangle className="h-3 w-3 text-brand-600" />
                                     <span className="font-medium">{version.validation_count}</span>
                                   </>
                                 )}
@@ -331,19 +331,19 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 {version.changes_summary.property_specs_changed && (
                                   <div className="flex items-center gap-1">
-                                    <ChevronRight className="h-3 w-3 text-blue-600" />
+                                    <ChevronRight className="h-3 w-3 text-info" />
                                     <span>Property specs updated</span>
                                   </div>
                                 )}
                                 {version.changes_summary.financial_data_changed && (
                                   <div className="flex items-center gap-1">
-                                    <ChevronRight className="h-3 w-3 text-blue-600" />
+                                    <ChevronRight className="h-3 w-3 text-info" />
                                     <span>Financial data updated</span>
                                   </div>
                                 )}
                                 {version.changes_summary.validation_flags_changed && (
                                   <div className="flex items-center gap-1">
-                                    <ChevronRight className="h-3 w-3 text-blue-600" />
+                                    <ChevronRight className="h-3 w-3 text-info" />
                                     <span>Validation results changed</span>
                                   </div>
                                 )}
@@ -448,10 +448,10 @@ export function ReportVersionHistory({ reportId, currentVersion, open, onOpenCha
                           <div className="h-8 bg-muted rounded-md overflow-hidden">
                             <div 
                               className={`h-full transition-all ${
-                                version.quality_score >= 90 ? 'bg-green-600' :
-                                version.quality_score >= 75 ? 'bg-blue-600' :
-                                version.quality_score >= 60 ? 'bg-yellow-600' :
-                                'bg-red-600'
+                                version.quality_score >= 90 ? 'bg-success' :
+                                version.quality_score >= 75 ? 'bg-info' :
+                                version.quality_score >= 60 ? 'bg-brand-600' :
+                                'bg-destructive'
                               }`}
                               style={{ width: `${version.quality_score}%` }}
                             />

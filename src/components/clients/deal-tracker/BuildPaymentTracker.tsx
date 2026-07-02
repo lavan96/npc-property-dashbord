@@ -93,13 +93,13 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
             {sorted.map((p) => {
               const stageAmount = buildPrice ? (buildPrice * p.percentage / 100) : p.amount;
               return (
-                <TableRow key={p.id} className={cn(p.funds_released && 'bg-green-500/5')}>
+                <TableRow key={p.id} className={cn(p.funds_released && 'bg-success/5')}>
                   <TableCell className="font-mono text-xs">{p.stage_number}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       <span className="font-medium text-sm">{p.stage_name}</span>
                       {p.is_commission_trigger && (
-                        <Bell className="h-3 w-3 text-amber-500" />
+                        <Bell className="h-3 w-3 text-brand-500" />
                       )}
                     </div>
                   </TableCell>
@@ -117,7 +117,7 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                         })}
                       />
                       {p.paid_to_builder && p.paid_to_builder_date && (
-                        <span className="text-[10px] text-green-600">{format(new Date(p.paid_to_builder_date), 'dd/MM/yy')}</span>
+                        <span className="text-[10px] text-success">{format(new Date(p.paid_to_builder_date), 'dd/MM/yy')}</span>
                       )}
                     </div>
                   </TableCell>
@@ -210,9 +210,9 @@ export function BuildPaymentTracker({ payments, buildPrice, onUpdatePayment }: B
                           })}
                         />
                         {p.commission_received ? (
-                          <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/30">Paid</Badge>
+                          <Badge variant="outline" className="text-[10px] text-success border-success/30">Paid</Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">Due</Badge>
+                          <Badge variant="outline" className="text-[10px] text-brand-600 border-brand-500/30">Due</Badge>
                         )}
                       </div>
                     ) : (

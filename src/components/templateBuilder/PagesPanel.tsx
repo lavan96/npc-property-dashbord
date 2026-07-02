@@ -343,7 +343,7 @@ function PagesPanelImpl({
                 {page.blocks.reduce((acc, b) => acc + b.overlays.length, 0)}
               </span>
               {(pageCommentCounts.get(page.id) ?? 0) > 0 && (
-                <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-700" title="Unresolved page comments">
+                <span className="rounded-full bg-brand-500/10 px-1.5 py-0.5 text-[9px] font-medium text-brand-700" title="Unresolved page comments">
                   {pageCommentCounts.get(page.id)}
                 </span>
               )}
@@ -452,7 +452,7 @@ function PagesPanelImpl({
                       <span className="text-[10px] text-muted-foreground">{b.overlays.length}</span>
                     )}
                     {(blockCommentCounts.get(b.id) ?? 0) > 0 && (
-                      <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-700" title="Unresolved block comments">
+                      <span className="rounded-full bg-brand-500/10 px-1.5 py-0.5 text-[9px] font-medium text-brand-700" title="Unresolved block comments">
                         {blockCommentCounts.get(b.id)}
                       </span>
                     )}
@@ -533,7 +533,7 @@ function PagesPanelImpl({
                     <CategoryIcon className="h-2.5 w-2.5" /> {item.category}
                   </span>
                   {dataHint && (
-                    <span className="inline-flex items-center gap-1 text-[9px] text-amber-600/90" title={dataHint}>
+                    <span className="inline-flex items-center gap-1 text-[9px] text-brand-600/90" title={dataHint}>
                       <Database className="h-2.5 w-2.5" /> needs data
                     </span>
                   )}
@@ -543,7 +543,7 @@ function PagesPanelImpl({
                   onClick={(event) => { event.stopPropagation(); toggleFavorite(item.label); }}
                   className={cn(
                     'absolute right-1 top-1 rounded p-1 transition-colors',
-                    favorite ? 'text-amber-500' : 'text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-amber-500',
+                    favorite ? 'text-brand-500' : 'text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-brand-500',
                   )}
                   title={favorite ? 'Remove favorite' : 'Favorite'}
                 >

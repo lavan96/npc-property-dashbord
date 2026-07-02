@@ -63,8 +63,8 @@ export function PDFThumbnail({
         {/* Decorative PDF icon with lines */}
         <div className="absolute inset-4 flex flex-col">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 rounded bg-red-500/20 flex items-center justify-center">
-              <FileText className="h-3.5 w-3.5 text-red-500" />
+            <div className="w-6 h-6 rounded bg-destructive/20 flex items-center justify-center">
+              <FileText className="h-3.5 w-3.5 text-destructive-foreground0" />
             </div>
             <div className="flex-1 h-2 bg-muted-foreground/10 rounded" />
           </div>
@@ -106,7 +106,7 @@ export function PDFThumbnail({
             <DialogContent className="max-w-2xl max-h-[80vh]">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-red-500" />
+                  <FileText className="h-5 w-5 text-destructive-foreground0" />
                   {fileName}
                 </DialogTitle>
               </DialogHeader>
@@ -182,8 +182,8 @@ export function UploadProgressItem({ fileName, progress, status, error }: Upload
         status === 'error'
           ? "border-destructive/30 bg-destructive/10"
           : status === 'complete'
-            ? "border-emerald-500/30 bg-emerald-500/10"
-            : "border-amber-500/30 bg-amber-500/10"
+            ? "border-success/30 bg-success/10"
+            : "border-brand-500/30 bg-brand-500/10"
       )}
     >
       <div className="flex items-start gap-3">
@@ -193,8 +193,8 @@ export function UploadProgressItem({ fileName, progress, status, error }: Upload
           status === 'error'
             ? "border-destructive/25 bg-destructive/15 text-destructive"
             : status === 'complete'
-              ? "border-emerald-500/25 bg-emerald-500/15 text-emerald-500"
-              : "border-amber-500/25 bg-amber-500/15 text-amber-500"
+              ? "border-success/25 bg-success/15 text-success-foreground0"
+              : "border-brand-500/25 bg-brand-500/15 text-brand-500"
         )}
       >
         {status === 'error' ? (
@@ -217,8 +217,8 @@ export function UploadProgressItem({ fileName, progress, status, error }: Upload
                 status === 'error'
                   ? "text-destructive"
                   : status === 'complete'
-                    ? "text-emerald-600 dark:text-emerald-300"
-                    : "text-amber-600 dark:text-amber-300"
+                    ? "text-success dark:text-success"
+                    : "text-brand-600 dark:text-brand-300"
               )}
             >
               {helperCopy}
@@ -230,8 +230,8 @@ export function UploadProgressItem({ fileName, progress, status, error }: Upload
               status === 'error'
                 ? "border-destructive/25 bg-destructive/10 text-destructive"
                 : status === 'complete'
-                  ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
-                  : "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300"
+                  ? "border-success/25 bg-success/10 text-success dark:text-success"
+                  : "border-brand-500/25 bg-brand-500/10 text-brand-600 dark:text-brand-300"
             )}
           >
             {statusLabel}
@@ -243,8 +243,8 @@ export function UploadProgressItem({ fileName, progress, status, error }: Upload
               className={cn(
                 "h-full rounded-full transition-all duration-500",
                 status === 'error' ? "bg-destructive" :
-                status === 'complete' ? "bg-gradient-to-r from-emerald-500 to-teal-400" :
-                "bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400",
+                status === 'complete' ? "bg-gradient-to-r from-success to-success" :
+                "bg-gradient-to-r from-brand-500 via-brand-400 to-warning",
                 isPending && "animate-pulse"
               )}
               style={{ width: `${progress}%` }}

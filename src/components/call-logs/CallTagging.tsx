@@ -27,14 +27,14 @@ interface CallTaggingProps {
 }
 
 const TAG_COLORS = [
-  { name: 'red', class: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  { name: 'amber', class: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  { name: 'green', class: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  { name: 'blue', class: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  { name: 'purple', class: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-  { name: 'orange', class: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  { name: 'pink', class: 'bg-pink-500/20 text-pink-400 border-pink-500/30' },
-  { name: 'gray', class: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+  { name: 'red', class: 'bg-destructive/20 text-destructive border-destructive/30' },
+  { name: 'amber', class: 'bg-brand-500/20 text-brand-400 border-brand-500/30' },
+  { name: 'green', class: 'bg-success/20 text-success border-success/30' },
+  { name: 'blue', class: 'bg-info/20 text-info border-info/30' },
+  { name: 'purple', class: 'bg-accent/20 text-accent border-accent/30' },
+  { name: 'orange', class: 'bg-warning/20 text-warning border-warning/30' },
+  { name: 'pink', class: 'bg-accent/20 text-accent border-accent/30' },
+  { name: 'gray', class: 'bg-muted0/20 text-muted-foreground border-border/30' },
 ];
 
 const getColorClass = (color: string) => {
@@ -367,15 +367,15 @@ export const CallTagFilter = ({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 border-border dark:border-white/10 bg-background dark:bg-zinc-950/95 p-3 shadow-2xl shadow-sm dark:shadow-black/40 backdrop-blur-xl" align="start">
+      <PopoverContent className="w-72 border-border dark:border-white/10 bg-background dark:bg-background/95 p-3 shadow-2xl shadow-sm dark:shadow-black/40 backdrop-blur-xl" align="start">
         <div className="space-y-3">
-          <span className="text-sm font-semibold text-amber-100">Filter by Tags</span>
+          <span className="text-sm font-semibold text-brand-100">Filter by Tags</span>
           <div className="flex flex-wrap gap-1.5">
             {availableTags.map(tag => (
               <Badge
                 key={tag.id}
                 className={`cursor-pointer transition-all ${getColorClass(tag.color)} ${
-                  selectedTags.includes(tag.name) ? 'ring-2 ring-amber-300/70 ring-offset-1 ring-offset-zinc-950' : 'opacity-65 hover:opacity-100'
+                  selectedTags.includes(tag.name) ? 'ring-2 ring-brand-300/70 ring-offset-1 ring-offset-zinc-950' : 'opacity-65 hover:opacity-100'
                 }`}
                 onClick={() => toggleTag(tag.name)}
               >

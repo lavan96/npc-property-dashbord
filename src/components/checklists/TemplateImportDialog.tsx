@@ -147,9 +147,9 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[min(85vh,760px)] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto rounded-3xl overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-brand-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/40 sm:w-auto">
+      <DialogContent className="max-h-[min(85vh,760px)] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto rounded-3xl overscroll-contain [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-brand-500/15 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,#09090b,#030303)] text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/40 sm:w-auto">
         <DialogHeader className="space-y-2">
-          <DialogTitle className="text-xl font-bold tracking-tight text-foreground dark:text-zinc-50 sm:text-2xl">
+          <DialogTitle className="text-xl font-bold tracking-tight text-foreground dark:text-foreground sm:text-2xl">
             {step === 'input' && 'Import Checklist Template'}
             {step === 'preview' && 'Preview Template'}
             {step === 'importing' && 'Importing...'}
@@ -214,7 +214,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                         <Loader2 className="h-7 w-7 animate-spin" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-foreground dark:text-zinc-100">{progressLabel}</p>
+                        <p className="text-sm font-semibold text-foreground dark:text-foreground">{progressLabel}</p>
                         <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">Reading and validating the template file</p>
                       </div>
                       <Progress value={progress} className="mx-auto h-2.5 max-w-xs bg-muted dark:bg-background [&>div]:bg-gradient-to-r [&>div]:from-brand-500 [&>div]:to-brand-300" />
@@ -224,7 +224,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-300/20 bg-brand-400/10 text-brand-200 shadow-[0_18px_40px_rgba(245,158,11,0.14)]">
                         <Upload className="h-7 w-7" />
                       </div>
-                      <p className="text-sm font-semibold text-foreground dark:text-zinc-100">Drop a file here or tap to browse</p>
+                      <p className="text-sm font-semibold text-foreground dark:text-foreground">Drop a file here or tap to browse</p>
                       <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">
                         .md, .json, .html, .pdf, .docx, .xlsx, .txt
                       </p>
@@ -239,7 +239,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   placeholder={`Paste your checklist in any format:\n\n## Daily Operations\n\n### Start of the Day\n- [ ] Check emails\n- [ ] Review pipeline\n- [x] Update tracker\n\nOr JSON: { "name": "...", "sections": [...] }\nOr HTML: <h2>Section</h2><ul><li>Item</li></ul>`}
                   value={pasteContent}
                   onChange={e => setPasteContent(e.target.value)}
-                  className="max-h-[42vh] min-h-72 overflow-y-auto [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-brand-500/15 bg-background dark:bg-black/35 font-mono text-xs text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                  className="max-h-[42vh] min-h-72 overflow-y-auto [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.72)] border-brand-500/15 bg-background dark:bg-black/35 font-mono text-xs text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 />
                 <Button onClick={handleParsePaste} disabled={!pasteContent.trim()} className="min-h-11 w-full bg-gradient-to-r from-brand-500 to-brand-400 font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-brand-400 hover:to-brand-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-brand-300/70 motion-reduce:transition-none">
                   Parse Content
@@ -272,7 +272,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   <Input
                     value={parsedTemplate.icon}
                     onChange={e => setParsedTemplate({ ...parsedTemplate, icon: e.target.value })}
-                    className="border-brand-500/15 bg-background dark:bg-black/35 text-center text-xl text-foreground dark:text-zinc-100 focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                    className="border-brand-500/15 bg-background dark:bg-black/35 text-center text-xl text-foreground dark:text-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   />
                 </div>
                 <div className="flex-1">
@@ -281,7 +281,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                     value={parsedTemplate.name}
                     onChange={e => setParsedTemplate({ ...parsedTemplate, name: e.target.value })}
                     placeholder="e.g. Daily Operations Checklist"
-                    className="border-brand-500/15 bg-background dark:bg-black/35 text-foreground dark:text-zinc-100 focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                    className="border-brand-500/15 bg-background dark:bg-black/35 text-foreground dark:text-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   />
                 </div>
               </div>
@@ -291,7 +291,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   value={parsedTemplate.description || ''}
                   onChange={e => setParsedTemplate({ ...parsedTemplate, description: e.target.value || undefined })}
                   placeholder="What is this checklist for?"
-                  className="border-brand-500/15 bg-background dark:bg-black/35 text-foreground dark:text-zinc-100 focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                  className="border-brand-500/15 bg-background dark:bg-black/35 text-foreground dark:text-foreground focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                 />
               </div>
               <div className="flex gap-2">
@@ -310,7 +310,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                   <CardContent className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-2">
                       <span>{section.icon}</span>
-                      <h4 className="text-sm font-semibold text-foreground dark:text-zinc-100">{section.title}</h4>
+                      <h4 className="text-sm font-semibold text-foreground dark:text-foreground">{section.title}</h4>
                       <Badge variant="outline" className="ml-auto rounded-full border-brand-300/20 bg-brand-300/10 text-[10px] text-brand-200">{section.items.length} items</Badge>
                     </div>
                     <div className="space-y-1">
@@ -320,7 +320,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                             ${item.is_pre_checked ? 'border-success/30 bg-success/60 text-black' : 'border-brand-300/40'}`}>
                             {item.is_pre_checked && <CheckCircle2 className="h-2.5 w-2.5" />}
                           </div>
-                          <span className={item.is_pre_checked ? 'text-foreground dark:text-zinc-100' : ''}>{item.label}</span>
+                          <span className={item.is_pre_checked ? 'text-foreground dark:text-foreground' : ''}>{item.label}</span>
                         </div>
                       ))}
                     </div>
@@ -339,7 +339,7 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
                 <Loader2 className="h-7 w-7 animate-spin" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-foreground dark:text-zinc-100">Creating template and items...</p>
+                <p className="text-sm font-semibold text-foreground dark:text-foreground">Creating template and items...</p>
                 <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">Saving the imported blueprint to Templates</p>
               </div>
             </div>
@@ -348,11 +348,11 @@ export function TemplateImportDialog({ open, onOpenChange, onImport }: TemplateI
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
           {step === 'input' && (
-            <Button variant="ghost" className="min-h-10 w-full text-muted-foreground dark:text-zinc-300 transition-all sm:w-auto duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-brand-300/55 motion-reduce:transition-none" onClick={() => handleClose(false)}>Cancel</Button>
+            <Button variant="ghost" className="min-h-10 w-full text-muted-foreground dark:text-foreground transition-all sm:w-auto duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-brand-300/55 motion-reduce:transition-none" onClick={() => handleClose(false)}>Cancel</Button>
           )}
           {step === 'preview' && (
             <>
-              <Button variant="ghost" className="min-h-10 w-full text-muted-foreground dark:text-zinc-300 transition-all sm:w-auto duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-brand-300/55 motion-reduce:transition-none" onClick={() => { setStep('input'); setParsedTemplate(null); }}>
+              <Button variant="ghost" className="min-h-10 w-full text-muted-foreground dark:text-foreground transition-all sm:w-auto duration-200 hover:bg-white/5 hover:text-zinc-50 focus-visible:ring-2 focus-visible:ring-brand-300/55 motion-reduce:transition-none" onClick={() => { setStep('input'); setParsedTemplate(null); }}>
                 ← Back
               </Button>
               <Button onClick={handleImport} className="min-h-10 w-full bg-gradient-to-r from-brand-500 to-brand-400 sm:w-auto font-semibold text-black transition-all duration-200 hover:-translate-y-0.5 hover:from-brand-400 hover:to-brand-300 hover:shadow-[0_14px_30px_rgba(245,158,11,0.24)] focus-visible:ring-2 focus-visible:ring-brand-300/70 motion-reduce:transition-none">

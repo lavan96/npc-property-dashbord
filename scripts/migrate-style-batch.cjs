@@ -75,6 +75,14 @@ function migrate(src) {
     (_m, op) => `bg-muted${op || ''}`);
   s = s.replace(new RegExp(`\\bbg-(?:${NEUTRAL})-(?:800|900|950)(\\/\\d{1,3})?`, 'g'),
     (_m, op) => `bg-background${op || ''}`);
+  // neutral gradient stops → flatten to a surface token (keeps opacity)
+  s = s.replace(new RegExp(`\\b(from|to|via)-(?:${NEUTRAL})-(?:700|800|900|950)(\\/\\d{1,3})?`, 'g'),
+    (_m, u, op) => `${u}-background${op || ''}`);
+  s = s.replace(new RegExp(`\\b(from|to|via)-(?:${NEUTRAL})-(?:50|100|200|300|400|500|600)(\\/\\d{1,3})?`, 'g'),
+    (_m, u, op) => `${u}-muted${op || ''}`);
+  // dark-mode-only light neutral text → foreground (safe: only the dark: variant)
+  s = s.replace(new RegExp(`\\bdark:text-(?:${NEUTRAL})-(?:50|100|200|300)(\\/\\d{1,3})?`, 'g'),
+    (_m, op) => `dark:text-foreground${op || ''}`);
 
   return s;
 }

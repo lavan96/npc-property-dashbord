@@ -76,7 +76,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Card className="relative max-h-[min(86vh,760px)] max-w-full overflow-hidden rounded-[1.5rem] border border-brand-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(2,6,23,0.98)_30%,rgba(0,0,0,0.90))] text-foreground dark:text-slate-100 shadow-[0_28px_90px_rgba(0,0,0,0.46),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur">
+    <Card className="relative max-h-[min(86vh,760px)] max-w-full overflow-hidden rounded-[1.5rem] border border-brand-300/20 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(2,6,23,0.98)_30%,rgba(0,0,0,0.90))] text-foreground dark:text-foreground shadow-[0_28px_90px_rgba(0,0,0,0.46),0_0_42px_rgba(245,158,11,0.10)] backdrop-blur">
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-brand-300/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-16 bottom-0 h-36 w-36 rounded-full bg-success/5 blur-3xl" />
@@ -100,7 +100,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
             placeholder="Reminder title..."
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-slate-100 placeholder:text-muted-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-foreground placeholder:text-muted-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           />
           <p className="text-[11px] text-muted-foreground">Use a clear action phrase so the reminder is easy to scan later.</p>
         </div>
@@ -120,7 +120,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="min-h-[88px] resize-y rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-slate-100 placeholder:text-muted-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          className="min-h-[88px] resize-y rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-foreground placeholder:text-muted-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
         />
 
         {/* Client link */}
@@ -147,16 +147,16 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
               type="datetime-local"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-slate-100 shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+              className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Type</label>
             <Select value={reminderType} onValueChange={setReminderType}>
-              <SelectTrigger className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-slate-100 shadow-inner transition-all duration-200 hover:border-brand-300/35 focus:border-brand-300/60 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black">
+              <SelectTrigger className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus:border-brand-300/60 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="max-w-[min(92vw,360px)] rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+              <SelectContent className="max-w-[min(92vw,360px)] rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
                 {REMINDER_TYPES.map(t => (
                   <SelectItem key={t.value} value={t.value} className="truncate rounded-lg focus:bg-brand-400/15 focus:text-brand-100">{t.label}</SelectItem>
                 ))}
@@ -171,10 +171,10 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
             Priority
           </label>
           <Select value={priority} onValueChange={setPriority}>
-            <SelectTrigger className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-slate-100 shadow-inner transition-all duration-200 hover:border-brand-300/35 focus:border-brand-300/60 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black">
+            <SelectTrigger className="h-11 rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus:border-brand-300/60 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="max-w-[min(92vw,360px)] rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-slate-100 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
+            <SelectContent className="max-w-[min(92vw,360px)] rounded-xl border-brand-300/20 bg-background dark:bg-background/95 p-1 text-foreground dark:text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur">
               <SelectItem value="low" className="rounded-lg focus:bg-success/15 focus:text-success-foreground">Low</SelectItem>
               <SelectItem value="medium" className="rounded-lg focus:bg-brand-400/15 focus:text-brand-100">Medium</SelectItem>
               <SelectItem value="high" className="rounded-lg focus:bg-destructive/15 focus:text-destructive-foreground">High</SelectItem>
@@ -202,7 +202,7 @@ export function CreateReminderForm({ onClose }: { onClose: () => void }) {
           <Button
             variant="outline"
             onClick={onClose}
-            className="h-11 rounded-xl border-border/70 bg-background dark:bg-black/25 px-5 font-semibold text-foreground dark:text-slate-200 transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            className="h-11 rounded-xl border-border/70 bg-background dark:bg-black/25 px-5 font-semibold text-foreground dark:text-foreground transition-all duration-200 hover:border-brand-300/35 hover:bg-brand-400/10 hover:text-brand-100 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
             Cancel
           </Button>

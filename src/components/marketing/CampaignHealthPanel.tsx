@@ -26,26 +26,26 @@ interface HealthScore {
 const statusConfig = {
   healthy: {
     label: 'Healthy',
-    color: 'bg-emerald-500',
-    textColor: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/20',
+    color: 'bg-success',
+    textColor: 'text-success dark:text-success',
+    bgColor: 'bg-success/10',
+    borderColor: 'border-success/20',
     emoji: '🟢',
   },
   watch: {
     label: 'Watch',
-    color: 'bg-amber-500',
-    textColor: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-500/10',
-    borderColor: 'border-amber-500/20',
+    color: 'bg-brand-500',
+    textColor: 'text-brand-600 dark:text-brand-400',
+    bgColor: 'bg-brand-500/10',
+    borderColor: 'border-brand-500/20',
     emoji: '🟡',
   },
   action_needed: {
     label: 'Action Needed',
-    color: 'bg-red-500',
-    textColor: 'text-red-600 dark:text-red-400',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/20',
+    color: 'bg-destructive',
+    textColor: 'text-destructive dark:text-destructive',
+    bgColor: 'bg-destructive/10',
+    borderColor: 'border-destructive/20',
     emoji: '🔴',
   },
 };
@@ -107,9 +107,9 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
             <Badge
               variant="outline"
               className={`rounded-full font-mono text-xs ${
-                avgScore >= 60 ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400' :
-                avgScore >= 35 ? 'border-amber-500/30 text-amber-600 dark:text-amber-400' :
-                'border-red-500/30 text-red-600 dark:text-red-400'
+                avgScore >= 60 ? 'border-success/30 text-success dark:text-success' :
+                avgScore >= 35 ? 'border-brand-500/30 text-brand-600 dark:text-brand-400' :
+                'border-destructive/30 text-destructive dark:text-destructive'
               }`}
             >
               {avgScore}/100
@@ -155,9 +155,9 @@ export function CampaignHealthPanel({ healthScores, loading }: CampaignHealthPan
                                 {factorLabels[key as keyof HealthFactor]}
                               </span>
                               <span className={`text-[10px] font-mono font-medium ${
-                                value >= 60 ? 'text-emerald-600 dark:text-emerald-400' :
-                                value >= 35 ? 'text-amber-600 dark:text-amber-400' :
-                                'text-red-600 dark:text-red-400'
+                                value >= 60 ? 'text-success dark:text-success' :
+                                value >= 35 ? 'text-brand-600 dark:text-brand-400' :
+                                'text-destructive dark:text-destructive'
                               }`}>
                                 {value}
                               </span>

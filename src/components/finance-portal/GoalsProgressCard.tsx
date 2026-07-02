@@ -211,7 +211,7 @@ export function GoalsProgressCard() {
               label="Commission"
               value={fmtCurrency(actuals?.commission_net || 0)}
               target={fmtCurrency(targets.commission)}
-              color="stroke-amber-500"
+              color="stroke-brand-500"
             />
           </div>
         )}

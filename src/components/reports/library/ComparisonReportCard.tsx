@@ -19,12 +19,12 @@ export function ComparisonReportCard({ comparison, generatorLabel, onView, onTog
     : 'No states listed';
 
   return (
-    <Card className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10 dark:bg-slate-950/70">
-      <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-emerald-400/10 blur-3xl opacity-0 transition-opacity group-hover:opacity-100" />
+    <Card className="group relative overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10 dark:bg-background/70">
+      <div className="pointer-events-none absolute -right-14 -top-16 h-44 w-44 rounded-full bg-success/10 blur-3xl opacity-0 transition-opacity group-hover:opacity-100" />
 
       <CardHeader className="relative space-y-4 p-4 pb-3">
         <div className="flex items-start justify-between gap-3">
-          <Badge variant="secondary" className="gap-1 bg-emerald-100 text-xs text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300">
+          <Badge variant="secondary" className="gap-1 bg-success/15 text-xs text-success hover:bg-success/20 dark:bg-success/30 dark:text-success">
             <Scale className="h-3 w-3" />
             Comparison
           </Badge>
@@ -70,7 +70,7 @@ export function ComparisonReportCard({ comparison, generatorLabel, onView, onTog
           title={comparison.is_archived ? 'Restore comparison' : 'Archive comparison'}
           className="gap-1.5 rounded-xl px-3"
         >
-          {comparison.is_archived ? <ArchiveRestore className="h-3.5 w-3.5 text-green-600" /> : <Archive className="h-3.5 w-3.5" />}
+          {comparison.is_archived ? <ArchiveRestore className="h-3.5 w-3.5 text-success" /> : <Archive className="h-3.5 w-3.5" />}
           <span className="hidden sm:inline">{comparison.is_archived ? 'Restore' : 'Archive'}</span>
         </Button>
       </CardFooter>
@@ -83,7 +83,7 @@ function MetricTile({ label, value, icon: Icon }: { label: string; value: string
     <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-3 shadow-inner shadow-sm dark:shadow-black/5">
       <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em]">{label}</span>
-        <Icon className="h-3.5 w-3.5 text-emerald-600/80 dark:text-emerald-300/80" />
+        <Icon className="h-3.5 w-3.5 text-success/80 dark:text-success/80" />
       </div>
       <div className="truncate text-sm font-semibold text-foreground">{value}</div>
     </div>

@@ -206,7 +206,7 @@ export function ClientCard({ client, ghlLocationId, onView, onDelete, onSyncComp
               </div>
 
               <div className="min-w-0 rounded-2xl border border-border bg-muted/90 px-3 py-2 shadow-inner dark:border-white/10 dark:bg-white/[0.06]">
-                <p className="truncate text-xs font-medium text-muted-foreground dark:text-slate-300">{client.primary_email || 'Email not provided'}</p>
+                <p className="truncate text-xs font-medium text-muted-foreground dark:text-foreground">{client.primary_email || 'Email not provided'}</p>
                 <p className="mt-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground dark:text-muted-foreground">
                   <Phone className="h-3 w-3 shrink-0 text-brand-500 dark:text-brand-200/80" />
                   <span className="truncate">{client.primary_mobile || 'Phone not provided'}</span>

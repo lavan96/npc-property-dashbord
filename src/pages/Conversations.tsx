@@ -119,12 +119,12 @@ const channelColors: Record<string, string> = {
 };
 
 const avatarBackgrounds: Record<string, string> = {
-  sms: "from-info/24 via-info/13 to-card/72 dark:to-zinc-950/72",
-  email: "from-accent/24 via-accent/13 to-card/72 dark:to-zinc-950/72",
-  whatsapp: "from-success/26 via-success/14 to-card/72 dark:to-zinc-950/72",
-  instagram: "from-accent/24 via-accent/13 to-card/72 dark:to-zinc-950/72",
-  facebook: "from-accent/24 via-info/13 to-card/72 dark:to-zinc-950/72",
-  live_chat: "from-accent/24 via-info/12 to-card/72 dark:to-zinc-950/72",
+  sms: "from-info/24 via-info/13 to-card/72 dark:to-background/72",
+  email: "from-accent/24 via-accent/13 to-card/72 dark:to-background/72",
+  whatsapp: "from-success/26 via-success/14 to-card/72 dark:to-background/72",
+  instagram: "from-accent/24 via-accent/13 to-card/72 dark:to-background/72",
+  facebook: "from-accent/24 via-info/13 to-card/72 dark:to-background/72",
+  live_chat: "from-accent/24 via-info/12 to-card/72 dark:to-background/72",
 };
 
 const getContactInitials = (name?: string | null) => {
@@ -867,7 +867,7 @@ export default function Conversations() {
               variant="ghost"
               size="sm"
               aria-label="Back to all conversations"
-              className="h-10 w-10 shrink-0 rounded-full p-0 text-foreground dark:text-zinc-200 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+              className="h-10 w-10 shrink-0 rounded-full p-0 text-foreground dark:text-foreground hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               onClick={handleBack}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -907,7 +907,7 @@ export default function Conversations() {
                   "h-10 rounded-full px-4 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:cursor-not-allowed",
                   isExportingHistory
                     ? "border-brand-200/45 bg-brand-500/15 text-brand-50 shadow-brand-950/30 disabled:opacity-100"
-                    : "border-brand-200/25 bg-background/75 dark:bg-background/75 text-foreground dark:text-zinc-100 hover:border-brand-200/65 hover:bg-brand-300/10 hover:text-brand-50 hover:shadow-[0_0_30px_rgba(245,158,11,0.18)] disabled:opacity-60",
+                    : "border-brand-200/25 bg-background/75 dark:bg-background/75 text-foreground dark:text-foreground hover:border-brand-200/65 hover:bg-brand-300/10 hover:text-brand-50 hover:shadow-[0_0_30px_rgba(245,158,11,0.18)] disabled:opacity-60",
                 )}
               >
                 {isExportingHistory ? (
@@ -920,7 +920,7 @@ export default function Conversations() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-64 border-brand-200/15 bg-background/95 dark:bg-background/95 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/45 backdrop-blur-xl"
+              className="w-64 border-brand-200/15 bg-background/95 dark:bg-background/95 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/45 backdrop-blur-xl"
             >
               <DropdownMenuItem
                 onClick={() => setShowExportDialog(true)}
@@ -1081,7 +1081,7 @@ export default function Conversations() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="rounded-full text-foreground dark:text-zinc-200 hover:bg-white/10 hover:text-white"
+                  className="rounded-full text-foreground dark:text-foreground hover:bg-white/10 hover:text-white"
                   onClick={() => setExportJobStatus(null)}
                 >
                   Dismiss
@@ -1131,7 +1131,7 @@ export default function Conversations() {
               <Button
                 size="sm"
                 variant="ghost"
-                className="rounded-full text-muted-foreground dark:text-zinc-300 hover:bg-white/10 hover:text-white"
+                className="rounded-full text-muted-foreground dark:text-foreground hover:bg-white/10 hover:text-white"
                 onClick={() => setSyncErrorMessage(null)}
               >
                 Dismiss
@@ -1210,7 +1210,7 @@ export default function Conversations() {
                   aria-label="Search conversations by contact or message"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-11 rounded-2xl border-brand-100/10 bg-[linear-gradient(135deg,rgba(0,0,0,0.62),rgba(39,39,42,0.38))] pl-11 pr-4 text-sm font-medium text-foreground dark:text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),inset_0_-10px_22px_rgba(0,0,0,0.20)] outline-none transition-all duration-200 placeholder:font-normal placeholder:text-muted-foreground dark:placeholder:text-muted-foreground hover:border-brand-100/24 hover:bg-black/65 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-300/25 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  className="h-11 rounded-2xl border-brand-100/10 bg-[linear-gradient(135deg,rgba(0,0,0,0.62),rgba(39,39,42,0.38))] pl-11 pr-4 text-sm font-medium text-foreground dark:text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.055),inset_0_-10px_22px_rgba(0,0,0,0.20)] outline-none transition-all duration-200 placeholder:font-normal placeholder:text-muted-foreground dark:placeholder:text-muted-foreground hover:border-brand-100/24 hover:bg-black/65 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-300/25 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                 />
               </div>
               <div className="flex flex-wrap gap-1.5 rounded-2xl border border-border dark:border-white/10 bg-background/35 dark:bg-black/35 p-1.5 shadow-inner shadow-sm dark:shadow-black/30">
@@ -1223,7 +1223,7 @@ export default function Conversations() {
                       "min-h-8 flex-1 basis-[calc(50%-0.375rem)] rounded-xl px-3 text-xs font-semibold tracking-wide transition-all duration-200 sm:basis-auto sm:flex-none focus-visible:ring-2 focus-visible:ring-brand-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
                       channelFilter === ch
                         ? "border border-brand-200/60 bg-gradient-to-b from-brand-300 to-brand-500 text-black shadow-[0_0_24px_rgba(245,158,11,0.25),inset_0_1px_0_rgba(255,255,255,0.45)] hover:from-brand-200 hover:to-brand-400"
-                        : "border border-transparent bg-card/45 dark:bg-background/45 text-muted-foreground/85 dark:text-zinc-300/85 hover:border-brand-300/35 hover:bg-brand-300/10 hover:text-brand-100",
+                        : "border border-transparent bg-card/45 dark:bg-background/45 text-muted-foreground/85 dark:text-foreground/85 hover:border-brand-300/35 hover:bg-brand-300/10 hover:text-brand-100",
                     )}
                     onClick={() => setChannelFilter(ch)}
                     aria-pressed={channelFilter === ch}
@@ -1244,7 +1244,7 @@ export default function Conversations() {
             {/* Conversation list */}
             <ScrollArea
               aria-label="Conversation list"
-              className="min-h-0 flex-1 basis-0 overscroll-contain bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.055),transparent_34%)] [scrollbar-color:rgba(161,161,170,0.72)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-gradient-to-b [&_[data-radix-scroll-area-thumb]]:from-brand-200/70 [&_[data-radix-scroll-area-thumb]]:via-zinc-500/80 [&_[data-radix-scroll-area-thumb]]:to-zinc-700/80 [&_[data-radix-scroll-area-thumb]]:shadow-[0_0_14px_rgba(245,158,11,0.18)]"
+              className="min-h-0 flex-1 basis-0 overscroll-contain bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.055),transparent_34%)] [scrollbar-color:rgba(161,161,170,0.72)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-gradient-to-b [&_[data-radix-scroll-area-thumb]]:from-brand-200/70 [&_[data-radix-scroll-area-thumb]]:via-muted0/80 [&_[data-radix-scroll-area-thumb]]:to-background/80 [&_[data-radix-scroll-area-thumb]]:shadow-[0_0_14px_rgba(245,158,11,0.18)]"
             >
               {loadingConversations ? (
                 <div className="space-y-3.5 p-4">
@@ -1302,7 +1302,7 @@ export default function Conversations() {
                       <Search className="h-5 w-5" />
                     )}
                   </span>
-                  <p className="text-sm font-semibold text-foreground dark:text-zinc-100">
+                  <p className="text-sm font-semibold text-foreground dark:text-foreground">
                     {conversations.length === 0
                       ? "No conversations yet"
                       : channelFilter !== "all"
@@ -1366,7 +1366,7 @@ export default function Conversations() {
                           className={cn(
                             "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-border dark:ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]",
                             avatarBackgrounds[normalized] ||
-                              "from-zinc-500/18 via-zinc-600/12 to-card/72 dark:to-zinc-950/72",
+                              "from-muted0/18 via-muted/12 to-card/72 dark:to-background/72",
                           )}
                         >
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">
@@ -1375,7 +1375,7 @@ export default function Conversations() {
                           <span
                             className={cn(
                               "absolute -bottom-1.5 -right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-border/90 bg-background dark:bg-background shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10",
-                              channelColors[normalized] || "text-foreground dark:text-zinc-100",
+                              channelColors[normalized] || "text-foreground dark:text-foreground",
                             )}
                           >
                             <Icon className="h-3.5 w-3.5" />
@@ -1386,7 +1386,7 @@ export default function Conversations() {
                           <div className="flex items-start justify-between gap-3">
                             <span
                               className={cn(
-                                "min-w-0 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-foreground dark:text-zinc-50 transition-colors group-hover:text-white",
+                                "min-w-0 truncate text-[0.95rem] leading-5 tracking-[-0.01em] text-foreground dark:text-foreground transition-colors group-hover:text-white",
                                 conv.unread_count > 0
                                   ? "font-bold"
                                   : "font-semibold",
@@ -1404,7 +1404,7 @@ export default function Conversations() {
                               className={cn(
                                 "min-w-0 truncate text-[0.8rem] leading-5 transition-colors",
                                 conv.unread_count > 0
-                                  ? "font-medium text-foreground dark:text-zinc-100"
+                                  ? "font-medium text-foreground dark:text-foreground"
                                   : "text-muted-foreground/85 dark:text-muted-foreground/85 group-hover:text-zinc-200/90",
                               )}
                               title={
@@ -1484,7 +1484,7 @@ export default function Conversations() {
                     strokeWidth={1.7}
                   />
                 </div>
-                <p className="text-lg font-semibold tracking-[-0.02em] text-foreground dark:text-zinc-50 sm:text-xl">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-foreground dark:text-foreground sm:text-xl">
                   Select a conversation
                 </p>
                 <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground/90 dark:text-muted-foreground/90">
@@ -1506,9 +1506,9 @@ export default function Conversations() {
                   <div className="relative flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex min-w-0 flex-1 items-start gap-3.5">
                       {!isMobile && (
-                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-zinc-500/18 via-zinc-600/12 to-card/72 dark:to-zinc-950/72')}>
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-muted0/18 via-muted/12 to-card/72 dark:to-background/72')}>
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
-                          <span className={cn('absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-border/90 bg-background dark:bg-background shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-foreground dark:text-zinc-100')}>
+                          <span className={cn('absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-border/90 bg-background dark:bg-background shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-foreground dark:text-foreground')}>
                             {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3.5 w-3.5" />; })()}
                           </span>
                           <span className="absolute inset-0 rounded-[1.35rem] bg-gradient-to-br from-white/12 to-transparent opacity-60" />
@@ -1516,7 +1516,7 @@ export default function Conversations() {
                       )}
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          <Badge className={cn('rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'border-border dark:border-white/10 bg-white/[0.04] text-foreground dark:text-zinc-100')}>
+                          <Badge className={cn('rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'border-border dark:border-white/10 bg-white/[0.04] text-foreground dark:text-foreground')}>
                             {normalizeChannel(selectedConversation.channel_type).replace('_', ' ')}
                           </Badge>
                           <Badge variant="outline" className="rounded-full border-success/25 bg-success/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-success-foreground">
@@ -1558,7 +1558,7 @@ export default function Conversations() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-9 w-9 shrink-0 rounded-full border border-border dark:border-white/10 bg-white/[0.035] p-0 text-muted-foreground dark:text-zinc-300 hover:border-brand-200/35 hover:bg-brand-300/10 hover:text-brand-50"
+                        className="h-9 w-9 shrink-0 rounded-full border border-border dark:border-white/10 bg-white/[0.035] p-0 text-muted-foreground dark:text-foreground hover:border-brand-200/35 hover:bg-brand-300/10 hover:text-brand-50"
                         onClick={() => queryClient.invalidateQueries({ queryKey: ['conversation-messages', selectedId] })}
                         aria-label="Refresh selected conversation messages"
                       >
@@ -1573,7 +1573,7 @@ export default function Conversations() {
               {/* Messages */}
               <ScrollArea
                 aria-label="Selected conversation message thread"
-                className="min-h-0 flex-1 basis-0 overscroll-contain bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.035),transparent_38%)] [scrollbar-color:rgba(161,161,170,0.72)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-gradient-to-b [&_[data-radix-scroll-area-thumb]]:from-brand-200/70 [&_[data-radix-scroll-area-thumb]]:via-zinc-500/80 [&_[data-radix-scroll-area-thumb]]:to-zinc-700/80 [&_[data-radix-scroll-area-thumb]]:shadow-[0_0_14px_rgba(245,158,11,0.18)]"
+                className="min-h-0 flex-1 basis-0 overscroll-contain bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.035),transparent_38%)] [scrollbar-color:rgba(161,161,170,0.72)_rgba(9,9,11,0.72)] [scrollbar-width:thin] [&_[data-orientation=vertical]]:w-3 [&_[data-orientation=vertical]]:border-l-white/5 [&_[data-radix-scroll-area-thumb]]:bg-gradient-to-b [&_[data-radix-scroll-area-thumb]]:from-brand-200/70 [&_[data-radix-scroll-area-thumb]]:via-muted0/80 [&_[data-radix-scroll-area-thumb]]:to-background/80 [&_[data-radix-scroll-area-thumb]]:shadow-[0_0_14px_rgba(245,158,11,0.18)]"
               >
                 <div className="mx-auto w-full max-w-5xl px-4 py-5 md:px-6">
                   {loadingMessages ? (
@@ -1625,7 +1625,7 @@ export default function Conversations() {
                       <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-100/20 bg-brand-300/10 text-brand-100/80">
                         <MessageSquare className="h-5 w-5" />
                       </span>
-                      <p className="text-sm font-semibold text-foreground dark:text-zinc-100">
+                      <p className="text-sm font-semibold text-foreground dark:text-foreground">
                         No messages in this conversation
                       </p>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground dark:text-muted-foreground">
@@ -1696,7 +1696,7 @@ export default function Conversations() {
                                       "max-w-[82%] rounded-2xl border px-3.5 py-2 text-sm shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200/35 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28),0_0_24px_rgba(245,158,11,0.10)] md:max-w-[72%]",
                                       isOutbound
                                         ? getOutboundBubbleClass()
-                                        : "rounded-bl-md border-border dark:border-white/10 bg-[linear-gradient(135deg,rgba(39,39,42,0.96),rgba(9,9,11,0.92))] text-foreground dark:text-zinc-100 shadow-[0_12px_30px_rgba(0,0,0,0.22)]",
+                                        : "rounded-bl-md border-border dark:border-white/10 bg-[linear-gradient(135deg,rgba(39,39,42,0.96),rgba(9,9,11,0.92))] text-foreground dark:text-foreground shadow-[0_12px_30px_rgba(0,0,0,0.22)]",
                                     )}
                                   >
                                     {!isOutbound && msg.sender_name && (
@@ -1791,7 +1791,7 @@ export default function Conversations() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="start"
-                      className="min-w-[140px] border-brand-200/15 bg-background/95 dark:bg-background/95 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/45 backdrop-blur-xl"
+                      className="min-w-[140px] border-brand-200/15 bg-background/95 dark:bg-background/95 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/45 backdrop-blur-xl"
                     >
                       <DropdownMenuItem
                         onClick={() => setReplyChannel("sms")}
@@ -1827,7 +1827,7 @@ export default function Conversations() {
                       >
                         <SelectTrigger
                           aria-label="Select email reply mailbox"
-                          className="h-9 min-w-0 flex-1 rounded-full border-brand-100/15 bg-background/35 dark:bg-black/35 text-xs text-foreground dark:text-zinc-100 focus-visible:ring-2 focus-visible:ring-brand-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                          className="h-9 min-w-0 flex-1 rounded-full border-brand-100/15 bg-background/35 dark:bg-black/35 text-xs text-foreground dark:text-foreground focus-visible:ring-2 focus-visible:ring-brand-300/35 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -1852,7 +1852,7 @@ export default function Conversations() {
                       aria-label="Email subject"
                       value={emailSubject}
                       onChange={(e) => setEmailSubject(e.target.value)}
-                      className="h-10 rounded-2xl border-brand-100/12 bg-background/35 dark:bg-black/35 text-sm text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:border-brand-300/50 focus-visible:ring-brand-300/25"
+                      className="h-10 rounded-2xl border-brand-100/12 bg-background/35 dark:bg-black/35 text-sm text-foreground dark:text-foreground placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:border-brand-300/50 focus-visible:ring-brand-300/25"
                     />
                   </>
                 )}

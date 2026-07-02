@@ -66,13 +66,13 @@ export function AudienceIntelligencePanel({ audienceInsights, loading }: Audienc
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {topPerformers.length > 0 && (
-              <Badge className="rounded-full border-emerald-500/20 bg-emerald-500/10 text-[10px] text-emerald-600 dark:text-emerald-400">
+              <Badge className="rounded-full border-success/20 bg-success/10 text-[10px] text-success dark:text-success">
                 <Star className="h-3 w-3 mr-1" />
                 {topPerformers.length} Top
               </Badge>
             )}
             {underperformers.length > 0 && (
-              <Badge className="rounded-full border-red-500/20 bg-red-500/10 text-[10px] text-red-600 dark:text-red-400">
+              <Badge className="rounded-full border-destructive/20 bg-destructive/10 text-[10px] text-destructive dark:text-destructive">
                 <TrendingDown className="h-3 w-3 mr-1" />
                 {underperformers.length} Weak
               </Badge>
@@ -96,8 +96,8 @@ export function AudienceIntelligencePanel({ audienceInsights, loading }: Audienc
                   <div
                     key={audience.adset_id || i}
                     className={`rounded-2xl border p-3 shadow-sm transition-colors ${
-                      isTop ? 'border-emerald-500/20 bg-emerald-500/[0.03]' :
-                      isWeak ? 'border-red-500/20 bg-red-500/[0.03]' :
+                      isTop ? 'border-success/20 bg-success/[0.03]' :
+                      isWeak ? 'border-destructive/20 bg-destructive/[0.03]' :
                       'border-border'
                     }`}
                   >
@@ -111,8 +111,8 @@ export function AudienceIntelligencePanel({ audienceInsights, loading }: Audienc
                       <Badge
                         variant="outline"
                         className={`font-mono text-[10px] shrink-0 ${
-                          isTop ? 'rounded-full border-emerald-500/30 text-emerald-600 dark:text-emerald-400' :
-                          isWeak ? 'border-red-500/30 text-red-600 dark:text-red-400' :
+                          isTop ? 'rounded-full border-success/30 text-success dark:text-success' :
+                          isWeak ? 'border-destructive/30 text-destructive dark:text-destructive' :
                           'border-border text-muted-foreground'
                         }`}
                       >

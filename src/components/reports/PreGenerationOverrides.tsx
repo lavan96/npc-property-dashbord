@@ -670,28 +670,28 @@ export function PreGenerationOverrides({
             <TabsList className={isMobile ? "reports-overrides-tabs-list inline-flex w-auto min-w-full mb-4" : "reports-overrides-tabs-list grid w-full grid-cols-4 mb-4"}>
               <TabsTrigger 
                 value="property" 
-                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-brand-400 data-[state=active]:text-black"
               >
                 <Home className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Property</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="financials" 
-                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-brand-400 data-[state=active]:text-black"
               >
                 <DollarSign className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Financials</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="income" 
-                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-brand-400 data-[state=active]:text-black"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Income</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="advanced" 
-                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
+                className="reports-overrides-tab flex items-center gap-1.5 text-xs sm:text-sm whitespace-nowrap data-[state=active]:bg-brand-400 data-[state=active]:text-black"
               >
                 <Settings2 className="h-3.5 w-3.5" />
                 <span className={isMobile ? "" : "hidden sm:inline"}>Advanced</span>

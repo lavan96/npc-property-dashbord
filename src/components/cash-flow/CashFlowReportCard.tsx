@@ -23,7 +23,7 @@ export function CashFlowReportCard({ report, buildType, gradeInfo, isOpening, on
   const isLandOnly = buildType === 'land_only';
 
   return (
-    <Card className="group flex h-full flex-col overflow-hidden border-slate-200/80 bg-gradient-to-b from-background to-muted/20 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg">
+    <Card className="group flex h-full flex-col overflow-hidden border-border/80 bg-gradient-to-b from-background to-muted/20 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg">
       <CardHeader className="space-y-4 pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -55,12 +55,12 @@ export function CashFlowReportCard({ report, buildType, gradeInfo, isOpening, on
             {report.property_address}
           </CardTitle>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+            <Badge variant="outline" className="border-success/30 bg-success/10 text-success hover:bg-success/10">
               <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
               Ready for cash-flow analysis
             </Badge>
             {weeklyRent <= 0 && (
-              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50">
+              <Badge variant="outline" className="border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-50">
                 Rent review needed
               </Badge>
             )}
@@ -110,9 +110,9 @@ export function CashFlowReportCard({ report, buildType, gradeInfo, isOpening, on
 
 function MetricTile({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) {
   return (
-    <div className={`rounded-xl border p-3 ${warning ? 'border-amber-200 bg-amber-50/70' : 'bg-background'}`}>
+    <div className={`rounded-xl border p-3 ${warning ? 'border-brand-200 bg-brand-50/70' : 'bg-background'}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`mt-1 font-semibold ${warning ? 'text-amber-700' : 'text-foreground'}`}>{value}</p>
+      <p className={`mt-1 font-semibold ${warning ? 'text-brand-700' : 'text-foreground'}`}>{value}</p>
     </div>
   );
 }

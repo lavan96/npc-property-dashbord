@@ -153,7 +153,7 @@ function PremiumPieTooltip({ active, payload, unit = 'properties' }: any) {
           {value.toLocaleString('en-AU')}{unit ? ` ${unit}` : ''}
         </div>
       )}
-      {percent && <div className="mt-1 text-xs font-medium text-muted-foreground dark:text-slate-300">{percent} of visible total</div>}
+      {percent && <div className="mt-1 text-xs font-medium text-muted-foreground dark:text-foreground">{percent} of visible total</div>}
     </div>
   );
 }
@@ -533,7 +533,7 @@ export default function Overview() {
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Overview</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">Property intake dashboard overview and key metrics</p>
         </DashboardThemeFrame>
-        <Card className="overflow-hidden rounded-[1.5rem] border-brand-400/40 bg-gradient-to-br from-brand-500/10 via-card to-card shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:border-brand-400/25 dark:from-brand-400/10 dark:via-slate-950/80 dark:to-slate-950">
+        <Card className="overflow-hidden rounded-[1.5rem] border-brand-400/40 bg-gradient-to-br from-brand-500/10 via-card to-card shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:border-brand-400/25 dark:from-brand-400/10 dark:via-background/80 dark:to-background">
           <CardContent className="p-5 md:p-6">
             <div className="mb-3 flex items-center gap-3 text-brand-700 dark:text-brand-300">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-400/30 bg-brand-500/10">

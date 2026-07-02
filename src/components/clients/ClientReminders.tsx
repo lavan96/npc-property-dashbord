@@ -57,10 +57,10 @@ const reminderTypes = [
 ];
 
 const priorityColors = {
-  low: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-  medium: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-  high: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
-  urgent: 'bg-red-500/10 text-red-600 border-red-500/20',
+  low: 'bg-info/10 text-info border-info/20',
+  medium: 'bg-brand-500/10 text-brand-600 border-brand-500/20',
+  high: 'bg-warning/10 text-warning border-warning/20',
+  urgent: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
 function FollowUpBanner({ clientId, followUpDate }: { clientId: string; followUpDate: string | null | undefined }) {
@@ -103,16 +103,16 @@ function FollowUpBanner({ clientId, followUpDate }: { clientId: string; followUp
   const statusConfig = isOverdue
     ? { bg: 'bg-destructive/5 border-destructive/30', icon: 'text-destructive', label: 'Overdue', labelClass: 'text-destructive font-semibold' }
     : isDueToday
-    ? { bg: 'bg-orange-500/5 border-orange-500/30', icon: 'text-orange-500', label: 'Due Today', labelClass: 'text-orange-600 font-semibold' }
+    ? { bg: 'bg-warning/5 border-warning/30', icon: 'text-warning-foreground0', label: 'Due Today', labelClass: 'text-warning font-semibold' }
     : parsedDate
-    ? { bg: 'bg-amber-500/5 border-amber-500/30', icon: 'text-amber-500', label: formatDistanceToNow(parsedDate, { addSuffix: true }), labelClass: 'text-muted-foreground' }
+    ? { bg: 'bg-brand-500/5 border-brand-500/30', icon: 'text-brand-500', label: formatDistanceToNow(parsedDate, { addSuffix: true }), labelClass: 'text-muted-foreground' }
     : { bg: 'border-dashed border-muted-foreground/30', icon: 'text-muted-foreground', label: '', labelClass: '' };
 
   return (
     <Card className={cn('transition-all', statusConfig.bg)}>
       <CardContent className="py-3 px-4">
         <div className="flex items-center gap-3">
-          <div className={cn('rounded-full p-2', parsedDate ? (isOverdue ? 'bg-destructive/10' : 'bg-amber-500/10') : 'bg-muted')}>
+          <div className={cn('rounded-full p-2', parsedDate ? (isOverdue ? 'bg-destructive/10' : 'bg-brand-500/10') : 'bg-muted')}>
             {parsedDate ? (
               <BellRing className={cn('h-4 w-4', statusConfig.icon)} />
             ) : (
@@ -125,7 +125,7 @@ function FollowUpBanner({ clientId, followUpDate }: { clientId: string; followUp
               <Pin className="h-3 w-3 text-muted-foreground shrink-0" />
               <span className="text-sm font-medium">Follow-Up Reminder</span>
               {isOverdue && <Badge variant="destructive" className="text-[10px] h-5">Overdue</Badge>}
-              {isDueToday && <Badge className="text-[10px] h-5 bg-orange-500/10 text-orange-600 border-orange-500/20">Today</Badge>}
+              {isDueToday && <Badge className="text-[10px] h-5 bg-warning/10 text-warning border-warning/20">Today</Badge>}
             </div>
             {parsedDate ? (
               <p className={cn('text-xs mt-0.5', statusConfig.labelClass)}>
@@ -382,10 +382,10 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
   const getDueStatus = (dueDate: string) => {
     const date = new Date(dueDate);
     if (isPast(date) && !isToday(date)) {
-      return { label: 'Overdue', className: 'text-red-600' };
+      return { label: 'Overdue', className: 'text-destructive' };
     }
     if (isToday(date)) {
-      return { label: 'Today', className: 'text-orange-600' };
+      return { label: 'Today', className: 'text-warning' };
     }
     return { label: formatDistanceToNow(date, { addSuffix: true }), className: 'text-muted-foreground' };
   };
@@ -664,7 +664,7 @@ export function ClientReminders({ clientId, followUpDate }: ClientRemindersProps
                           className="h-7 w-7"
                           onClick={() => completeReminderMutation.mutate(reminder.id)}
                         >
-                          <Check className="h-4 w-4 text-green-600" />
+                          <Check className="h-4 w-4 text-success" />
                         </Button>
                         <Button 
                           variant="ghost" 

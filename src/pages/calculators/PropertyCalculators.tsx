@@ -368,7 +368,7 @@ function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean 
   };
 
   return (
-    <div className={`rounded-2xl border p-4 shadow-sm transition-colors ${outOfDate ? 'border-amber-500/40 bg-amber-500/10' : 'border-primary/20 bg-card/90'}`}>
+    <div className={`rounded-2xl border p-4 shadow-sm transition-colors ${outOfDate ? 'border-brand-500/40 bg-brand-500/10' : 'border-primary/20 bg-card/90'}`}>
       <div className="space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-2">
@@ -390,7 +390,7 @@ function GlobalGenerationControls({ propertyLinked }: { propertyLinked: boolean 
 
         <div className="grid gap-2 rounded-xl border border-border/60 bg-background/45 p-3 text-xs text-muted-foreground md:grid-cols-2">
           <p className="leading-5">Accepted AI estimates: <span className="font-medium text-foreground">{acceptedEstimates.length}</span> · Pending estimate previews: <span className="font-medium text-foreground">{pendingEstimateCount}</span> · {outOfDate ? 'Assumptions changed after calculation — regenerate before PDF/report output.' : 'Report outputs will not update without confirmation.'}</p>
-          <p className={`leading-5 ${reportReadiness.pdfDisabled || reportReadiness.allowWithWarning ? 'text-amber-700 dark:text-amber-200' : ''}`}>
+          <p className={`leading-5 ${reportReadiness.pdfDisabled || reportReadiness.allowWithWarning ? 'text-brand-700 dark:text-brand-200' : ''}`}>
             {reportReadiness.pdfDisabled
               ? `PDF disabled: ${reportReadiness.blockingReasons.join('; ')}`
               : reportReadiness.allowWithWarning
@@ -917,14 +917,14 @@ function HeaderMetric({ label, value, accent = 'neutral' }: { label: string; val
 
 function NoLinkedPropertyPanel({ domain }: { domain: CalculatorDomain }) {
   return (
-    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-5 text-sm text-muted-foreground shadow-sm">
+    <div className="rounded-2xl border border-brand-500/25 bg-brand-500/10 p-5 text-sm text-muted-foreground shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h3 className="text-base font-semibold text-amber-100">No property linked</h3>
+          <h3 className="text-base font-semibold text-brand-100">No property linked</h3>
           <p className="mt-1 max-w-3xl">No property linked. Add or select a commercial / industrial property to prefill the calculator suite.</p>
           <p className="mt-2 text-xs">Calculated outputs are hidden until a {domain} property profile is linked, preventing hardcoded or demo values from appearing in calculator tabs.</p>
         </div>
-        <Badge variant="outline" className="border-amber-500/30 bg-background/50 text-amber-100">Property required</Badge>
+        <Badge variant="outline" className="border-brand-500/30 bg-background/50 text-brand-100">Property required</Badge>
       </div>
     </div>
   );

@@ -624,7 +624,7 @@ export default function ClientManagement() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0 space-y-2">
             <div className="inline-flex items-center rounded-full border border-brand-500/30 bg-brand-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.22em] text-brand-700 dark:bg-brand-500/10 dark:text-brand-200">Premium client workspace</div>
-            <h1 className="bg-gradient-to-r from-card dark:from-slate-950 via-brand-700 to-brand-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-brand-100 dark:to-brand-300 md:text-5xl">Client Management</h1>
+            <h1 className="bg-gradient-to-r from-card dark:from-background via-brand-700 to-brand-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent dark:from-white dark:via-brand-100 dark:to-brand-300 md:text-5xl">Client Management</h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
               Manage clients, properties, and sync with GoHighLevel
             </p>
@@ -669,7 +669,7 @@ export default function ClientManagement() {
             onClick={() => setShowExportDialog(true)}
             variant="outline"
             size="sm"
-            className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-4 text-xs font-semibold text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
+            className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-4 text-xs font-semibold text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none sm:text-sm"
             disabled={displayClients.length === 0}
           >
             <Download className="h-3.5 w-3.5 mr-1.5" />
@@ -692,7 +692,7 @@ export default function ClientManagement() {
           {/* More actions in dropdown on mobile */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-3 text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-200 transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-brand-300/50 data-[state=open]:bg-brand-500/15 data-[state=open]:text-brand-100 sm:flex-none" aria-label="More actions">
+              <Button variant="outline" size="sm" className="h-11 flex-1 rounded-2xl border-border/60 bg-background/70 px-3 text-foreground dark:border-white/15 dark:bg-white/[0.04] dark:text-foreground transition-all hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-500/10 hover:text-brand-100 hover:shadow-[0_12px_30px_rgba(245,158,11,0.12)] focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 data-[state=open]:border-brand-300/50 data-[state=open]:bg-brand-500/15 data-[state=open]:text-brand-100 sm:flex-none" aria-label="More actions">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -708,11 +708,11 @@ export default function ClientManagement() {
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => refetch()} className="rounded-xl transition-colors focus:bg-brand-500/10 focus:text-brand-100">
-                <RefreshCw className="h-4 w-4 mr-2 text-muted-foreground dark:text-slate-300" />
+                <RefreshCw className="h-4 w-4 mr-2 text-muted-foreground dark:text-foreground" />
                 Refresh
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.location.href = '/client-tracker'} className="rounded-xl transition-colors focus:bg-brand-500/10 focus:text-brand-100">
-                <Target className="h-4 w-4 mr-2 text-muted-foreground dark:text-slate-300" />
+                <Target className="h-4 w-4 mr-2 text-muted-foreground dark:text-foreground" />
                 Client Tracker
               </DropdownMenuItem>
             </DropdownMenuContent>

@@ -150,8 +150,8 @@ export function TimelineView({
               className="absolute left-0 right-0 z-10 flex items-center pointer-events-none animate-pulse"
               style={{ top: currentTimeTop }}
             >
-              <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5" />
-              <div className="flex-1 h-0.5 bg-red-500" />
+              <div className="w-3 h-3 rounded-full bg-destructive -ml-1.5" />
+              <div className="flex-1 h-0.5 bg-destructive" />
             </div>
           )}
 

@@ -266,18 +266,18 @@ export default function GammaTemplateManager() {
                     {t.description && <p className="mt-1 max-w-md truncate text-xs text-muted-foreground">{t.description}</p>}
                   </TableCell>
                   <TableCell className="py-4">
-                    <code className="inline-flex max-w-[15rem] items-center rounded-xl border border-border/70 bg-muted/45 px-3 py-1.5 font-mono text-[0.70rem] font-medium text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45)] transition-colors group-hover:border-brand-300/45 group-hover:bg-brand-50/60 group-hover:text-brand-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:group-hover:border-brand-200/25 dark:group-hover:bg-brand-200/10 dark:group-hover:text-brand-50" title={t.gamma_template_id}>
+                    <code className="inline-flex max-w-[15rem] items-center rounded-xl border border-border/70 bg-muted/45 px-3 py-1.5 font-mono text-[0.70rem] font-medium text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45)] transition-colors group-hover:border-brand-300/45 group-hover:bg-brand-50/60 group-hover:text-brand-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-foreground/80 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:group-hover:border-brand-200/25 dark:group-hover:bg-brand-200/10 dark:group-hover:text-brand-50" title={t.gamma_template_id}>
                       <span className="truncate">{t.gamma_template_id}</span>
                     </code>
                   </TableCell>
                   <TableCell className="py-4">
-                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-border/70 bg-muted px-2.5 py-1 text-xs font-bold text-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-white/10 dark:bg-background/70 dark:text-slate-200">
+                    <Badge variant="secondary" className="gap-1.5 rounded-full border border-border/70 bg-muted px-2.5 py-1 text-xs font-bold text-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.42)] dark:border-white/10 dark:bg-background/70 dark:text-foreground">
                       <Layers3 className="h-3 w-3" />
                       {t.placeholder_mappings.length} {t.placeholder_mappings.length === 1 ? 'mapping' : 'mappings'}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4">
-                    <Badge variant={t.is_active ? 'outline' : 'secondary'} className={t.is_active ? 'rounded-full border-success/45 bg-[linear-gradient(135deg,rgba(20,184,166,0.14),rgba(16,185,129,0.10))] px-2.5 py-1 text-xs font-bold text-success shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_8px_18px_rgba(20,184,166,0.10)] dark:border-success/25 dark:bg-success/10 dark:text-success' : 'rounded-full border border-border/70 bg-muted px-2.5 py-1 text-xs font-semibold text-foreground dark:border-white/10 dark:text-slate-300'}>
+                    <Badge variant={t.is_active ? 'outline' : 'secondary'} className={t.is_active ? 'rounded-full border-success/45 bg-[linear-gradient(135deg,rgba(20,184,166,0.14),rgba(16,185,129,0.10))] px-2.5 py-1 text-xs font-bold text-success shadow-[inset_0_1px_0_hsl(0_0%_100%/0.44),0_8px_18px_rgba(20,184,166,0.10)] dark:border-success/25 dark:bg-success/10 dark:text-success' : 'rounded-full border border-border/70 bg-muted px-2.5 py-1 text-xs font-semibold text-foreground dark:border-white/10 dark:text-foreground'}>
                       <span className={t.is_active ? 'mr-1.5 h-1.5 w-1.5 rounded-full bg-success shadow-[0_0_0_3px_rgba(16,185,129,0.14)]' : 'mr-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground/60'} />
                       {t.is_active ? 'Active' : 'Inactive'}
                     </Badge>

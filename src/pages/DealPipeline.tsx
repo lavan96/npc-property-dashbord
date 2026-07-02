@@ -41,21 +41,21 @@ import { useModulePermissions } from "@/hooks/useModulePermissions";
 import type { DealWithClient } from "@/hooks/useAllDeals";
 
 const pipelineTabTriggerClass = cn(
-  "group relative flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-muted-foreground dark:text-zinc-300/82 transition-all duration-200",
-  "border border-transparent hover:-translate-y-0.5 hover:border-amber-300/40 dark:hover:border-amber-200/20 hover:bg-amber-50/60 dark:hover:bg-white/[0.075] hover:text-amber-800 dark:hover:text-amber-100 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-zinc-950",
-  "data-[state=active]:border-amber-100/60 data-[state=active]:bg-[linear-gradient(135deg,#fde68a,#f59e0b_58%,#b45309)] data-[state=active]:text-amber-950",
-  "data-[state=active]:shadow-[0_16px_36px_rgba(245,158,11,0.32),inset_0_1px_0_rgba(255,255,255,0.55)] data-[state=active]:hover:text-amber-950 sm:h-12 sm:px-4 sm:text-sm",
+  "group relative flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-muted-foreground dark:text-foreground/82 transition-all duration-200",
+  "border border-transparent hover:-translate-y-0.5 hover:border-brand-300/40 dark:hover:border-brand-200/20 hover:bg-brand-50/60 dark:hover:bg-white/[0.075] hover:text-brand-800 dark:hover:text-brand-100 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-zinc-950",
+  "data-[state=active]:border-brand-100/60 data-[state=active]:bg-[linear-gradient(135deg,#fde68a,#f59e0b_58%,#b45309)] data-[state=active]:text-brand-950",
+  "data-[state=active]:shadow-[0_16px_36px_rgba(245,158,11,0.32),inset_0_1px_0_rgba(255,255,255,0.55)] data-[state=active]:hover:text-brand-950 sm:h-12 sm:px-4 sm:text-sm",
 );
 
 const pipelineTabIconClass =
   "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 group-data-[state=active]:drop-shadow-[0_1px_8px_rgba(120,53,15,0.28)] sm:h-[18px] sm:w-[18px]";
 
 const premiumScrollbarClass =
-  "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950/80 [&::-webkit-scrollbar-thumb]:bg-amber-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/75";
+  "[scrollbar-color:rgba(245,158,11,0.46)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-border/80 [&::-webkit-scrollbar-thumb]:bg-brand-300/45 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/75";
 
 const pipelineTabContentClass = cn(
-  "mt-4 rounded-[1.25rem] border border-border dark:border-white/10 bg-card dark:bg-zinc-950/35 p-2 shadow-inner sm:p-4",
+  "mt-4 rounded-[1.25rem] border border-border dark:border-white/10 bg-card dark:bg-background/35 p-2 shadow-inner sm:p-4",
   "data-[state=active]:flex data-[state=active]:flex-col",
   premiumScrollbarClass,
 );
@@ -116,7 +116,7 @@ export default function DealPipeline() {
     return (
       <DashboardThemeFrame variant="page" className="space-y-4 p-3 sm:p-6">
         <div className="flex items-center gap-2 sm:gap-3">
-          <TrendingUp className="h-5 w-5 shrink-0 text-amber-300 sm:h-6 sm:w-6" />
+          <TrendingUp className="h-5 w-5 shrink-0 text-brand-300 sm:h-6 sm:w-6" />
           <h1 className="text-lg sm:text-2xl font-bold tracking-tight">
             Deal Pipeline
           </h1>
@@ -133,23 +133,23 @@ export default function DealPipeline() {
 
   return (
     <DashboardThemeFrame variant="page" className={cn("deal-pipeline-polish relative flex flex-col space-y-5 rounded-[2rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
-      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
-      <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
+      <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
 
       <DashboardThemeFrame as="header" variant="hero" aria-labelledby="deal-pipeline-title" className="border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.92),hsl(var(--primary)/0.085)_34%,hsl(var(--background)/0.84))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_22px_60px_rgba(0,0,0,0.28)] sm:p-6">
-        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/75 to-transparent" />
-        <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
-        <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-amber-100 via-amber-400 to-amber-700 shadow-[0_0_24px_rgba(245,158,11,0.35)]" />
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/75 to-transparent" />
+        <div className="pointer-events-none absolute -right-14 -top-20 h-40 w-40 rounded-full bg-brand-300/10 blur-3xl" />
+        <div className="absolute inset-y-5 left-0 w-1 rounded-r-full bg-gradient-to-b from-brand-100 via-brand-400 to-brand-700 shadow-[0_0_24px_rgba(245,158,11,0.35)]" />
         <div className="flex items-center gap-4 sm:gap-5">
-          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] border border-amber-100/40 bg-[radial-gradient(circle_at_30%_20%,rgba(254,243,199,0.24),rgba(245,158,11,0.12)_42%,rgba(0,0,0,0.32))] shadow-[0_16px_38px_rgba(245,158,11,0.18),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-16 sm:w-16">
-            <div className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-amber-100/60 bg-amber-300 text-[11px] font-bold text-amber-950 shadow-[0_8px_18px_rgba(245,158,11,0.28)]">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] border border-brand-100/40 bg-[radial-gradient(circle_at_30%_20%,rgba(254,243,199,0.24),rgba(245,158,11,0.12)_42%,rgba(0,0,0,0.32))] shadow-[0_16px_38px_rgba(245,158,11,0.18),inset_0_1px_0_rgba(255,255,255,0.14)] sm:h-16 sm:w-16">
+            <div className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-brand-100/60 bg-brand-300 text-[11px] font-bold text-brand-950 shadow-[0_8px_18px_rgba(245,158,11,0.28)]">
               $
             </div>
-            <TrendingUp className="h-6 w-6 text-amber-100 drop-shadow-[0_0_16px_rgba(251,191,36,0.45)] sm:h-7 sm:w-7" />
+            <TrendingUp className="h-6 w-6 text-brand-100 drop-shadow-[0_0_16px_rgba(251,191,36,0.45)] sm:h-7 sm:w-7" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-amber-200/80">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand-200/80">
               Deal command centre
             </p>
             <h1 id="deal-pipeline-title" className="mt-1 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-4xl">
@@ -202,7 +202,7 @@ export default function DealPipeline() {
         onValueChange={setActiveTab}
         className="relative flex flex-col rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] dark:shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
       >
-        <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-amber-300/30 dark:border-amber-100/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55)_40%,hsl(var(--background)/0.85))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_18px_46px_rgba(15,23,42,0.10)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
+        <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-brand-300/30 dark:border-brand-100/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55)_40%,hsl(var(--background)/0.85))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_18px_46px_rgba(15,23,42,0.10)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
             <LayoutDashboard className={pipelineTabIconClass} />
             <span className="hidden sm:inline">Executive </span>Summary

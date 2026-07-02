@@ -632,7 +632,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
 
           {uploadStatus === 'complete' && importSummary && (
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-green-600">
+              <div className="flex items-center gap-3 text-success">
                 <CheckCircle2 className="h-5 w-5" />
                 <p className="font-medium text-sm">Import Complete!</p>
               </div>
@@ -676,7 +676,7 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
                 )}
                 {importSummary.portfolioUpdated && (
                   <div className="flex items-center gap-2 p-2 bg-muted/50 rounded col-span-2">
-                    <CheckCircle2 className="h-3 w-3 text-green-600" />
+                    <CheckCircle2 className="h-3 w-3 text-success" />
                     <span>Portfolio summary updated</span>
                   </div>
                 )}
@@ -733,13 +733,13 @@ export function ClientVownetForms({ clientId, clientName }: ClientVownetFormsPro
               {vownetForms.map((file) => (
                 <Card key={file.id} className="group">
                   <CardContent className="py-3 flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                      <FileSpreadsheet className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <div className="p-2 rounded-lg bg-success/15 dark:bg-success/30">
+                      <FileSpreadsheet className="h-4 w-4 text-success dark:text-success" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{file.file_name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <Badge variant="secondary" className="bg-success/15 text-success dark:bg-success/30 dark:text-success">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Imported
                         </Badge>

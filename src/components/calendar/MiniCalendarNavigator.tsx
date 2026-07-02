@@ -99,7 +99,7 @@ export function MiniCalendarNavigator({
                 isSelected && 'border-primary/70 bg-primary/20 text-primary shadow-[0_8px_20px_hsl(var(--primary)/0.14)]',
                 !isSelected && isTodayDate && 'border-primary/45 bg-primary/10 text-primary',
                 !isSelected && !isTodayDate && 'border-transparent text-muted-foreground hover:border-primary/25 hover:bg-primary/10 hover:text-primary',
-                !isCurrentMonth && 'text-zinc-600 hover:text-muted-foreground'
+                !isCurrentMonth && 'text-muted-foreground hover:text-muted-foreground'
               )}
             >
               {format(day, 'd')}

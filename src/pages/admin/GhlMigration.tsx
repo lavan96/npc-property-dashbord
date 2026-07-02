@@ -696,10 +696,10 @@ function MigrationWorkersPanel() {
         </div>
 
         {/* Pre-Replay Gap Backfill */}
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
+        <div className="rounded-md border border-brand-500/40 bg-brand-500/5 p-4 space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-amber-500" />
+              <Database className="h-4 w-4 text-brand-500" />
               <h3 className="text-sm font-semibold">Legacy mirror gap backfill</h3>
               <Badge variant="outline" className="text-[10px]">Run before Phase B replay</Badge>
             </div>

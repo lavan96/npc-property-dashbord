@@ -486,7 +486,7 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
             <>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Monthly Rental Income</span>
-                <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(monthlyRentalIncome)}</span>
+                <span className="font-medium text-success dark:text-success">{formatCurrency(monthlyRentalIncome)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total Monthly Expenses</span>
@@ -495,7 +495,7 @@ export function PortalPropertyForm({ existingProperty, onComplete, onCancel }: P
               <Separator />
               <div className="flex justify-between text-sm font-medium">
                 <span>Net Monthly Cashflow</span>
-                <span className={netMonthlyCashflow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}>
+                <span className={netMonthlyCashflow >= 0 ? 'text-success dark:text-success' : 'text-destructive'}>
                   {formatCurrency(netMonthlyCashflow)}
                 </span>
               </div>

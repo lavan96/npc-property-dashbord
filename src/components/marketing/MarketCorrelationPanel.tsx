@@ -27,11 +27,11 @@ interface MarketCorrelationPanelProps {
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; emoji: string; color: string }> = {
-  interest_rate: { label: 'Interest Rate', emoji: '🏦', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30' },
-  economic: { label: 'Economic', emoji: '📊', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30' },
-  housing: { label: 'Housing', emoji: '🏠', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
-  regulatory: { label: 'Regulatory', emoji: '⚖️', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' },
-  seasonal: { label: 'Seasonal', emoji: '📅', color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30' },
+  interest_rate: { label: 'Interest Rate', emoji: '🏦', color: 'bg-info/10 text-info dark:text-info border-info/30' },
+  economic: { label: 'Economic', emoji: '📊', color: 'bg-accent/10 text-accent dark:text-accent border-accent/30' },
+  housing: { label: 'Housing', emoji: '🏠', color: 'bg-success/10 text-success dark:text-success border-success/30' },
+  regulatory: { label: 'Regulatory', emoji: '⚖️', color: 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/30' },
+  seasonal: { label: 'Seasonal', emoji: '📅', color: 'bg-info/10 text-info dark:text-info border-info/30' },
 };
 
 const REPORT_TYPE_OPTIONS = [
@@ -46,8 +46,8 @@ const REPORT_TYPE_OPTIONS = [
 type MarketCorrelationReportType = (typeof REPORT_TYPE_OPTIONS)[number]['value'];
 
 function ImpactIcon({ impact }: { impact: string }) {
-  if (impact === 'positive') return <ArrowUp className="h-3.5 w-3.5 text-emerald-500" />;
-  if (impact === 'negative') return <ArrowDown className="h-3.5 w-3.5 text-red-500" />;
+  if (impact === 'positive') return <ArrowUp className="h-3.5 w-3.5 text-success-foreground0" />;
+  if (impact === 'negative') return <ArrowDown className="h-3.5 w-3.5 text-destructive-foreground0" />;
   return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
@@ -149,9 +149,9 @@ export function MarketCorrelationPanel({ marketEvents, perplexityResearch, citat
         )}
 
         {aiError && (
-          <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
-            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-600 dark:text-amber-400">{aiError}</p>
+          <div className="flex items-start gap-2 rounded-2xl border border-brand-500/20 bg-brand-500/5 p-3">
+            <AlertTriangle className="h-4 w-4 text-brand-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-brand-600 dark:text-brand-400">{aiError}</p>
           </div>
         )}
 

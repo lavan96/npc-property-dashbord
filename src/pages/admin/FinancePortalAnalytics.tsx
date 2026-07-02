@@ -174,7 +174,7 @@ export default function FinancePortalAnalytics() {
             </div>
           </div>
         </div>
-        <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-slate-950/55 md:w-auto">
+        <DashboardThemeFrame variant="toolbar" className="gap-2.5 border-border/60 bg-background/70 p-2.5 shadow-md shadow-black/5 dark:bg-background/55 md:w-auto">
           <Select value={days} onValueChange={setDays}>
             <SelectTrigger aria-label="Select analytics date range" className="h-10 w-full rounded-xl border-border/70 bg-card/70 shadow-sm focus:ring-primary/35 sm:w-40">
               <SelectValue />
@@ -316,7 +316,7 @@ export default function FinancePortalAnalytics() {
                   <CardDescription className="leading-6">Top 10 finance partners by audited event count over the window.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
-                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35"><Table className="min-w-[720px]" aria-label="Most active finance partners">
+                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35"><Table className="min-w-[720px]" aria-label="Most active finance partners">
                     <TableHeader className="bg-muted/35">
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Partner</TableHead>
@@ -430,7 +430,7 @@ export default function FinancePortalAnalytics() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-5">
-                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-slate-950/35">
+                  <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card/75 shadow-inner shadow-black/5 dark:bg-background/35">
                     <Table className="min-w-[840px]" aria-label="Finance portal audit log">
                       <TableHeader className="bg-muted/35">
                         <TableRow className="hover:bg-transparent">

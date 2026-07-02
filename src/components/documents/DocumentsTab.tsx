@@ -29,12 +29,12 @@ interface Props {
 
 const STATUS_TONE: Record<GeneratedDocStatus, string> = {
   draft: 'bg-muted text-muted-foreground',
-  generated: 'bg-blue-500/10 text-blue-700 border-blue-500/30',
-  sent: 'bg-amber-500/10 text-amber-700 border-amber-500/30',
-  viewed: 'bg-purple-500/10 text-purple-700 border-purple-500/30',
-  signed: 'bg-green-500/10 text-green-700 border-green-500/30',
-  voided: 'bg-red-500/10 text-red-700 border-red-500/30',
-  expired: 'bg-red-500/10 text-red-700 border-red-500/30',
+  generated: 'bg-info/10 text-info border-info/30',
+  sent: 'bg-brand-500/10 text-brand-700 border-brand-500/30',
+  viewed: 'bg-accent/10 text-accent border-accent/30',
+  signed: 'bg-success/10 text-success border-success/30',
+  voided: 'bg-destructive/10 text-destructive border-destructive/30',
+  expired: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
 export function DocumentsTab({ clientId, dealId, submissionId }: Props) {

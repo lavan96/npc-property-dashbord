@@ -61,9 +61,9 @@ export function MetricsReviewStep({ properties, portfolioTotals }: MetricsReview
               <span className="text-xs text-muted-foreground">Portfolio LVR</span>
             </div>
             <p className={`text-2xl font-bold mt-1 ${
-              portfolioTotals.portfolioLvr > 80 ? 'text-red-600' :
-              portfolioTotals.portfolioLvr > 60 ? 'text-orange-600' :
-              'text-green-600'
+              portfolioTotals.portfolioLvr > 80 ? 'text-destructive' :
+              portfolioTotals.portfolioLvr > 60 ? 'text-warning' :
+              'text-success'
             }`}>
               {portfolioTotals.portfolioLvr.toFixed(1)}%
             </p>
@@ -76,7 +76,7 @@ export function MetricsReviewStep({ properties, portfolioTotals }: MetricsReview
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Total Debt</span>
             </div>
-            <p className="text-2xl font-bold mt-1 text-red-600">{formatCurrency(portfolioTotals.totalDebt)}</p>
+            <p className="text-2xl font-bold mt-1 text-destructive">{formatCurrency(portfolioTotals.totalDebt)}</p>
           </CardContent>
         </Card>
 
@@ -84,14 +84,14 @@ export function MetricsReviewStep({ properties, portfolioTotals }: MetricsReview
           <CardContent className="pt-4">
             <div className="flex items-center gap-2">
               {portfolioTotals.totalMonthlyCashflow >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-success" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-red-600" />
+                <TrendingDown className="h-4 w-4 text-destructive" />
               )}
               <span className="text-xs text-muted-foreground">Monthly Cash Flow</span>
             </div>
             <p className={`text-2xl font-bold mt-1 ${
-              portfolioTotals.totalMonthlyCashflow >= 0 ? 'text-green-600' : 'text-red-600'
+              portfolioTotals.totalMonthlyCashflow >= 0 ? 'text-success' : 'text-destructive'
             }`}>
               ${portfolioTotals.totalMonthlyCashflow.toLocaleString()}
             </p>
@@ -138,9 +138,9 @@ export function MetricsReviewStep({ properties, portfolioTotals }: MetricsReview
                       <Badge 
                         variant="outline"
                         className={
-                          prop.lvr > 80 ? 'text-red-600 border-red-300' :
-                          prop.lvr > 60 ? 'text-orange-600 border-orange-300' :
-                          'text-green-600 border-green-300'
+                          prop.lvr > 80 ? 'text-destructive border-destructive/30' :
+                          prop.lvr > 60 ? 'text-warning border-warning/30' :
+                          'text-success border-success/30'
                         }
                       >
                         {prop.lvr.toFixed(1)}%
@@ -148,7 +148,7 @@ export function MetricsReviewStep({ properties, portfolioTotals }: MetricsReview
                     </td>
                     <td className="py-3 text-right">${prop.monthlyRentalIncome.toLocaleString()}</td>
                     <td className={`py-3 text-right font-medium ${
-                      prop.netMonthlyCashflow >= 0 ? 'text-green-600' : 'text-red-600'
+                      prop.netMonthlyCashflow >= 0 ? 'text-success' : 'text-destructive'
                     }`}>
                       ${prop.netMonthlyCashflow.toLocaleString()}
                     </td>

@@ -126,9 +126,9 @@ export function AvailabilitySlots({
             variant="outline" 
             className={cn(
               'text-xs',
-              availabilityPercentage > 70 ? 'text-green-500 border-green-500/50' :
-              availabilityPercentage > 30 ? 'text-yellow-500 border-yellow-500/50' :
-              'text-red-500 border-red-500/50'
+              availabilityPercentage > 70 ? 'text-success-foreground0 border-success/50' :
+              availabilityPercentage > 30 ? 'text-brand-500 border-brand-500/50' :
+              'text-destructive-foreground0 border-destructive/50'
             )}
           >
             {availabilityPercentage}% free
@@ -138,9 +138,9 @@ export function AvailabilitySlots({
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
-          <span className="text-green-600 dark:text-green-400">{freeSlots.length} free slots</span>
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 border border-success/20">
+          <CheckCircle2 className="h-4 w-4 text-success-foreground0" />
+          <span className="text-success dark:text-success">{freeSlots.length} free slots</span>
         </div>
         <div className="flex items-center gap-2 p-2 rounded-lg bg-muted border border-border">
           <Clock className="h-4 w-4 text-muted-foreground" />
@@ -157,7 +157,7 @@ export function AvailabilitySlots({
               className={cn(
                 'group flex items-center justify-between p-2 rounded-lg border transition-all duration-200',
                 slot.isFree
-                  ? 'bg-green-500/5 border-green-500/20 hover:bg-green-500/10 hover:border-green-500/40 cursor-pointer'
+                  ? 'bg-success/5 border-success/20 hover:bg-success/10 hover:border-success/40 cursor-pointer'
                   : 'bg-muted/50 border-border opacity-60'
               )}
               onClick={() => slot.isFree && onSlotClick?.(slot.start, slot.end)}
@@ -166,7 +166,7 @@ export function AvailabilitySlots({
                 <div
                   className={cn(
                     'w-2 h-2 rounded-full',
-                    slot.isFree ? 'bg-green-500' : 'bg-muted-foreground'
+                    slot.isFree ? 'bg-success' : 'bg-muted-foreground'
                   )}
                 />
                 <span className={cn('text-sm font-medium', slot.isFree ? 'text-foreground' : 'text-muted-foreground')}>
@@ -178,7 +178,7 @@ export function AvailabilitySlots({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-green-600 hover:text-green-700 hover:bg-green-500/20"
+                  className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-success hover:text-success hover:bg-success/20"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSlotClick?.(slot.start, slot.end);

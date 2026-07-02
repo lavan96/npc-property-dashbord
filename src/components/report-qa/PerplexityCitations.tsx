@@ -29,7 +29,7 @@ export function PerplexityCitations({ citations, className }: PerplexityCitation
             href={citation}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors border border-blue-200 dark:border-blue-800"
+            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-info/10 dark:bg-info/30 text-info dark:text-info hover:bg-info/15 dark:hover:bg-info/40 transition-colors border border-info/30 dark:border-info/30"
           >
             <span className="font-medium">[{index + 1}]</span>
             <span className="truncate max-w-[120px]">{getDomain(citation)}</span>

@@ -161,12 +161,12 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:justify-end">
-              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/70 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-muted-foreground dark:text-slate-300">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/70 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-muted-foreground dark:text-foreground">
                 <span className="h-2 w-2 rounded-full bg-brand-300 shadow-[0_0_12px_rgba(251,191,36,0.65)]" />
                 Max 4 clients · {selectedIds.length}/4 selected
               </div>
               {selectedIds.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-9 rounded-full border border-border/60 dark:border-white/10 bg-background/55 dark:bg-white/[0.03] px-3 text-xs font-semibold text-muted-foreground dark:text-slate-300 hover:bg-primary/10 hover:text-foreground dark:hover:bg-white/[0.07] dark:hover:text-white">
+                <Button variant="ghost" size="sm" onClick={clearSelection} className="h-9 rounded-full border border-border/60 dark:border-white/10 bg-background/55 dark:bg-white/[0.03] px-3 text-xs font-semibold text-muted-foreground dark:text-foreground hover:bg-primary/10 hover:text-foreground dark:hover:bg-white/[0.07] dark:hover:text-white">
                   <X className="mr-1.5 h-3.5 w-3.5" />
                   Clear ({selectedIds.length})
                 </Button>
@@ -194,7 +194,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
               className={`h-12 shrink-0 gap-2 rounded-2xl px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-brand-300/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                 showActiveOnly
                   ? 'border-brand-300/30 bg-gradient-to-r from-brand-300 to-brand-500 text-black shadow-lg shadow-brand-500/20 hover:from-brand-200 hover:to-brand-400'
-                  : 'border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] text-muted-foreground dark:text-slate-300 hover:border-brand-300/30 hover:bg-brand-300/10 hover:text-brand-700 dark:hover:text-brand-100'
+                  : 'border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] text-muted-foreground dark:text-foreground hover:border-brand-300/30 hover:bg-brand-300/10 hover:text-brand-700 dark:hover:text-brand-100'
               }`}
               onClick={() => setShowActiveOnly(!showActiveOnly)}
             >
@@ -214,7 +214,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-300/20 bg-brand-300/10 text-brand-700 dark:text-brand-100">
                   <Search className="h-5 w-5" />
                 </div>
-                <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">
+                <p className="text-sm font-semibold text-foreground/90 dark:text-foreground">
                   {showActiveOnly
                     ? 'No active clients found'
                     : 'No clients match your search'
@@ -252,7 +252,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <p className={`truncate text-sm font-semibold ${isSelected ? 'text-brand-950 dark:text-brand-50' : 'text-foreground/90 dark:text-slate-200'}`}>
+                          <p className={`truncate text-sm font-semibold ${isSelected ? 'text-brand-950 dark:text-brand-50' : 'text-foreground/90 dark:text-foreground'}`}>
                             {smartCapitalize(client.primary_first_name)} {smartCapitalize(client.primary_surname)}
                           </p>
                           {client.is_favorite && (
@@ -267,7 +267,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                           <span className="rounded-full border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 px-2 py-0.5">{formatCurrency(Number(client.total_portfolio_value) || 0)}</span>
                         </div>
                       </div>
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-colors ${isSelected ? 'border-brand-200/50 bg-brand-300 text-black shadow-[0_0_18px_rgba(251,191,36,0.45)]' : 'border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 text-muted-foreground group-hover:text-muted-foreground dark:text-slate-300'}`}>
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-colors ${isSelected ? 'border-brand-200/50 bg-brand-300 text-black shadow-[0_0_18px_rgba(251,191,36,0.45)]' : 'border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 text-muted-foreground group-hover:text-muted-foreground dark:text-foreground'}`}>
                         {isSelected ? selectedIds.indexOf(client.id) + 1 : '+'}
                       </div>
                     </div>
@@ -298,18 +298,18 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
             <div className="mx-auto mt-7 grid max-w-2xl gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] px-4 py-3 text-left">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80 dark:text-muted-foreground">Minimum</p>
-                <p className="mt-1 text-sm font-semibold text-foreground/90 dark:text-slate-200">2 clients</p>
+                <p className="mt-1 text-sm font-semibold text-foreground/90 dark:text-foreground">2 clients</p>
               </div>
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] px-4 py-3 text-left">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80 dark:text-muted-foreground">Maximum</p>
-                <p className="mt-1 text-sm font-semibold text-foreground/90 dark:text-slate-200">4 clients</p>
+                <p className="mt-1 text-sm font-semibold text-foreground/90 dark:text-foreground">4 clients</p>
               </div>
               <div className="rounded-2xl border border-brand-300/20 bg-brand-300/10 px-4 py-3 text-left">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-100/60">Current</p>
                 <p className="mt-1 text-sm font-semibold text-brand-950 dark:text-brand-50">{selectedClients.length}/2 ready</p>
               </div>
             </div>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 px-4 py-2 text-xs font-semibold text-muted-foreground dark:text-slate-300">
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 px-4 py-2 text-xs font-semibold text-muted-foreground dark:text-foreground">
               <UserCheck className="h-3.5 w-3.5 text-brand-700 dark:text-brand-200" />
               {selectedClients.length === 1 ? '1 selected — pick one more' : 'Choose from the list above'}
             </div>
@@ -372,7 +372,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                 
                 return (
                   <div key={metric.key} className="rounded-2xl border border-border/60 dark:border-white/10 bg-background/55 dark:bg-white/[0.025] p-3 sm:p-4">
-                    <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground dark:text-slate-300">
+                    <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground dark:text-foreground">
                       <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 text-brand-700 dark:text-brand-100">
                         <metric.icon className="h-4 w-4" />
                       </span>
@@ -399,7 +399,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
                               {smartCapitalize(client.primary_first_name)}
                             </p>
                             <div className="mt-2 flex items-center justify-between gap-2">
-                              <p className={`text-lg font-bold tabular-nums ${metric.key === 'net_monthly_cash_flow' ? (value >= 0 ? 'text-success dark:text-success' : 'text-destructive dark:text-destructive') : 'text-foreground dark:text-slate-100'}`}>
+                              <p className={`text-lg font-bold tabular-nums ${metric.key === 'net_monthly_cash_flow' ? (value >= 0 ? 'text-success dark:text-success' : 'text-destructive dark:text-destructive') : 'text-foreground dark:text-foreground'}`}>
                                 {metric.format(value)}
                               </p>
                               {isBest && (
@@ -418,7 +418,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
 
               {/* Equity Comparison */}
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-background/55 dark:bg-white/[0.025] p-3 sm:p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground dark:text-slate-300">
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground dark:text-foreground">
                   <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 text-brand-700 dark:text-brand-100">
                     <DollarSign className="h-4 w-4" />
                   </span>
@@ -459,7 +459,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
 
               {/* LTV Comparison */}
               <div className="rounded-2xl border border-border/60 dark:border-white/10 bg-background/55 dark:bg-white/[0.025] p-3 sm:p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground dark:text-slate-300">
+                <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-muted-foreground dark:text-foreground">
                   <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 text-brand-700 dark:text-brand-100">
                     <Percent className="h-4 w-4" />
                   </span>

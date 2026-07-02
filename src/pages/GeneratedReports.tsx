@@ -154,28 +154,28 @@ export default function GeneratedReports() {
   // Helper function to get grade color classes
   const getGradeColor = (grade: string): string => {
     switch (grade?.toUpperCase()) {
-      case 'A+': return 'bg-emerald-500 text-foreground dark:text-white';
-      case 'A': return 'bg-green-500 text-foreground dark:text-white';
-      case 'B+': return 'bg-teal-500 text-foreground dark:text-white';
-      case 'B': return 'bg-yellow-500 text-black';
-      case 'C+': return 'bg-amber-500 text-black';
-      case 'C': return 'bg-orange-500 text-foreground dark:text-white';
-      case 'D': return 'bg-red-400 text-foreground dark:text-white';
-      case 'F': return 'bg-red-600 text-foreground dark:text-white';
+      case 'A+': return 'bg-success text-foreground dark:text-white';
+      case 'A': return 'bg-success text-foreground dark:text-white';
+      case 'B+': return 'bg-success text-foreground dark:text-white';
+      case 'B': return 'bg-brand-500 text-black';
+      case 'C+': return 'bg-brand-500 text-black';
+      case 'C': return 'bg-warning text-foreground dark:text-white';
+      case 'D': return 'bg-destructive/60 text-foreground dark:text-white';
+      case 'F': return 'bg-destructive text-foreground dark:text-white';
       default: return 'bg-muted text-muted-foreground';
     }
   };
 
   // Helper function to get score color
   const getScoreColor = (score: number): string => {
-    if (score >= 85) return 'text-emerald-600 dark:text-emerald-400';
-    if (score >= 75) return 'text-green-600 dark:text-green-400';
-    if (score >= 65) return 'text-teal-600 dark:text-teal-400';
-    if (score >= 55) return 'text-yellow-600 dark:text-yellow-400';
-    if (score >= 45) return 'text-amber-600 dark:text-amber-400';
-    if (score >= 35) return 'text-orange-600 dark:text-orange-400';
-    if (score >= 25) return 'text-red-400 dark:text-red-300';
-    return 'text-red-600 dark:text-red-400';
+    if (score >= 85) return 'text-success dark:text-success';
+    if (score >= 75) return 'text-success dark:text-success';
+    if (score >= 65) return 'text-success dark:text-success';
+    if (score >= 55) return 'text-brand-600 dark:text-brand-400';
+    if (score >= 45) return 'text-brand-600 dark:text-brand-400';
+    if (score >= 35) return 'text-warning dark:text-warning';
+    if (score >= 25) return 'text-destructive dark:text-destructive';
+    return 'text-destructive dark:text-destructive';
   };
 
   const fetchInvestmentReportDetails = async (reportId: string): Promise<InvestmentReport | null> => {

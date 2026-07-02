@@ -87,10 +87,10 @@ export function InternalDealLinkCard({ fileId, clientId, file, linkedDeal, onCha
         ) : (
           <div className="space-y-3">
             {hasDrift && (
-              <div className="flex items-start gap-2 p-2 rounded border border-amber-500/40 bg-amber-500/5 text-xs">
-                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2 p-2 rounded border border-brand-500/40 bg-brand-500/5 text-xs">
+                <AlertTriangle className="h-4 w-4 text-brand-500 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium text-amber-500">Drift detected</p>
+                  <p className="font-medium text-brand-500">Drift detected</p>
                   <p className="text-muted-foreground">
                     {drift?.address && 'Address mismatch · '}
                     {drift?.price && 'Price >$5k difference · '}
@@ -221,7 +221,7 @@ function CandidateDealPicker({
                   </div>
                 </div>
                 {isLinkedElsewhere && (
-                  <p className="text-xs text-amber-500 mt-1">Already linked to another purchase file</p>
+                  <p className="text-xs text-brand-500 mt-1">Already linked to another purchase file</p>
                 )}
               </button>
             );

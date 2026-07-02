@@ -10,19 +10,19 @@ import { cn } from '@/lib/utils';
 const statusConfig: Record<string, { label: string; className: string }> = {
   planning: {
     label: 'Planning',
-    className: 'border-amber-400/35 bg-amber-500/10 text-amber-700 dark:text-amber-200',
+    className: 'border-brand-400/35 bg-brand-500/10 text-brand-700 dark:text-brand-200',
   },
   active: {
     label: 'Active',
-    className: 'border-emerald-400/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200',
+    className: 'border-success/35 bg-success/10 text-success dark:text-success',
   },
   completed: {
     label: 'Completed',
-    className: 'border-teal-400/35 bg-teal-500/10 text-teal-700 dark:text-teal-200',
+    className: 'border-success/35 bg-success/10 text-success dark:text-success',
   },
   archived: {
     label: 'Archived',
-    className: 'border-slate-400/35 bg-slate-500/10 text-slate-600 dark:text-slate-300',
+    className: 'border-border/35 bg-muted0/10 text-muted-foreground dark:text-foreground',
   },
 };
 
@@ -38,7 +38,7 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
     return (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading game plans">
         {[1, 2, 3].map(i => (
-          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20" aria-hidden="true">
+          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-background/40 dark:shadow-black/20" aria-hidden="true">
             <CardContent className="space-y-5 p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
 
   if (!plans.length) {
     return (
-      <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20" role="status">
+      <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-background/35 dark:shadow-black/20" role="status">
         <CardContent className="flex flex-col items-center justify-center py-16 text-center">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-4xl shadow-inner shadow-primary/10">🎯</div>
           <h3 className="text-lg font-semibold text-foreground">No game plans yet</h3>
@@ -82,7 +82,7 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
           <Card
             key={plan.id}
             role="listitem"
-            className="group relative overflow-hidden cursor-pointer border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-lg shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/40 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10 focus-within:border-primary/30 focus-within:shadow-2xl focus-within:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950/65 dark:ring-white/10 dark:shadow-black/25 dark:hover:shadow-primary/10"
+            className="group relative overflow-hidden cursor-pointer border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--muted)/0.18))] shadow-lg shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/40 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/10 focus-within:border-primary/30 focus-within:shadow-2xl focus-within:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-background/65 dark:ring-white/10 dark:shadow-black/25 dark:hover:shadow-primary/10"
             style={{ animationDelay: `${i * 80}ms` }}
           >
             <button
@@ -104,7 +104,7 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
                   <span
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-background/70 text-2xl shadow-inner shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/45 transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 dark:border-white/10 dark:bg-slate-950/70 dark:ring-white/10"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-background/70 text-2xl shadow-inner shadow-sm dark:shadow-black/5 ring-1 ring-border dark:ring-white/45 transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100 dark:border-white/10 dark:bg-background/70 dark:ring-white/10"
                     style={{ boxShadow: `inset 0 0 0 1px ${plan.color}24, 0 12px 28px ${plan.color}14` }}
                   >
                     {plan.icon}
@@ -124,7 +124,7 @@ export function GamePlanList({ plans, isLoading, onSelect, onDelete }: Props) {
               </div>
 
               {(plan.start_date || plan.end_date) && (
-                <div className="mb-4 flex items-center gap-1.5 rounded-xl border border-border/50 bg-background/55 px-2.5 py-2 text-xs text-muted-foreground dark:border-white/10 dark:bg-slate-950/45">
+                <div className="mb-4 flex items-center gap-1.5 rounded-xl border border-border/50 bg-background/55 px-2.5 py-2 text-xs text-muted-foreground dark:border-white/10 dark:bg-background/45">
                   <Calendar className="h-3.5 w-3.5 text-primary" />
                   <span className="truncate">
                     {plan.start_date && format(new Date(plan.start_date), 'MMM d, yyyy')}

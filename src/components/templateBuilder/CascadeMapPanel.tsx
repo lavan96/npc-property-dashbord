@@ -118,8 +118,8 @@ const QA_STATUS_OPTIONS: Array<{ value: CascadeQaStatus; label: string }> = [
 
 function issueTone(severity: string): string {
   if (severity === 'error') return 'border-destructive/40 bg-destructive/5 text-destructive';
-  if (severity === 'warning') return 'border-amber-400/40 bg-amber-50 text-amber-800 dark:bg-amber-950/20 dark:text-amber-200';
-  return 'border-sky-400/30 bg-sky-50 text-sky-800 dark:bg-sky-950/20 dark:text-sky-200';
+  if (severity === 'warning') return 'border-brand-400/40 bg-brand-50 text-brand-800 dark:bg-brand-950/20 dark:text-brand-200';
+  return 'border-info/30 bg-info/10 text-info dark:bg-info/20 dark:text-info';
 }
 
 export function CascadeMapPanel({
@@ -355,10 +355,10 @@ export function CascadeMapPanel({
           )}
 
           {cascadeTargets.length > 0 && (
-            <Card className="border-amber-400/30 bg-amber-50/60 p-3 text-xs dark:bg-amber-950/10">
+            <Card className="border-brand-400/30 bg-brand-50/60 p-3 text-xs dark:bg-brand-950/10">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h4 className="font-semibold flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-amber-600" /> Bulk QA signoff</h4>
+                  <h4 className="font-semibold flex items-center gap-2"><CheckCircle2 className="h-3.5 w-3.5 text-brand-600" /> Bulk QA signoff</h4>
                   <p className="mt-1 text-muted-foreground">
                     Filter mapped anchors by current QA status, assign an owner/note, and update their signoff state before activation.
                   </p>

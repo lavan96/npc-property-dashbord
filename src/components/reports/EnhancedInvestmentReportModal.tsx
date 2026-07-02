@@ -385,7 +385,7 @@ export function EnhancedInvestmentReportModal({
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-success" />
                 <div>
                   <p className="text-2xl font-bold">{keyMetrics.grossRentalYield}%</p>
                   <p className="text-xs text-muted-foreground">Gross Yield</p>
@@ -397,7 +397,7 @@ export function EnhancedInvestmentReportModal({
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
-                <DollarSign className="h-4 w-4 text-blue-600" />
+                <DollarSign className="h-4 w-4 text-info" />
                 <div>
                   <p className="text-2xl font-bold">${keyMetrics.weeklyNet}</p>
                   <p className="text-xs text-muted-foreground">Weekly Net</p>
@@ -409,7 +409,7 @@ export function EnhancedInvestmentReportModal({
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
-                <Home className="h-4 w-4 text-purple-600" />
+                <Home className="h-4 w-4 text-accent" />
                 <div>
                   <p className="text-2xl font-bold">{keyMetrics.lvr}%</p>
                   <p className="text-xs text-muted-foreground">LVR</p>
@@ -421,7 +421,7 @@ export function EnhancedInvestmentReportModal({
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
-                <Activity className="h-4 w-4 text-orange-600" />
+                <Activity className="h-4 w-4 text-warning" />
                 <div>
                   <p className="text-2xl font-bold">{keyMetrics.cashOnCashReturn}%</p>
                   <p className="text-xs text-muted-foreground">Cash on Cash</p>
@@ -449,25 +449,25 @@ export function EnhancedInvestmentReportModal({
                   <TabsContent key={scenario} value={scenario} className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-green-600">
+                        <p className="text-2xl font-bold text-success">
                           ${Math.round(data[data.length - 1].propertyValue / 1000)}k
                         </p>
                         <p className="text-sm text-muted-foreground">Property Value (Yr 10)</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-blue-600">
+                        <p className="text-2xl font-bold text-info">
                           ${Math.round(data[data.length - 1].equity / 1000)}k
                         </p>
                         <p className="text-sm text-muted-foreground">Equity (Yr 10)</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-purple-600">
+                        <p className="text-2xl font-bold text-accent">
                           ${Math.round(data[data.length - 1].cumulativeCashFlow / 1000)}k
                         </p>
                         <p className="text-sm text-muted-foreground">Total Cash Flow</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-orange-600">
+                        <p className="text-2xl font-bold text-warning">
                           {data[data.length - 1].roi}%
                         </p>
                         <p className="text-sm text-muted-foreground">Average ROI</p>
@@ -651,13 +651,13 @@ export function EnhancedInvestmentReportModal({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-green-600">Strengths</CardTitle>
+              <CardTitle className="text-lg text-success">Strengths</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
                 {strengths.map((strength, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <span className="text-green-600 mt-0.5">✓</span>
+                    <span className="text-success mt-0.5">✓</span>
                     <span className="text-sm">{strength}</span>
                   </li>
                 ))}
@@ -667,13 +667,13 @@ export function EnhancedInvestmentReportModal({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-orange-600">Weaknesses</CardTitle>
+              <CardTitle className="text-lg text-warning">Weaknesses</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
                 {weaknesses.map((weakness, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <span className="text-orange-600 mt-0.5">!</span>
+                    <span className="text-warning mt-0.5">!</span>
                     <span className="text-sm">{weakness}</span>
                   </li>
                 ))}
@@ -683,13 +683,13 @@ export function EnhancedInvestmentReportModal({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-blue-600">Opportunities</CardTitle>
+              <CardTitle className="text-lg text-info">Opportunities</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
                 {opportunities.map((opportunity, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <span className="text-blue-600 mt-0.5">→</span>
+                    <span className="text-info mt-0.5">→</span>
                     <span className="text-sm">{opportunity}</span>
                   </li>
                 ))}
@@ -699,13 +699,13 @@ export function EnhancedInvestmentReportModal({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg text-red-600">Risks</CardTitle>
+              <CardTitle className="text-lg text-destructive">Risks</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
                 {risks.map((risk, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <span className="text-red-600 mt-0.5">⚠</span>
+                    <span className="text-destructive mt-0.5">⚠</span>
                     <span className="text-sm">{risk}</span>
                   </li>
                 ))}
@@ -745,7 +745,7 @@ export function EnhancedInvestmentReportModal({
 
           <Card>
             <CardContent className="pt-6 text-center">
-              <div className="text-4xl font-bold text-blue-600 mb-2">{commute.durationMinutes}m</div>
+              <div className="text-4xl font-bold text-info mb-2">{commute.durationMinutes}m</div>
               <div className="text-sm font-medium">CBD Commute</div>
               <div className="text-xs text-muted-foreground mt-1">
                 {commute.distanceKm}km via {commute.mode}
@@ -755,7 +755,7 @@ export function EnhancedInvestmentReportModal({
 
           <Card>
             <CardContent className="pt-6 text-center">
-              <div className="text-4xl font-bold text-green-600 mb-2">{transport.stationsWithin2km}</div>
+              <div className="text-4xl font-bold text-success mb-2">{transport.stationsWithin2km}</div>
               <div className="text-sm font-medium">Transit Stations</div>
               <div className="text-xs text-muted-foreground mt-1">
                 Within 2km radius

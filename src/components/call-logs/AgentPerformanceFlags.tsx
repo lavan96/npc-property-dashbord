@@ -194,37 +194,37 @@ export const AgentPerformanceFlags = ({ calls }: AgentPerformanceFlagsProps) => 
             <p className="text-xl font-bold">{summaryStats.totalAgents}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/5 to-card">
+        <Card className="bg-gradient-to-br from-brand-500/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-amber-500/10">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <div className="p-1.5 rounded-lg bg-brand-500/10">
+                <AlertTriangle className="w-3.5 h-3.5 text-brand-500" />
               </div>
               <span className="text-xs text-muted-foreground">Flagged</span>
             </div>
-            <p className="text-xl font-bold text-amber-500">{summaryStats.flaggedAgents}</p>
+            <p className="text-xl font-bold text-brand-500">{summaryStats.flaggedAgents}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-red-500/5 to-card">
+        <Card className="bg-gradient-to-br from-destructive/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-red-500/10">
-                <TrendingDown className="w-3.5 h-3.5 text-red-500" />
+              <div className="p-1.5 rounded-lg bg-destructive/10">
+                <TrendingDown className="w-3.5 h-3.5 text-destructive-foreground0" />
               </div>
               <span className="text-xs text-muted-foreground">Declining</span>
             </div>
-            <p className="text-xl font-bold text-red-500">{summaryStats.decliningAgents}</p>
+            <p className="text-xl font-bold text-destructive-foreground0">{summaryStats.decliningAgents}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-emerald-500/5 to-card">
+        <Card className="bg-gradient-to-br from-success/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+              <div className="p-1.5 rounded-lg bg-success/10">
+                <TrendingUp className="w-3.5 h-3.5 text-success-foreground0" />
               </div>
               <span className="text-xs text-muted-foreground">Improving</span>
             </div>
-            <p className="text-xl font-bold text-emerald-500">{summaryStats.improvingAgents}</p>
+            <p className="text-xl font-bold text-success-foreground0">{summaryStats.improvingAgents}</p>
           </CardContent>
         </Card>
       </div>
@@ -246,7 +246,7 @@ export const AgentPerformanceFlags = ({ calls }: AgentPerformanceFlagsProps) => 
               {agentMetrics.map(agent => (
                 <div
                   key={agent.agentId}
-                  className={`p-4 rounded-lg border ${agent.flags.length > 0 ? 'border-amber-500/30 bg-amber-500/5' : 'bg-card'}`}
+                  className={`p-4 rounded-lg border ${agent.flags.length > 0 ? 'border-brand-500/30 bg-brand-500/5' : 'bg-card'}`}
                 >
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-3">
@@ -260,17 +260,17 @@ export const AgentPerformanceFlags = ({ calls }: AgentPerformanceFlagsProps) => 
                     </div>
                     <div className="flex items-center gap-2">
                       {agent.trend === 'improving' && (
-                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                        <Badge className="bg-success/20 text-success border-success/30">
                           <TrendingUp className="w-3 h-3 mr-1" /> Improving
                         </Badge>
                       )}
                       {agent.trend === 'declining' && (
-                        <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                        <Badge className="bg-destructive/20 text-destructive border-destructive/30">
                           <TrendingDown className="w-3 h-3 mr-1" /> Declining
                         </Badge>
                       )}
                       {agent.flags.length === 0 && (
-                        <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                        <Badge className="bg-success/20 text-success border-success/30">
                           <Award className="w-3 h-3 mr-1" /> Good Standing
                         </Badge>
                       )}
@@ -287,7 +287,7 @@ export const AgentPerformanceFlags = ({ calls }: AgentPerformanceFlagsProps) => 
                               <AlertCircle className="w-3 h-3" />
                               Negative Rate
                             </div>
-                            <p className={`font-semibold ${agent.negativeRate > 20 ? 'text-red-500' : ''}`}>
+                            <p className={`font-semibold ${agent.negativeRate > 20 ? 'text-destructive-foreground0' : ''}`}>
                               {agent.negativeRate.toFixed(1)}%
                             </p>
                           </div>
@@ -303,7 +303,7 @@ export const AgentPerformanceFlags = ({ calls }: AgentPerformanceFlagsProps) => 
                         <Target className="w-3 h-3" />
                         Avg Severity
                       </div>
-                      <p className={`font-semibold ${agent.avgSeverity > 3.5 ? 'text-amber-500' : ''}`}>
+                      <p className={`font-semibold ${agent.avgSeverity > 3.5 ? 'text-brand-500' : ''}`}>
                         {agent.avgSeverity > 0 ? agent.avgSeverity.toFixed(1) : '-'}
                       </p>
                     </div>
@@ -313,7 +313,7 @@ export const AgentPerformanceFlags = ({ calls }: AgentPerformanceFlagsProps) => 
                         <CheckCircle className="w-3 h-3" />
                         Success Rate
                       </div>
-                      <p className={`font-semibold ${agent.successRate < 60 ? 'text-red-500' : 'text-emerald-500'}`}>
+                      <p className={`font-semibold ${agent.successRate < 60 ? 'text-destructive-foreground0' : 'text-success-foreground0'}`}>
                         {agent.successRate.toFixed(0)}%
                       </p>
                     </div>
@@ -358,13 +358,13 @@ export const AgentPerformanceFlags = ({ calls }: AgentPerformanceFlagsProps) => 
                   {/* Flags */}
                   {agent.flags.length > 0 && (
                     <div className="pt-3 border-t">
-                      <p className="text-xs font-medium text-amber-500 mb-2 flex items-center gap-1">
+                      <p className="text-xs font-medium text-brand-500 mb-2 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
                         Performance Flags:
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {agent.flags.map((flag, i) => (
-                          <Badge key={i} className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
+                          <Badge key={i} className="bg-brand-500/20 text-brand-400 border-brand-500/30 text-xs">
                             {flag}
                           </Badge>
                         ))}

@@ -394,7 +394,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
                 <Upload className="h-3.5 w-3.5" />
                 Browse files
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/20 px-4 py-2 text-xs font-semibold text-muted-foreground dark:text-slate-300">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/20 px-4 py-2 text-xs font-semibold text-muted-foreground dark:text-foreground">
                 <FileCheck2 className="h-3.5 w-3.5 text-success" />
                 Supports .xlsx and .xls
               </span>

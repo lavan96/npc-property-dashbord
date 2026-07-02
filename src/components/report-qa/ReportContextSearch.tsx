@@ -154,7 +154,7 @@ export function ReportSearch({ reports, onResultClick, className }: ReportSearch
     
     return parts.map((part, i) => 
       regex.test(part) ? (
-        <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 px-0.5 rounded">
+        <mark key={i} className="bg-brand-200 dark:bg-brand-800 px-0.5 rounded">
           {part}
         </mark>
       ) : part
@@ -221,7 +221,7 @@ export function ReportSearch({ reports, onResultClick, className }: ReportSearch
                   }}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <FileText className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
+                    <FileText className="h-3.5 w-3.5 text-destructive-foreground0 flex-shrink-0" />
                     <span className="text-xs font-medium truncate">
                       {result.reportName.replace('.pdf', '')}
                     </span>
