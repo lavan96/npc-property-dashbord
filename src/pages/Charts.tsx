@@ -94,7 +94,12 @@ export default function Charts() {
           const { data: analysisResult } = await invokeSecureFunction('manage-templates', {
             operation: 'list',
             table: 'chart_analysis',
-            listOptions: { orderBy: 'created_at', orderAsc: false, limit: 500 }
+            listOptions: {
+              select: 'chart_id, analysis_text, created_at',
+              orderBy: 'created_at',
+              orderAsc: false,
+              limit: 100,
+            },
           });
           if (analysisResult?.records) {
             analysisResult.records.forEach((a: any) => {
