@@ -310,11 +310,12 @@ The Team`
   // Shared content for both mobile and desktop
   const modalContent = (
     <>
-      {/* Header actions - stacked on mobile */}
+      {/* Header actions - always wrap cleanly to avoid overflow */}
       <div className={cn(
-        "flex items-center gap-2 px-1",
-        isMobile ? "flex-wrap pb-2 border-b border-border mb-2" : "mr-6"
+        "flex flex-wrap items-center gap-2 px-1",
+        isMobile ? "pb-2 border-b border-border mb-2" : "mr-8"
       )}>
+
         <VownetPDFGenerator
           data={{
             client: (fullClient || {
@@ -400,8 +401,9 @@ The Team`
       <Separator className="my-1" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className={`flex-shrink-0 sticky top-0 z-10 bg-background pb-1 ${isMobile ? 'overflow-x-auto scrollbar-hide max-w-full' : ''}`}>
-          <TabsList className={`h-auto gap-0.5 p-0.5 ${isMobile ? 'inline-flex w-auto min-w-max' : 'flex flex-wrap w-full'}`}>
+        <div className="flex-shrink-0 sticky top-0 z-10 bg-background pb-1 overflow-x-auto scrollbar-hide max-w-full">
+          <TabsList className="h-auto gap-0.5 p-0.5 inline-flex w-auto min-w-max">
+
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
             <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
             <TabsTrigger value="properties" className="text-xs sm:text-sm">Properties ({properties.length})</TabsTrigger>
@@ -1001,7 +1003,7 @@ The Team`
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">
                 <User className="h-5 w-5 shrink-0" />
