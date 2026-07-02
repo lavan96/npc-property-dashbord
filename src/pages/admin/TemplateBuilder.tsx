@@ -92,6 +92,30 @@ export default function TemplateBuilder() {
   const [reviewImportAsset, setReviewImportAsset] = useState<ImportAsset | null>(null);
   const [reviewImportManifests, setReviewImportManifests] = useState<RawImportManifest[] | null>(null);
   const [reconcilingReview, setReconcilingReview] = useState(false);
+  const [persistedReview, setPersistedReview] = useState<LoadImportReviewDraftResult | null>(null);
+  const [visualQaBusy, setVisualQaBusy] = useState(false);
+  const [visualQaSummary, setVisualQaSummary] = useState<VisualQaReviewSummary | null>(null);
+  const [persistedVisualQuality, setPersistedVisualQuality] = useState<PersistedVisualQuality | null>(null);
+  const [repairBusy, setRepairBusy] = useState(false);
+  const [repairSummary, setRepairSummary] = useState<VisualRepairOrchestrationSummary | null>(null);
+  const [persistedRepairAudit, setPersistedRepairAudit] = useState<PersistedVisualRepairAudit | null>(null);
+  const [applyRepairBusy, setApplyRepairBusy] = useState(false);
+  const [repairApplied, setRepairApplied] = useState(false);
+  const [repairDraftReady, setRepairDraftReady] = useState(false);
+  const [reviewDebug, setReviewDebug] = useState<ImportReviewDebugSnapshot | null>(null);
+
+  const resetPersistedReviewState = () => {
+    setVisualQaBusy(false);
+    setVisualQaSummary(null);
+    setPersistedVisualQuality(null);
+    setRepairBusy(false);
+    setRepairSummary(null);
+    setPersistedRepairAudit(null);
+    setApplyRepairBusy(false);
+    setRepairApplied(false);
+    setRepairDraftReady(false);
+    setReviewDebug(null);
+  };
   const [filters, setFilters] = useState(() => readTemplateListFiltersFromParams(searchParams));
   const searchParamString = searchParams.toString();
   const { search, reportType: reportTypeFilter, status: statusFilter, sort } = filters;
