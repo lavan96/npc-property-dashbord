@@ -22,11 +22,11 @@ const SENDER_COLORS = [
   'text-blue-600 dark:text-blue-400',
   'text-emerald-600 dark:text-emerald-400',
   'text-orange-600 dark:text-orange-400',
-  'text-purple-600 dark:text-purple-400',
+  'text-amber-700 dark:text-amber-400',
   'text-rose-600 dark:text-rose-400',
   'text-cyan-600 dark:text-cyan-400',
   'text-amber-600 dark:text-amber-400',
-  'text-indigo-600 dark:text-indigo-400',
+  'text-teal-700 dark:text-teal-400',
 ];
 
 function getSenderColor(senderId: string, senderMap: Map<string, number>): string {
@@ -561,7 +561,7 @@ export function AgentChatWidget() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-105 group md:bottom-6 md:right-6 md:z-40"
+        className="dashboard-floating-action-button fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-105 group md:bottom-6 md:right-6 md:z-40"
         aria-label="Open AI Assistant"
       >
         <Diamond className="h-6 w-6 text-black group-hover:animate-pulse" />
@@ -579,7 +579,7 @@ export function AgentChatWidget() {
       w-[calc(100vw-2rem)] max-w-[440px] h-[min(75vh,580px)]
       md:bottom-6 md:right-6 md:h-[min(85vh,640px)]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-3 shrink-0">
+      <div className="dashboard-floating-report-widget flex items-center justify-between border-b px-4 py-3 shrink-0">
         <div className="flex items-center gap-2">
           {!showSidebar && activeConversation && panelView === 'chat' && (
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowSidebar(true)}>
@@ -636,7 +636,7 @@ export function AgentChatWidget() {
                     { icon: '⏰', label: 'Overdue Reminders', count: notifications.overdue_reminders, color: 'text-red-600 dark:text-red-400 bg-red-500/10', action: '⏰ Overdue reminders' },
                     { icon: '🚨', label: 'Urgent Deals', count: notifications.urgent_deals, color: 'text-orange-600 dark:text-orange-400 bg-orange-500/10', action: '🚨 Show urgent deals' },
                     { icon: '🏠', label: 'Settlements This Week', count: notifications.upcoming_settlements, color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10', action: '🏠 Upcoming settlements' },
-                    { icon: '📞', label: 'Unread Call Alerts', count: notifications.unread_call_alerts, color: 'text-purple-600 dark:text-purple-400 bg-purple-500/10', action: '📞 Unread call alerts' },
+                    { icon: '📞', label: 'Unread Call Alerts', count: notifications.unread_call_alerts, color: 'text-amber-700 dark:text-amber-400 bg-amber-500/10', action: '📞 Unread call alerts' },
                     { icon: '⚠️', label: 'Clawback Risk (90d)', count: notifications.clawback_risk_deals, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10', action: '⚠️ Clawback risk deals' },
                   ].map((item) => (
                     <button
