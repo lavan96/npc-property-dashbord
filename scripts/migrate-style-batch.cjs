@@ -71,6 +71,9 @@ function migrate(src) {
     (_m, op) => `text-foreground${op || ''}`);
   s = s.replace(new RegExp(`\\b(border|ring|divide)-(?:${NEUTRAL})-\\d{2,3}(\\/\\d{1,3})?`, 'g'),
     (_m, u, op) => `${u}-border${op || ''}`);
+  // ring-offset colour follows the surface it sits on
+  s = s.replace(new RegExp(`\\bring-offset-(?:${NEUTRAL})-\\d{2,3}(\\/\\d{1,3})?`, 'g'),
+    (_m, op) => `ring-offset-background${op || ''}`);
   s = s.replace(new RegExp(`\\bbg-(?:${NEUTRAL})-(?:50|100|200|300)(\\/\\d{1,3})?`, 'g'),
     (_m, op) => `bg-muted${op || ''}`);
   s = s.replace(new RegExp(`\\bbg-(?:${NEUTRAL})-(?:800|900|950)(\\/\\d{1,3})?`, 'g'),
