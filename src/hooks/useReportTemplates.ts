@@ -4,6 +4,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   type ReportTemplate,
@@ -33,10 +34,41 @@ export interface ReportTemplateRow {
 }
 
 function normaliseRow(raw: any): ReportTemplateRow {
-  return {
-    ...raw,
-    schema: parseTemplate(raw?.schema),
-  };
+  try {
+    return {
+      ...raw,
+      schema: parseTemplate(raw?.schema),
+    };
+  } catch (error) {
+    console.warn('[templates] Could not parse template schema; showing row with a blank safe schema fallback.', {
+      templateId: raw?.id ?? null,
+      templateName: raw?.name ?? null,
+      error: (error as Error).message,
+    });
+    return {
+      ...raw,
+      schema: makeBlankTemplate(),
+    };
+  }
+}
+
+async function listTemplatesDirectly(): Promise<ReportTemplateRow[]> {
+  const { data, error } = await supabase
+    .from('report_templates' as any)
+    .select('*')
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as any[]).map(normaliseRow);
+}
+
+async function getTemplateDirectly(id: string): Promise<ReportTemplateRow> {
+  const { data, error } = await supabase
+    .from('report_templates' as any)
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return normaliseRow(data);
 }
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -44,13 +76,19 @@ export function useReportTemplates() {
   return useQuery({
     queryKey: LIST_KEY,
     queryFn: async () => {
-      const { data, error } = await invokeSecureFunction('manage-templates', {
-        operation: 'list',
-        table: 'report_templates',
-        listOptions: { orderBy: 'updated_at', orderAsc: false },
-      });
-      if (error) throw new Error(error.message);
-      return ((data?.records || []) as any[]).map(normaliseRow);
+      try {
+        const { data, error } = await invokeSecureFunction('manage-templates', {
+          operation: 'list',
+          table: 'report_templates',
+          listOptions: { orderBy: 'updated_at', orderAsc: false },
+        });
+        if (error) throw new Error(error.message);
+        const records = ((data?.records || []) as any[]).map(normaliseRow);
+        if (records.length > 0) return records;
+      } catch (error) {
+        console.warn('[templates] manage-templates list failed; trying direct template list fallback.', error);
+      }
+      return listTemplatesDirectly();
     },
   });
 }
@@ -61,13 +99,18 @@ export function useReportTemplate(id: string | undefined) {
     queryKey: id ? ONE_KEY(id) : ['report-templates', 'none'],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await invokeSecureFunction('manage-templates', {
-        operation: 'get',
-        table: 'report_templates',
-        recordId: id,
-      });
-      if (error) throw new Error(error.message);
-      return normaliseRow(data?.record);
+      try {
+        const { data, error } = await invokeSecureFunction('manage-templates', {
+          operation: 'get',
+          table: 'report_templates',
+          recordId: id,
+        });
+        if (error) throw new Error(error.message);
+        if (data?.record) return normaliseRow(data.record);
+      } catch (error) {
+        console.warn('[templates] manage-templates get failed; trying direct template get fallback.', { id, error });
+      }
+      return getTemplateDirectly(id!);
     },
   });
 }
