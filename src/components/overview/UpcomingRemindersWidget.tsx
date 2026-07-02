@@ -170,7 +170,7 @@ export function UpcomingRemindersWidget() {
         )}
         <Button 
           variant="ghost"
-          className="mt-4 min-h-10 w-full justify-center rounded-xl border border-primary/15 bg-primary/5 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/10 hover:shadow-[0_10px_28px_rgba(245,158,11,0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0"
+          className="dashboard-luxury-primary-cta mt-4 min-h-10 w-full justify-center rounded-xl text-sm font-semibold transition-all duration-200 active:translate-y-0"
           size="sm"
           onClick={() => navigate('/reminders')}
         >
