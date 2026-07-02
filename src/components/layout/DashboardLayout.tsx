@@ -27,7 +27,7 @@ export function DashboardLayout() {
           onCycleTheme={cycleTheme}
         />
 
-        <main className="dashboard-main flex-1 overflow-auto">
+        <main className="dashboard-main flex-1 overflow-visible">
           <div className="dashboard-content">
             <ErrorBoundary>
               <DashboardPageShell>
@@ -47,7 +47,7 @@ export function DashboardLayout() {
   // Desktop Layout (>= 1024px)
   return (
     <SidebarProvider>
-      <div className="dashboard-shell flex min-h-svh h-svh w-full overflow-hidden">
+      <div className="dashboard-shell flex min-h-svh w-full">
         <DashboardSidebar />
 
         <div className="dashboard-main flex flex-1 flex-col min-w-0">
@@ -57,7 +57,7 @@ export function DashboardLayout() {
             onCycleTheme={cycleTheme}
           />
 
-          <main className="dashboard-main flex-1 overflow-auto">
+          <main className="dashboard-main flex-1 overflow-visible">
             <div className="dashboard-content">
               <ErrorBoundary>
                 <DashboardPageShell>
