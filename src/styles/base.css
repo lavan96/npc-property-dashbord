@@ -25,6 +25,7 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+    font-size: var(--base-font-size, 1rem);
   }
 
   /* Headings inherit the brand heading font token (defaults to the sans

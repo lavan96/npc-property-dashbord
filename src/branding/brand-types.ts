@@ -16,6 +16,14 @@ export interface EmailSignatureSettings {
 export interface BrandThemeConfig {
   primaryColor: string | null;
   accentColor: string | null;
+  /** Category A brand accent (the "gold"). HSL token string. Cascades to --brand. */
+  brandColor: string | null;
+  /** Font allow-list key for body text (see brand-fonts.ts). */
+  fontFamily: string | null;
+  /** Font allow-list key for headings; null → inherits the body font. */
+  headingFontFamily: string | null;
+  /** Font scale key (compact | default | comfortable). */
+  fontScale: string | null;
   darkModeDefault: ThemeMode;
   emailSignature: EmailSignatureSettings;
 }
@@ -36,6 +44,10 @@ export interface BrandConfig {
   companyName: string;
   primaryColor: string | null;
   accentColor: string | null;
+  brandColor: string | null;
+  fontFamily: string | null;
+  headingFontFamily: string | null;
+  fontScale: string | null;
   darkModeDefault: ThemeMode;
   emailSignature: EmailSignatureSettings;
   themeConfig?: BrandThemeConfig;

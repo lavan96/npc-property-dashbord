@@ -29,6 +29,10 @@ export const defaultEmailSignature: EmailSignatureSettings = {
 export const defaultBrandThemeConfig: BrandThemeConfig = {
   primaryColor: null,
   accentColor: null,
+  brandColor: null,
+  fontFamily: null,
+  headingFontFamily: null,
+  fontScale: null,
   darkModeDefault: 'light',
   emailSignature: defaultEmailSignature,
 };
@@ -48,6 +52,10 @@ export const defaultBrandConfig: BrandConfig = {
   companyName: 'Dashboard',
   primaryColor: null,
   accentColor: null,
+  brandColor: null,
+  fontFamily: null,
+  headingFontFamily: null,
+  fontScale: null,
   darkModeDefault: 'light',
   emailSignature: defaultEmailSignature,
   themeConfig: defaultBrandThemeConfig,

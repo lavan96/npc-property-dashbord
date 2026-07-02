@@ -109,6 +109,7 @@ Clean, modern admin dashboard with confidence-based color coding
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-heading: var(--font-sans);
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --base-font-size: 1rem;
 
     /* Sizing — brand logo dimensions (consumed by <BrandLogo> in Phase 4). */
     --logo-height-sidebar: 2.5rem;
@@ -196,6 +197,7 @@ Clean, modern admin dashboard with confidence-based color coding
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-heading: var(--font-sans);
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --base-font-size: 1rem;
 
     /* Sizing — logo dimensions. */
     --logo-height-sidebar: 2.5rem;

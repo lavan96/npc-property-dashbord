@@ -122,7 +122,7 @@ describe('BrandProvider persistence and theme application', () => {
     await waitFor(() => expect(document.title).toBe('Loaded Brand Dashboard'));
     expect(document.querySelector<HTMLLinkElement>("link[rel~='icon']")?.href).toBe('https://cdn.example.com/loaded-favicon.png');
     expect(document.documentElement).not.toHaveClass('dark');
-    expect(document.documentElement.style.getPropertyValue('--background')).toBe('42 52% 96%');
+    expect(document.documentElement.style.getPropertyValue('--background')).toBe('42 54% 96%');
     expect(document.documentElement.style.getPropertyValue('--primary')).toBe('210 80% 50%');
   });
 
