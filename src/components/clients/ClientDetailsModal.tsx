@@ -401,52 +401,52 @@ The Team`
       <Separator className="my-1" />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden w-full">
-        <div className="sticky top-0 z-10 min-w-0 max-w-full flex-shrink-0 overflow-x-auto overscroll-x-contain bg-background pb-1">
-          <TabsList className="inline-flex h-auto w-max min-w-max max-w-none justify-start gap-0.5 p-0.5">
+        <div className="sticky top-0 z-10 min-w-0 max-w-full flex-shrink-0 overflow-hidden bg-background pb-1">
+          <TabsList className="flex h-auto w-full max-w-full flex-wrap justify-start gap-1 overflow-visible p-1">
 
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
-            <TabsTrigger value="properties" className="text-xs sm:text-sm">Properties ({properties.length})</TabsTrigger>
-            <TabsTrigger value="deals" className="text-xs sm:text-sm">Deals</TabsTrigger>
-            <TabsTrigger value="employment" className="text-xs sm:text-sm">Employment</TabsTrigger>
-            <TabsTrigger value="financials" className="text-xs sm:text-sm">Financials</TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs sm:text-sm">Reports</TabsTrigger>
-            <TabsTrigger value="sent-reports" className="text-xs sm:text-sm">
+            <TabsTrigger value="overview" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Overview</TabsTrigger>
+            <TabsTrigger value="personal" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Personal</TabsTrigger>
+            <TabsTrigger value="properties" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Properties ({properties.length})</TabsTrigger>
+            <TabsTrigger value="deals" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Deals</TabsTrigger>
+            <TabsTrigger value="employment" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Employment</TabsTrigger>
+            <TabsTrigger value="financials" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Financials</TabsTrigger>
+            <TabsTrigger value="reports" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Reports</TabsTrigger>
+            <TabsTrigger value="sent-reports" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">
               <Send className="h-3 w-3 mr-0.5" />
               Sent Reports
             </TabsTrigger>
-            <TabsTrigger value="report-requests" className="text-xs sm:text-sm">
+            <TabsTrigger value="report-requests" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">
               <Inbox className="h-3 w-3 mr-0.5" />
               Requests
             </TabsTrigger>
-            <TabsTrigger value="emails" className="text-xs sm:text-sm">
+            <TabsTrigger value="emails" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">
               <Inbox className="h-3 w-3 mr-0.5" />
               Emails
             </TabsTrigger>
-            <TabsTrigger value="conversations" className="text-xs sm:text-sm">
+            <TabsTrigger value="conversations" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">
               <MessageSquare className="h-3 w-3 mr-0.5" />
               Conversations
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="text-xs sm:text-sm">
+            <TabsTrigger value="appointments" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">
               <Calendar className="h-3 w-3 mr-0.5" />
               Appointments
             </TabsTrigger>
-            <TabsTrigger value="portal-messages" className="text-xs sm:text-sm">
+            <TabsTrigger value="portal-messages" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">
               <MessageSquare className="h-3 w-3 mr-0.5" />
               Portal Messages
             </TabsTrigger>
-            <TabsTrigger value="finance-messages" className="text-xs sm:text-sm">
+            <TabsTrigger value="finance-messages" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">
               <MessageSquare className="h-3 w-3 mr-0.5" />
               Finance Messages
             </TabsTrigger>
-            <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
-            <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
-            <TabsTrigger value="vownet-forms" className="text-xs sm:text-sm">Client Forms</TabsTrigger>
-            <TabsTrigger value="files" className="text-xs sm:text-sm">Files</TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity / Documents</TabsTrigger>
-            <TabsTrigger value="borrowing" className="text-xs sm:text-sm">Borrowing Capacity</TabsTrigger>
-            <TabsTrigger value="lenders" className="text-xs sm:text-sm">Lenders</TabsTrigger>
-            <TabsTrigger value="insights" className="text-xs sm:text-sm">AI</TabsTrigger>
+            <TabsTrigger value="notes" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Notes</TabsTrigger>
+            <TabsTrigger value="reminders" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Reminders</TabsTrigger>
+            <TabsTrigger value="vownet-forms" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Client Forms</TabsTrigger>
+            <TabsTrigger value="files" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Files</TabsTrigger>
+            <TabsTrigger value="activity" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Activity / Documents</TabsTrigger>
+            <TabsTrigger value="borrowing" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Borrowing Capacity</TabsTrigger>
+            <TabsTrigger value="lenders" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">Lenders</TabsTrigger>
+            <TabsTrigger value="insights" className="min-h-8 px-2 py-1 text-[11px] leading-tight sm:text-xs">AI</TabsTrigger>
           </TabsList>
         </div>
 
@@ -1003,7 +1003,7 @@ The Team`
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="flex h-[min(90vh,900px)] max-h-[90vh] w-[min(95vw,1100px)] max-w-[1100px] flex-col overflow-hidden p-4 sm:p-6">
+          <DialogContent className="flex h-[min(90vh,900px)] max-h-[90vh] w-[min(95vw,1400px)] max-w-[1400px] flex-col overflow-hidden p-4 sm:p-6">
             <DialogHeader className="min-w-0 shrink-0 pr-12">
               <DialogTitle className="flex min-w-0 items-start gap-3">
                 <User className="h-5 w-5 shrink-0" />
