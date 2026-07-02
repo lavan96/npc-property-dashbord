@@ -43,6 +43,17 @@
 >   `tsc` clean, no same-token contrast collisions.
 >   The template-builder colour pickers keep their literal swatches (intentional).
 >   A full visual QA pass is Phase 8.
+> - ✅ **Phase 5 (CSS + final sweep).** Migrated `report-qa.css` (the Report
+>   Q&A `.ci-*` styling) — 109 `@apply` palette classes as **semantic status**
+>   (amber→warning, emerald→success, rose→destructive, sky→info) plus
+>   `--ci-amber`/`--ci-verified` → `hsl(var(--warning|--success))`; added an
+>   `AMBER_TARGET=warning` codemod mode for status files. Swept residual `.tsx`
+>   palette (extended neutral coverage) and converted arbitrary literal bracket
+>   values (`bg-[hsl(...)]`) to tokens. **Palette classes: 10,877 → 20** (~99.8%);
+>   the 20 are intentional (colour-picker swatches, a few near-white texts/
+>   shadows). Remaining hardcoded **inline** hex are largely data-driven (calendar
+>   category colours, chart series, template-designer choices) or print surfaces —
+>   intentionally left, not a theme-consistency issue.
 > - ✅ **Phase 5 (PDF) — brand palette for exported documents.** Added
 >   `src/branding/brandPalette.ts`: `getBrandPdfPalette()` (hex, for HTML/canvas)
 >   and `getBrandPdfRgb()` (0–1 rgb, for pdf-lib) that resolve the brand colour
