@@ -1,6 +1,6 @@
 # Style Consistency & Dynamic White-Label Theming — Implementation Plan
 
-**Status:** In progress — Phases 0–4 landed; Phase 5 underway
+**Status:** Complete — Phases 0–8 landed
 **Owner:** Platform / UI
 
 > **Implementation status** — this doc lives in the plan PR; all _code_ lands in
@@ -65,8 +65,18 @@
 >   they re-resolve the gold ramp from the live brand colour per generation
 >   (`applyBrandGold` / `applyBrandRgb`, driven by `useBrand()`). Build green,
 >   `tsc` clean.
-> - ⏭️ **Next** — Phases 6–8
->   (typography adoption, density, visual-regression + cascade tests).
+> - ✅ **Phase 6 — Typography adoption.** Shared title primitives (Card/Dialog/
+>   AlertDialog/Sheet/Drawer) route through the `font-heading` token, so headers
+>   adopt the brand heading font.
+> - ✅ **Phase 7 — Density / radius.** Tokenised the card/panel radius scale
+>   (`--radius-card` / `-lg` / `-xl` / `-2xl` + `rounded-card*` utilities);
+>   migrated ~145 arbitrary `rounded-[…]` magic values onto it (same values,
+>   now centrally tunable).
+> - ✅ **Phase 8 — Verification & lock-in.** `cascade.test.ts` (10 tests): a
+>   non-default brand (teal) cascades to `--brand`/ramp + primary/accent in both
+>   themes, while semantic tokens stay FIXED (warning stays amber even when the
+>   brand is teal); font selection re-resolves `--font-*`. Full branding suite
+>   green (27 tests). _(Phases 6–8 live in a separate stacked PR.)_
 **Related:** [`WHITE_LABEL_TOKEN_CONTRACT.md`](./WHITE_LABEL_TOKEN_CONTRACT.md),
 [`dashboard-theme-foundation.md`](./dashboard-theme-foundation.md),
 [`luxury-light-theme-phase2-token-foundation.md`](./luxury-light-theme-phase2-token-foundation.md)
