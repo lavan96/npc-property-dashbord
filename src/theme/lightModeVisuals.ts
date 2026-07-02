@@ -37,6 +37,11 @@ export const lightModeModuleVisuals = {
     alt: 'Premium branding studio workspace',
     overlay: 'champagne',
   },
+  'branding-studio': {
+    image: '/assets/light-mode/branding-studio.webp',
+    alt: 'Premium branding studio workspace',
+    overlay: 'champagne',
+  },
 } as const satisfies Record<string, LightModeModuleVisual>;
 
 export type LightModeModuleVisualKey = keyof typeof lightModeModuleVisuals;
