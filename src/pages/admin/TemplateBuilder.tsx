@@ -44,7 +44,7 @@ import {
 } from '@/lib/reportTemplate/templateListControls';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
 import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
-import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
+import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type LoadImportReviewDraftResult, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -52,6 +52,22 @@ import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 import { applyTemplateImportPlan, reconcilePdfImportAsset, TemplateDesignAgentReconciliationClient, type ImportAsset, type RawImportManifest } from '@/lib/reportTemplate/ingestion/reconciliation';
+import {
+  applyRepairedTemplateToRecord,
+  buildVisualRepairAuditPayload,
+  loadVisualQuality,
+  loadVisualRepairAudit,
+  persistedVisualQualityToReviewSummary,
+  runImportReviewVisualQualityPipeline,
+  runVisualRepairOrchestrationPipeline,
+  saveVisualRepairAudit,
+  type PersistedVisualQuality,
+  type PersistedVisualRepairAudit,
+  type VisualQaReviewSummary,
+  type VisualRepairOrchestrationSummary,
+} from '@/lib/reportTemplate/ingestion/visualQuality';
+
+type ImportReviewDebugSnapshot = Record<string, string | number | boolean | null>;
 
 const REPORT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   listAdapters().map((adapter) => [adapter.reportType, adapter.label]),
@@ -76,6 +92,30 @@ export default function TemplateBuilder() {
   const [reviewImportAsset, setReviewImportAsset] = useState<ImportAsset | null>(null);
   const [reviewImportManifests, setReviewImportManifests] = useState<RawImportManifest[] | null>(null);
   const [reconcilingReview, setReconcilingReview] = useState(false);
+  const [persistedReview, setPersistedReview] = useState<LoadImportReviewDraftResult | null>(null);
+  const [visualQaBusy, setVisualQaBusy] = useState(false);
+  const [visualQaSummary, setVisualQaSummary] = useState<VisualQaReviewSummary | null>(null);
+  const [persistedVisualQuality, setPersistedVisualQuality] = useState<PersistedVisualQuality | null>(null);
+  const [repairBusy, setRepairBusy] = useState(false);
+  const [repairSummary, setRepairSummary] = useState<VisualRepairOrchestrationSummary | null>(null);
+  const [persistedRepairAudit, setPersistedRepairAudit] = useState<PersistedVisualRepairAudit | null>(null);
+  const [applyRepairBusy, setApplyRepairBusy] = useState(false);
+  const [repairApplied, setRepairApplied] = useState(false);
+  const [repairDraftReady, setRepairDraftReady] = useState(false);
+  const [reviewDebug, setReviewDebug] = useState<ImportReviewDebugSnapshot | null>(null);
+
+  const resetPersistedReviewState = () => {
+    setVisualQaBusy(false);
+    setVisualQaSummary(null);
+    setPersistedVisualQuality(null);
+    setRepairBusy(false);
+    setRepairSummary(null);
+    setPersistedRepairAudit(null);
+    setApplyRepairBusy(false);
+    setRepairApplied(false);
+    setRepairDraftReady(false);
+    setReviewDebug(null);
+  };
   const [filters, setFilters] = useState(() => readTemplateListFiltersFromParams(searchParams));
   const searchParamString = searchParams.toString();
   const { search, reportType: reportTypeFilter, status: statusFilter, sort } = filters;
@@ -145,21 +185,216 @@ export default function TemplateBuilder() {
     },
   });
 
+  const hydratePersistedVisualQuality = async (importId: string) => {
+    const loadedVisual = await loadVisualQuality(importId);
+    if (loadedVisual.kind === 'ok') {
+      setPersistedVisualQuality(loadedVisual.payload);
+      setVisualQaSummary(persistedVisualQualityToReviewSummary(loadedVisual.payload));
+      return loadedVisual.payload;
+    }
+    if (loadedVisual.kind === 'missing') {
+      setPersistedVisualQuality(null);
+    } else {
+      console.warn('[visualQuality] load failed', loadedVisual.message);
+    }
+    return null;
+  };
+
+  const hydratePersistedRepairAudit = async (importId: string) => {
+    const loadedRepair = await loadVisualRepairAudit(importId);
+    if (loadedRepair.kind === 'ok') {
+      setPersistedRepairAudit(loadedRepair.payload);
+      setRepairSummary(loadedRepair.payload.payload.summary);
+      setRepairDraftReady(false);
+      return loadedRepair.payload;
+    }
+    if (loadedRepair.kind === 'missing') {
+      setPersistedRepairAudit(null);
+      setRepairSummary(null);
+    } else {
+      console.warn('[visualRepair] load failed', loadedRepair.message);
+    }
+    return null;
+  };
+
   const openPersistedReview = async (importId: string) => {
     setReviewLoadingId(importId);
+    resetPersistedReviewState();
     try {
-      const { draft, record, importAsset, importManifests } = await loadImportReviewDraft({ importId });
+      const loaded = await loadImportReviewDraft({ importId });
+      const { draft, record, importAsset, importManifests } = loaded;
+      setPersistedReview(loaded);
       setReviewDraft(draft);
       setReviewImportId(importId);
       setReviewRecord(record);
       setReviewImportAsset(importAsset);
       setReviewImportManifests(importManifests);
       setRecordedDecision(readImportReviewDecision(record.meta));
+      setReviewDebug({
+        stage: 'get_artifacts_loaded',
+        importId,
+        templateId: record.created_template_id ?? null,
+        pageContextSource: loaded.pageContextSource,
+        entrypointAvailable: Boolean(loaded.pageContextEntrypoint?.available),
+        entrypointSource: loaded.pageContextEntrypoint?.source ?? null,
+        entrypointManifestPath: loaded.pageContextEntrypoint?.manifest_path ?? null,
+        pageContextCount: loaded.pageContexts.length,
+        pageContextValidationOk: loaded.pageContextValidation.ok,
+        pageContextValidationProblemCount: loaded.pageContextValidation.problems.length,
+        sourceRasterCount: loaded.renderArtifactManifest.sourceRasterCount,
+        renderProblemCount: loaded.renderArtifactManifest.problems.length,
+        visualQaAvailable: Boolean(loaded.renderArtifactManifest.sourceRasterCount),
+        repairAvailable: Boolean(loaded.renderArtifactManifest.sourceRasterCount),
+      });
+      await hydratePersistedVisualQuality(importId);
+      await hydratePersistedRepairAudit(importId);
       setReviewOpen(true);
     } catch (err) {
       toast.error(`Could not load import review: ${(err as Error).message}`);
     } finally {
       setReviewLoadingId(null);
+    }
+  };
+
+  const runPersistedVisualQa = async () => {
+    if (!reviewImportId || !persistedReview) {
+      toast.error('Persisted review artifacts are not loaded yet.');
+      return;
+    }
+    setVisualQaBusy(true);
+    setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'visual_qa_clicked', visualQaClickedAt: new Date().toISOString() }));
+    try {
+      const qa = await runImportReviewVisualQualityPipeline({
+        loaded: persistedReview,
+        templateId: reviewRecord?.created_template_id ?? null,
+        finalMode: 'hybrid',
+        persist: true,
+        maxRasterDim: 768,
+      });
+      const nextLoaded = { ...persistedReview, draft: qa.draft };
+      setPersistedReview(nextLoaded);
+      setReviewDraft(qa.draft);
+      setRepairDraftReady(false);
+      const visualPersistResult = qa.visualQa.persistResult as any;
+      setReviewDebug((prev) => ({
+        ...(prev ?? {}),
+        stage: 'visual_qa_completed',
+        visualQaPersistKind: visualPersistResult?.kind ?? null,
+        visualQaScore: qa.visualQa.summary.overallScore,
+        visualQaUploadedCount: qa.visualQa.summary.uploadedCount,
+        visualQaProblemCount: qa.visualQa.summary.problems.length,
+      }));
+      if (qa.visualQa.persistResult.kind === 'ok') {
+        const persisted = await hydratePersistedVisualQuality(reviewImportId);
+        if (!persisted) setVisualQaSummary(qa.visualQa.summary);
+        toast.success(`Visual QA saved · score ${Math.round(qa.visualQa.summary.overallScore * 100)}%`);
+      } else {
+        setVisualQaSummary(qa.visualQa.summary);
+        toast.error(`Visual QA could not be saved: ${qa.visualQa.persistResult.message}`);
+      }
+    } catch (err) {
+      const message = (err as Error).message;
+      setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'visual_qa_failed', visualQaError: message }));
+      toast.error(`Visual QA failed: ${message}`);
+    } finally {
+      setVisualQaBusy(false);
+    }
+  };
+
+  const runPersistedRepair = async () => {
+    if (!reviewImportId || !persistedReview) {
+      toast.error('Persisted review artifacts are not loaded yet.');
+      return;
+    }
+    setRepairBusy(true);
+    setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'repair_clicked', repairClickedAt: new Date().toISOString() }));
+    try {
+      const repair = await runVisualRepairOrchestrationPipeline({
+        loaded: persistedReview,
+        templateId: reviewRecord?.created_template_id ?? null,
+        finalMode: 'hybrid',
+        persistVisualQa: true,
+        maxRasterDim: 768,
+        maxRepairPasses: 2,
+      });
+      const payload = buildVisualRepairAuditPayload(repair);
+      const saved = await saveVisualRepairAudit(repair.importId, payload);
+      const nextLoaded = { ...persistedReview, draft: repair.draft };
+      setPersistedReview(nextLoaded);
+      setReviewDraft(repair.draft);
+      setRepairSummary(repair.summary);
+      setRepairApplied(false);
+      setRepairDraftReady(Boolean(repair.draft?.template));
+      setVisualQaSummary(repair.visualQa.visualQa.summary);
+      const repairSaveResult = saved as any;
+      setReviewDebug((prev) => ({
+        ...(prev ?? {}),
+        stage: 'repair_completed',
+        repairStatus: repair.summary.repairStatus,
+        repairFinalScore: repair.summary.finalScore,
+        repairTotalApplied: repair.summary.totalApplied,
+        repairAuditSaveKind: repairSaveResult?.kind ?? null,
+        repairAuditPath: repairSaveResult?.auditPath ?? null,
+      }));
+      if (saved.kind === 'ok') {
+        setPersistedRepairAudit({
+          importId: repair.importId,
+          payload,
+          artifactPaths: {
+            summary: saved.auditPath,
+            repairFolder: `${repair.importId}/repair`,
+          },
+        });
+        await hydratePersistedVisualQuality(repair.importId);
+        toast.success(`Repair audit saved · final score ${Math.round(repair.summary.finalScore * 100)}%`);
+      } else {
+        toast.error(`Repair completed but audit could not be saved: ${saved.message}`);
+      }
+    } catch (err) {
+      const message = (err as Error).message;
+      setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'repair_failed', repairError: message }));
+      toast.error(`Repair failed: ${message}`);
+    } finally {
+      setRepairBusy(false);
+    }
+  };
+
+  const applyPersistedRepair = async () => {
+    const templateId = reviewRecord?.created_template_id ?? null;
+    if (!templateId) {
+      toast.error('No template record is linked to this import.');
+      return;
+    }
+    if (!persistedReview?.draft?.template) {
+      toast.error('No repaired template is available to apply.');
+      return;
+    }
+    setApplyRepairBusy(true);
+    try {
+      const applied = await applyRepairedTemplateToRecord({
+        templateId,
+        repairedTemplate: persistedReview.draft.template,
+        repairSummary,
+        repairAuditPath: persistedRepairAudit?.artifactPaths?.summary ?? null,
+        note: 'Applied deterministic PDF visual repair from persisted import review.',
+      });
+      setRepairApplied(true);
+      setRepairDraftReady(false);
+      setReviewDebug((prev) => ({
+        ...(prev ?? {}),
+        stage: 'apply_repair_completed',
+        appliedTemplateId: applied.templateId,
+        appliedNextVersion: applied.nextVersion,
+      }));
+      toast.success(`Repair applied to template v${applied.nextVersion}.`);
+      setReviewOpen(false);
+      navigate(`/admin/template-builder/${templateId}`);
+    } catch (err) {
+      const message = (err as Error).message;
+      setReviewDebug((prev) => ({ ...(prev ?? {}), stage: 'apply_repair_failed', applyRepairError: message }));
+      toast.error(`Could not apply repair: ${message}`);
+    } finally {
+      setApplyRepairBusy(false);
     }
   };
 
@@ -231,12 +466,30 @@ export default function TemplateBuilder() {
       <ImportPdfDialog open={importOpen} onOpenChange={setImportOpen} />
       <ImportReviewDialog
         open={reviewOpen}
-        onOpenChange={setReviewOpen}
+        onOpenChange={(v) => {
+          setReviewOpen(v);
+          if (!v) resetPersistedReviewState();
+        }}
         draft={reviewDraft}
         recordedDecision={recordedDecision}
         reconciliationAvailable={!!reviewImportAsset && !!reviewRecord?.created_template_id}
         reconciliationBusy={reconcilingReview}
         onRunReconciliation={runPersistedPdfReconciliation}
+        onRunVisualQa={runPersistedVisualQa}
+        visualQaAvailable={Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount)}
+        visualQaBusy={visualQaBusy}
+        visualQaSummary={visualQaSummary}
+        visualQualitySignedUrls={persistedVisualQuality?.signedUrls ?? null}
+        visualQualityArtifactPaths={persistedVisualQuality?.artifactPaths ?? null}
+        onRunRepair={runPersistedRepair}
+        repairAvailable={Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount)}
+        repairBusy={repairBusy}
+        repairSummary={repairSummary}
+        repairAuditPath={persistedRepairAudit?.artifactPaths?.summary ?? null}
+        reviewDebug={reviewDebug}
+        onApplyRepair={applyPersistedRepair}
+        applyRepairAvailable={Boolean(repairDraftReady && repairSummary && persistedReview?.draft?.template && !repairApplied)}
+        applyRepairBusy={applyRepairBusy}
         onRecordDecision={reviewImportId ? async (decision: ImportReviewDecision, note?: string) => {
           try {
             const saved = await saveImportReviewDecision({ importId: reviewImportId, decision, note });
@@ -248,6 +501,7 @@ export default function TemplateBuilder() {
           }
         } : undefined}
       />
+
 
       {canEditTemplates && (importsLoading || recentImports.length > 0) && (
         <Card>
