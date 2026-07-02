@@ -1003,7 +1003,7 @@ The Team`
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3">
                 <User className="h-5 w-5 shrink-0" />
