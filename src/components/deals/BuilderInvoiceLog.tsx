@@ -129,7 +129,7 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
   }
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-[1.35rem] border-brand-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_36%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.90)_48%,rgba(0,0,0,0.72))] shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]">
+    <Card className="min-w-0 overflow-hidden rounded-card border-brand-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_36%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.90)_48%,rgba(0,0,0,0.72))] shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]">
       <CardHeader className="border-b border-brand-100/10 bg-background dark:bg-black/15 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">

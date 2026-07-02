@@ -67,6 +67,12 @@ Clean, modern admin dashboard with confidence-based color coding
     --ring: 262 66% 46%;
 
     --radius: 0.75rem;
+    /* Card/panel radius scale — one place to tune the large rounded surfaces
+       (previously scattered as arbitrary rem values, e.g. rounded-[1.5rem]). */
+    --radius-card: 1.35rem;
+    --radius-card-lg: 1.5rem;
+    --radius-card-xl: 1.75rem;
+    --radius-card-2xl: 2rem;
 
     --sidebar-background: 39 52% 94%;
     --sidebar-foreground: 34 20% 22%;

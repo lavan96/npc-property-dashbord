@@ -54,7 +54,7 @@ const priorityColors: Record<string, string> = {
 };
 
 
-const premiumTeamPanel = 'relative overflow-hidden rounded-[1.5rem] border border-brand-300/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.84),rgba(2,6,23,0.94))] shadow-[0_22px_70px_rgba(0,0,0,0.32)] backdrop-blur';
+const premiumTeamPanel = 'relative overflow-hidden rounded-card-lg border border-brand-300/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.84),rgba(2,6,23,0.94))] shadow-[0_22px_70px_rgba(0,0,0,0.32)] backdrop-blur';
 const premiumTeamInput = 'rounded-xl border-brand-300/15 bg-background dark:bg-black/40 text-foreground dark:text-foreground placeholder:text-muted-foreground shadow-inner transition-all duration-200 hover:border-brand-300/35 focus-visible:border-brand-300/60 focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 
 const reminderTypes = [
@@ -298,7 +298,7 @@ export function TeamRemindersSection() {
 
       {/* List */}
       {isLoading ? (
-        <Card className="relative overflow-hidden rounded-[1.5rem] border border-brand-300/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
+        <Card className="relative overflow-hidden rounded-card-lg border border-brand-300/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
           <CardContent className="relative flex items-center justify-center gap-3 px-5 py-10 text-center sm:py-12">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-400/10 text-brand-100 shadow-[0_0_28px_rgba(245,158,11,0.14)]">
@@ -311,7 +311,7 @@ export function TeamRemindersSection() {
           </CardContent>
         </Card>
       ) : reminders.length === 0 ? (
-        <Card className="relative overflow-hidden rounded-[1.5rem] border-dashed border-brand-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
+        <Card className="relative overflow-hidden rounded-card-lg border-dashed border-brand-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.08),rgba(2,6,23,0.84)_46%,rgba(0,0,0,0.62))] shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
           <div className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-brand-300/8 blur-3xl" />
           <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-success/6 blur-3xl" />

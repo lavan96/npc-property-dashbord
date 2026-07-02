@@ -108,7 +108,7 @@ export default function EmailAttachmentsList({ attachments }: EmailAttachmentsLi
     a.contentType?.startsWith('image/') || a.contentType === 'application/pdf';
 
   return (
-    <div className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.16)]">
+    <div className="overflow-hidden rounded-card-xl border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.16)]">
       <div className="flex items-center gap-2 border-b border-border/55 bg-muted/20 px-5 py-3">
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
           <Paperclip className="h-4 w-4 text-primary" />

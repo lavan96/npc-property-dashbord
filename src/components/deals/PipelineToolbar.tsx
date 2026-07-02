@@ -278,7 +278,7 @@ export function PipelineToolbar({
       {/* Row 2: Expandable filter controls */}
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
         <CollapsibleContent>
-          <div id="deal-pipeline-filters" className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-brand-300/20 bg-gradient-to-br from-card dark:from-background/90 via-card dark:via-background/80 to-brand-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
+          <div id="deal-pipeline-filters" className="animate-in slide-in-from-top-1 space-y-4 rounded-card border border-brand-300/20 bg-gradient-to-br from-card dark:from-background/90 via-card dark:via-background/80 to-brand-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
             {/* Deal Type Chips */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">

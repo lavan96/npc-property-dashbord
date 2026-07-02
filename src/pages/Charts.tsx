@@ -335,7 +335,7 @@ export default function Charts() {
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i} className="overflow-hidden rounded-[1.35rem] border-border/60 bg-card/80 shadow-xl">
+              <Card key={i} className="overflow-hidden rounded-card border-border/60 bg-card/80 shadow-xl">
                 <CardContent className="space-y-4 p-4">
                   <div className="space-y-2">
                     <div className="h-4 w-3/4 animate-pulse rounded-full bg-muted" />

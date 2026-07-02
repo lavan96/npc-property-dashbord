@@ -255,7 +255,7 @@ export default function PortalConfig() {
         </DashboardThemeFrame>
 
         {/* MODULE TOGGLES */}
-        <TabsContent value="modules" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
+        <TabsContent value="modules" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-card-lg">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle>Portal Modules</CardTitle>
@@ -306,7 +306,7 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* WELCOME MESSAGE */}
-        <TabsContent value="welcome" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
+        <TabsContent value="welcome" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-card-lg">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle>Welcome Message</CardTitle>
@@ -364,7 +364,7 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* BOOKING / CALENDAR */}
-        <TabsContent value="booking" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
+        <TabsContent value="booking" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-card-lg">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle className="flex items-center gap-2">
@@ -583,7 +583,7 @@ export default function PortalConfig() {
         </TabsContent>
 
         {/* ACCESS LEVEL DEFAULTS */}
-        <TabsContent value="access" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-[1.5rem]">
+        <TabsContent value="access" className="min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-card-lg">
           <Card className="min-w-0 overflow-hidden border-border/70 bg-card/95 shadow-[0_18px_48px_hsl(var(--foreground)/0.07)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/30">
             <CardHeader className="border-b border-border/60 bg-muted/20 dark:border-white/10 dark:bg-white/[0.03]">
               <CardTitle className="flex items-center gap-2">

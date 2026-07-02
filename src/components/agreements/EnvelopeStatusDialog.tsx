@@ -153,7 +153,7 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(92vh,58rem)] w-[calc(100vw-1.5rem)] max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-border dark:ring-white/70 backdrop-blur supports-[backdrop-filter]:bg-card/90 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:shadow-black/45 dark:ring-white/10 sm:w-full">
+      <DialogContent className="flex h-[min(92vh,58rem)] w-[calc(100vw-1.5rem)] max-w-5xl flex-col overflow-hidden rounded-card-xl border border-border/70 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--background)/0.96))] p-0 text-card-foreground shadow-[0_34px_110px_rgba(15,23,42,0.30)] ring-1 ring-border dark:ring-white/70 backdrop-blur supports-[backdrop-filter]:bg-card/90 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] dark:shadow-black/45 dark:ring-white/10 sm:w-full">
         <DialogHeader className="border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.38))] px-5 py-5 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.86))] sm:px-6">
           <DialogTitle className="flex min-w-0 flex-col gap-4 pr-8 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-3">

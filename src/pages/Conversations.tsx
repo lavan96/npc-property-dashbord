@@ -1161,7 +1161,7 @@ export default function Conversations() {
       <DashboardThemeFrame
         as="section"
         variant="section"
-        className="mt-3 flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-hidden rounded-[2rem] border-border dark:border-white/10 bg-[linear-gradient(135deg,hsl(var(--background)/0.92),hsl(var(--card)/0.72))] p-1.5 shadow-2xl shadow-sm dark:shadow-black/40 lg:flex-row lg:gap-0"
+        className="mt-3 flex min-h-0 flex-1 basis-0 flex-col gap-2 overflow-hidden rounded-card-2xl border-border dark:border-white/10 bg-[linear-gradient(135deg,hsl(var(--background)/0.92),hsl(var(--card)/0.72))] p-1.5 shadow-2xl shadow-sm dark:shadow-black/40 lg:flex-row lg:gap-0"
         onMouseMove={(e) => {
           if (!isDraggingConvRef.current) return;
           const delta = e.clientX - dragStartXConvRef.current;
@@ -1364,7 +1364,7 @@ export default function Conversations() {
                         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-100/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
                         <div
                           className={cn(
-                            "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-border dark:ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]",
+                            "relative flex h-16 w-16 shrink-0 items-center justify-center rounded-card border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.28)] ring-1 ring-border dark:ring-white/[0.045] transition-all duration-200 before:absolute before:inset-1 before:rounded-[1.05rem] before:border before:border-white/[0.055] before:bg-white/[0.025] group-hover:scale-105 group-hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_18px_36px_rgba(245,158,11,0.10)]",
                             avatarBackgrounds[normalized] ||
                               "from-muted0/18 via-muted/12 to-card/72 dark:to-background/72",
                           )}
@@ -1380,7 +1380,7 @@ export default function Conversations() {
                           >
                             <Icon className="h-3.5 w-3.5" />
                           </span>
-                          <span className="absolute inset-0 rounded-[1.35rem] bg-gradient-to-br from-white/12 to-transparent opacity-60" />
+                          <span className="absolute inset-0 rounded-card bg-gradient-to-br from-white/12 to-transparent opacity-60" />
                         </div>
                         <div className="relative min-w-0 flex-1 space-y-1">
                           <div className="flex items-start justify-between gap-3">
@@ -1462,7 +1462,7 @@ export default function Conversations() {
           )}
         >
           {!selectedId ? (
-            <div className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-[1.35rem] p-4 sm:p-8">
+            <div className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-card p-4 sm:p-8">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_12%_50%,rgba(250,204,21,0.07),transparent_18%),linear-gradient(135deg,rgba(255,255,255,0.035),transparent_38%,rgba(255,255,255,0.025))]" />
               <div className="pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 items-center gap-2 rounded-full border border-brand-200/10 bg-background/20 dark:bg-black/20 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-brand-100/35 shadow-inner shadow-sm dark:shadow-black/30 lg:flex">
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -1477,7 +1477,7 @@ export default function Conversations() {
                   <Sparkles className="h-3 w-3" />
                   CRM workspace
                 </div>
-                <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-brand-100/22 bg-[radial-gradient(circle_at_35%_25%,rgba(254,243,199,0.18),rgba(245,158,11,0.09)_45%,rgba(24,24,27,0.66))] shadow-[0_0_55px_rgba(234,179,8,0.16),inset_0_1px_0_rgba(255,255,255,0.16)] ring-1 ring-border dark:ring-white/[0.055]">
+                <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-card-xl border border-brand-100/22 bg-[radial-gradient(circle_at_35%_25%,rgba(254,243,199,0.18),rgba(245,158,11,0.09)_45%,rgba(24,24,27,0.66))] shadow-[0_0_55px_rgba(234,179,8,0.16),inset_0_1px_0_rgba(255,255,255,0.16)] ring-1 ring-border dark:ring-white/[0.055]">
                   <div className="absolute inset-2 rounded-[1.3rem] border border-border dark:border-white/[0.055] bg-background/10 dark:bg-black/10" />
                   <MessageSquare
                     className="relative h-9 w-9 text-brand-100/78 drop-shadow-[0_0_18px_rgba(251,191,36,0.22)]"
@@ -1506,12 +1506,12 @@ export default function Conversations() {
                   <div className="relative flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex min-w-0 flex-1 items-start gap-3.5">
                       {!isMobile && (
-                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-muted0/18 via-muted/12 to-card/72 dark:to-background/72')}>
+                        <div className={cn('relative flex h-16 w-16 shrink-0 items-center justify-center rounded-card border border-border dark:border-white/10 bg-gradient-to-br shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_16px_34px_rgba(0,0,0,0.30)] ring-1 ring-border dark:ring-white/[0.045]', avatarBackgrounds[normalizeChannel(selectedConversation.channel_type)] || 'from-muted0/18 via-muted/12 to-card/72 dark:to-background/72')}>
                           <span className="relative z-10 text-base font-bold tracking-[-0.03em] text-foreground dark:text-white drop-shadow">{getContactInitials(selectedConversation.client_name)}</span>
                           <span className={cn('absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border border-border/90 bg-background dark:bg-background shadow-[0_8px_18px_rgba(0,0,0,0.36)] ring-1 ring-border dark:ring-white/10', channelColors[normalizeChannel(selectedConversation.channel_type)] || 'text-foreground dark:text-foreground')}>
                             {(() => { const I = channelIcons[normalizeChannel(selectedConversation.channel_type)] || MessageSquare; return <I className="h-3.5 w-3.5" />; })()}
                           </span>
-                          <span className="absolute inset-0 rounded-[1.35rem] bg-gradient-to-br from-white/12 to-transparent opacity-60" />
+                          <span className="absolute inset-0 rounded-card bg-gradient-to-br from-white/12 to-transparent opacity-60" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1 space-y-2">

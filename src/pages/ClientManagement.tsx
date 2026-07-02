@@ -604,7 +604,7 @@ export default function ClientManagement() {
 
   return (
     <div className="client-management-page relative -mx-3 space-y-6 overflow-hidden px-3 pb-20 md:mx-0 md:px-0 md:pb-0">
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-80 rounded-card-2xl bg-[radial-gradient(circle_at_top_left,rgba(234,179,8,0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.94),rgba(3,7,18,0.98))]" />
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}

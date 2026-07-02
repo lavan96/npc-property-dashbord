@@ -1628,7 +1628,7 @@ export default function UserGuide() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="min-h-0 space-y-6 overflow-x-hidden rounded-[2rem] border border-border/50 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.76)_48%,hsl(var(--background)/0.98))] p-3 pb-8 text-foreground shadow-[0_28px_90px_rgba(15,23,42,0.10)] selection:bg-primary/20 selection:text-foreground [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(0_0%_2%),hsl(0_0%_6%)_50%,hsl(0_0%_3%))] dark:shadow-black/35 sm:space-y-7 sm:p-5 lg:p-6"
+      className="min-h-0 space-y-6 overflow-x-hidden rounded-card-2xl border border-border/50 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.76)_48%,hsl(var(--background)/0.98))] p-3 pb-8 text-foreground shadow-[0_28px_90px_rgba(15,23,42,0.10)] selection:bg-primary/20 selection:text-foreground [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(0_0%_2%),hsl(0_0%_6%)_50%,hsl(0_0%_3%))] dark:shadow-black/35 sm:space-y-7 sm:p-5 lg:p-6"
     >
       <DashboardThemeFrame
         as="header"
@@ -1672,7 +1672,7 @@ export default function UserGuide() {
       </DashboardThemeFrame>
 
       {/* Quick Tips */}
-      <Card id="quick-tips" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
+      <Card id="quick-tips" className="min-w-0 scroll-mt-6 overflow-hidden rounded-card-lg border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.18))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
@@ -1713,7 +1713,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Property Status Guide */}
-      <Card id="property-status-guide" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
+      <Card id="property-status-guide" className="min-w-0 scroll-mt-6 overflow-hidden rounded-card-lg border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.06),hsl(var(--muted)/0.16))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-info/20 bg-info/10 shadow-inner shadow-info/10">
@@ -1753,7 +1753,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Main Sections with Accordion */}
-      <Card id="feature-documentation" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
+      <Card id="feature-documentation" className="min-w-0 scroll-mt-6 overflow-hidden rounded-card-lg border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-4 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.16))]">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">
@@ -1971,7 +1971,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Support Section */}
-      <Card id="need-help" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/20 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-primary/15 dark:bg-background/75 dark:shadow-black/25">
+      <Card id="need-help" className="min-w-0 scroll-mt-6 overflow-hidden rounded-card-lg border-primary/20 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-primary/15 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.10),hsl(var(--muted)/0.16))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-inner shadow-primary/10">

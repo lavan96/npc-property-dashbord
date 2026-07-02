@@ -107,7 +107,11 @@ export default {
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
+				card: 'var(--radius-card)',
+				'card-lg': 'var(--radius-card-lg)',
+				'card-xl': 'var(--radius-card-xl)',
+				'card-2xl': 'var(--radius-card-2xl)'
 			},
 			fontFamily: {
 				sans: ['var(--font-sans)'],

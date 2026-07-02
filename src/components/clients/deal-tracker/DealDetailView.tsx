@@ -60,7 +60,7 @@ import { DocumentsTab } from '@/components/documents/DocumentsTab';
 
 
 const detailShellClass = cn(
-  'relative max-h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden rounded-[1.75rem] border border-brand-200/20',
+  'relative max-h-[calc(100vh-7rem)] overflow-y-auto overflow-x-hidden rounded-card-xl border border-brand-200/20',
   'bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.94))]',
   'p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] sm:p-5'
 );
@@ -189,7 +189,7 @@ export function DealDetailView({ deal, clientId, onBack }: DealDetailViewProps) 
       <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-brand-400/10 blur-3xl" />
       <div className="relative space-y-4">
         {/* Header */}
-        <div className="overflow-hidden rounded-[1.5rem] border border-brand-200/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(245,158,11,0.08)_38%,rgba(0,0,0,0.28))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <div className="overflow-hidden rounded-card-lg border border-brand-200/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(245,158,11,0.08)_38%,rgba(0,0,0,0.28))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-3">
               <Button variant="ghost" size="sm" onClick={onBack} className="h-8 rounded-full border border-brand-200/15 bg-background/20 dark:bg-black/20 px-3 text-xs hover:border-brand-200/35 hover:bg-brand-400/10">

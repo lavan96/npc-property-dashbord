@@ -247,7 +247,7 @@ export default function ReportRequests() {
   };
 
   return (
-    <DashboardThemeFrame variant="page" className="relative min-h-[calc(100vh-6rem)] rounded-[1.5rem] border border-border/60 bg-background/80 p-3 shadow-2xl shadow-sm dark:shadow-black/10 selection:bg-primary/20 selection:text-foreground dark:border-white/10 dark:bg-background/80 dark:shadow-black/40 sm:rounded-[2rem] sm:p-6 lg:p-8">
+    <DashboardThemeFrame variant="page" className="relative min-h-[calc(100vh-6rem)] rounded-card-lg border border-border/60 bg-background/80 p-3 shadow-2xl shadow-sm dark:shadow-black/10 selection:bg-primary/20 selection:text-foreground dark:border-white/10 dark:bg-background/80 dark:shadow-black/40 sm:rounded-card-2xl sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.18),transparent_32%),radial-gradient(circle_at_85%_12%,rgba(59,130,246,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%)]" />
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/60 to-transparent" />
 

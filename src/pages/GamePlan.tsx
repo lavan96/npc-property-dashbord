@@ -34,7 +34,7 @@ export default function GamePlan() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="relative min-h-0 space-y-6 overflow-hidden rounded-[1.75rem] border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.18)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-sm dark:shadow-black/10 dark:border-white/10 dark:bg-background/85 dark:shadow-black/35 sm:p-5 lg:p-6"
+      className="relative min-h-0 space-y-6 overflow-hidden rounded-card-xl border border-border/60 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(180deg,hsl(var(--background)/0.98),hsl(var(--muted)/0.18)_48%,hsl(var(--background)/0.96))] p-3 shadow-2xl shadow-sm dark:shadow-black/10 dark:border-white/10 dark:bg-background/85 dark:shadow-black/35 sm:p-5 lg:p-6"
     >
       {/* Header */}
       <DashboardThemeFrame

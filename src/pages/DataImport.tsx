@@ -418,7 +418,7 @@ export default function DataImport() {
   return (
     <DashboardThemeFrame
       variant="page"
-      className="min-h-0 overflow-x-hidden space-y-5 rounded-[1.75rem] border border-border/45 bg-[linear-gradient(180deg,hsl(var(--background)/0.72),hsl(var(--muted)/0.18))] px-2 py-3 shadow-[0_18px_60px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--background)/0.42),hsl(var(--muted)/0.08))] dark:shadow-black/25 sm:space-y-6 sm:px-4 sm:py-4 lg:px-5"
+      className="min-h-0 overflow-x-hidden space-y-5 rounded-card-xl border border-border/45 bg-[linear-gradient(180deg,hsl(var(--background)/0.72),hsl(var(--muted)/0.18))] px-2 py-3 shadow-[0_18px_60px_hsl(var(--foreground)/0.06)] dark:border-white/10 dark:bg-[linear-gradient(180deg,hsl(var(--background)/0.42),hsl(var(--muted)/0.08))] dark:shadow-black/25 sm:space-y-6 sm:px-4 sm:py-4 lg:px-5"
     >
       <DashboardThemeFrame
         as="header"
@@ -466,7 +466,7 @@ export default function DataImport() {
       </DashboardThemeFrame>
 
       {/* Quick Import Section */}
-      <Card className="group relative w-full min-w-0 overflow-hidden rounded-[1.5rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.08))] shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] backdrop-blur dark:border-primary/20 dark:bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--primary)/0.10))] dark:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.12)]">
+      <Card className="group relative w-full min-w-0 overflow-hidden rounded-card-lg border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--primary)/0.08))] shadow-[0_18px_48px_hsl(var(--foreground)/0.08)] backdrop-blur dark:border-primary/20 dark:bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--primary)/0.10))] dark:shadow-black/30 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.12)]">
         <div className="pointer-events-none absolute -right-14 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
         <div className="pointer-events-none absolute left-8 top-0 h-px w-2/3 bg-gradient-to-r from-primary/45 via-primary/20 to-transparent" />
         <CardHeader className="relative border-b border-primary/15 bg-background/35">
@@ -557,7 +557,7 @@ export default function DataImport() {
         </CardContent>
       </Card>
 
-      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.24))] shadow-[0_14px_40px_hsl(var(--foreground)/0.06)] backdrop-blur dark:border-white/10 dark:bg-background/55 dark:shadow-black/25 transition-all duration-300 hover:border-primary/20 hover:shadow-[0_18px_52px_hsl(var(--foreground)/0.08)]">
+      <Card className="w-full min-w-0 overflow-hidden rounded-card-lg border-border/60 bg-[linear-gradient(135deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.24))] shadow-[0_14px_40px_hsl(var(--foreground)/0.06)] backdrop-blur dark:border-white/10 dark:bg-background/55 dark:shadow-black/25 transition-all duration-300 hover:border-primary/20 hover:shadow-[0_18px_52px_hsl(var(--foreground)/0.08)]">
         <CardHeader className="border-b border-border/50 bg-background/35">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
@@ -788,7 +788,7 @@ export default function DataImport() {
         </CardContent>
       </Card>
 
-      <Card className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border-border/60 bg-card/80 shadow-[0_14px_40px_hsl(var(--foreground)/0.06)] backdrop-blur dark:border-white/10 dark:bg-background/55 dark:shadow-black/25">
+      <Card className="w-full min-w-0 overflow-hidden rounded-card-lg border-border/60 bg-card/80 shadow-[0_14px_40px_hsl(var(--foreground)/0.06)] backdrop-blur dark:border-white/10 dark:bg-background/55 dark:shadow-black/25">
         <CardHeader className="border-b border-border/50 bg-muted/20">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <CardTitle className="flex min-w-0 items-center gap-2 text-lg">

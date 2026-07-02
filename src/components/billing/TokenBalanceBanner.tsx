@@ -42,7 +42,7 @@ export function TokenBalanceBanner() {
 
   if (isSettingsPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-[1.5rem] border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.40),hsl(var(--card)/0.98)_44%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] ring-1 ring-warning/10 backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.78))] dark:shadow-black/30 sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-card-lg border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.40),hsl(var(--card)/0.98)_44%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] ring-1 ring-warning/10 backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.78))] dark:shadow-black/30 sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-warning/70 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-warning/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
@@ -72,7 +72,7 @@ export function TokenBalanceBanner() {
 
   if (isActivityLogsPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-[1.5rem] border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.40),hsl(var(--card)/0.98)_44%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.78))] dark:shadow-black/30 sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-card-lg border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.40),hsl(var(--card)/0.98)_44%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.78))] dark:shadow-black/30 sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-warning/70 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-warning/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
@@ -101,7 +101,7 @@ export function TokenBalanceBanner() {
 
   if (isDataImportPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-[1.5rem] border-warning/35 ring-1 ring-warning/10 transition-shadow duration-300 hover:shadow-[0_20px_56px_hsl(var(--warning)/0.14)] bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.36),hsl(var(--card)/0.96)_44%,hsl(var(--dashboard-surface-elevated)/0.88))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.78))] dark:shadow-black/30 sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-card-lg border-warning/35 ring-1 ring-warning/10 transition-shadow duration-300 hover:shadow-[0_20px_56px_hsl(var(--warning)/0.14)] bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.36),hsl(var(--card)/0.96)_44%,hsl(var(--dashboard-surface-elevated)/0.88))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.78))] dark:shadow-black/30 sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-warning/70 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-warning/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
@@ -130,7 +130,7 @@ export function TokenBalanceBanner() {
 
   if (isErrorLogsPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-[1.5rem] border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.20),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.40),hsl(var(--card)/0.96)_42%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_18px_52px_hsl(var(--foreground)/0.09)] ring-1 ring-warning/10 backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_22px_62px_hsl(var(--warning)/0.16)] dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_46%,hsl(var(--background)/0.80))] dark:shadow-black/30 sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-card-lg border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.20),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.40),hsl(var(--card)/0.96)_42%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_18px_52px_hsl(var(--foreground)/0.09)] ring-1 ring-warning/10 backdrop-blur-xl transition-shadow duration-300 hover:shadow-[0_22px_62px_hsl(var(--warning)/0.16)] dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--warning-light)/0.22),hsl(var(--card)/0.88)_46%,hsl(var(--background)/0.80))] dark:shadow-black/30 sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-warning/70 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-warning/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
@@ -160,7 +160,7 @@ export function TokenBalanceBanner() {
 
   if (isMonitoringPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-[1.5rem] border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.42),hsl(var(--card)/0.96)_42%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.24),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.82))] sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-[1600px] min-w-0 overflow-hidden rounded-card-lg border-warning/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.18),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.42),hsl(var(--card)/0.96)_42%,hsl(var(--dashboard-surface-elevated)/0.90))] px-4 py-3.5 shadow-[0_16px_44px_hsl(var(--foreground)/0.08)] backdrop-blur-xl dark:border-warning/30 dark:bg-[radial-gradient(circle_at_top_left,hsl(var(--warning)/0.16),transparent_32%),linear-gradient(135deg,hsl(var(--warning-light)/0.24),hsl(var(--card)/0.88)_44%,hsl(var(--background)/0.82))] sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-warning/70 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-warning/15 blur-3xl" />
         <Sparkles className="h-4 w-4 text-warning" />
@@ -186,7 +186,7 @@ export function TokenBalanceBanner() {
 
   if (isAgreementsPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-[1.75rem] border-brand-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.18),hsl(var(--card)/0.96)_40%,hsl(var(--background)/0.88))] px-4 py-3.5 shadow-[0_18px_54px_hsl(43_74%_28%/0.13)] backdrop-blur-xl dark:border-brand-300/30 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(var(--card)/0.82)_42%,hsl(var(--background)/0.70))] dark:shadow-[0_18px_60px_hsl(0_0%_0%/0.34)] sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-card-xl border-brand-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.18),hsl(var(--card)/0.96)_40%,hsl(var(--background)/0.88))] px-4 py-3.5 shadow-[0_18px_54px_hsl(43_74%_28%/0.13)] backdrop-blur-xl dark:border-brand-300/30 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(var(--card)/0.82)_42%,hsl(var(--background)/0.70))] dark:shadow-[0_18px_60px_hsl(0_0%_0%/0.34)] sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/90 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-16 h-32 w-32 rounded-full bg-brand-300/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-10 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
@@ -911,7 +911,7 @@ export function TokenBalanceBanner() {
 
   if (isMessagesPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-[1520px] overflow-hidden rounded-[1.35rem] border-brand-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(9,9,11,0.96)_44%,rgba(23,23,23,0.92))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-[1520px] overflow-hidden rounded-card border-brand-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(9,9,11,0.96)_44%,rgba(23,23,23,0.92))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/85 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-20 h-36 w-36 rounded-full bg-brand-300/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-28 w-28 rounded-full bg-brand-500/10 blur-3xl" />
@@ -938,7 +938,7 @@ export function TokenBalanceBanner() {
 
   if (isClientTrackerPage) {
     return (
-      <Alert className="relative overflow-hidden rounded-[1.35rem] border-brand-300/45 bg-[linear-gradient(135deg,rgba(245,158,11,0.20),rgba(10,10,10,0.97)_42%,rgba(24,24,27,0.92))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:px-5">
+      <Alert className="relative overflow-hidden rounded-card border-brand-300/45 bg-[linear-gradient(135deg,rgba(245,158,11,0.20),rgba(10,10,10,0.97)_42%,rgba(24,24,27,0.92))] px-4 py-3.5 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/90 to-transparent" />
         <div className="pointer-events-none absolute -left-12 -top-20 h-36 w-36 rounded-full bg-brand-300/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
@@ -1019,7 +1019,7 @@ export function TokenBalanceBanner() {
 
   if (isReportRequestsPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-[1.75rem] border-brand-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(9,9,11,0.96)_42%,rgba(24,24,27,0.9))] px-4 py-3 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl">
+      <Alert className="relative mx-auto w-full max-w-7xl overflow-hidden rounded-card-xl border-brand-300/35 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(9,9,11,0.96)_42%,rgba(24,24,27,0.9))] px-4 py-3 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-xl">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/90 to-transparent" />
         <div className="pointer-events-none absolute -right-12 -top-20 h-36 w-36 rounded-full bg-brand-300/20 blur-3xl" />
         <Sparkles className="h-4 w-4 text-brand-200" />
@@ -1121,7 +1121,7 @@ export function TokenBalanceBanner() {
 
   if (isChartsPage) {
     return (
-      <Alert className="relative mx-auto w-full max-w-[1700px] overflow-hidden rounded-[1.75rem] border-brand-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.18),hsl(var(--card)/0.96)_42%,hsl(var(--background)/0.88))] px-4 py-3.5 shadow-[0_18px_50px_hsl(43_74%_28%/0.12)] backdrop-blur-xl dark:border-brand-300/30 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(220_22%_7%/0.97)_46%,hsl(32_28%_9%/0.94))] dark:shadow-[0_18px_55px_hsl(0_0%_0%/0.3)] sm:px-5">
+      <Alert className="relative mx-auto w-full max-w-[1700px] overflow-hidden rounded-card-xl border-brand-300/45 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.18),hsl(var(--card)/0.96)_42%,hsl(var(--background)/0.88))] px-4 py-3.5 shadow-[0_18px_50px_hsl(43_74%_28%/0.12)] backdrop-blur-xl dark:border-brand-300/30 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(220_22%_7%/0.97)_46%,hsl(32_28%_9%/0.94))] dark:shadow-[0_18px_55px_hsl(0_0%_0%/0.3)] sm:px-5">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/90 to-transparent" />
         <div className="pointer-events-none absolute -left-10 -top-16 h-32 w-32 rounded-full bg-brand-300/15 blur-3xl" />
         <div className="pointer-events-none absolute -right-12 bottom-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />

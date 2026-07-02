@@ -93,7 +93,7 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
   return (
     <Card
       className={cn(
-        'overflow-hidden rounded-[1.35rem] border shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]',
+        'overflow-hidden rounded-card border shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]',
         critical > 0
           ? 'border-destructive/25 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.14),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.92),rgba(9,9,11,0.86))]'
           : 'border-brand-300/25 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.15),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.92),rgba(9,9,11,0.86))]'

@@ -1891,7 +1891,7 @@ export default function ReportQA() {
             {/* Premium Upload Zone */}
             <div
               className={cn(
-                "report-qa-dropzone group w-full rounded-[1.35rem] border-2 border-dashed px-5 py-7 text-center transition-all cursor-pointer sm:px-6 sm:py-8",
+                "report-qa-dropzone group w-full rounded-card border-2 border-dashed px-5 py-7 text-center transition-all cursor-pointer sm:px-6 sm:py-8",
                 isDragOver ? 'is-drag-over border-primary' : 'border-primary/45 hover:border-primary/75',
                 isUploading && 'is-processing pointer-events-none',
                 isUploadComplete && !isUploading && !hasUploadError && 'is-ready',

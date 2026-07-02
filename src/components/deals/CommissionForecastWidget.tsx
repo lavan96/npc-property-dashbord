@@ -49,7 +49,7 @@ export function CommissionForecastWidget({ deals }: Props) {
   const hasForecastValue = totalForecast > 0;
 
   return (
-    <Card className="overflow-hidden rounded-[1.35rem] border-brand-300/20 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_30%),radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.94),rgba(9,9,11,0.88))] text-foreground dark:text-foreground shadow-[0_24px_70px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.07)]">
+    <Card className="overflow-hidden rounded-card border-brand-300/20 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_30%),radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.94),rgba(9,9,11,0.88))] text-foreground dark:text-foreground shadow-[0_24px_70px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.07)]">
       <CardHeader className="px-3 pb-2 pt-3 sm:px-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <CardTitle className="flex items-start gap-2 text-sm font-semibold tracking-tight">

@@ -467,7 +467,7 @@ export default function ErrorLogs() {
       )}
 
       {/* Filters */}
-      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(var(--background)/0.90)_54%,hsl(var(--primary)/0.07))] shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:bg-background/70 dark:ring-white/10 dark:shadow-black/25">
+      <Card className="min-w-0 overflow-hidden rounded-card-lg border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(var(--background)/0.90)_54%,hsl(var(--primary)/0.07))] shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:bg-background/70 dark:ring-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -542,7 +542,7 @@ export default function ErrorLogs() {
 
       {/* Error Tabs by Source */}
       <Tabs defaultValue="all" className="min-w-0">
-        <TabsList aria-label="Filter error logs by source category" className="h-auto w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto rounded-[1.35rem] border border-primary/15 bg-card/80 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-background/45 dark:shadow-black/20">
+        <TabsList aria-label="Filter error logs by source category" className="h-auto w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto rounded-card border border-primary/15 bg-card/80 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-background/45 dark:shadow-black/20">
           <TabsTrigger value="all" aria-label={`Show all error logs (${filteredErrors.length})`} className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
             All
             <Badge variant="secondary" className="ml-1 rounded-full bg-background/80 px-2 text-foreground data-[state=active]:bg-primary-foreground/20">{filteredErrors.length}</Badge>
@@ -612,7 +612,7 @@ function ErrorStatsSkeleton() {
 
 function ErrorStatePanel({ title, description, onRefresh, isRefreshing }: { title: string; description: string; onRefresh: () => void; isRefreshing: boolean }) {
   return (
-    <Card role="alert" aria-live="assertive" className="min-w-0 overflow-hidden rounded-[1.5rem] border-destructive/30 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.08))] shadow-[0_16px_48px_rgba(239,68,68,0.08)] ring-1 ring-border/40 dark:ring-white/10">
+    <Card role="alert" aria-live="assertive" className="min-w-0 overflow-hidden rounded-card-lg border-destructive/30 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.08))] shadow-[0_16px_48px_rgba(239,68,68,0.08)] ring-1 ring-border/40 dark:ring-white/10">
       <CardContent className="flex min-w-0 flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
@@ -645,7 +645,7 @@ function ErrorListSkeleton() {
     <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading error records">
       <span className="sr-only">Loading error records</span>
       {Array.from({ length: 3 }).map((_, index) => (
-        <Card key={index} className="min-w-0 overflow-hidden rounded-[1.35rem] border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-background/80 dark:ring-white/10">
+        <Card key={index} className="min-w-0 overflow-hidden rounded-card border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-background/80 dark:ring-white/10">
           <CardContent className="p-5">
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex min-w-0 flex-1 gap-3">
@@ -694,7 +694,7 @@ function ErrorList({
 
   if (errors.length === 0) {
     return (
-      <Card className={`min-w-0 overflow-hidden rounded-[1.5rem] border ${hasActiveFilters ? 'border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--primary)/0.06))]' : 'border-success/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(160_84%_39%/0.06))]'} shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25`}>
+      <Card className={`min-w-0 overflow-hidden rounded-card-lg border ${hasActiveFilters ? 'border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--primary)/0.06))]' : 'border-success/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(160_84%_39%/0.06))]'} shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25`}>
         <CardContent className="flex min-w-0 flex-col items-center justify-center px-6 py-12 text-center">
           <span className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border ${hasActiveFilters ? 'border-primary/25 bg-primary/10 text-primary' : 'border-success/25 bg-success/10 text-success-foreground0'} shadow-sm`}>
             {hasActiveFilters ? <Search className="h-7 w-7" /> : <CheckCircle2 className="h-7 w-7" />}
@@ -777,7 +777,7 @@ function ErrorCard({
 
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle} className="min-w-0">
-      <Card className={`group min-w-0 overflow-hidden rounded-[1.35rem] border ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_22px_64px_rgba(15,23,42,0.12)] dark:ring-white/10 dark:shadow-black/25 ${severityRowClass}`}>
+      <Card className={`group min-w-0 overflow-hidden rounded-card border ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_22px_64px_rgba(15,23,42,0.12)] dark:ring-white/10 dark:shadow-black/25 ${severityRowClass}`}>
         <CollapsibleTrigger asChild>
           <CardHeader aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${rowLabel}`} className="cursor-pointer px-4 py-4 transition-colors hover:bg-background/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-5">
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
