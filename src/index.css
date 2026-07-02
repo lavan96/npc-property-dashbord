@@ -4682,9 +4682,21 @@ html {
     background-color: rgba(166, 120, 0, 0.22);
   }
 
+  :root:not(.dark) .dashboard-sidebar-content {
+    color: hsl(var(--sidebar-foreground));
+  }
+
+  :root:not(.dark) .dashboard-sidebar-content::-webkit-scrollbar-thumb {
+    background-color: rgba(166, 120, 0, 0.22);
+  }
+
   :root:not(.dark) .dashboard-sidebar-header {
     border-color: hsl(var(--dashboard-border-soft) / 0.82);
     background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.6), hsl(var(--dashboard-surface) / 0));
+  }
+
+  :root:not(.dark) .dashboard-sidebar-group {
+    color: hsl(var(--sidebar-foreground));
   }
 
   :root:not(.dark) .dashboard-sidebar-group {
@@ -4781,6 +4793,15 @@ html {
     border-top-color: rgba(210, 190, 160, 0.82);
   }
 
+  :root:not(.dark) .dashboard-sidebar-menu-button-active svg,
+  :root:not(.dark) .dashboard-sidebar-menu-button-admin.dashboard-sidebar-menu-button-active svg {
+    color: #fffaf1;
+  }
+
+  :root:not(.dark) .dashboard-sidebar-admin-divider {
+    border-top-color: rgba(210, 190, 160, 0.82);
+  }
+
   :root:not(.dark) .dashboard-sidebar-admin-group,
   :root:not(.dark) .dashboard-sidebar-admin-group-collapsed {
     border-color: rgba(210, 190, 160, 0.76);
@@ -4802,6 +4823,13 @@ html {
   :root:not(.dark) .dashboard-shell button[role="combobox"] {
     border-color: hsl(var(--dashboard-border-soft) / 0.82);
     background-color: hsl(var(--dashboard-surface) / 0.86);
+  }
+
+  :root:not(.dark) .dashboard-shell input:focus,
+  :root:not(.dark) .dashboard-shell textarea:focus,
+  :root:not(.dark) .dashboard-shell button[role="combobox"]:focus {
+    border-color: rgba(166, 120, 0, 0.46);
+    box-shadow: 0 0 0 3px rgba(231, 200, 115, 0.2);
   }
 
   :root:not(.dark) .dashboard-shell input:focus,
