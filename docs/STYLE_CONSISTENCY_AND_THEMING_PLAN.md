@@ -41,11 +41,19 @@
 >   `TokenBalanceBanner` and chart *chrome* — chart series already use `--chart-*`).
 >   **Palette classes: 10,877 → 105 (~99%).** Every batch verified: build green,
 >   `tsc` clean, no same-token contrast collisions.
->   **Remaining (bespoke, not codemod-safe):** the PDF templates/generators (need a
->   shared `brandPalette.ts` resolved at generation time — they can't read CSS
->   vars; this is where most residual hex lives) and the template-builder colour
->   pickers (intentional literal swatches). A full visual QA pass is Phase 8.
-> - ⏭️ **Next** — PDF `brandPalette.ts` (colour + font), then Phases 6–8
+>   The template-builder colour pickers keep their literal swatches (intentional).
+>   A full visual QA pass is Phase 8.
+> - ✅ **Phase 5 (PDF) — brand palette for exported documents.** Added
+>   `src/branding/brandPalette.ts`: `getBrandPdfPalette()` (hex, for HTML/canvas)
+>   and `getBrandPdfRgb()` (0–1 rgb, for pdf-lib) that resolve the brand colour
+>   into concrete values at generation time (gold ramp brand-derived; navy/
+>   neutral/semantic fixed). The three client report templates (Client/Strict/
+>   Hybrid) now **cascade dynamically** via `useBrand()` — gold hexes and rgba
+>   washes routed through the palette by `scripts/migrate-pdf-gold.cjs`. The
+>   Vownet (HTML) and Portfolio (pdf-lib) generators are centralised on the
+>   palette (dynamic per-generation re-resolution is a small follow-up). Build
+>   green, `tsc` clean.
+> - ⏭️ **Next** — Phases 6–8
 >   (typography adoption, density, visual-regression + cascade tests).
 **Related:** [`WHITE_LABEL_TOKEN_CONTRACT.md`](./WHITE_LABEL_TOKEN_CONTRACT.md),
 [`dashboard-theme-foundation.md`](./dashboard-theme-foundation.md),
