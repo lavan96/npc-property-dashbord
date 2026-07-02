@@ -239,7 +239,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-tab-button { @apply relative flex min-h-[4.75rem] w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border px-3.5 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:pointer-events-none disabled:opacity-50; }
   .ci-tab-button::before { content: ''; @apply absolute inset-y-2 left-0 w-1 rounded-r-full bg-transparent transition-colors; }
   .ci-tab-button-copy { @apply min-w-0 pr-1; }
-  .ci-tab-button-active { @apply border-primary/70 bg-gradient-to-br from-primary via-primary to-amber-500 text-primary-foreground shadow-md shadow-primary/30 ring-1 ring-primary/35; }
+  .ci-tab-button-active { @apply border-primary/70 bg-gradient-to-br from-primary via-primary to-primary-hover text-primary-foreground shadow-md shadow-primary/30 ring-1 ring-primary/35; }
   .ci-tab-button-active::before { @apply bg-primary-foreground/90; }
   .ci-tab-button-idle { @apply border-border/70 bg-card/70 text-foreground shadow-sm hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:shadow-md hover:shadow-primary/10; }
   .ci-tab-button-idle:hover::before { @apply bg-primary/70; }
@@ -261,7 +261,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-field-message-warning { @apply border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-200; }
   .ci-field-calculated { @apply border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-100; }
   .ci-field-manual { @apply border-sky-500/30 bg-sky-500/5 text-sky-800 dark:text-sky-100; }
-  .ci-field-ai { @apply border-purple-500/30 bg-purple-500/5 text-purple-800 dark:text-purple-100; }
+  .ci-field-ai { @apply border-primary/30 bg-primary/5 text-primary dark:text-purple-100; }
   .ci-field-pending { @apply border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-100; }
   .ci-field-readonly { @apply border-border/80 bg-muted/35 text-muted-foreground shadow-inner; }
   .ci-foundation label { @apply text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground; }
@@ -303,7 +303,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-foundation input[data-source='ai'],
   .ci-foundation textarea[data-source='ai'],
   .ci-foundation input[data-ci-source='ai'],
-  .ci-foundation textarea[data-ci-source='ai'] { @apply border-purple-500/35 bg-purple-500/5; }
+  .ci-foundation textarea[data-ci-source='ai'] { @apply border-primary/35 bg-primary/5; }
   .ci-foundation input[data-status='pending'],
   .ci-foundation textarea[data-status='pending'],
   .ci-foundation input[data-ci-status='pending'],
@@ -342,7 +342,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-badge-workflow { @apply border-primary/35 bg-primary/15 text-primary shadow-sm; }
   .ci-badge-soft { @apply rounded-full border border-border/70 bg-background/70 px-2.5 py-0.5 text-xs font-medium text-muted-foreground shadow-sm; }
   .ci-badge-manual { @apply border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-200; }
-  .ci-badge-mixed { @apply border-violet-500/35 bg-violet-500/10 text-violet-700 dark:text-violet-200; }
+  .ci-badge-mixed { @apply border-primary/35 bg-primary/10 text-primary dark:text-violet-200; }
   .ci-linked-state { @apply rounded-2xl border p-4 shadow-sm; }
   .ci-linked-state-linked { @apply border-emerald-500/25 bg-emerald-500/5; }
   .ci-linked-state-empty { @apply border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-background/40; }
@@ -350,9 +350,9 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-active-property-metrics .ci-summary-metric { @apply min-h-20 border-border/80 bg-background/70 shadow-sm shadow-black/5 transition-colors; }
   .ci-metric-good { @apply border-emerald-500/30 bg-emerald-500/5; }
   .ci-metric-warn { @apply border-amber-500/35 bg-amber-500/10; }
-  .ci-metric-pending { @apply border-amber-500/30 bg-amber-500/5; }
+  .ci-metric-pending { @apply border-primary/30 bg-primary/5; }
   .ci-metric-manual { @apply border-sky-500/30 bg-sky-500/5; }
-  .ci-metric-mixed { @apply border-violet-500/30 bg-violet-500/5; }
+  .ci-metric-mixed { @apply border-primary/30 bg-primary/5; }
   .ci-metric-neutral { @apply border-border/80; }
   .ci-workflow-actions { @apply grid w-full gap-3 rounded-3xl border border-border/70 bg-background/60 p-3 shadow-sm backdrop-blur sm:grid-cols-2 2xl:w-[34rem]; }
   .ci-workflow-group { @apply rounded-2xl border border-border/60 bg-card/70 p-3; }
@@ -362,7 +362,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .ci-workflow-button { @apply w-full justify-center rounded-xl bg-background/75 font-medium text-foreground disabled:cursor-not-allowed disabled:bg-muted/45 disabled:text-muted-foreground disabled:opacity-100 disabled:saturate-50; }
   .ci-workflow-report { @apply border-primary/25 hover:border-primary/50 hover:bg-primary/10 hover:text-primary; }
   .ci-source-badge { @apply inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-sm; }
-  .ci-source-ai { @apply border-purple-500/35 bg-purple-500/10 text-purple-700 dark:text-purple-200; }
+  .ci-source-ai { @apply border-primary/35 bg-primary/10 text-primary dark:text-purple-200; }
   .ci-source-manual { @apply border-sky-500/35 bg-sky-500/10 text-sky-700 dark:text-sky-200; }
   .ci-source-scraped { @apply border-orange-500/35 bg-orange-500/10 text-orange-700 dark:text-orange-200; }
   .ci-source-linked { @apply border-primary/35 bg-primary/10 text-primary; }
@@ -481,8 +481,8 @@ Clean, modern admin dashboard with confidence-based color coding
   .dashboard-shell {
     @apply relative min-h-screen bg-background text-foreground;
     background-image:
-      radial-gradient(circle at 12% 0%, hsl(var(--dashboard-primary-soft) / 0.82), transparent 27rem),
-      radial-gradient(circle at 92% 6%, hsl(var(--primary) / 0.10), transparent 24rem),
+      radial-gradient(circle at 12% 0%, hsl(var(--dashboard-primary-soft) / 0.34), transparent 25rem),
+      radial-gradient(circle at 92% 6%, hsl(var(--dashboard-primary-strong) / 0.055), transparent 22rem),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--surface-2)) 52%, hsl(var(--surface-1)) 100%);
   }
 
@@ -555,7 +555,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .dashboard-main::before {
     content: "";
     @apply pointer-events-none absolute inset-x-0 top-0 h-48;
-    background: linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent);
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong) / 0.08), transparent);
   }
 
   .dashboard-content {
@@ -606,7 +606,7 @@ Clean, modern admin dashboard with confidence-based color coding
     inset-inline: 2rem;
     top: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.65), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--dashboard-primary-strong) / 0.65), transparent);
   }
 
   .dashboard-theme-hero::after {
@@ -623,7 +623,7 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-theme-section-accent::before {
-    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.72), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--dashboard-primary-strong) / 0.72), transparent);
   }
 
   .dashboard-section {
@@ -672,7 +672,8 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary;
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em];
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-kpi-card {
@@ -802,7 +803,7 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-mobile-nav-item-active {
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-page-frame {
@@ -815,7 +816,7 @@ Clean, modern admin dashboard with confidence-based color coding
 
   .dashboard-chip-accent {
     background-color: hsl(var(--dashboard-primary-soft) / 0.9);
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-status-chip {
@@ -850,9 +851,9 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-status-chip-accent {
-    border-color: hsl(var(--primary) / 0.28);
+    border-color: hsl(var(--dashboard-primary-strong) / 0.28);
     background-color: hsl(var(--dashboard-primary-soft) / 0.85);
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-status-chip-neutral {
@@ -860,6 +861,127 @@ Clean, modern admin dashboard with confidence-based color coding
     background-color: hsl(var(--surface-muted) / 0.92);
     color: hsl(var(--muted-foreground));
   }
+
+  :root:not(.dark) .dashboard-luxury-kicker {
+    color: hsl(var(--dashboard-primary-strong));
+  }
+
+  :root:not(.dark) .dashboard-luxury-icon-tile {
+    border: 1px solid hsl(var(--dashboard-primary-strong) / 0.24);
+    background: hsl(var(--dashboard-primary-soft) / 0.72);
+    color: hsl(var(--dashboard-primary-strong));
+    box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.42), 0 8px 18px hsl(35 43% 20% / 0.06);
+  }
+
+  :root:not(.dark) .dashboard-luxury-inline-accent {
+    color: hsl(var(--dashboard-primary-strong) / 0.78);
+  }
+
+  :root:not(.dark) .dashboard-luxury-action {
+    border: 1px solid hsl(var(--dashboard-primary-strong) / 0.34);
+    background: hsl(var(--dashboard-surface) / 0.96);
+    color: hsl(var(--dashboard-primary-strong));
+    box-shadow: 0 8px 20px hsl(35 43% 20% / 0.07);
+  }
+
+  :root:not(.dark) .dashboard-luxury-action:hover {
+    transform: translateY(-0.125rem);
+    border-color: hsl(var(--dashboard-primary-strong) / 0.42);
+    background: hsl(var(--dashboard-primary-soft) / 0.5);
+    color: hsl(var(--dashboard-primary-strong));
+    box-shadow: 0 12px 28px hsl(35 43% 20% / 0.12);
+  }
+
+  :root:not(.dark) .dashboard-luxury-action:focus-visible,
+  :root:not(.dark) .dashboard-luxury-primary-cta:focus-visible,
+  :root:not(.dark) .dashboard-floating-action-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.24), 0 12px 28px hsl(35 43% 20% / 0.12);
+  }
+
+  :root:not(.dark) .dashboard-luxury-primary-cta,
+  :root:not(.dark) .dashboard-floating-action-button {
+    border: 1px solid hsl(var(--dashboard-primary-strong) / 0.28);
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary-hover)));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 14px 30px hsl(35 43% 20% / 0.18), inset 0 1px 0 hsl(0 0% 100% / 0.22);
+  }
+
+  :root:not(.dark) .dashboard-luxury-primary-cta:hover,
+  :root:not(.dark) .dashboard-floating-action-button:hover {
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong) / 0.94), hsl(var(--primary-hover)));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 18px 36px hsl(35 43% 20% / 0.22), inset 0 1px 0 hsl(0 0% 100% / 0.24);
+  }
+
+  :root:not(.dark) .dashboard-luxury-empty-state {
+    border-color: hsl(var(--dashboard-primary-strong) / 0.26);
+    background: linear-gradient(135deg, hsl(var(--dashboard-primary-soft) / 0.42), hsl(var(--background)), hsl(var(--dashboard-surface-muted) / 0.5));
+  }
+
+  :root:not(.dark) .dashboard-floating-report-widget {
+    border-color: hsl(var(--dashboard-primary-strong) / 0.3);
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary-hover)));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 14px 32px hsl(35 43% 20% / 0.16), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+  }
+
+  :root:not(.dark) .dashboard-floating-report-widget button,
+  :root:not(.dark) .dashboard-floating-report-widget .text-primary,
+  :root:not(.dark) .dashboard-floating-report-widget [class*="text-primary"] {
+    color: hsl(var(--primary-foreground));
+  }
+
+  :root:not(.dark) .dashboard-floating-report-widget .bg-primary\/10 {
+    background-color: hsl(var(--primary-foreground) / 0.16);
+  }
+
+  :root:not(.dark) .dashboard-floating-report-widget button:hover {
+    background-color: hsl(var(--primary-foreground) / 0.12);
+    color: hsl(var(--primary-foreground));
+  }
+
+  .dark .dashboard-luxury-kicker,
+  .dark .dashboard-luxury-inline-accent {
+    color: hsl(var(--primary));
+  }
+
+  .dark .dashboard-luxury-icon-tile {
+    border-color: hsl(var(--primary) / 0.2);
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+  }
+
+  .dark .dashboard-luxury-action {
+    border-color: hsl(var(--primary) / 0.25);
+    background: hsl(var(--background) / 0.8);
+    color: hsl(var(--primary));
+  }
+
+  .dark .dashboard-luxury-action:hover {
+    border-color: hsl(var(--primary) / 0.4);
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+  }
+
+  .dark .dashboard-luxury-empty-state {
+    border-color: hsl(var(--primary) / 0.25);
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.05), hsl(var(--background)), hsl(var(--muted) / 0.3));
+  }
+
+  .dark .dashboard-luxury-primary-cta,
+  .dark .dashboard-floating-action-button {
+    border-color: hsl(var(--primary) / 0.28);
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 14px 30px hsl(var(--primary) / 0.2);
+  }
+
+  .dark .dashboard-floating-report-widget {
+    border-color: hsl(var(--border));
+    background: hsl(var(--primary) / 0.05);
+  }
+
 
   .dashboard-section-band {
     @apply rounded-2xl px-4 py-4 md:px-6;
@@ -881,7 +1003,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .dashboard-nav-item-active {
     background-color: hsl(var(--dashboard-primary-strong));
     color: hsl(var(--primary-foreground));
-    box-shadow: 0 16px 34px -22px hsl(var(--primary) / 0.9), inset 0 1px 0 hsl(0 0% 100% / 0.22);
+    box-shadow: 0 16px 34px -22px hsl(var(--dashboard-primary-strong) / 0.9), inset 0 1px 0 hsl(0 0% 100% / 0.22);
   }
 
   .dashboard-nav-indicator {
@@ -1526,10 +1648,10 @@ html {
 
   .dashboard-sidebar-menu-button-active {
     position: relative;
-    border-color: hsl(var(--primary) / 0.34);
-    background: linear-gradient(90deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary) / 0.86));
+    border-color: hsl(var(--sidebar-primary) / 0.34);
+    background: linear-gradient(90deg, hsl(var(--sidebar-primary)), hsl(var(--dashboard-primary-strong) / 0.86));
     color: hsl(var(--primary-foreground));
-    box-shadow: 0 16px 32px -22px hsl(var(--primary) / 0.95);
+    box-shadow: 0 16px 32px -22px hsl(var(--sidebar-primary) / 0.95);
   }
 
   .dashboard-sidebar-menu-button-active::before {
@@ -4797,15 +4919,15 @@ html {
 
   :root:not(.dark) .dashboard-sidebar-menu-button:hover svg,
   :root:not(.dark) .dashboard-sidebar-menu-button-admin:hover svg {
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   :root:not(.dark) .dashboard-sidebar-menu-button-active,
   :root:not(.dark) .dashboard-sidebar-menu-button-admin.dashboard-sidebar-menu-button-active {
-    border-color: hsl(var(--primary) / 0.34);
-    background: linear-gradient(90deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary) / 0.92));
-    color: hsl(var(--primary-foreground));
-    box-shadow: 0 16px 30px hsl(var(--primary) / 0.24);
+    border-color: hsl(var(--sidebar-primary) / 0.34);
+    background: linear-gradient(90deg, hsl(var(--sidebar-primary)), hsl(var(--dashboard-primary-strong) / 0.92));
+    color: hsl(var(--sidebar-primary-foreground));
+    box-shadow: 0 16px 30px hsl(var(--sidebar-primary) / 0.24);
   }
 
   :root:not(.dark) .dashboard-sidebar-menu-button-active svg,
@@ -4986,12 +5108,12 @@ html {
   }
 
   :root:not(.dark) .luxury-button:focus-visible {
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18), 0 12px 24px rgba(120, 85, 20, 0.12);
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18), 0 12px 24px rgba(120, 85, 20, 0.12);
   }
 
   :root:not(.dark) .luxury-button.bg-primary,
   :root:not(.dark) .luxury-button[class*="bg-primary"] {
-    background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--dashboard-primary-strong)));
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary-hover)));
     box-shadow: 0 12px 24px rgba(120, 85, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 

@@ -94,13 +94,13 @@ export function CommercialPortfolioWidget() {
     <Card className="hover-scale overflow-hidden border-border/70 bg-gradient-to-br from-card via-card to-muted/20 shadow-sm">
       <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-border/60 bg-muted/15 pb-4">
         <div className="min-w-0">
-          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] dashboard-luxury-kicker">
             <ShieldCheck className="h-3.5 w-3.5" />
             Executive asset summary
           </div>
           <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-              <Building2 className="h-5 w-5 text-primary" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl dashboard-luxury-icon-tile">
+              <Building2 className="h-5 w-5" />
             </span>
             Commercial Portfolio
           </CardTitle>
@@ -109,7 +109,7 @@ export function CommercialPortfolioWidget() {
         <Button
           variant="outline"
           size="sm"
-          className="min-h-10 shrink-0 rounded-full border-primary/25 bg-background/80 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_10px_28px_rgba(245,158,11,0.18)] focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0"
+          className="dashboard-luxury-primary-cta min-h-10 shrink-0 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0"
           onClick={() => navigate('/commercial')}
         >
           View <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -127,7 +127,7 @@ export function CommercialPortfolioWidget() {
             <Building2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
             No commercial assets yet.
             <div className="mt-3">
-              <Button size="sm" variant="outline" className="min-h-10 rounded-full border-primary/25 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:shadow-[0_10px_28px_rgba(245,158,11,0.14)] focus-visible:ring-2 focus-visible:ring-primary/35 active:translate-y-0" onClick={() => navigate('/commercial')}>
+              <Button size="sm" variant="outline" className="dashboard-luxury-primary-cta min-h-10 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0" onClick={() => navigate('/commercial')}>
                 Add your first commercial property
               </Button>
             </div>
@@ -154,7 +154,7 @@ export function CommercialPortfolioWidget() {
                       {isNegative ? (
                         <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
                       ) : (
-                        <Gauge className="h-4 w-4 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
+                        <Gauge className="h-4 w-4 shrink-0 text-muted-foreground/60 group-hover:text-[hsl(var(--dashboard-primary-strong))]" />
                       )}
                     </div>
                     <div
@@ -167,7 +167,7 @@ export function CommercialPortfolioWidget() {
                       {t.value}
                     </div>
                     <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      {isZero ? <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" /> : <BadgeCheck className="h-3.5 w-3.5 text-primary/70" />}
+                      {isZero ? <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" /> : <BadgeCheck className="h-3.5 w-3.5 dashboard-luxury-inline-accent" />}
                       <span>{isNegative ? 'negative value shown' : t.cue}</span>
                     </div>
                   </div>

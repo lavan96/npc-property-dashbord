@@ -52,12 +52,12 @@ export function OverviewFilters({ filters, setFilters, uniqueValues }: OverviewF
           variant="outline"
           size="sm"
           aria-label={activeFilterCount > 0 ? `Open overview filters, ${activeFilterCount} active` : 'Open overview filters'}
-          className="relative min-h-11 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0"
+          className="dashboard-luxury-primary-cta relative min-h-11 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0"
         >
           <Filter className="h-4 w-4 mr-2" />
           Filters
           {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary p-0 text-xs text-primary-foreground shadow-[0_0_14px_hsl(var(--primary)/0.35)]">
+            <Badge variant="secondary" className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground/15 p-0 text-xs text-primary-foreground shadow-[0_0_14px_hsl(var(--primary-foreground)/0.25)]">
               {activeFilterCount}
             </Badge>
           )}

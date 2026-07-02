@@ -17,10 +17,10 @@ const pct = (n?: number) => n == null ? 'Pending' : `${(n * 100).toFixed(1)}%`;
 const title = (v?: string) => (v || 'Pending').replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 const badgeVariant = (r?: string) => !r ? 'outline' : (r === 'green' || r === 'supportable' ? 'default' : r === 'amber' || r === 'supportableSubjectToVerification' ? 'secondary' : 'destructive');
 const actionBase = 'min-h-10 justify-start gap-2 rounded-xl text-left shadow-sm transition-all disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted/40 disabled:text-muted-foreground disabled:opacity-100';
-const primaryAction = `${actionBase} bg-gradient-to-r from-primary to-primary/85 text-primary-foreground shadow-primary/20 hover:shadow-md`;
-const secondaryAction = `${actionBase} border-border/70 bg-background/80 hover:border-primary/40 hover:bg-primary/5`;
+const primaryAction = `${actionBase} dashboard-luxury-primary-cta hover:shadow-md`;
+const secondaryAction = `${actionBase} dashboard-luxury-action`;
 const reviewAction = `${actionBase} border-amber-500/40 bg-amber-500/10 text-amber-900 hover:bg-amber-500/15 dark:text-amber-100`;
-const clientAction = `${actionBase} border-primary/30 bg-gradient-to-r from-primary/10 to-background text-primary hover:border-primary/50 hover:bg-primary/10`;
+const clientAction = `${actionBase} dashboard-luxury-action`;
 const actionIcon = 'h-4 w-4 shrink-0';
 
 function Row({ label, value }: { label: string; value: string | number | undefined }) {

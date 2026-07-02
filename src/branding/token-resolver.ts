@@ -15,6 +15,7 @@ import {
   shiftSaturation,
 } from './color-utils';
 
+
 function createLightBrandWash(brandHsl: string) {
   const { h, s } = parseHsl(brandHsl);
 
@@ -43,13 +44,11 @@ function createChartPalette(primary: string, accent: string, isDark: boolean) {
 function createLightTokens(config: BrandConfig): BrandTokenMap {
   const primary = normalizeHslString(config.primaryColor, DEFAULT_PRIMARY);
   const accent = normalizeHslString(config.accentColor, defaultLightTokenMap['--accent'] || DEFAULT_ACCENT);
-  const hasCustomPrimary = Boolean(config.primaryColor);
 
-  // Phase 2 contract: light mode starts from the luxury surface baseline and
-  // brand colours are applied only to semantic emphasis tokens. Warm ivory,
-  // porcelain, champagne, and sidebar surface tokens intentionally remain from
-  // defaultLightTokenMap so a client's brand colour cannot wash out the entire
-  // dashboard.
+  // Light mode keeps the luxury surface baseline while letting the saved
+  // brand primary drive dashboard accent semantics. Warm ivory, porcelain,
+  // champagne, body text, table, and status tokens remain protected from
+  // brand colours so a purple primary accents actions without washing out the UI.
   return {
     ...defaultLightTokenMap,
     '--primary': primary,
@@ -67,7 +66,7 @@ function createLightTokens(config: BrandConfig): BrandTokenMap {
     '--sidebar-accent-foreground': getReadableForeground(accent),
     '--sidebar-ring': primary,
     '--dashboard-primary-strong': primary,
-    '--dashboard-primary-soft': hasCustomPrimary ? createLightBrandWash(primary) : defaultLightTokenMap['--dashboard-primary-soft'],
+    '--dashboard-primary-soft': createLightBrandWash(primary),
     '--topbar-background': defaultLightTokenMap['--dashboard-surface'],
     '--sidebar-surface': defaultLightTokenMap['--sidebar-background'],
     '--mobile-nav-background': defaultLightTokenMap['--dashboard-surface'],
