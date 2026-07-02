@@ -89,6 +89,24 @@ export function getBrandPdfPalette(brandColorHsl?: string | null): BrandPdfPalet
   };
 }
 
+/** Convert a hex colour to a pdf-lib style [r, g, b] triplet in the 0–1 range. */
+export function hexToRgb01(hex: string): [number, number, number] {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return [0.79, 0.64, 0.15];
+  return [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255];
+}
+
+/** Brand gold ramp as pdf-lib 0–1 rgb triplets (for pdf-lib documents). */
+export function getBrandPdfRgb(brandColorHsl?: string | null) {
+  const p = getBrandPdfPalette(brandColorHsl);
+  return {
+    gold: hexToRgb01(p.gold),
+    goldLight: hexToRgb01(p.goldLight),
+    goldDark: hexToRgb01(p.goldDeep),
+    goldTint: hexToRgb01(p.cream),
+  };
+}
+
 /**
  * Map of the legacy hardcoded gold hexes (as used across the PDF templates) to
  * their palette-token equivalents. Used by the migration codemod so every gold
