@@ -1308,7 +1308,7 @@ export default function Calendar() {
                 </>
               ) : view === 'week' ? (
                 /* Week View with Drag and Drop */
-                <div className={cn("h-[600px] rounded-2xl border border-border bg-muted/40 shadow-inner shadow-sm dark:shadow-black/20", isMobile ? "overflow-auto" : "overflow-y-auto overflow-x-hidden")}>
+                <div className={cn("rounded-2xl border border-border bg-muted/40 shadow-inner shadow-sm dark:shadow-black/20", isMobile ? "overflow-x-auto" : "overflow-x-hidden")}>
                   <div className="min-w-[700px]">
                     {/* Week day headers - Sticky */}
                     <div className="sticky top-0 z-10 mb-1 grid grid-cols-8 gap-1 border-b border-border bg-popover p-2 shadow-sm backdrop-blur-xl">
