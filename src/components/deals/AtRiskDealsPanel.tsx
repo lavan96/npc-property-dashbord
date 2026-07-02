@@ -95,8 +95,8 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
       className={cn(
         'overflow-hidden rounded-[1.35rem] border shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]',
         critical > 0
-          ? 'border-red-300/25 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.14),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.92),rgba(9,9,11,0.86))]'
-          : 'border-amber-300/25 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.15),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.92),rgba(9,9,11,0.86))]'
+          ? 'border-destructive/25 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.14),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.92),rgba(9,9,11,0.86))]'
+          : 'border-brand-300/25 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.15),transparent_34%),linear-gradient(145deg,rgba(39,39,42,0.92),rgba(9,9,11,0.86))]'
       )}
     >
       <CardHeader className="border-b border-border dark:border-white/10 px-3 pb-3 pt-3 sm:px-4">
@@ -106,8 +106,8 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
               className={cn(
                 'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border shadow-[0_0_20px_rgba(245,158,11,0.12)]',
                 critical > 0
-                  ? 'border-red-300/25 bg-red-400/10 text-red-200'
-                  : 'border-amber-300/25 bg-amber-400/10 text-amber-200'
+                  ? 'border-destructive/25 bg-destructive/10 text-destructive'
+                  : 'border-brand-300/25 bg-brand-400/10 text-brand-200'
               )}
             >
               <ShieldAlert className="h-4 w-4" />
@@ -138,10 +138,10 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
                 key={deal.id}
                 className={cn(
                   'group cursor-pointer rounded-[1rem] border bg-background dark:bg-black/25 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.28)]',
-                  'focus-within:ring-2 focus-within:ring-amber-300/35',
+                  'focus-within:ring-2 focus-within:ring-brand-300/35',
                   isCritical
-                    ? 'border-red-300/20 hover:border-red-300/40 hover:bg-red-400/[0.06]'
-                    : 'border-amber-300/20 hover:border-amber-300/40 hover:bg-amber-400/[0.06]'
+                    ? 'border-destructive/20 hover:border-destructive/40 hover:bg-destructive/60/[0.06]'
+                    : 'border-brand-300/20 hover:border-brand-300/40 hover:bg-brand-400/[0.06]'
                 )}
                 onClick={() => onDealClick?.(deal)}
               >
@@ -150,8 +150,8 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
                     className={cn(
                       'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
                       isCritical
-                        ? 'border-red-300/25 bg-red-400/10 text-red-200'
-                        : 'border-amber-300/25 bg-amber-400/10 text-amber-200'
+                        ? 'border-destructive/25 bg-destructive/10 text-destructive'
+                        : 'border-brand-300/25 bg-brand-400/10 text-brand-200'
                     )}
                   >
                     {isCritical ? <AlertTriangle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
@@ -173,8 +173,8 @@ export function AtRiskDealsPanel({ deals, onDealClick }: Props) {
                           className={cn(
                             'max-w-full break-words rounded-md border px-2 py-1 text-[11px] font-medium leading-4',
                             isCritical
-                              ? 'border-red-300/20 bg-red-400/[0.08] text-red-100'
-                              : 'border-amber-300/20 bg-amber-400/[0.08] text-amber-100'
+                              ? 'border-destructive/20 bg-destructive/60/[0.08] text-destructive-foreground'
+                              : 'border-brand-300/20 bg-brand-400/[0.08] text-brand-100'
                           )}
                         >
                           {reason}

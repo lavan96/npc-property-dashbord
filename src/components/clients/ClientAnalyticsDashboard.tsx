@@ -140,11 +140,11 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
       Icon: CheckCircle,
       accent: 'emerald',
       description: 'Clients successfully synced to GoHighLevel.',
-      containerClass: 'border-emerald-300/20 bg-emerald-400/10 hover:border-emerald-300/45 hover:bg-emerald-400/15',
-      iconClass: 'border-emerald-300/25 bg-emerald-300/15 text-emerald-700 dark:text-emerald-200 shadow-emerald-950/20',
-      labelClass: 'text-emerald-700 dark:text-emerald-100',
-      valueClass: 'text-emerald-700 dark:text-emerald-100',
-      progressClass: 'bg-emerald-950/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-teal-300 [&>div]:via-emerald-300 [&>div]:to-emerald-500 [&>div]:shadow-[0_0_18px_rgba(45,212,191,0.42)]',
+      containerClass: 'border-success/20 bg-success/10 hover:border-success/45 hover:bg-success/15',
+      iconClass: 'border-success/25 bg-success/15 text-success dark:text-success shadow-success/20',
+      labelClass: 'text-success dark:text-success-foreground',
+      valueClass: 'text-success dark:text-success-foreground',
+      progressClass: 'bg-success/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-success [&>div]:via-success [&>div]:to-success [&>div]:shadow-[0_0_18px_rgba(45,212,191,0.42)]',
     },
     {
       label: 'Pending',
@@ -152,11 +152,11 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
       Icon: Clock3,
       accent: 'amber',
       description: 'Clients waiting for the next GoHighLevel sync action.',
-      containerClass: 'border-amber-300/20 bg-amber-400/10 hover:border-amber-300/45 hover:bg-amber-400/15',
-      iconClass: 'border-amber-300/25 bg-amber-300/15 text-amber-700 dark:text-amber-200 shadow-amber-950/20',
-      labelClass: 'text-amber-700 dark:text-amber-100',
-      valueClass: 'text-amber-700 dark:text-amber-100',
-      progressClass: 'bg-amber-950/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]',
+      containerClass: 'border-brand-300/20 bg-brand-400/10 hover:border-brand-300/45 hover:bg-brand-400/15',
+      iconClass: 'border-brand-300/25 bg-brand-300/15 text-brand-700 dark:text-brand-200 shadow-brand-950/20',
+      labelClass: 'text-brand-700 dark:text-brand-100',
+      valueClass: 'text-brand-700 dark:text-brand-100',
+      progressClass: 'bg-brand-950/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-brand-300 [&>div]:via-brand-400 [&>div]:to-warning [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]',
     },
     {
       label: 'Errors',
@@ -165,33 +165,33 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
       accent: 'red',
       description: 'Clients with GoHighLevel sync errors that need attention.',
       containerClass: analytics.errorCount > 0
-        ? 'border-red-300/25 bg-red-500/10 hover:border-red-300/50 hover:bg-red-500/15'
-        : 'border-slate-500/15 bg-slate-500/5 hover:border-slate-400/25 hover:bg-slate-500/10',
+        ? 'border-destructive/25 bg-destructive/10 hover:border-destructive/50 hover:bg-destructive/15'
+        : 'border-border/15 bg-muted0/5 hover:border-border/25 hover:bg-muted0/10',
       iconClass: analytics.errorCount > 0
-        ? 'border-red-300/25 bg-red-500/15 text-red-700 dark:text-red-200 shadow-red-950/20'
-        : 'border-slate-500/20 bg-slate-500/10 text-muted-foreground dark:text-slate-400 shadow-sm dark:shadow-black/10',
-      labelClass: analytics.errorCount > 0 ? 'text-red-700 dark:text-red-100' : 'text-muted-foreground dark:text-slate-300',
-      valueClass: analytics.errorCount > 0 ? 'text-red-700 dark:text-red-100' : 'text-muted-foreground dark:text-slate-300',
+        ? 'border-destructive/25 bg-destructive/15 text-destructive dark:text-destructive shadow-destructive/20'
+        : 'border-border/20 bg-muted0/10 text-muted-foreground dark:text-muted-foreground shadow-sm dark:shadow-black/10',
+      labelClass: analytics.errorCount > 0 ? 'text-destructive dark:text-destructive-foreground' : 'text-muted-foreground dark:text-foreground',
+      valueClass: analytics.errorCount > 0 ? 'text-destructive dark:text-destructive-foreground' : 'text-muted-foreground dark:text-foreground',
       progressClass: analytics.errorCount > 0
-        ? 'bg-red-950/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-red-300 [&>div]:via-red-500 [&>div]:to-rose-600 [&>div]:shadow-[0_0_18px_rgba(248,113,113,0.36)]'
-        : 'bg-slate-800/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-slate-500/50',
+        ? 'bg-destructive/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-destructive [&>div]:via-destructive [&>div]:to-destructive [&>div]:shadow-[0_0_18px_rgba(248,113,113,0.36)]'
+        : 'bg-background/70 shadow-inner shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:shadow-black/30 [&>div]:bg-muted0/50',
     },
   ];
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="group relative overflow-hidden rounded-3xl border-amber-400/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.95),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/45 hover:shadow-2xl hover:shadow-amber-950/25">
-          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+        <Card className="group relative overflow-hidden rounded-3xl border-brand-400/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.14),transparent_34%),linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.95),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300/45 hover:shadow-2xl hover:shadow-brand-950/25">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
                 <div className="flex items-center gap-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-100/75">Total Assets Under Management</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-100/75">Total Assets Under Management</p>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 shrink-0 cursor-help text-amber-700 dark:text-amber-100/50 transition-colors hover:text-amber-800 dark:hover:text-amber-100" />
+                        <Info className="h-3 w-3 shrink-0 cursor-help text-brand-700 dark:text-brand-100/50 transition-colors hover:text-brand-800 dark:hover:text-brand-100" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[220px] text-xs">
                         Combined estimated value of all client properties across your portfolio.
@@ -199,43 +199,43 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <p className="break-words text-3xl font-bold tracking-[-0.04em] text-amber-950 dark:text-amber-50 sm:text-4xl xl:text-3xl 2xl:text-4xl">{formatCurrency(analytics.totalPortfolioValue)}</p>
+                <p className="break-words text-3xl font-bold tracking-[-0.04em] text-brand-950 dark:text-brand-50 sm:text-4xl xl:text-3xl 2xl:text-4xl">{formatCurrency(analytics.totalPortfolioValue)}</p>
               </div>
-              <div className={`rounded-2xl border border-amber-300/25 p-3 shadow-lg shadow-amber-950/20 transition-colors group-hover:border-amber-200/45 group-hover:bg-amber-300/15 ${summaryIconClass.info}`}>
+              <div className={`rounded-2xl border border-brand-300/25 p-3 shadow-lg shadow-brand-950/20 transition-colors group-hover:border-brand-200/45 group-hover:bg-brand-300/15 ${summaryIconClass.info}`}>
                 <DollarSign className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-5 h-px bg-gradient-to-r from-amber-300/70 via-amber-100/20 to-transparent" />
+            <div className="mt-5 h-px bg-gradient-to-r from-brand-300/70 via-brand-100/20 to-transparent" />
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
-          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300/35 hover:shadow-2xl hover:shadow-brand-950/20">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">Total Properties</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Total Properties</p>
                 <p className="text-3xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-4xl">{analytics.totalProperties}</p>
               </div>
-              <div className={`rounded-2xl border border-emerald-300/20 p-3 shadow-lg shadow-emerald-950/15 transition-colors group-hover:border-emerald-200/35 group-hover:bg-emerald-300/12 ${summaryIconClass.success}`}>
+              <div className={`rounded-2xl border border-success/20 p-3 shadow-lg shadow-success/15 transition-colors group-hover:border-success/35 group-hover:bg-success/12 ${summaryIconClass.success}`}>
                 <Building2 className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-5 h-px bg-gradient-to-r from-amber-300/55 via-amber-100/15 to-transparent" />
+            <div className="mt-5 h-px bg-gradient-to-r from-brand-300/55 via-brand-100/15 to-transparent" />
           </CardContent>
         </Card>
 
-        <Card className={`group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl ${analytics.totalCashFlow >= 0 ? 'hover:shadow-emerald-950/20' : 'hover:shadow-red-950/20'}`}>
-          <div className={`pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent ${analytics.totalCashFlow >= 0 ? 'via-emerald-200/55' : 'via-red-200/55'} to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100`} />
+        <Card className={`group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300/35 hover:shadow-2xl ${analytics.totalCashFlow >= 0 ? 'hover:shadow-success/20' : 'hover:shadow-destructive/20'}`}>
+          <div className={`pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent ${analytics.totalCashFlow >= 0 ? 'via-success/55' : 'via-destructive/55'} to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100`} />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">Total Monthly Cash Flow</p>
-                <p className={`break-words text-3xl font-bold tracking-[-0.04em] sm:text-4xl xl:text-3xl 2xl:text-4xl ${analytics.totalCashFlow >= 0 ? 'text-emerald-700 dark:text-emerald-200' : 'text-red-700 dark:text-red-300'}`}>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Total Monthly Cash Flow</p>
+                <p className={`break-words text-3xl font-bold tracking-[-0.04em] sm:text-4xl xl:text-3xl 2xl:text-4xl ${analytics.totalCashFlow >= 0 ? 'text-success dark:text-success' : 'text-destructive dark:text-destructive'}`}>
                   {formatCurrency(analytics.totalCashFlow)}
                 </p>
               </div>
-              <div className={`rounded-2xl border p-3 shadow-lg transition-colors ${analytics.totalCashFlow >= 0 ? 'border-emerald-300/25 bg-emerald-400/12 text-emerald-700 dark:text-emerald-200 shadow-emerald-950/20 group-hover:border-emerald-200/45 group-hover:bg-emerald-300/15' : 'border-red-300/25 bg-red-500/12 text-red-700 dark:text-red-200 shadow-red-950/20 group-hover:border-red-200/45 group-hover:bg-red-500/15'}`}>
+              <div className={`rounded-2xl border p-3 shadow-lg transition-colors ${analytics.totalCashFlow >= 0 ? 'border-success/25 bg-success/12 text-success dark:text-success shadow-success/20 group-hover:border-success/45 group-hover:bg-success/15' : 'border-destructive/25 bg-destructive/12 text-destructive dark:text-destructive shadow-destructive/20 group-hover:border-destructive/45 group-hover:bg-destructive/15'}`}>
                 {analytics.totalCashFlow >= 0 ? (
                   <TrendingUp className="h-5 w-5" />
                 ) : (
@@ -243,38 +243,38 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                 )}
               </div>
             </div>
-            <div className={`mt-5 h-px bg-gradient-to-r ${analytics.totalCashFlow >= 0 ? 'from-emerald-300/60' : 'from-red-300/60'} via-white/15 to-transparent`} />
+            <div className={`mt-5 h-px bg-gradient-to-r ${analytics.totalCashFlow >= 0 ? 'from-success/60' : 'from-destructive/60'} via-white/15 to-transparent`} />
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
-          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.88))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:border-brand-300/35 hover:shadow-2xl hover:shadow-brand-950/20">
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-slate-400">Average LTV</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Average LTV</p>
                 <div className="flex items-end gap-1.5">
                   <p className="text-3xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-4xl">{analytics.avgLTV.toFixed(1)}</p>
-                  <span className="pb-1 text-lg font-semibold text-muted-foreground dark:text-slate-400">%</span>
+                  <span className="pb-1 text-lg font-semibold text-muted-foreground dark:text-muted-foreground">%</span>
                 </div>
               </div>
-              <div className={`rounded-2xl border border-amber-300/20 p-3 shadow-lg shadow-amber-950/15 transition-colors group-hover:border-amber-200/35 group-hover:bg-amber-300/12 ${summaryIconClass.accent}`}>
+              <div className={`rounded-2xl border border-brand-300/20 p-3 shadow-lg shadow-brand-950/15 transition-colors group-hover:border-brand-200/35 group-hover:bg-brand-300/12 ${summaryIconClass.accent}`}>
                 <Percent className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-5 h-px bg-gradient-to-r from-amber-300/55 via-amber-100/15 to-transparent" />
+            <div className="mt-5 h-px bg-gradient-to-r from-brand-300/55 via-brand-100/15 to-transparent" />
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-3">
-        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-brand-300/35 hover:shadow-2xl hover:shadow-brand-950/20">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <CardHeader className="border-b border-border/60 dark:border-white/10 pb-3">
             <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">Cash Flow Status</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-slate-950/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Cash flow status chart showing positive and negative client counts">
+            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-background/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Cash flow status chart showing positive and negative client counts">
               {clients.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -298,39 +298,39 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
-                  <Info className="mb-3 h-8 w-8 text-amber-700 dark:text-amber-100/70" />
-                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No cash flow data yet</p>
-                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-slate-500">Import or add clients to populate this chart.</p>
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-brand-300/15 bg-brand-300/[0.03] px-4 text-center">
+                  <Info className="mb-3 h-8 w-8 text-brand-700 dark:text-brand-100/70" />
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-foreground">No cash flow data yet</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-muted-foreground">Import or add clients to populate this chart.</p>
                 </div>
               )}
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <div className="flex items-center justify-between rounded-2xl border border-emerald-300/15 bg-emerald-400/10 px-3 py-2">
-                <span className="flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-100">
+              <div className="flex items-center justify-between rounded-2xl border border-success/15 bg-success/10 px-3 py-2">
+                <span className="flex items-center gap-2 text-sm font-medium text-success dark:text-success-foreground">
                 <CheckCircle className="h-4 w-4 text-success" />
                   Positive
                 </span>
-                <span className="text-sm font-bold text-emerald-700 dark:text-emerald-200">{analytics.positiveCashFlowClients}</span>
+                <span className="text-sm font-bold text-success dark:text-success">{analytics.positiveCashFlowClients}</span>
               </div>
-              <div className="flex items-center justify-between rounded-2xl border border-red-300/15 bg-red-500/10 px-3 py-2">
-                <span className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-100">
+              <div className="flex items-center justify-between rounded-2xl border border-destructive/15 bg-destructive/10 px-3 py-2">
+                <span className="flex items-center gap-2 text-sm font-medium text-destructive dark:text-destructive-foreground">
                 <AlertCircle className="h-4 w-4 text-destructive" />
                   Negative
                 </span>
-                <span className="text-sm font-bold text-red-700 dark:text-red-200">{analytics.negativeCashFlowClients}</span>
+                <span className="text-sm font-bold text-destructive dark:text-destructive">{analytics.negativeCashFlowClients}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-brand-300/35 hover:shadow-2xl hover:shadow-brand-950/20">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <CardHeader className="border-b border-border/60 dark:border-white/10 pb-3">
             <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">Portfolio Size Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-slate-950/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Portfolio size distribution chart">
+            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-background/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Portfolio size distribution chart">
               {analytics.portfolioDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analytics.portfolioDistribution} margin={{ top: 12, right: 8, left: -16, bottom: 8 }} barCategoryGap="22%">
@@ -342,23 +342,23 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
-                  <Info className="mb-3 h-8 w-8 text-amber-700 dark:text-amber-100/70" />
-                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No portfolio size data</p>
-                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-slate-500">Portfolio values will appear here once client records include property data.</p>
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-brand-300/15 bg-brand-300/[0.03] px-4 text-center">
+                  <Info className="mb-3 h-8 w-8 text-brand-700 dark:text-brand-100/70" />
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-foreground">No portfolio size data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-muted-foreground">Portfolio values will appear here once client records include property data.</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] dark:bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(3,7,18,0.9))] shadow-xl shadow-[0_14px_38px_rgba(15,23,42,0.08)] dark:shadow-black/20 transition-all duration-300 hover:border-brand-300/35 hover:shadow-2xl hover:shadow-brand-950/20">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/45 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <CardHeader className="border-b border-border/60 dark:border-white/10 pb-3">
             <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">Property Count Distribution</CardTitle>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-slate-950/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Property count distribution chart">
+            <div className="h-[230px] rounded-2xl border border-border/60 dark:border-white/10 bg-background/80 dark:bg-background/45 p-3 shadow-inner shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25" role="img" aria-label="Property count distribution chart">
               {analytics.propertyDistribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -382,17 +382,17 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-amber-300/15 bg-amber-300/[0.03] px-4 text-center">
-                  <Building2 className="mb-3 h-8 w-8 text-amber-700 dark:text-amber-100/70" />
-                  <p className="text-sm font-semibold text-foreground/90 dark:text-slate-200">No property count data</p>
-                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-slate-500">Property distribution will populate as client portfolios are added.</p>
+                <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-brand-300/15 bg-brand-300/[0.03] px-4 text-center">
+                  <Building2 className="mb-3 h-8 w-8 text-brand-700 dark:text-brand-100/70" />
+                  <p className="text-sm font-semibold text-foreground/90 dark:text-foreground">No property count data</p>
+                  <p className="mt-1 max-w-[220px] text-xs leading-5 text-muted-foreground/80 dark:text-muted-foreground">Property distribution will populate as client portfolios are added.</p>
                 </div>
               )}
             </div>
             {analytics.propertyDistribution.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {analytics.propertyDistribution.map((entry, index) => (
-                  <span key={entry.name} className="inline-flex items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-slate-300">
+                  <span key={entry.name} className="inline-flex items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/65 dark:bg-white/[0.035] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-foreground">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_PALETTE[index % CHART_PALETTE.length] }} />
                     {entry.name}: {entry.value}
                   </span>
@@ -403,16 +403,16 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
         </Card>
       </div>
 
-      <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(3,7,18,0.92))] shadow-xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25 transition-all duration-300 hover:border-amber-300/35 hover:shadow-2xl hover:shadow-amber-950/20">
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-teal-200/45 to-amber-200/45 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <Card className="group relative overflow-hidden rounded-3xl border-border/60 dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.12),transparent_30%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(3,7,18,0.92))] shadow-xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25 transition-all duration-300 hover:border-brand-300/35 hover:shadow-2xl hover:shadow-brand-950/20">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-success/45 to-brand-200/45 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <CardHeader className="border-b border-border/60 dark:border-white/10 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-base font-semibold tracking-tight text-foreground dark:text-white">GoHighLevel Sync Status</CardTitle>
-              <p className="mt-1 text-xs font-medium text-muted-foreground dark:text-slate-400">Operational health across {clients.length} client records</p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground">Operational health across {clients.length} client records</p>
             </div>
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/70 dark:bg-white/[0.04] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-slate-300">
-              <span className={`h-2 w-2 rounded-full ${analytics.errorCount > 0 ? 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.7)]' : analytics.pendingCount > 0 ? 'bg-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.65)]' : 'bg-teal-300 shadow-[0_0_12px_rgba(45,212,191,0.65)]'}`} />
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 dark:border-white/10 bg-background/70 dark:bg-white/[0.04] px-3 py-1 text-xs font-semibold text-muted-foreground dark:text-foreground">
+              <span className={`h-2 w-2 rounded-full ${analytics.errorCount > 0 ? 'bg-destructive/60 shadow-[0_0_12px_rgba(248,113,113,0.7)]' : analytics.pendingCount > 0 ? 'bg-brand-300 shadow-[0_0_12px_rgba(251,191,36,0.65)]' : 'bg-success/30 shadow-[0_0_12px_rgba(45,212,191,0.65)]'}`} />
               {analytics.errorCount > 0 ? 'Attention needed' : analytics.pendingCount > 0 ? 'Sync in progress' : 'Healthy'}
             </div>
           </div>
@@ -434,7 +434,7 @@ export function ClientAnalyticsDashboard({ clients }: ClientAnalyticsDashboardPr
                             </span>
                             <div className="min-w-0">
                               <p className={`text-sm font-semibold ${labelClass}`}>{label}</p>
-                              <p className="text-xs text-muted-foreground dark:text-slate-400">{Number.isFinite(percentage) ? percentage.toFixed(1) : '0.0'}% of clients</p>
+                              <p className="text-xs text-muted-foreground dark:text-muted-foreground">{Number.isFinite(percentage) ? percentage.toFixed(1) : '0.0'}% of clients</p>
                             </div>
                           </div>
                           <span className={`rounded-full border border-border/60 dark:border-white/10 bg-muted/45 dark:bg-black/20 px-3 py-1 text-sm font-bold tabular-nums ${valueClass}`}>{value}</span>

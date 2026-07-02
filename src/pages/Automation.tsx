@@ -310,11 +310,11 @@ const Automation = () => {
         </DashboardThemeFrame>
 
         {/* Airtable Sync Controls */}
-        <Card className="relative overflow-hidden rounded-3xl border border-blue-500/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--info)/0.14),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--info)/0.06))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-blue-300/20 dark:ring-white/10 dark:shadow-black/25">
+        <Card className="relative overflow-hidden rounded-3xl border border-info/25 bg-[radial-gradient(circle_at_top_left,hsl(var(--info)/0.14),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--info)/0.06))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-info/20 dark:ring-white/10 dark:shadow-black/25">
           <CardContent className="p-4 sm:p-5">
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-500/15 text-blue-500 shadow-[0_12px_30px_hsl(var(--info)/0.14)] dark:text-blue-300">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-info/25 bg-info/15 text-info-foreground0 shadow-[0_12px_30px_hsl(var(--info)/0.14)] dark:text-info">
                   <Zap className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 space-y-2">
@@ -326,7 +326,7 @@ const Automation = () => {
                   </div>
                   {syncStats && (
                     <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
-                      <Badge variant="outline" className="border-blue-400/30 bg-background/70 text-foreground shadow-sm">
+                      <Badge variant="outline" className="border-info/30 bg-background/70 text-foreground shadow-sm">
                         {syncStats.total} processed
                       </Badge>
                       <Badge variant="secondary" className="bg-primary/10 text-foreground shadow-sm">
@@ -398,11 +398,11 @@ const Automation = () => {
         </Card>
 
         {/* Master Switch Card */}
-        <Card className={masterEnabled ? 'relative overflow-hidden rounded-3xl border-green-500/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--success)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--success)/0.08))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-green-300/20 dark:ring-white/10 dark:shadow-black/25' : 'relative overflow-hidden rounded-3xl border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--muted)/0.42),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.88)_58%,hsl(var(--muted)/0.18))] shadow-[0_18px_52px_rgba(15,23,42,0.07)] ring-1 ring-white/45 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25'}>
+        <Card className={masterEnabled ? 'relative overflow-hidden rounded-3xl border-success/35 bg-[radial-gradient(circle_at_top_left,hsl(var(--success)/0.16),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.86)_58%,hsl(var(--success)/0.08))] shadow-[0_18px_52px_rgba(15,23,42,0.08)] ring-1 ring-white/45 dark:border-success/20 dark:ring-white/10 dark:shadow-black/25' : 'relative overflow-hidden rounded-3xl border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--muted)/0.42),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.88)_58%,hsl(var(--muted)/0.18))] shadow-[0_18px_52px_rgba(15,23,42,0.07)] ring-1 ring-white/45 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25'}>
           <CardHeader className="pb-4">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/60 text-muted-foreground'}`}>
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-[0_12px_30px_rgba(15,23,42,0.08)] ${masterEnabled ? 'border-success/30 bg-success/15 text-success dark:text-success' : 'border-border/70 bg-muted/60 text-muted-foreground'}`}>
                   <Zap className="h-6 w-6" />
                 </div>
                 <div className="min-w-0 space-y-1">
@@ -416,7 +416,7 @@ const Automation = () => {
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/65 px-3 py-2 shadow-sm sm:justify-end">
-                <span className={`rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.18em] ${masterEnabled ? 'border-green-400/30 bg-green-500/15 text-green-600 dark:text-green-300' : 'border-border/70 bg-muted/70 text-muted-foreground'}`}>
+                <span className={`rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.18em] ${masterEnabled ? 'border-success/30 bg-success/15 text-success dark:text-success' : 'border-border/70 bg-muted/70 text-muted-foreground'}`}>
                   {masterEnabled ? 'ON' : 'OFF'}
                 </span>
                 <Switch 
@@ -424,7 +424,7 @@ const Automation = () => {
                   onCheckedChange={toggleMaster}
                   disabled={masterLoading}
                   aria-label="Toggle master auto-generation"
-                  className="data-[state=checked]:bg-green-500 focus-visible:ring-green-500/40"
+                  className="data-[state=checked]:bg-success focus-visible:ring-success/40"
                 />
               </div>
             </div>
@@ -506,7 +506,7 @@ const Automation = () => {
                               {getCriteriaCount(switchItem.criteria)} criteria
                             </Badge>
                             {switchItem.is_enabled ? (
-                              <Badge className="border-green-500/30 bg-green-500/15 text-green-600 shadow-sm dark:text-green-300">
+                              <Badge className="border-success/30 bg-success/15 text-success shadow-sm dark:text-success">
                                 <Play className="h-3 w-3 mr-1" />
                                 Active
                               </Badge>

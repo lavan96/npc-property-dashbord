@@ -223,15 +223,15 @@ export function PeriodOverPeriodPanel() {
                       {delta !== null && Math.abs(delta) > 0.1 ? (
                         <>
                           {isPositive ? (
-                            <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+                            <ArrowUpRight className="h-3.5 w-3.5 text-success-foreground0" />
                           ) : isNegative ? (
-                            <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
+                            <ArrowDownRight className="h-3.5 w-3.5 text-destructive-foreground0" />
                           ) : (
                             <Minus className="h-3.5 w-3.5 text-muted-foreground" />
                           )}
                           <span className={`text-xs font-mono font-medium ${
-                            isPositive ? 'text-emerald-600 dark:text-emerald-400' :
-                            isNegative ? 'text-red-600 dark:text-red-400' :
+                            isPositive ? 'text-success dark:text-success' :
+                            isNegative ? 'text-destructive dark:text-destructive' :
                             'text-muted-foreground'
                           }`}>
                             {delta > 0 ? '+' : ''}{delta?.toFixed(1)}%

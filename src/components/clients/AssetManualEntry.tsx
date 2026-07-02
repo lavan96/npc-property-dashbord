@@ -235,7 +235,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
             {asset.institution_name && asset.asset_type !== 'superfund' && (
               <p className="text-sm text-muted-foreground">{asset.institution_name}</p>
             )}
-            <p className="text-sm font-medium text-green-600 mt-1">
+            <p className="text-sm font-medium text-success mt-1">
               {formatCurrency(asset.value || 0)}
             </p>
           </div>
@@ -526,13 +526,13 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
       {/* Assets Summary Display */}
       {existingAssets.length > 0 ? (
         <div className="space-y-2">
-          <Card className="bg-green-50 border-green-200">
+          <Card className="bg-success/10 border-success/30">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-2">
-                <PiggyBank className="h-4 w-4 text-green-600" />
-                <span className="font-medium text-green-700">Total Assets</span>
+                <PiggyBank className="h-4 w-4 text-success" />
+                <span className="font-medium text-success">Total Assets</span>
               </div>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(totalAssetValue)}</p>
+              <p className="text-2xl font-bold text-success">{formatCurrency(totalAssetValue)}</p>
             </CardContent>
           </Card>
           
@@ -544,7 +544,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
                     <p className="font-medium text-sm">{getAssetLabel(asset)}</p>
                     <p className="text-xs text-muted-foreground capitalize">{asset.asset_type}</p>
                   </div>
-                  <p className="font-medium text-green-600">{formatCurrency(asset.value || 0)}</p>
+                  <p className="font-medium text-success">{formatCurrency(asset.value || 0)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -580,7 +580,7 @@ export function AssetManualEntry({ clientId, onComplete }: AssetManualEntryProps
             <CardContent className="pt-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Total Assets Value</span>
-                <span className="text-lg font-bold text-green-600">
+                <span className="text-lg font-bold text-success">
                   {formatCurrency(totalAssetValue)}
                 </span>
               </div>

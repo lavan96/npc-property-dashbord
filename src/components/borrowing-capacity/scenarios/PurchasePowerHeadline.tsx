@@ -168,7 +168,7 @@ export function PurchasePowerHeadline({
             </CardTitle>
             {target && target > 0 && (
               meetsTarget ? (
-                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold">
+                <Badge className="bg-success/15 text-success dark:text-success border-success/30 text-[10px] font-semibold">
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                   Target {formatCurrency(target)} achievable
                 </Badge>
@@ -217,7 +217,7 @@ export function PurchasePowerHeadline({
             <div className="text-right">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">vs Base Capacity</p>
               <p className={`text-lg font-bold flex items-center justify-end gap-1 ${
-                capacityChange > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                capacityChange > 0 ? 'text-success dark:text-success' :
                 capacityChange < 0 ? 'text-destructive' :
                 'text-muted-foreground'
               }`}>
@@ -244,7 +244,7 @@ export function PurchasePowerHeadline({
               </div>
               <Progress
                 value={Math.min(100, target > 0 ? (acq.maxPurchasePrice / target) * 100 : 0)}
-                className={`h-1.5 ${meetsTarget ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`}
+                className={`h-1.5 ${meetsTarget ? '[&>div]:bg-success' : '[&>div]:bg-brand-500'}`}
               />
               {acq.loanRequiredForPurchase !== undefined && (
                 <div className="flex items-center justify-between text-[11px] pt-1">
@@ -262,7 +262,7 @@ export function PurchasePowerHeadline({
               {acq.netCashAfterSettlement !== undefined && (
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">Net cash post-settlement</span>
-                  <span className={`font-medium ${acq.netCashAfterSettlement < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  <span className={`font-medium ${acq.netCashAfterSettlement < 0 ? 'text-destructive' : 'text-success dark:text-success'}`}>
                     {formatSignedCurrency(acq.netCashAfterSettlement, formatCurrency)}
                   </span>
                 </div>
@@ -296,7 +296,7 @@ export function PurchasePowerHeadline({
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <div className="rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5">
                       <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Base surplus</p>
-                      <p className={`text-xs font-semibold tabular-nums ${baseRawSurplus < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <p className={`text-xs font-semibold tabular-nums ${baseRawSurplus < 0 ? 'text-destructive' : 'text-success dark:text-success'}`}>
                         {formatSignedCurrency(Math.round(baseRawSurplus), formatCurrency)}/mo
                       </p>
                       <p className="text-[10px] text-muted-foreground tabular-nums">
@@ -305,7 +305,7 @@ export function PurchasePowerHeadline({
                     </div>
                     <div className="rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5">
                       <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Scenario surplus</p>
-                      <p className={`text-xs font-semibold tabular-nums ${scenarioRawSurplus < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <p className={`text-xs font-semibold tabular-nums ${scenarioRawSurplus < 0 ? 'text-destructive' : 'text-success dark:text-success'}`}>
                         {formatSignedCurrency(Math.round(scenarioRawSurplus), formatCurrency)}/mo
                       </p>
                       <p className="text-[10px] text-muted-foreground tabular-nums">
@@ -319,7 +319,7 @@ export function PurchasePowerHeadline({
                     Net theoretical movement vs base:{' '}
                     <span className={`font-semibold ${
                       theoreticalCapacityChange > 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
+                        ? 'text-success dark:text-success'
                         : 'text-destructive'
                     }`}>
                       {formatSignedCurrency(theoreticalCapacityChange, formatCurrency)}
@@ -371,7 +371,7 @@ export function PurchasePowerHeadline({
                         <span className="text-[10px] text-muted-foreground">{lever.cashflowNote}</span>
                       )}
                       <span className={`font-semibold tabular-nums ${
-                        positive ? 'text-emerald-600 dark:text-emerald-400' :
+                        positive ? 'text-success dark:text-success' :
                         displayedImpact < 0 ? 'text-destructive' :
                         'text-muted-foreground'
                       }`}>
@@ -382,7 +382,7 @@ export function PurchasePowerHeadline({
                   <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
-                        positive ? 'bg-emerald-500' :
+                        positive ? 'bg-success' :
                         displayedImpact < 0 ? 'bg-destructive' :
                         'bg-muted-foreground/40'
                       }`}
@@ -404,7 +404,7 @@ export function PurchasePowerHeadline({
                       Compounding interaction
                     </span>
                     <span className={`font-semibold tabular-nums ${
-                      interactionResidual > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                      interactionResidual > 0 ? 'text-success dark:text-success' :
                       'text-destructive'
                     }`}>
                       {formatSignedCurrency(interactionResidual, formatCurrency)}
@@ -424,7 +424,7 @@ export function PurchasePowerHeadline({
               </span>
               <span className={`tabular-nums ${
                 (floorActive ? theoreticalCapacityChange : capacityChange) > 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-success dark:text-success'
                   : (floorActive ? theoreticalCapacityChange : capacityChange) < 0
                   ? 'text-destructive'
                   : 'text-muted-foreground'

@@ -58,11 +58,11 @@ export function ValidationFlagsDisplay({ flags, qualityScore, showEmpty = true }
   };
 
   const getQualityColor = (score: number): string => {
-    if (score >= 90) return 'text-green-600 dark:text-green-400';
-    if (score >= 75) return 'text-blue-600 dark:text-blue-400';
-    if (score >= 60) return 'text-yellow-600 dark:text-yellow-400';
-    if (score >= 40) return 'text-orange-600 dark:text-orange-400';
-    return 'text-red-600 dark:text-red-400';
+    if (score >= 90) return 'text-success dark:text-success';
+    if (score >= 75) return 'text-info dark:text-info';
+    if (score >= 60) return 'text-brand-600 dark:text-brand-400';
+    if (score >= 40) return 'text-warning dark:text-warning';
+    return 'text-destructive dark:text-destructive';
   };
 
   const getQualityGrade = (score: number): string => {
@@ -102,7 +102,7 @@ export function ValidationFlagsDisplay({ flags, qualityScore, showEmpty = true }
       <CardContent>
         {flags.length === 0 ? (
           <Alert>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CheckCircle className="h-4 w-4 text-success" />
             <AlertTitle>No Issues Found</AlertTitle>
             <AlertDescription>
               All financial calculations and data points have passed validation checks.

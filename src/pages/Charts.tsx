@@ -311,10 +311,10 @@ export default function Charts() {
       <main className="min-h-screen animate-fade-in overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_32%),radial-gradient(circle_at_85%_0%,hsl(43_96%_56%/0.12),transparent_30%)] p-4 sm:p-6">
         <DashboardThemeFrame variant="page" className="max-w-[1700px] space-y-6">
           <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-6 shadow-2xl shadow-sm dark:shadow-black/15">
-            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
-            <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-amber-300/15 blur-3xl" />
+            <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/85 to-transparent" />
+            <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-brand-300/15 blur-3xl" />
             <div className="flex items-center gap-4">
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-amber-200/45">
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-brand-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-brand-200/45">
                 <RefreshCw className="h-6 w-6 animate-spin text-primary-foreground" />
               </div>
               <div className="space-y-2">
@@ -358,13 +358,13 @@ export default function Charts() {
       <DashboardThemeFrame variant="page" className="max-w-[1700px] space-y-7">
         {/* Header */}
         <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-5 shadow-2xl shadow-sm dark:shadow-black/15 sm:p-6">
-          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/85 to-transparent" />
-          <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
+          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/85 to-transparent" />
+          <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-brand-300/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-20 bottom-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
           <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div className="flex min-w-0 flex-col gap-4 min-[420px]:flex-row min-[420px]:items-start">
-              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-amber-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-amber-200/45">
-                <div className="absolute inset-x-3 top-0 h-px bg-amber-100/90" />
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-brand-400 to-primary/75 shadow-[0_18px_36px_hsl(var(--primary)/0.22)] ring-1 ring-brand-200/45">
+                <div className="absolute inset-x-3 top-0 h-px bg-brand-100/90" />
                 <div className="absolute -right-3 -top-3 h-8 w-8 rounded-full bg-card/20 dark:bg-white/20 blur-md" />
                 <BarChart3 className="relative h-6 w-6 text-primary-foreground drop-shadow-sm" />
               </div>
@@ -374,13 +374,13 @@ export default function Charts() {
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:justify-end">
-              <Badge variant="secondary" className="h-9 justify-center rounded-full border border-amber-300/35 bg-gradient-to-r from-amber-500/15 via-primary/10 to-amber-500/10 px-4 text-xs font-semibold tracking-wide text-primary shadow-sm shadow-amber-950/5">
+              <Badge variant="secondary" className="h-9 justify-center rounded-full border border-brand-300/35 bg-gradient-to-r from-brand-500/15 via-primary/10 to-brand-500/10 px-4 text-xs font-semibold tracking-wide text-primary shadow-sm shadow-brand-950/5">
                 {charts.length} charts
               </Badge>
               <Button
                 variant="outline"
                 size="sm"
-                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/60 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/45"
+                className="group h-9 gap-1.5 rounded-full border-primary/25 bg-background/70 px-4 font-semibold shadow-sm shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300/60 hover:bg-brand-500/10 hover:text-primary hover:shadow-[0_12px_28px_hsl(43_74%_49%/0.16)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-brand-300/45"
                 onClick={fetchCharts}
                 aria-label="Refresh chart gallery"
               >
@@ -391,7 +391,7 @@ export default function Charts() {
         </DashboardThemeFrame>
 
         {isRefreshing && (
-          <DashboardThemeFrame variant="toolbar" className="items-center border-amber-300/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <DashboardThemeFrame variant="toolbar" className="items-center border-brand-300/35 bg-brand-500/10 px-4 py-3 text-sm text-brand-800 dark:text-brand-200">
             <RefreshCw className="h-4 w-4 animate-spin" />
             <span className="font-medium">Refreshing chart gallery…</span>
             <span className="text-muted-foreground">Your current results remain visible while the latest charts load.</span>
@@ -441,22 +441,22 @@ export default function Charts() {
 
         {/* Bulk actions bar */}
       {selectionMode && selectedIds.size > 0 && (
-        <div className="sticky top-3 z-20 flex flex-col gap-3 overflow-hidden rounded-2xl border border-amber-300/55 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.22),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.90))] p-3 shadow-[0_18px_48px_hsl(43_74%_49%/0.18),0_0_0_1px_hsl(43_96%_56%/0.18)] backdrop-blur-xl sm:flex-row sm:items-center">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/90 to-transparent" />
-          <Badge variant="default" className="h-8 w-fit gap-1.5 rounded-full border border-amber-100/45 bg-gradient-to-r from-primary via-amber-500 to-amber-400 px-3 text-xs font-black shadow-lg shadow-amber-950/10">
+        <div className="sticky top-3 z-20 flex flex-col gap-3 overflow-hidden rounded-2xl border border-brand-300/55 bg-[radial-gradient(circle_at_top_left,hsl(43_96%_56%/0.22),transparent_34%),linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.90))] p-3 shadow-[0_18px_48px_hsl(43_74%_49%/0.18),0_0_0_1px_hsl(43_96%_56%/0.18)] backdrop-blur-xl sm:flex-row sm:items-center">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/90 to-transparent" />
+          <Badge variant="default" className="h-8 w-fit gap-1.5 rounded-full border border-brand-100/45 bg-gradient-to-r from-primary via-brand-500 to-brand-400 px-3 text-xs font-black shadow-lg shadow-brand-950/10">
             <CheckCircle2 className="h-3.5 w-3.5" />
             {selectedIds.size} selected
           </Badge>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-10 rounded-full border-amber-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/80 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={selectAll} aria-label={`Select all ${filteredCharts.length} filtered charts`}>
+            <Button variant="outline" size="sm" className="h-10 rounded-full border-brand-300/45 bg-background/75 px-3 text-xs font-semibold hover:border-brand-300/80 hover:bg-brand-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-brand-300/45" onClick={selectAll} aria-label={`Select all ${filteredCharts.length} filtered charts`}>
               Select all ({filteredCharts.length})
             </Button>
-            <Button variant="outline" size="sm" className="h-10 gap-1 rounded-full border-amber-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-amber-300/70 hover:bg-amber-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-amber-300/45" onClick={() => setSelectedIds(new Set())} aria-label="Clear selected charts">
+            <Button variant="outline" size="sm" className="h-10 gap-1 rounded-full border-brand-300/35 bg-background/75 px-3 text-xs font-semibold hover:border-brand-300/70 hover:bg-brand-500/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-brand-300/45" onClick={() => setSelectedIds(new Set())} aria-label="Clear selected charts">
               <X className="h-3 w-3" /> Clear
             </Button>
           </div>
           <div className="flex-1" />
-          <Button size="sm" className="h-11 w-full gap-1.5 rounded-full bg-gradient-to-r sm:w-auto from-primary via-amber-500 to-amber-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-300/55" onClick={handleBulkExport} aria-label={`Export ${selectedIds.size} selected charts`}>
+          <Button size="sm" className="h-11 w-full gap-1.5 rounded-full bg-gradient-to-r sm:w-auto from-primary via-brand-500 to-brand-400 px-4 text-xs font-bold shadow-[0_12px_28px_hsl(43_74%_49%/0.24)] transition-all hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_16px_36px_hsl(43_74%_49%/0.30)] active:translate-y-0 focus-visible:ring-2 focus-visible:ring-brand-300/55" onClick={handleBulkExport} aria-label={`Export ${selectedIds.size} selected charts`}>
             <Download className="h-3.5 w-3.5" /> Export selected
           </Button>
         </div>
@@ -466,7 +466,7 @@ export default function Charts() {
       {charts.length === 0 ? (
         <DashboardThemeFrame variant="section" className="border-dashed border-primary/20 bg-card/80 shadow-xl shadow-sm dark:shadow-black/10">
           <CardContent className="flex flex-col items-center justify-center h-80 space-y-4">
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/12 via-amber-500/10 to-background shadow-inner">
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/12 via-brand-500/10 to-background shadow-inner">
               <BarChart3 className="h-9 w-9 text-primary" />
             </div>
             <div className="text-center space-y-1">
@@ -497,7 +497,7 @@ export default function Charts() {
           {groupedByReport.map(group => (
             <Collapsible key={group.reportId} defaultOpen>
               <CollapsibleTrigger asChild>
-                <button className="group/trigger flex w-full items-center gap-2 rounded-xl border border-border/60 bg-card/80 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300/55 hover:bg-amber-500/10 hover:shadow-lg hover:shadow-amber-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/45">
+                <button className="group/trigger flex w-full items-center gap-2 rounded-xl border border-border/60 bg-card/80 p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-300/55 hover:bg-brand-500/10 hover:shadow-lg hover:shadow-brand-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/45">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="font-medium text-sm flex-1 truncate">{group.reportTitle}</span>
                   <Badge variant="secondary" className="text-[10px] shrink-0">{group.charts.length}</Badge>
@@ -534,7 +534,7 @@ export default function Charts() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 border-primary/25 bg-card/80 hover:-translate-y-0.5 hover:border-amber-300/65 hover:bg-amber-500/10 hover:text-primary hover:shadow-[0_10px_26px_hsl(43_74%_49%/0.14)] focus-visible:ring-2 focus-visible:ring-amber-300/45"
+            className="gap-2 border-primary/25 bg-card/80 hover:-translate-y-0.5 hover:border-brand-300/65 hover:bg-brand-500/10 hover:text-primary hover:shadow-[0_10px_26px_hsl(43_74%_49%/0.14)] focus-visible:ring-2 focus-visible:ring-brand-300/45"
             onClick={() => setVisibleCount(prev => prev + CHARTS_PER_PAGE)}
           >
             Load more ({filteredCharts.length - visibleCount} remaining)
@@ -563,7 +563,7 @@ export default function Charts() {
 
         {/* Delete confirmation dialog (Enhancement #4) */}
       <AlertDialog open={!!chartToDelete} onOpenChange={(open) => !open && setChartToDelete(null)}>
-        <AlertDialogContent className="border-amber-300/25 shadow-[0_24px_70px_rgba(0,0,0,0.35),0_0_0_1px_rgba(245,158,11,0.10)]">
+        <AlertDialogContent className="border-brand-300/25 shadow-[0_24px_70px_rgba(0,0,0,0.35),0_0_0_1px_rgba(245,158,11,0.10)]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete chart?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -571,7 +571,7 @@ export default function Charts() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-full transition-all hover:border-amber-300/60 hover:bg-amber-500/10 focus-visible:ring-2 focus-visible:ring-amber-300/45">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-full transition-all hover:border-brand-300/60 hover:bg-brand-500/10 focus-visible:ring-2 focus-visible:ring-brand-300/45">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="rounded-full bg-destructive text-destructive-foreground transition-all hover:bg-destructive/90 focus-visible:ring-2 focus-visible:ring-destructive/40">
               Delete
             </AlertDialogAction>

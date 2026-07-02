@@ -112,8 +112,11 @@ import {
   FileText,
   Save,
   Undo2,
-  ShieldAlert
+  ShieldAlert,
+  Type
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FONT_OPTIONS, FONT_SCALE_OPTIONS, resolveFontStack } from '@/branding/brand-fonts';
 import { useWhiteLabel, hexToHsl, hslToHex, ThemeMode, EmailSignatureSettings, WhiteLabelSettings } from '@/contexts/WhiteLabelContext';
 import { removeBackground, loadImage, blobToBase64 } from '@/utils/backgroundRemoval';
 import { supabase } from '@/integrations/supabase/client';
@@ -1313,6 +1316,177 @@ export default function WhiteLabel() {
                 />
               </div>
             </div>
+
+            {/* Brand accent (gold) */}
+            <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner md:col-span-2">
+              <div className="min-w-0 space-y-1">
+                <Label className="text-sm font-medium">Brand accent (gold)</Label>
+                <p className="text-xs text-muted-foreground">
+                  The signature brand highlight. Drives the <code className="font-mono">brand</code> token used for
+                  premium flourishes and highlights across the app — in both light and dark. Semantic colours
+                  (warning, success, error, info) are unaffected.
+                </p>
+              </div>
+              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
+                <div className="relative shrink-0 rounded-2xl border border-primary/20 bg-card p-2 shadow-sm transition-shadow hover:shadow-md">
+                  <input
+                    type="color"
+                    aria-label="Brand accent color picker"
+                    value={draftSettings.brandColor ? hslToHex(draftSettings.brandColor) : '#D4A017'}
+                    onChange={(e) => {
+                      updateDraftSettings({ brandColor: hexToHsl(e.target.value) });
+                    }}
+                    className="h-14 w-14 cursor-pointer overflow-hidden rounded-xl border-2 border-border bg-transparent transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    style={{ padding: 0 }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="w-fit max-w-full rounded-full border border-border/70 bg-card px-3 py-1 text-sm font-mono shadow-sm">
+                    {draftSettings.brandColor ? hslToHex(draftSettings.brandColor) : '#D4A017'}
+                  </div>
+                  <div className="max-w-full break-words rounded-xl border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground font-mono">
+                    hsl({draftSettings.brandColor || '43 74% 49%'})
+                  </div>
+                </div>
+                {draftSettings.brandColor && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-fit shrink-0 text-muted-foreground transition-all hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/40"
+                    onClick={() => updateDraftSettings({ brandColor: null })}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[1, 0.8, 0.5, 0.2].map((op) => (
+                  <div
+                    key={op}
+                    className="h-10 w-10 rounded-xl border border-border/70 shadow-sm ring-1 ring-background"
+                    style={{ backgroundColor: `hsl(${draftSettings.brandColor || '43 74% 49%'} / ${op})` }}
+                    title={`${op * 100}%`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Typography */}
+      <Card className="overflow-hidden border-border/70 bg-card/95 shadow-lg shadow-background/5">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              <Type className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-lg">Typography</CardTitle>
+              <CardDescription className="break-words">
+                A global font applied to every text component across all pages. Choose a body font, an optional
+                heading font, and an overall size.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Body font</Label>
+              <Select
+                value={draftSettings.fontFamily || 'system'}
+                onValueChange={(v) => updateDraftSettings({ fontFamily: v === 'system' ? null : v })}
+              >
+                <SelectTrigger aria-label="Body font"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FONT_OPTIONS.map((f) => (
+                    <SelectItem key={f.key} value={f.key}>
+                      <span style={{ fontFamily: f.stack }}>{f.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Heading font</Label>
+              <Select
+                value={draftSettings.headingFontFamily || 'inherit'}
+                onValueChange={(v) =>
+                  updateDraftSettings({ headingFontFamily: v === 'inherit' ? null : v })
+                }
+              >
+                <SelectTrigger aria-label="Heading font"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">Same as body</SelectItem>
+                  {FONT_OPTIONS.map((f) => (
+                    <SelectItem key={f.key} value={f.key}>
+                      <span style={{ fontFamily: f.stack }}>{f.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Text size</Label>
+              <Select
+                value={draftSettings.fontScale || 'default'}
+                onValueChange={(v) => updateDraftSettings({ fontScale: v === 'default' ? null : v })}
+              >
+                <SelectTrigger aria-label="Text size"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FONT_SCALE_OPTIONS.map((s) => (
+                    <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Live preview — light + dark, updates instantly with the selection */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {([
+              { mode: 'Light', bg: '42 82% 99%', fg: '34 20% 16%', muted: '33 14% 38%' },
+              { mode: 'Dark', bg: '0 0% 7%', fg: '40 6% 90%', muted: '0 0% 55%' },
+            ] as const).map((p) => {
+              const bodyStack = resolveFontStack(draftSettings.fontFamily);
+              const headingStack = draftSettings.headingFontFamily
+                ? resolveFontStack(draftSettings.headingFontFamily)
+                : bodyStack;
+              const brand = draftSettings.brandColor || '43 74% 49%';
+              const primary = draftSettings.primaryColor || (p.mode === 'Dark' ? '43 74% 49%' : '262 66% 46%');
+              return (
+                <div
+                  key={p.mode}
+                  className="rounded-2xl border border-border/70 p-5 shadow-sm"
+                  style={{ backgroundColor: `hsl(${p.bg})`, color: `hsl(${p.fg})` }}
+                >
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider" style={{ color: `hsl(${p.muted})` }}>
+                    {p.mode} preview
+                  </div>
+                  <div style={{ fontFamily: headingStack, fontSize: '1.35rem', fontWeight: 700 }}>
+                    The quick brown fox
+                  </div>
+                  <p style={{ fontFamily: bodyStack, fontSize: '0.9rem', lineHeight: 1.6, color: `hsl(${p.muted})` }}>
+                    Body copy — jumps over the lazy dog. 1234567890. This is how paragraph text renders across the dashboard.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <span
+                      className="rounded-md px-3 py-1.5 text-xs font-semibold"
+                      style={{ backgroundColor: `hsl(${primary})`, color: '#fff', fontFamily: bodyStack }}
+                    >
+                      Primary
+                    </span>
+                    <span
+                      className="rounded-md px-3 py-1.5 text-xs font-semibold"
+                      style={{ backgroundColor: `hsl(${brand})`, color: '#1a1204', fontFamily: bodyStack }}
+                    >
+                      Brand
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

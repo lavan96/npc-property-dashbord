@@ -96,8 +96,8 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
     );
   }
 
-  const kpiCardClass = "group relative overflow-hidden border-border dark:border-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/45 hover:shadow-[0_22px_54px_rgba(0,0,0,0.34),0_0_28px_rgba(245,158,11,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(24,24,27,0.84)_48%,rgba(0,0,0,0.88))] shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]";
-  const kpiLabelClass = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-zinc-400";
+  const kpiCardClass = "group relative overflow-hidden border-border dark:border-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-300/45 hover:shadow-[0_22px_54px_rgba(0,0,0,0.34),0_0_28px_rgba(245,158,11,0.16)] bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(24,24,27,0.84)_48%,rgba(0,0,0,0.88))] shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.10)]";
+  const kpiLabelClass = "text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-muted-foreground";
 
   return (
     <div className="space-y-4">
@@ -105,42 +105,42 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-6">
         <Card className={kpiCardClass}>
           <CardContent className="relative p-3 sm:p-4">
-            <Layers3 className="mb-3 h-4 w-4 text-amber-200" />
+            <Layers3 className="mb-3 h-4 w-4 text-brand-200" />
             <p className="text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl">{stats.total}</p>
             <p className={kpiLabelClass}>Total Deals</p>
           </CardContent>
         </Card>
-        <Card className={cn(kpiCardClass, 'border-emerald-300/20')}>
+        <Card className={cn(kpiCardClass, 'border-success/20')}>
           <CardContent className="relative p-3 sm:p-4">
-            <CheckCircle2 className="mb-3 h-4 w-4 text-emerald-300" />
-            <p className="text-2xl font-bold tracking-tight text-emerald-300 sm:text-3xl">{stats.onTrack}</p>
+            <CheckCircle2 className="mb-3 h-4 w-4 text-success" />
+            <p className="text-2xl font-bold tracking-tight text-success sm:text-3xl">{stats.onTrack}</p>
             <p className={kpiLabelClass}>On Track</p>
           </CardContent>
         </Card>
-        <Card className={cn(kpiCardClass, 'border-amber-300/25')}>
+        <Card className={cn(kpiCardClass, 'border-brand-300/25')}>
           <CardContent className="relative p-3 sm:p-4">
-            <Clock3 className="mb-3 h-4 w-4 text-amber-300" />
-            <p className="text-2xl font-bold tracking-tight text-amber-300 sm:text-3xl">{stats.needsFollowUp}</p>
+            <Clock3 className="mb-3 h-4 w-4 text-brand-300" />
+            <p className="text-2xl font-bold tracking-tight text-brand-300 sm:text-3xl">{stats.needsFollowUp}</p>
             <p className={kpiLabelClass}>Follow-Up</p>
           </CardContent>
         </Card>
-        <Card className={cn(kpiCardClass, 'border-red-300/25')}>
+        <Card className={cn(kpiCardClass, 'border-destructive/25')}>
           <CardContent className="relative p-3 sm:p-4">
-            <Siren className="mb-3 h-4 w-4 text-red-300" />
-            <p className="text-2xl font-bold tracking-tight text-red-300 sm:text-3xl">{stats.urgent}</p>
+            <Siren className="mb-3 h-4 w-4 text-destructive" />
+            <p className="text-2xl font-bold tracking-tight text-destructive sm:text-3xl">{stats.urgent}</p>
             <p className={kpiLabelClass}>Urgent</p>
           </CardContent>
         </Card>
-        <Card className={cn(kpiCardClass, 'col-span-2 border-amber-200/25 bg-[linear-gradient(145deg,rgba(251,191,36,0.18),rgba(24,24,27,0.88)_44%,rgba(0,0,0,0.9))] lg:col-span-1')}>
+        <Card className={cn(kpiCardClass, 'col-span-2 border-brand-200/25 bg-[linear-gradient(145deg,rgba(251,191,36,0.18),rgba(24,24,27,0.88)_44%,rgba(0,0,0,0.9))] lg:col-span-1')}>
           <CardContent className="relative p-3 sm:p-4">
-            <CircleDollarSign className="mb-3 h-4 w-4 text-amber-200" />
-            <p className="text-2xl font-black tracking-[-0.04em] text-amber-100 sm:text-3xl lg:text-[1.65rem]">{formatCurrency(stats.totalValue)}</p>
+            <CircleDollarSign className="mb-3 h-4 w-4 text-brand-200" />
+            <p className="text-2xl font-black tracking-[-0.04em] text-brand-100 sm:text-3xl lg:text-[1.65rem]">{formatCurrency(stats.totalValue)}</p>
             <p className={kpiLabelClass}>Pipeline Value</p>
           </CardContent>
         </Card>
         <Card className={kpiCardClass}>
           <CardContent className="relative p-3 sm:p-4">
-            <CalendarClock className="mb-3 h-4 w-4 text-sky-200" />
+            <CalendarClock className="mb-3 h-4 w-4 text-info" />
             <p className="text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl">{stats.upcomingSettlements}</p>
             <p className={kpiLabelClass}>Settlements (30d)</p>
           </CardContent>
@@ -150,18 +150,18 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
       {/* Deal Table — filters now handled by parent toolbar */}
       <Card className="overflow-hidden rounded-[1.25rem] border-border dark:border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(9,9,11,0.92))] shadow-[0_20px_60px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)]">
         <CardContent className="p-0">
-          <div role="region" aria-label="Executive Summary deals table, horizontally scrollable" tabIndex={0} className="max-w-full overflow-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
+          <div role="region" aria-label="Executive Summary deals table, horizontally scrollable" tabIndex={0} className="max-w-full overflow-auto overscroll-contain [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-brand-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/70">
             <Table className="min-w-[880px]" aria-label="Executive Summary deals">
               <TableHeader className="bg-background dark:bg-black/30">
-                <TableRow className="border-amber-100/10 hover:bg-transparent">
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Client</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Type</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Current Stage</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Next Action</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Responsible</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-right text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Value</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Settlement</TableHead>
-                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-100/80">Risk</TableHead>
+                <TableRow className="border-brand-100/10 hover:bg-transparent">
+                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Client</TableHead>
+                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Type</TableHead>
+                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Current Stage</TableHead>
+                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Next Action</TableHead>
+                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Responsible</TableHead>
+                  <TableHead className="whitespace-nowrap py-4 text-right text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Value</TableHead>
+                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Settlement</TableHead>
+                  <TableHead className="whitespace-nowrap py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100/80">Risk</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -177,43 +177,43 @@ export function DealExecutiveSummary({ deals, allDeals, isLoading, onDealClick }
                     const dateUrgency = getDateUrgency(deal.settlement_date);
 
                     return (
-                      <TableRow key={deal.id} tabIndex={onDealClick ? 0 : undefined} role={onDealClick ? 'button' : undefined} aria-label={`Open deal for ${deal.client_name}`} className={cn('border-border dark:border-white/10 transition-colors hover:bg-amber-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/60', onDealClick && 'cursor-pointer')} onClick={() => onDealClick?.(deal)} onKeyDown={(event) => { if (onDealClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onDealClick(deal); } }}>
+                      <TableRow key={deal.id} tabIndex={onDealClick ? 0 : undefined} role={onDealClick ? 'button' : undefined} aria-label={`Open deal for ${deal.client_name}`} className={cn('border-border dark:border-white/10 transition-colors hover:bg-brand-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/60', onDealClick && 'cursor-pointer')} onClick={() => onDealClick?.(deal)} onKeyDown={(event) => { if (onDealClick && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onDealClick(deal); } }}>
                         <TableCell className="whitespace-nowrap py-4 text-xs font-semibold text-foreground dark:text-white sm:text-sm">{deal.client_name}</TableCell>
                         <TableCell className="py-4">
-                          <Badge variant="outline" className="gap-1.5 border-amber-200/20 bg-amber-100/10 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
+                          <Badge variant="outline" className="gap-1.5 border-brand-200/20 bg-brand-100/10 px-2.5 py-1 text-[11px] font-semibold text-brand-100">
                             {getDealTypeIcon(deal.deal_type)}
                             {getDealTypeShortLabel(deal.deal_type)}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-4">
                           <div className="flex min-w-[150px] items-center gap-2">
-                            <Badge variant="outline" className="border-sky-200/25 bg-sky-400/10 text-[10px] font-bold text-sky-100">S{deal.current_stage_number}</Badge>
-                            <span className="max-w-[180px] truncate text-xs font-medium text-foreground dark:text-zinc-100 sm:text-sm">{deal.current_stage}</span>
+                            <Badge variant="outline" className="border-info/25 bg-info/10 text-[10px] font-bold text-info-foreground">S{deal.current_stage_number}</Badge>
+                            <span className="max-w-[180px] truncate text-xs font-medium text-foreground dark:text-foreground sm:text-sm">{deal.current_stage}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="max-w-[240px] truncate py-4 text-xs text-muted-foreground dark:text-zinc-300 sm:text-sm">
+                        <TableCell className="max-w-[240px] truncate py-4 text-xs text-muted-foreground dark:text-foreground sm:text-sm">
                           {getNextAction(deal)}
                         </TableCell>
                         <TableCell className="py-4 text-xs sm:text-sm">
                           {deal.responsible_person ? (
-                            <span className="block max-w-[180px] break-words rounded-md border border-border dark:border-white/10 bg-white/[0.04] px-2 py-1 font-medium leading-snug text-foreground dark:text-zinc-100">{deal.responsible_person}</span>
+                            <span className="block max-w-[180px] break-words rounded-md border border-border dark:border-white/10 bg-white/[0.04] px-2 py-1 font-medium leading-snug text-foreground dark:text-foreground">{deal.responsible_person}</span>
                           ) : (
-                            <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-zinc-500">—</span>
+                            <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-right text-xs font-bold text-amber-100 sm:text-sm">
-                          {deal.total_contract_price ? formatCurrency(deal.total_contract_price) : <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs font-normal text-muted-foreground dark:text-zinc-500">—</span>}
+                        <TableCell className="whitespace-nowrap py-4 text-right text-xs font-bold text-brand-100 sm:text-sm">
+                          {deal.total_contract_price ? formatCurrency(deal.total_contract_price) : <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs font-normal text-muted-foreground dark:text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="py-4">
                           {deal.settlement_date ? (
-                            <div className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold', dateUrgency === 'overdue' || dateUrgency === 'urgent' ? 'border-red-300/25 bg-red-400/10 text-red-100' : dateUrgency === 'warning' ? 'border-amber-300/25 bg-amber-400/10 text-amber-100' : 'border-emerald-300/20 bg-emerald-400/10 text-emerald-100')}>
+                            <div className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold', dateUrgency === 'overdue' || dateUrgency === 'urgent' ? 'border-destructive/25 bg-destructive/10 text-destructive-foreground' : dateUrgency === 'warning' ? 'border-brand-300/25 bg-brand-400/10 text-brand-100' : 'border-success/20 bg-success/10 text-success-foreground')}>
                               <span className="whitespace-nowrap">{format(new Date(deal.settlement_date), 'dd MMM yy')}</span>
                               {(dateUrgency === 'overdue' || dateUrgency === 'urgent') && (
                                 <AlertTriangle className="h-3.5 w-3.5" />
                               )}
                             </div>
                           ) : (
-                            <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-zinc-500">—</span>
+                            <span className="rounded-full border border-dashed border-border dark:border-white/15 px-2 py-0.5 text-xs text-muted-foreground dark:text-muted-foreground">—</span>
                           )}
                         </TableCell>
                         <TableCell className="py-4">

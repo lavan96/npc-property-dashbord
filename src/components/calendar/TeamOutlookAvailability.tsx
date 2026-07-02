@@ -135,7 +135,7 @@ export function TeamOutlookAvailability({
             </Badge>
           )}
           {fetched && conflictCount === 0 && team.length > 0 && (
-            <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1 text-green-500 border-green-500/30">
+            <Badge variant="outline" className="text-[9px] px-1 py-0 ml-1 text-success-foreground0 border-success/30">
               All free
             </Badge>
           )}
@@ -186,7 +186,7 @@ export function TeamOutlookAvailability({
                         'w-2 h-2 rounded-full shrink-0',
                         member.error ? 'bg-muted-foreground/30' :
                         conflict ? 'bg-destructive' :
-                        member.busySlots.length > 0 ? 'bg-amber-500' : 'bg-green-500'
+                        member.busySlots.length > 0 ? 'bg-brand-500' : 'bg-success'
                       )} />
                       <span className="font-medium truncate max-w-[120px]">{member.username}</span>
                     </div>
@@ -194,13 +194,13 @@ export function TeamOutlookAvailability({
                       {member.error ? (
                         <span className="text-[10px] text-muted-foreground">Unavailable</span>
                       ) : member.busySlots.length === 0 ? (
-                        <span className="text-[10px] text-green-500">Free all day</span>
+                        <span className="text-[10px] text-success-foreground0">Free all day</span>
                       ) : conflict ? (
                         <span className="text-[10px] text-destructive font-medium">
                           {conflictingSlots.length} conflict{conflictingSlots.length !== 1 ? 's' : ''}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-amber-500">
+                        <span className="text-[10px] text-brand-500">
                           {member.busySlots.length} busy slot{member.busySlots.length !== 1 ? 's' : ''}
                         </span>
                       )}

@@ -679,7 +679,7 @@ export function MessageReportEditor({
         <DialogFooter className="flex-shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {hasEdited && (
-              <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
+              <Badge variant="outline" className="text-warning border-warning/30 text-xs">
                 Unsaved edits
               </Badge>
             )}

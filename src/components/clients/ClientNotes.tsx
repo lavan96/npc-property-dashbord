@@ -279,10 +279,10 @@ export function ClientNotes({ clientId }: ClientNotesProps) {
 
   const getNoteColor = (type: string) => {
     switch (type) {
-      case 'call': return 'bg-green-500/10 text-green-600 border-green-500/20';
-      case 'email': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
-      case 'meeting': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
-      case 'task': return 'bg-orange-500/10 text-orange-600 border-orange-500/20';
+      case 'call': return 'bg-success/10 text-success border-success/20';
+      case 'email': return 'bg-info/10 text-info border-info/20';
+      case 'meeting': return 'bg-accent/10 text-accent border-accent/20';
+      case 'task': return 'bg-warning/10 text-warning border-warning/20';
       default: return 'bg-muted text-muted-foreground';
     }
   };

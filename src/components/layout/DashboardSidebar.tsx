@@ -323,7 +323,7 @@ export function DashboardSidebar() {
               slot="sidebar"
               meta="Intake Dashboard"
               className="dashboard-brand-lockup"
-              logoClassName="h-10 max-w-[120px] object-contain"
+              logoClassName="brand-logo brand-logo-sidebar"
               fallbackClassName="h-10 w-10"
             />
           )}

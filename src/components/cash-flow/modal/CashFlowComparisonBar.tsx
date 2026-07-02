@@ -40,13 +40,13 @@ export function CashFlowComparisonBar({
   hasChanges,
 }: CashFlowComparisonBarProps) {
   return (
-    <Card className="border-slate-200/80 bg-muted/20 shadow-sm">
+    <Card className="border-border/80 bg-muted/20 shadow-sm">
       <CardContent className="space-y-4 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold">Comparison & assumptions</p>
-              {hasChanges && <Badge variant="outline" className="border-orange-300 text-orange-600">Unsaved assumptions</Badge>}
+              {hasChanges && <Badge variant="outline" className="border-warning/30 text-warning">Unsaved assumptions</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">Compare reports, tune investor context, and adjust analysis assumptions.</p>
           </div>

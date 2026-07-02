@@ -367,35 +367,35 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
           className={`
             group relative min-h-[280px] cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed p-6 text-center transition-all duration-300 sm:p-8 md:p-10
             ${isDragActive
-              ? 'scale-[1.01] border-amber-300 bg-amber-300/10 shadow-2xl shadow-amber-500/25 ring-4 ring-amber-300/20'
-              : 'border-amber-300/35 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_36%),linear-gradient(145deg,rgba(24,24,27,0.88),rgba(3,7,18,0.78))] shadow-xl shadow-sm dark:shadow-black/20 hover:-translate-y-0.5 hover:border-amber-300/70 hover:bg-amber-300/[0.08] hover:shadow-2xl hover:shadow-amber-950/20 focus-within:border-amber-300 focus-within:ring-4 focus-within:ring-amber-300/20'
+              ? 'scale-[1.01] border-brand-300 bg-brand-300/10 shadow-2xl shadow-brand-500/25 ring-4 ring-brand-300/20'
+              : 'border-brand-300/35 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_36%),linear-gradient(145deg,rgba(24,24,27,0.88),rgba(3,7,18,0.78))] shadow-xl shadow-sm dark:shadow-black/20 hover:-translate-y-0.5 hover:border-brand-300/70 hover:bg-brand-300/[0.08] hover:shadow-2xl hover:shadow-brand-950/20 focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-brand-300/20'
             }
           `}
         >
           <input {...getInputProps()} />
-          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-          <div className="absolute right-4 top-4 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-slate-400">
+          <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
+          <div className="absolute right-4 top-4 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/25 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-muted-foreground">
             No file selected
           </div>
           <div className="flex min-h-[220px] flex-col items-center justify-center">
-            <div className={`mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border shadow-2xl transition-all duration-300 ${isDragActive ? 'border-amber-200/60 bg-amber-300 text-black shadow-amber-500/35 scale-105' : 'border-amber-300/25 bg-amber-300/10 text-amber-100 shadow-amber-950/25 group-hover:border-amber-200/50 group-hover:bg-amber-300/15'}`}>
+            <div className={`mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border shadow-2xl transition-all duration-300 ${isDragActive ? 'border-brand-200/60 bg-brand-300 text-black shadow-brand-500/35 scale-105' : 'border-brand-300/25 bg-brand-300/10 text-brand-100 shadow-brand-950/25 group-hover:border-brand-200/50 group-hover:bg-brand-300/15'}`}>
               <FileSpreadsheet className="h-10 w-10" />
             </div>
             <div className="max-w-xl space-y-2">
               <p className="text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl">
                 {isDragActive ? 'Drop the Excel file here' : 'Drag & drop your Excel file here'}
               </p>
-              <p className="text-sm leading-6 text-muted-foreground dark:text-slate-400 sm:text-base">
+              <p className="text-sm leading-6 text-muted-foreground dark:text-muted-foreground sm:text-base">
                 Import client intake data and property portfolios from a spreadsheet, or click anywhere in this panel to browse.
               </p>
             </div>
             <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row">
-              <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-amber-100">
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand-300/25 bg-brand-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-100">
                 <Upload className="h-3.5 w-3.5" />
                 Browse files
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/20 px-4 py-2 text-xs font-semibold text-muted-foreground dark:text-slate-300">
-                <FileCheck2 className="h-3.5 w-3.5 text-emerald-300" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/20 px-4 py-2 text-xs font-semibold text-muted-foreground dark:text-foreground">
+                <FileCheck2 className="h-3.5 w-3.5 text-success" />
                 Supports .xlsx and .xls
               </span>
             </div>
@@ -404,28 +404,28 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       )}
 
       {(status === 'parsing' || status === 'importing') && (
-        <div className="relative overflow-hidden rounded-3xl border border-amber-300/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-amber-950/15 sm:p-6">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+        <div className="relative overflow-hidden rounded-3xl border border-brand-300/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-brand-950/15 sm:p-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/10 text-amber-100 shadow-lg shadow-amber-950/20">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-300/10 text-brand-100 shadow-lg shadow-brand-950/20">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="truncate font-semibold text-amber-50">{fileName}</p>
-                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-100">
+                <p className="truncate font-semibold text-brand-50">{fileName}</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-brand-300/25 bg-brand-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-100">
                   {status === 'parsing' ? 'Parsing' : 'Importing'}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground dark:text-slate-400">
+              <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground">
                 {status === 'parsing' ? 'Parsing spreadsheet...' : 'Importing clients...'}
               </p>
-              <div className="mt-4 rounded-2xl border border-amber-300/10 bg-background dark:bg-black/20 p-3">
-                <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold text-amber-100/70">
+              <div className="mt-4 rounded-2xl border border-brand-300/10 bg-background dark:bg-black/20 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold text-brand-100/70">
                   <span>{status === 'parsing' ? 'Reading workbook structure' : 'Creating client records'}</span>
                   <span className="tabular-nums">{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-3 border border-amber-300/15 bg-amber-950/60 shadow-inner shadow-sm dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-yellow-300 [&>div]:via-amber-400 [&>div]:to-orange-500 [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]" />
+                <Progress value={progress} className="h-3 border border-brand-300/15 bg-brand-950/60 shadow-inner shadow-sm dark:shadow-black/30 [&>div]:bg-gradient-to-r [&>div]:from-brand-300 [&>div]:via-brand-400 [&>div]:to-warning [&>div]:shadow-[0_0_18px_rgba(251,191,36,0.36)]" />
               </div>
             </div>
           </div>
@@ -433,28 +433,28 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       )}
 
       {status === 'complete' && importResult && (
-        <div className="relative overflow-hidden rounded-3xl border border-emerald-300/25 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-emerald-950/15 sm:p-6">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
+        <div className="relative overflow-hidden rounded-3xl border border-success/25 bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-success/15 sm:p-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-success/60 to-transparent" />
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/30 bg-emerald-400/10 text-emerald-200 shadow-lg shadow-emerald-950/20">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-success/30 bg-success/10 text-success shadow-lg shadow-success/20">
               <CheckCircle2 className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="font-semibold text-emerald-50">Import Complete</p>
-                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-100">
+                <p className="font-semibold text-success-foreground">Import Complete</p>
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-success-foreground">
                   Complete
                 </span>
               </div>
-              <p className="mt-1 truncate text-sm text-muted-foreground dark:text-slate-400">{fileName}</p>
+              <p className="mt-1 truncate text-sm text-muted-foreground dark:text-muted-foreground">{fileName}</p>
             </div>
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Badge variant="secondary" className="justify-center rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100">
+            <Badge variant="secondary" className="justify-center rounded-2xl border border-success/20 bg-success/10 px-4 py-3 text-sm font-bold text-success-foreground">
               {importResult.clientsCreated} Client(s)
             </Badge>
-            <Badge variant="secondary" className="justify-center rounded-2xl border border-teal-300/20 bg-teal-400/10 px-4 py-3 text-sm font-bold text-teal-100">
+            <Badge variant="secondary" className="justify-center rounded-2xl border border-success/20 bg-success/10 px-4 py-3 text-sm font-bold text-success-foreground">
               {importResult.propertiesCreated} Properties
             </Badge>
           </div>
@@ -476,7 +476,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
             </div>
           )}
 
-          <Button onClick={resetState} variant="outline" className="mt-5 h-11 w-full rounded-2xl border-emerald-300/20 bg-white/[0.03] text-emerald-100 hover:bg-emerald-400/10">
+          <Button onClick={resetState} variant="outline" className="mt-5 h-11 w-full rounded-2xl border-success/20 bg-white/[0.03] text-success-foreground hover:bg-success/10">
             <Upload className="h-4 w-4 mr-2" />
             Import Another File
           </Button>
@@ -484,10 +484,10 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
       )}
 
       {status === 'error' && (
-        <div className="relative overflow-hidden rounded-3xl border border-destructive/40 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-red-950/15 sm:p-6">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-red-200/60 to-transparent" />
+        <div className="relative overflow-hidden rounded-3xl border border-destructive/40 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.14),transparent_34%),linear-gradient(145deg,rgba(24,24,27,0.92),rgba(3,7,18,0.86))] p-5 shadow-xl shadow-destructive/15 sm:p-6">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-destructive/60 to-transparent" />
           <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive shadow-lg shadow-red-950/20">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/10 text-destructive shadow-lg shadow-destructive/20">
               <XCircle className="h-6 w-6" />
             </div>
             <div className="min-w-0 flex-1">

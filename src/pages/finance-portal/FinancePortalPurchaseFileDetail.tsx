@@ -92,22 +92,22 @@ const CRITICAL_DATE_LABEL: Record<string, string> = {
 };
 
 function urgencyClass(date: string | null | undefined, completed: boolean) {
-  if (completed) return 'border-emerald-500/30 bg-emerald-500/5';
+  if (completed) return 'border-success/30 bg-success/5';
   if (!date) return 'border-border bg-card';
   const days = Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
   if (days < 0) return 'border-destructive/40 bg-destructive/5';
-  if (days <= 5) return 'border-amber-500/40 bg-amber-500/5';
-  return 'border-emerald-500/30 bg-emerald-500/5';
+  if (days <= 5) return 'border-brand-500/40 bg-brand-500/5';
+  return 'border-success/30 bg-success/5';
 }
 
 function urgencyText(date: string | null | undefined, completed: boolean) {
-  if (completed) return { label: 'Completed', tone: 'text-emerald-500' };
+  if (completed) return { label: 'Completed', tone: 'text-success-foreground0' };
   if (!date) return { label: 'No date set', tone: 'text-muted-foreground' };
   const days = Math.ceil((new Date(date).getTime() - Date.now()) / 86_400_000);
   if (days < 0) return { label: `${Math.abs(days)}d overdue`, tone: 'text-destructive' };
-  if (days === 0) return { label: 'Due today', tone: 'text-amber-500' };
-  if (days <= 5) return { label: `Due in ${days}d`, tone: 'text-amber-500' };
-  return { label: `In ${days}d`, tone: 'text-emerald-500' };
+  if (days === 0) return { label: 'Due today', tone: 'text-brand-500' };
+  if (days <= 5) return { label: `Due in ${days}d`, tone: 'text-brand-500' };
+  return { label: `In ${days}d`, tone: 'text-success-foreground0' };
 }
 
 export default function FinancePortalPurchaseFileDetail() {
@@ -561,7 +561,7 @@ function CriticalDatesTab({
                     title={d.status === 'completed' ? 'Mark as not done' : 'Mark complete'}
                   >
                     {d.status === 'completed'
-                      ? <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      ? <CheckCircle2 className="h-5 w-5 text-success-foreground0" />
                       : <Clock className="h-5 w-5 text-muted-foreground" />}
                   </button>
                   <div className="flex-1 min-w-0">

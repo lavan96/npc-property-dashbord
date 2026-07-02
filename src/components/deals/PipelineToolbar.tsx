@@ -106,21 +106,21 @@ const RISK_OPTIONS: {
     label: "On Track",
     emoji: "🟢",
     activeClass:
-      "bg-green-500/15 text-green-700 border-green-500/40 dark:text-green-400",
+      "bg-success/15 text-success border-success/40 dark:text-success",
   },
   {
     value: "needs_follow_up",
     label: "Follow-Up",
     emoji: "🟠",
     activeClass:
-      "bg-amber-500/15 text-amber-700 border-amber-500/40 dark:text-amber-400",
+      "bg-brand-500/15 text-brand-700 border-brand-500/40 dark:text-brand-400",
   },
   {
     value: "urgent",
     label: "Urgent",
     emoji: "🔴",
     activeClass:
-      "bg-red-500/15 text-red-700 border-red-500/40 dark:text-red-400",
+      "bg-destructive/15 text-destructive border-destructive/40 dark:text-destructive",
   },
 ];
 
@@ -190,7 +190,7 @@ export function PipelineToolbar({
       {/* Row 1: Search + Filter toggle + Reset */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative w-full flex-1 lg:max-w-2xl">
-          <div className="pointer-events-none absolute left-3.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.14)]">
+          <div className="pointer-events-none absolute left-3.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-brand-300/15 bg-brand-300/10 text-brand-100 shadow-[0_0_18px_rgba(251,191,36,0.14)]">
             <Search className="h-4 w-4" />
           </div>
           <Input
@@ -200,7 +200,7 @@ export function PipelineToolbar({
             placeholder="Search client, stage, person..."
             value={filters.search}
             onChange={(e) => update({ search: e.target.value })}
-            className="h-12 rounded-2xl border-amber-200/15 bg-gradient-to-r from-card dark:from-zinc-950/95 via-card dark:via-zinc-950/80 to-card dark:to-zinc-900/70 pl-14 pr-11 text-sm font-medium text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_42px_rgba(0,0,0,0.24)] outline-none placeholder:text-muted-foreground/85 hover:border-amber-200/25 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/30 focus-visible:ring-offset-0"
+            className="h-12 rounded-2xl border-brand-200/15 bg-gradient-to-r from-card dark:from-background/95 via-card dark:via-background/80 to-card dark:to-background/70 pl-14 pr-11 text-sm font-medium text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_42px_rgba(0,0,0,0.24)] outline-none placeholder:text-muted-foreground/85 hover:border-brand-200/25 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/30 focus-visible:ring-offset-0"
           />
           {filters.search && (
             <button
@@ -222,8 +222,8 @@ export function PipelineToolbar({
                 className={cn(
                   "h-12 gap-2 rounded-2xl px-4 text-sm font-semibold shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition-all",
                   hasActiveFilters
-                    ? "border-amber-300/50 bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 hover:from-amber-200 hover:to-yellow-400"
-                    : "border-amber-200/20 bg-white/[0.04] text-amber-100 hover:border-amber-300/40 hover:bg-amber-300/10 hover:text-amber-50",
+                    ? "border-brand-300/50 bg-gradient-to-r from-brand-300 to-brand-500 text-brand-950 hover:from-brand-200 hover:to-brand-400"
+                    : "border-brand-200/20 bg-white/[0.04] text-brand-100 hover:border-brand-300/40 hover:bg-brand-300/10 hover:text-brand-50",
                 )}
               >
                 <SlidersHorizontal className="h-4 w-4" />
@@ -252,7 +252,7 @@ export function PipelineToolbar({
               variant="ghost"
               size="sm"
               onClick={resetFilters}
-              className="h-12 gap-1.5 rounded-2xl px-3 text-xs font-semibold text-muted-foreground hover:bg-white/10 hover:text-amber-100"
+              className="h-12 gap-1.5 rounded-2xl px-3 text-xs font-semibold text-muted-foreground hover:bg-white/10 hover:text-brand-100"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Reset</span>
@@ -278,7 +278,7 @@ export function PipelineToolbar({
       {/* Row 2: Expandable filter controls */}
       <Collapsible open={isExpanded} onOpenChange={onExpandedChange}>
         <CollapsibleContent>
-          <div id="deal-pipeline-filters" className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-amber-300/20 bg-gradient-to-br from-card dark:from-zinc-950/90 via-card dark:via-zinc-950/80 to-amber-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
+          <div id="deal-pipeline-filters" className="animate-in slide-in-from-top-1 space-y-4 rounded-[1.35rem] border border-brand-300/20 bg-gradient-to-br from-card dark:from-background/90 via-card dark:via-background/80 to-brand-950/10 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_46px_rgba(0,0,0,0.22)] duration-200">
             {/* Deal Type Chips */}
             <div className="space-y-1.5">
               <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -299,8 +299,8 @@ export function PipelineToolbar({
                       className={cn(
                         "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                         isActive
-                          ? "border-amber-300 bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 shadow-[0_10px_24px_rgba(245,158,11,0.22)]"
-                          : "border-border dark:border-white/10 bg-background dark:bg-black/35 text-muted-foreground hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100",
+                          ? "border-brand-300 bg-gradient-to-r from-brand-300 to-brand-500 text-brand-950 shadow-[0_10px_24px_rgba(245,158,11,0.22)]"
+                          : "border-border dark:border-white/10 bg-background dark:bg-black/35 text-muted-foreground hover:border-brand-300/25 hover:bg-brand-300/10 hover:text-brand-100",
                       )}
                     >
                       {opt.icon}
@@ -343,7 +343,7 @@ export function PipelineToolbar({
                         "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                         isActive
                           ? opt.activeClass + " shadow-sm"
-                          : "border-border dark:border-white/10 bg-background dark:bg-black/35 text-muted-foreground hover:border-amber-300/25 hover:bg-amber-300/10 hover:text-amber-100",
+                          : "border-border dark:border-white/10 bg-background dark:bg-black/35 text-muted-foreground hover:border-brand-300/25 hover:bg-brand-300/10 hover:text-brand-100",
                       )}
                     >
                       <span>{opt.emoji}</span>
@@ -374,7 +374,7 @@ export function PipelineToolbar({
                   value={filters.responsiblePerson}
                   onValueChange={(v) => update({ responsiblePerson: v })}
                 >
-                  <SelectTrigger aria-label="Filter by responsible person" className="h-11 w-full min-w-[170px] rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[190px]">
+                  <SelectTrigger aria-label="Filter by responsible person" className="h-11 w-full min-w-[170px] rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-xs shadow-inner hover:border-brand-300/25 focus:ring-brand-300/30 sm:w-[190px]">
                     <SelectValue placeholder="All People" />
                   </SelectTrigger>
                   <SelectContent>
@@ -398,7 +398,7 @@ export function PipelineToolbar({
                     value={filters.sortField}
                     onValueChange={(v) => update({ sortField: v as SortField })}
                   >
-                    <SelectTrigger aria-label="Sort deals by" className="h-11 w-full min-w-[150px] rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-xs shadow-inner hover:border-amber-300/25 focus:ring-amber-300/30 sm:w-[170px]">
+                    <SelectTrigger aria-label="Sort deals by" className="h-11 w-full min-w-[150px] rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/45 text-xs shadow-inner hover:border-brand-300/25 focus:ring-brand-300/30 sm:w-[170px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -413,7 +413,7 @@ export function PipelineToolbar({
                     variant="outline"
                     size="sm"
                     aria-label={`Toggle sort direction, currently ${filters.sortDirection === "asc" ? "ascending" : "descending"}`}
-                    className="h-11 w-11 rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/45 p-0 hover:border-amber-300/30 hover:bg-amber-300/10"
+                    className="h-11 w-11 rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/45 p-0 hover:border-brand-300/30 hover:bg-brand-300/10"
                     onClick={() =>
                       update({
                         sortDirection:
@@ -439,14 +439,14 @@ export function PipelineToolbar({
 
             {/* Active filter summary pills */}
             {hasActiveFilters && (
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-300/15 bg-amber-300/[0.04] p-2.5 shadow-inner">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-brand-300/15 bg-brand-300/[0.04] p-2.5 shadow-inner">
                 <span className="text-[10px] text-muted-foreground">
                   Active:
                 </span>
                 {filters.dealType !== "all" && (
                   <Badge
                     variant="secondary"
-                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                    className="gap-1 rounded-full border border-brand-300/25 bg-brand-300/10 pr-1 text-[10px] text-brand-100"
                   >
                     {
                       DEAL_TYPE_OPTIONS.find(
@@ -465,7 +465,7 @@ export function PipelineToolbar({
                 {filters.riskStatus !== "all" && (
                   <Badge
                     variant="secondary"
-                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                    className="gap-1 rounded-full border border-brand-300/25 bg-brand-300/10 pr-1 text-[10px] text-brand-100"
                   >
                     {
                       RISK_OPTIONS.find((o) => o.value === filters.riskStatus)
@@ -483,7 +483,7 @@ export function PipelineToolbar({
                 {filters.responsiblePerson !== "all" && (
                   <Badge
                     variant="secondary"
-                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                    className="gap-1 rounded-full border border-brand-300/25 bg-brand-300/10 pr-1 text-[10px] text-brand-100"
                   >
                     👤 {filters.responsiblePerson}
                     <button
@@ -498,7 +498,7 @@ export function PipelineToolbar({
                 {filters.search && (
                   <Badge
                     variant="secondary"
-                    className="gap-1 rounded-full border border-amber-300/25 bg-amber-300/10 pr-1 text-[10px] text-amber-100"
+                    className="gap-1 rounded-full border border-brand-300/25 bg-brand-300/10 pr-1 text-[10px] text-brand-100"
                   >
                     🔍 "{filters.search}"
                     <button

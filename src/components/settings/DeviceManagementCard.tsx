@@ -178,7 +178,7 @@ export function DeviceManagementCard() {
                 key={device.id}
                 className={settingsCx(
                   settingsInteractiveRowClass,
-                  "flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm dark:border-white/10 dark:bg-slate-950/35 sm:flex-row sm:items-center sm:justify-between",
+                  "flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/45 p-3 shadow-sm dark:border-white/10 dark:bg-background/35 sm:flex-row sm:items-center sm:justify-between",
                 )}
               >
                 <div className="flex min-w-0 items-start gap-3">

@@ -207,7 +207,7 @@ export function HeroImagesDialog({ reportId, open, onOpenChange }: HeroImagesDia
             {readyCount} ready
           </Badge>
           {pendingCount > 0 && (
-            <Badge variant="outline" className="border-amber-500/40 text-amber-500">
+            <Badge variant="outline" className="border-brand-500/40 text-brand-500">
               {pendingCount} pending
             </Badge>
           )}

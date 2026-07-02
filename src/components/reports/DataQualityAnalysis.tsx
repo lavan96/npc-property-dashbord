@@ -151,9 +151,9 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
   if (!qualityMetrics) return null;
 
   const getCompletenessColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-green-600 dark:text-green-400';
-    if (percentage >= 60) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (percentage >= 80) return 'text-success dark:text-success';
+    if (percentage >= 60) return 'text-brand-600 dark:text-brand-400';
+    return 'text-destructive dark:text-destructive';
   };
 
   const getSeverityBadge = (severity: string) => {
@@ -273,8 +273,8 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
                   <div className={`reports-quality-issue-row reports-quality-severity-${issue.severity}`}>
                     <div className="flex min-w-0 items-center gap-2">
                       {issue.count > 0 && issue.severity === 'critical' && <XCircle className="h-3.5 w-3.5 text-destructive" />}
-                      {issue.count > 0 && issue.severity === 'warning' && <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />}
-                      {(issue.count === 0 || issue.severity === 'info') && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                      {issue.count > 0 && issue.severity === 'warning' && <AlertTriangle className="h-3.5 w-3.5 text-brand-500" />}
+                      {(issue.count === 0 || issue.severity === 'info') && <CheckCircle2 className="h-3.5 w-3.5 text-success-foreground0" />}
                       <span className="reports-quality-issue-label">{issue.label}</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -302,9 +302,9 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <TrendingUp className="h-3.5 w-3.5 mt-0.5 text-yellow-500 shrink-0" />
+                      <TrendingUp className="h-3.5 w-3.5 mt-0.5 text-brand-500 shrink-0" />
                       <div>
-                        <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">Impact</p>
+                        <p className="text-xs font-medium text-brand-600 dark:text-brand-400">Impact</p>
                         <p className="text-xs text-foreground">{issue.impact}</p>
                       </div>
                     </div>
@@ -387,7 +387,7 @@ export function DataQualityAnalysis({ listings }: DataQualityAnalysisProps) {
         <Card className="reports-quality-card reports-quality-actions-card">
           <CardHeader className="reports-quality-card-header pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
+              <Lightbulb className="h-5 w-5 text-brand-500" />
               Recommended Actions
             </CardTitle>
           </CardHeader>

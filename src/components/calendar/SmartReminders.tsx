@@ -170,7 +170,7 @@ export function SmartReminders({ calendars, onSaveRules }: SmartRemindersProps) 
           <Card className="p-3 bg-primary/5 border-primary/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                <Badge className="bg-success/20 text-success border-success/30">
                   {activeRulesCount} active
                 </Badge>
                 <span className="text-xs text-muted-foreground">

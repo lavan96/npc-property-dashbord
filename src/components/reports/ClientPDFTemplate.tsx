@@ -1,5 +1,7 @@
 import { forwardRef } from 'react';
 import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { useBrand } from '@/branding/BrandProvider';
+import { getBrandPdfPalette } from '@/branding/brandPalette';
 
 interface ClientPDFTemplateProps {
   suburb: string;
@@ -21,7 +23,9 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
   ({ suburb, state, profileContent, marketData, performanceContent, demographicsContent, infrastructureContent, investmentInsights, investmentScore }, ref) => {
     const { settings, isLoading } = useGlobalReportSettings();
     const { contactDetails, disclaimer } = settings;
-    
+    const { settings: brand } = useBrand();
+    const palette = getBrandPdfPalette(brand.brandColor);
+
     const cleanText = (text: string) => {
       return text
         .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -54,7 +58,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '0',
             width: '200px',
             height: '100%',
-            background: 'linear-gradient(90deg, rgba(201, 165, 90, 0.15) 0%, transparent 100%)',
+            background: `linear-gradient(90deg, rgba(${palette.goldRgb}, 0.15) 0%, transparent 100%)`,
             borderRadius: '0 50% 50% 0',
           }} />
           <div style={{
@@ -63,7 +67,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '0',
             width: '200px',
             height: '100%',
-            background: 'linear-gradient(270deg, rgba(201, 165, 90, 0.15) 0%, transparent 100%)',
+            background: `linear-gradient(270deg, rgba(${palette.goldRgb}, 0.15) 0%, transparent 100%)`,
             borderRadius: '50% 0 0 50%',
           }} />
           
@@ -71,15 +75,15 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div style={{
             width: '120px',
             height: '120px',
-            border: '3px solid #c9a55a',
+            border: `3px solid ${palette.gold}`,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: '40px',
-            background: 'rgba(201, 165, 90, 0.1)',
+            background: `rgba(${palette.goldRgb}, 0.1)`,
           }}>
-            <span style={{ fontSize: '64px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>
+            <span style={{ fontSize: '64px', color: palette.gold, fontFamily: 'serif', fontWeight: 'bold' }}>
               {(contactDetails.company_name || 'P').charAt(0).toUpperCase()}
             </span>
           </div>
@@ -87,7 +91,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           {/* Title */}
           <h1 style={{
             fontSize: '48px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             textAlign: 'center',
@@ -127,7 +131,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '0',
             width: '100px',
             height: '100%',
-            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(201, 165, 90, 0.05) 10px, rgba(201, 165, 90, 0.05) 20px)',
+            backgroundImage: `repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(${palette.goldRgb}, 0.05) 10px, rgba(${palette.goldRgb}, 0.05) 20px)`,
             transform: 'skewY(-45deg)',
             transformOrigin: 'top left',
           }} />
@@ -139,19 +143,19 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '40px',
             width: '60px',
             height: '60px',
-            border: '2px solid #c9a55a',
+            border: `2px solid ${palette.gold}`,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <span style={{ fontSize: '32px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
+            <span style={{ fontSize: '32px', color: palette.gold, fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
           </div>
 
           {/* Header */}
           <h2 style={{
             fontSize: '42px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             margin: '0 0 40px 0',
@@ -164,17 +168,17 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div style={{ marginBottom: '40px' }}>
             <h3 style={{
               fontSize: '24px',
-              color: '#c9a55a',
+              color: palette.gold,
               fontFamily: 'serif',
               margin: '0 0 20px 0',
               letterSpacing: '2px',
             }}>
               LOCATION
             </h3>
-            <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0', lineHeight: '1.6' }}>
+            <p style={{ fontSize: '14px', color: palette.gold, margin: '0 0 10px 0', lineHeight: '1.6' }}>
               SUBURB / AREA : {suburb.toUpperCase()}
             </p>
-            <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0', lineHeight: '1.6' }}>
+            <p style={{ fontSize: '14px', color: palette.gold, margin: '0', lineHeight: '1.6' }}>
               STATE : {state.toUpperCase()}
             </p>
           </div>
@@ -183,7 +187,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div>
             <h3 style={{
               fontSize: '24px',
-              color: '#c9a55a',
+              color: palette.gold,
               fontFamily: 'serif',
               margin: '0 0 20px 0',
               letterSpacing: '2px',
@@ -192,7 +196,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             </h3>
             <p style={{
               fontSize: '12px',
-              color: '#c9a55a',
+              color: palette.gold,
               lineHeight: '1.8',
               margin: '0',
               textAlign: 'justify',
@@ -207,7 +211,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             left: '40px',
             bottom: '40px',
             fontSize: '12px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
           }}>
             2
@@ -220,7 +224,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             bottom: '0',
             width: '200px',
             height: '400px',
-            background: 'linear-gradient(270deg, rgba(201, 165, 90, 0.15) 0%, transparent 100%)',
+            background: `linear-gradient(270deg, rgba(${palette.goldRgb}, 0.15) 0%, transparent 100%)`,
             borderRadius: '50% 0 0 0',
           }} />
         </div>
@@ -243,18 +247,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '40px',
             width: '60px',
             height: '60px',
-            border: '2px solid #c9a55a',
+            border: `2px solid ${palette.gold}`,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <span style={{ fontSize: '32px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
+            <span style={{ fontSize: '32px', color: palette.gold, fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
           </div>
 
           <h2 style={{
             fontSize: '42px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             margin: '0 0 40px 0',
@@ -266,7 +270,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div>
             <h3 style={{
               fontSize: '24px',
-              color: '#c9a55a',
+              color: palette.gold,
               fontFamily: 'serif',
               margin: '0 0 30px 0',
               letterSpacing: '2px',
@@ -280,27 +284,27 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
                 display: 'flex',
                 justifyContent: 'space-between',
                 padding: '12px 20px',
-                borderBottom: '1px solid rgba(201, 165, 90, 0.3)',
+                borderBottom: `1px solid rgba(${palette.goldRgb}, 0.3)`,
               }}>
-                <span style={{ fontSize: '14px', color: '#c9a55a', fontWeight: 'bold' }}>MEDIAN HOUSE PRICE</span>
-                <span style={{ fontSize: '14px', color: '#c9a55a' }}>{marketData.medianPrice || 'N/A'}</span>
+                <span style={{ fontSize: '14px', color: palette.gold, fontWeight: 'bold' }}>MEDIAN HOUSE PRICE</span>
+                <span style={{ fontSize: '14px', color: palette.gold }}>{marketData.medianPrice || 'N/A'}</span>
               </div>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 padding: '12px 20px',
-                borderBottom: '1px solid rgba(201, 165, 90, 0.3)',
+                borderBottom: `1px solid rgba(${palette.goldRgb}, 0.3)`,
               }}>
-                <span style={{ fontSize: '14px', color: '#c9a55a', fontWeight: 'bold' }}>MEDIAN WEEKLY RENT</span>
-                <span style={{ fontSize: '14px', color: '#c9a55a' }}>{marketData.weeklyRent || 'N/A'}</span>
+                <span style={{ fontSize: '14px', color: palette.gold, fontWeight: 'bold' }}>MEDIAN WEEKLY RENT</span>
+                <span style={{ fontSize: '14px', color: palette.gold }}>{marketData.weeklyRent || 'N/A'}</span>
               </div>
               <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 padding: '12px 20px',
               }}>
-                <span style={{ fontSize: '14px', color: '#c9a55a', fontWeight: 'bold' }}>GROSS RENTAL YIELD</span>
-                <span style={{ fontSize: '14px', color: '#c9a55a' }}>{marketData.rentalYield || 'N/A'}</span>
+                <span style={{ fontSize: '14px', color: palette.gold, fontWeight: 'bold' }}>GROSS RENTAL YIELD</span>
+                <span style={{ fontSize: '14px', color: palette.gold }}>{marketData.rentalYield || 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -311,7 +315,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             left: '40px',
             bottom: '40px',
             fontSize: '12px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
           }}>
             3
@@ -335,18 +339,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '40px',
             width: '60px',
             height: '60px',
-            border: '2px solid #c9a55a',
+            border: `2px solid ${palette.gold}`,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <span style={{ fontSize: '32px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
+            <span style={{ fontSize: '32px', color: palette.gold, fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
           </div>
 
           <h2 style={{
             fontSize: '42px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             margin: '0 0 40px 0',
@@ -358,7 +362,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div>
             <h3 style={{
               fontSize: '24px',
-              color: '#c9a55a',
+              color: palette.gold,
               fontFamily: 'serif',
               margin: '0 0 20px 0',
               letterSpacing: '2px',
@@ -367,7 +371,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             </h3>
             <div style={{
               fontSize: '12px',
-              color: '#c9a55a',
+              color: palette.gold,
               lineHeight: '2',
               whiteSpace: 'pre-wrap',
             }}>
@@ -381,7 +385,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             left: '40px',
             bottom: '40px',
             fontSize: '12px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
           }}>
             4
@@ -405,18 +409,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '40px',
             width: '60px',
             height: '60px',
-            border: '2px solid #c9a55a',
+            border: `2px solid ${palette.gold}`,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <span style={{ fontSize: '32px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
+            <span style={{ fontSize: '32px', color: palette.gold, fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
           </div>
 
           <h2 style={{
             fontSize: '42px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             margin: '0 0 40px 0',
@@ -428,7 +432,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div>
             <h3 style={{
               fontSize: '24px',
-              color: '#c9a55a',
+              color: palette.gold,
               fontFamily: 'serif',
               margin: '0 0 20px 0',
               letterSpacing: '2px',
@@ -437,7 +441,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             </h3>
             <div style={{
               fontSize: '12px',
-              color: '#c9a55a',
+              color: palette.gold,
               lineHeight: '2',
               whiteSpace: 'pre-wrap',
             }}>
@@ -451,7 +455,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             left: '40px',
             bottom: '40px',
             fontSize: '12px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
           }}>
             5
@@ -475,18 +479,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '40px',
             width: '60px',
             height: '60px',
-            border: '2px solid #c9a55a',
+            border: `2px solid ${palette.gold}`,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <span style={{ fontSize: '32px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
+            <span style={{ fontSize: '32px', color: palette.gold, fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
           </div>
 
           <h2 style={{
             fontSize: '42px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             margin: '0 0 40px 0',
@@ -498,7 +502,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div>
             <h3 style={{
               fontSize: '24px',
-              color: '#c9a55a',
+              color: palette.gold,
               fontFamily: 'serif',
               margin: '0 0 20px 0',
               letterSpacing: '2px',
@@ -507,7 +511,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             </h3>
             <div style={{
               fontSize: '12px',
-              color: '#c9a55a',
+              color: palette.gold,
               lineHeight: '2',
               whiteSpace: 'pre-wrap',
             }}>
@@ -521,7 +525,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             left: '40px',
             bottom: '40px',
             fontSize: '12px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
           }}>
             6
@@ -545,18 +549,18 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             top: '40px',
             width: '60px',
             height: '60px',
-            border: '2px solid #c9a55a',
+            border: `2px solid ${palette.gold}`,
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <span style={{ fontSize: '32px', color: '#c9a55a', fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
+            <span style={{ fontSize: '32px', color: palette.gold, fontFamily: 'serif', fontWeight: 'bold' }}>N</span>
           </div>
 
           <h2 style={{
             fontSize: '42px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             margin: '0 0 40px 0',
@@ -568,7 +572,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
           <div>
             <h3 style={{
               fontSize: '24px',
-              color: '#c9a55a',
+              color: palette.gold,
               fontFamily: 'serif',
               margin: '0 0 20px 0',
               letterSpacing: '2px',
@@ -577,7 +581,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             </h3>
             <div style={{
               fontSize: '12px',
-              color: '#c9a55a',
+              color: palette.gold,
               lineHeight: '2',
               whiteSpace: 'pre-wrap',
               marginBottom: '30px',
@@ -589,13 +593,13 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
               <div style={{
                 marginTop: '40px',
                 padding: '20px',
-                border: '2px solid #c9a55a',
+                border: `2px solid ${palette.gold}`,
                 borderRadius: '8px',
                 textAlign: 'center',
               }}>
                 <span style={{
                   fontSize: '24px',
-                  color: '#c9a55a',
+                  color: palette.gold,
                   fontFamily: 'serif',
                   fontWeight: 'bold',
                   letterSpacing: '2px',
@@ -612,7 +616,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
             left: '40px',
             bottom: '40px',
             fontSize: '12px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
           }}>
             7
@@ -634,7 +638,7 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
         }}>
           <h2 style={{
             fontSize: '36px',
-            color: '#c9a55a',
+            color: palette.gold,
             fontFamily: 'serif',
             fontWeight: 'bold',
             marginBottom: '40px',
@@ -645,27 +649,27 @@ export const ClientPDFTemplate = forwardRef<HTMLDivElement, ClientPDFTemplatePro
 
           <div style={{ marginBottom: '40px' }}>
             {contactDetails.website && (
-              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+              <p style={{ fontSize: '14px', color: palette.gold, margin: '0 0 10px 0' }}>
                 <strong>WEBSITE:</strong> {contactDetails.website}
               </p>
             )}
             {contactDetails.email && (
-              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+              <p style={{ fontSize: '14px', color: palette.gold, margin: '0 0 10px 0' }}>
                 <strong>EMAIL:</strong> {contactDetails.email}
               </p>
             )}
             {contactDetails.phone && (
-              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+              <p style={{ fontSize: '14px', color: palette.gold, margin: '0 0 10px 0' }}>
                 <strong>PHONE:</strong> {contactDetails.phone}
               </p>
             )}
             {contactDetails.address && (
-              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0 0 10px 0' }}>
+              <p style={{ fontSize: '14px', color: palette.gold, margin: '0 0 10px 0' }}>
                 <strong>ADDRESS:</strong> {contactDetails.address}
               </p>
             )}
             {contactDetails.abn && (
-              <p style={{ fontSize: '14px', color: '#c9a55a', margin: '0' }}>
+              <p style={{ fontSize: '14px', color: palette.gold, margin: '0' }}>
                 <strong>ABN:</strong> {contactDetails.abn}
               </p>
             )}

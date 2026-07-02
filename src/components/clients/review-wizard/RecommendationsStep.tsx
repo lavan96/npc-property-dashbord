@@ -20,22 +20,22 @@ export function RecommendationsStep({ recommendations }: RecommendationsStepProp
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case 'high':
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">High Priority</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20">High Priority</Badge>;
       case 'medium':
-        return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Medium Priority</Badge>;
+        return <Badge className="bg-brand-500/10 text-brand-600 border-brand-500/20">Medium Priority</Badge>;
       default:
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Low Priority</Badge>;
+        return <Badge className="bg-success/10 text-success border-success/20">Low Priority</Badge>;
     }
   };
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
       case 'high':
-        return <AlertTriangle className="h-5 w-5 text-red-600" />;
+        return <AlertTriangle className="h-5 w-5 text-destructive" />;
       case 'medium':
-        return <Lightbulb className="h-5 w-5 text-yellow-600" />;
+        return <Lightbulb className="h-5 w-5 text-brand-600" />;
       default:
-        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+        return <CheckCircle2 className="h-5 w-5 text-success" />;
     }
   };
 
@@ -71,21 +71,21 @@ export function RecommendationsStep({ recommendations }: RecommendationsStepProp
     <div className="space-y-6">
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4">
-        <Card className={highPriority.length > 0 ? 'border-red-300' : ''}>
+        <Card className={highPriority.length > 0 ? 'border-destructive/30' : ''}>
           <CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-red-600">{highPriority.length}</div>
+            <div className="text-2xl font-bold text-destructive">{highPriority.length}</div>
             <p className="text-xs text-muted-foreground">High Priority</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-yellow-600">{mediumPriority.length}</div>
+            <div className="text-2xl font-bold text-brand-600">{mediumPriority.length}</div>
             <p className="text-xs text-muted-foreground">Medium Priority</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{lowPriority.length}</div>
+            <div className="text-2xl font-bold text-success">{lowPriority.length}</div>
             <p className="text-xs text-muted-foreground">Opportunities</p>
           </CardContent>
         </Card>
@@ -96,7 +96,7 @@ export function RecommendationsStep({ recommendations }: RecommendationsStepProp
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertTriangle className="h-5 w-5 text-destructive" />
               Immediate Action Required
             </CardTitle>
           </CardHeader>
@@ -113,7 +113,7 @@ export function RecommendationsStep({ recommendations }: RecommendationsStepProp
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-600" />
+              <Lightbulb className="h-5 w-5 text-brand-600" />
               Recommended Improvements
             </CardTitle>
           </CardHeader>
@@ -130,7 +130,7 @@ export function RecommendationsStep({ recommendations }: RecommendationsStepProp
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CheckCircle2 className="h-5 w-5 text-success" />
               Growth Opportunities
             </CardTitle>
           </CardHeader>
@@ -145,7 +145,7 @@ export function RecommendationsStep({ recommendations }: RecommendationsStepProp
       {recommendations.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-green-600" />
+            <CheckCircle2 className="h-12 w-12 mx-auto mb-4 text-success" />
             <p className="font-medium">No recommendations at this time</p>
             <p className="text-sm">Your portfolio appears to be in good shape!</p>
           </CardContent>

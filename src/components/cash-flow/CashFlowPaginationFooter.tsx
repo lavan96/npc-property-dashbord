@@ -12,7 +12,7 @@ interface CashFlowPaginationFooterProps {
 
 export function CashFlowPaginationFooter({ filteredCount, loadedCount, hasMore, loadingMore, onLoadMore }: CashFlowPaginationFooterProps) {
   return (
-    <Card className="border-slate-200/80 bg-muted/20 shadow-sm">
+    <Card className="border-border/80 bg-muted/20 shadow-sm">
       <CardContent className="flex flex-col items-center justify-between gap-3 p-4 sm:flex-row">
         <div className="flex items-center gap-3 text-center sm:text-left">
           <div className="hidden rounded-2xl bg-primary/10 p-2 text-primary sm:block">

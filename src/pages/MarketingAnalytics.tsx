@@ -567,15 +567,15 @@ export default function MarketingAnalytics() {
             </Badge>
           )}
           {summary.warningAnomalies > 0 && (
-            <Badge className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs text-amber-600 dark:text-amber-400">
+            <Badge className="rounded-full border border-brand-500/30 bg-brand-500/15 px-2.5 py-1 text-xs text-brand-600 dark:text-brand-400">
               {summary.warningAnomalies} Warning{summary.warningAnomalies !== 1 ? 's' : ''}
             </Badge>
           )}
           {summary.avgHealthScore > 0 && (
             <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-xs font-mono ${
-              summary.avgHealthScore >= 60 ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400' :
-              summary.avgHealthScore >= 35 ? 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400' :
-              'border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400'
+              summary.avgHealthScore >= 60 ? 'border-success/30 bg-success/5 text-success dark:text-success' :
+              summary.avgHealthScore >= 35 ? 'border-brand-500/30 bg-brand-500/5 text-brand-600 dark:text-brand-400' :
+              'border-destructive/30 bg-destructive/5 text-destructive dark:text-destructive'
             }`}>
               Avg Health: {summary.avgHealthScore}/100
             </Badge>

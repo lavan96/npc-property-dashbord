@@ -73,12 +73,12 @@ const channelIcons: Record<string, any> = {
 };
 
 const channelColors: Record<string, string> = {
-  sms: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  email: 'bg-blue-100 text-blue-700 border-blue-200',
-  whatsapp: 'bg-green-100 text-green-700 border-green-200',
-  instagram: 'bg-pink-100 text-pink-700 border-pink-200',
-  facebook: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-  live_chat: 'bg-purple-100 text-purple-700 border-purple-200',
+  sms: 'bg-success/15 text-success border-success/30',
+  email: 'bg-info/15 text-info border-info/30',
+  whatsapp: 'bg-success/15 text-success border-success/30',
+  instagram: 'bg-accent/15 text-accent border-accent/30',
+  facebook: 'bg-accent/15 text-accent border-accent/30',
+  live_chat: 'bg-accent/15 text-accent border-accent/30',
 };
 
 interface Conversation {
@@ -540,20 +540,20 @@ export function ClientConversationsTab({ clientId, clientName, clientEmail, ghlC
                     
                     const getOutboundBubbleClass = () => {
                       switch (msgChannel) {
-                        case 'sms': return 'bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-br-md';
-                        case 'whatsapp': return 'bg-green-100 dark:bg-green-900/40 text-foreground rounded-br-md';
-                        case 'email': return 'bg-amber-100 dark:bg-amber-900/40 text-foreground rounded-br-md';
-                        default: return 'bg-blue-100 dark:bg-blue-900/40 text-foreground rounded-br-md';
+                        case 'sms': return 'bg-info/15 dark:bg-info/40 text-foreground rounded-br-md';
+                        case 'whatsapp': return 'bg-success/15 dark:bg-success/40 text-foreground rounded-br-md';
+                        case 'email': return 'bg-brand-100 dark:bg-brand-900/40 text-foreground rounded-br-md';
+                        default: return 'bg-info/15 dark:bg-info/40 text-foreground rounded-br-md';
                       }
                     };
                     
                     const getTimestampClass = () => {
                       if (!isOutbound) return 'text-muted-foreground';
                       switch (msgChannel) {
-                        case 'sms': return 'text-blue-500 dark:text-blue-400';
-                        case 'whatsapp': return 'text-green-600 dark:text-green-400';
-                        case 'email': return 'text-amber-600 dark:text-amber-400';
-                        default: return 'text-blue-500 dark:text-blue-400';
+                        case 'sms': return 'text-info-foreground0 dark:text-info';
+                        case 'whatsapp': return 'text-success dark:text-success';
+                        case 'email': return 'text-brand-600 dark:text-brand-400';
+                        default: return 'text-info-foreground0 dark:text-info';
                       }
                     };
 

@@ -60,12 +60,12 @@ export function BindingFixerPopover({ template, issues, sampleData, onApply, onJ
         <Button
           variant="outline"
           size="sm"
-          className="h-7 px-2 gap-1.5 text-[11px] border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
+          className="h-7 px-2 gap-1.5 text-[11px] border-brand-500/40 text-brand-600 hover:bg-brand-500/10"
           title="AI-assisted binding fixer"
         >
           <Wand2 className="h-3 w-3" /> Fix bindings
           {autoCount > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-[9px] font-semibold uppercase tracking-wider">
+            <span className="ml-1 px-1.5 py-0.5 rounded bg-brand-500/20 text-[9px] font-semibold uppercase tracking-wider">
               {autoCount} auto
             </span>
           )}
@@ -74,7 +74,7 @@ export function BindingFixerPopover({ template, issues, sampleData, onApply, onJ
       <PopoverContent align="end" className="w-[460px] p-0">
         <div className="px-3 py-2 border-b flex items-center justify-between gap-2">
           <div className="text-xs font-semibold flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" /> Binding fixer
+            <Sparkles className="h-3.5 w-3.5 text-brand-500" /> Binding fixer
             <span className="text-[10px] text-muted-foreground font-normal">
               {fixable.length} of {issues.length} resolvable
             </span>

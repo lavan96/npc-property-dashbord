@@ -29,11 +29,11 @@ interface BenchmarksPanelProps {
 }
 
 const VERDICT_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  excellent: { label: 'Excellent', color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10', borderColor: 'border-emerald-500/30' },
-  above_average: { label: 'Above Avg', color: 'text-sky-600 dark:text-sky-400', bgColor: 'bg-sky-500/10', borderColor: 'border-sky-500/30' },
+  excellent: { label: 'Excellent', color: 'text-success dark:text-success', bgColor: 'bg-success/10', borderColor: 'border-success/30' },
+  above_average: { label: 'Above Avg', color: 'text-info dark:text-info', bgColor: 'bg-info/10', borderColor: 'border-info/30' },
   average: { label: 'Average', color: 'text-muted-foreground', bgColor: 'bg-muted/30', borderColor: 'border-border' },
-  below_average: { label: 'Below Avg', color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/30' },
-  poor: { label: 'Poor', color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/30' },
+  below_average: { label: 'Below Avg', color: 'text-brand-600 dark:text-brand-400', bgColor: 'bg-brand-500/10', borderColor: 'border-brand-500/30' },
+  poor: { label: 'Poor', color: 'text-destructive dark:text-destructive', bgColor: 'bg-destructive/10', borderColor: 'border-destructive/30' },
 };
 
 function formatMetricValue(metric: string, value: number): string {
@@ -42,7 +42,7 @@ function formatMetricValue(metric: string, value: number): string {
 }
 
 function PercentileBar({ percentile }: { percentile: number }) {
-  const color = percentile >= 75 ? 'bg-emerald-500' : percentile >= 50 ? 'bg-sky-500' : percentile >= 25 ? 'bg-amber-500' : 'bg-red-500';
+  const color = percentile >= 75 ? 'bg-success' : percentile >= 50 ? 'bg-info' : percentile >= 25 ? 'bg-brand-500' : 'bg-destructive';
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -167,9 +167,9 @@ export function BenchmarksPanel({ benchmarks, perplexityResearch, citations, aiA
         )}
 
         {aiError && (
-          <div className="flex items-start gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
-            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-600 dark:text-amber-400">{aiError}</p>
+          <div className="flex items-start gap-2 rounded-2xl border border-brand-500/20 bg-brand-500/5 p-3">
+            <AlertTriangle className="h-4 w-4 text-brand-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-brand-600 dark:text-brand-400">{aiError}</p>
           </div>
         )}
 

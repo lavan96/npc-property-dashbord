@@ -14,11 +14,11 @@ interface ConversationTagsProps {
 }
 
 const predefinedTags = [
-  { name: 'Important', color: 'bg-red-500/20 text-red-600 border-red-500/30' },
-  { name: 'Follow-up', color: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' },
-  { name: 'Reviewed', color: 'bg-green-500/20 text-green-600 border-green-500/30' },
-  { name: 'Client Ready', color: 'bg-blue-500/20 text-blue-600 border-blue-500/30' },
-  { name: 'Archive', color: 'bg-gray-500/20 text-gray-600 border-gray-500/30' },
+  { name: 'Important', color: 'bg-destructive/20 text-destructive border-destructive/30' },
+  { name: 'Follow-up', color: 'bg-brand-500/20 text-brand-600 border-brand-500/30' },
+  { name: 'Reviewed', color: 'bg-success/20 text-success border-success/30' },
+  { name: 'Client Ready', color: 'bg-info/20 text-info border-info/30' },
+  { name: 'Archive', color: 'bg-muted0/20 text-muted-foreground border-border/30' },
 ];
 
 const getTagColor = (tag: string) => {

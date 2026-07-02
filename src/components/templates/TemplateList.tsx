@@ -262,9 +262,9 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
   const getTierBadge = (tier: string | null) => {
     if (!tier) return null;
     const colors: Record<string, string> = {
-      compass: 'bg-blue-500/10 text-blue-500',
-      executive: 'bg-purple-500/10 text-purple-500',
-      snapshot: 'bg-green-500/10 text-green-500',
+      compass: 'bg-info/10 text-info-foreground0',
+      executive: 'bg-accent/10 text-accent-foreground0',
+      snapshot: 'bg-success/10 text-success-foreground0',
     };
     return (
       <Badge variant="outline" className={colors[tier] || ''}>
@@ -294,7 +294,7 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     
     if (!hasContent) {
       return (
-        <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
+        <Badge variant="outline" className="bg-brand-500/10 text-brand-500">
           Not parsed
         </Badge>
       );
@@ -302,7 +302,7 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     
     if (!isValid) {
       return (
-        <Badge variant="outline" className="bg-red-500/10 text-red-500 flex items-center gap-1">
+        <Badge variant="outline" className="bg-destructive/10 text-destructive-foreground0 flex items-center gap-1">
           <AlertTriangle className="h-3 w-3" />
           Binary data
         </Badge>
@@ -310,7 +310,7 @@ export function TemplateList({ templates, isLoading, templateType }: TemplateLis
     }
     
     return (
-      <Badge variant="outline" className="bg-green-500/10 text-green-500 flex items-center gap-1">
+      <Badge variant="outline" className="bg-success/10 text-success-foreground0 flex items-center gap-1">
         <CheckCircle className="h-3 w-3" />
         {(template.parsed_content!.length / 1000).toFixed(1)}k chars
       </Badge>

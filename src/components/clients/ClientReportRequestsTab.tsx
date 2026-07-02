@@ -23,16 +23,16 @@ interface Props {
 }
 
 const requestTypeConfig: Record<string, { label: string; icon: typeof BarChart3; color: string }> = {
-  portfolio_review: { label: 'Portfolio Review', icon: BarChart3, color: 'bg-emerald-500/10 text-emerald-600' },
-  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'bg-amber-500/10 text-amber-600' },
-  investment_property: { label: 'Investment Property', icon: Building2, color: 'bg-blue-500/10 text-blue-600' },
+  portfolio_review: { label: 'Portfolio Review', icon: BarChart3, color: 'bg-success/10 text-success' },
+  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'bg-brand-500/10 text-brand-600' },
+  investment_property: { label: 'Investment Property', icon: Building2, color: 'bg-info/10 text-info' },
 };
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
-  pending: { label: 'Pending', icon: Clock, color: 'bg-amber-500/10 text-amber-600 border-amber-200' },
-  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'bg-blue-500/10 text-blue-600 border-blue-200' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200' },
-  declined: { label: 'Declined', icon: XCircle, color: 'bg-red-500/10 text-red-600 border-red-200' },
+  pending: { label: 'Pending', icon: Clock, color: 'bg-brand-500/10 text-brand-600 border-brand-200' },
+  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'bg-info/10 text-info border-info/30' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'bg-success/10 text-success border-success/30' },
+  declined: { label: 'Declined', icon: XCircle, color: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
 
 export function ClientReportRequestsTab({ clientId, clientName }: Props) {

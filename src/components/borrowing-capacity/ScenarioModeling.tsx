@@ -261,7 +261,7 @@ export function ScenarioModeling({
             </p>
             <Badge
               className="mt-2"
-              style={{ backgroundColor: baseBandStyle.bg === 'bg-emerald-500/10' ? '#10b981' : baseBandStyle.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}
+              style={{ backgroundColor: baseBandStyle.bg === 'bg-success/10' ? '#10b981' : baseBandStyle.bg === 'bg-brand-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}
             >
               {baseBandStyle.label}
             </Badge>
@@ -269,13 +269,13 @@ export function ScenarioModeling({
 
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
-              {change.direction === 'increase' && <TrendingUp className="h-5 w-5 text-emerald-600" />}
+              {change.direction === 'increase' && <TrendingUp className="h-5 w-5 text-success" />}
               {change.direction === 'decrease' && <TrendingDown className="h-5 w-5 text-destructive" />}
               {change.direction === 'unchanged' && <Minus className="h-5 w-5 text-muted-foreground" />}
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
             </div>
             <p className={`text-lg font-bold ${
-              change.direction === 'increase' ? 'text-emerald-600' :
+              change.direction === 'increase' ? 'text-success' :
               change.direction === 'decrease' ? 'text-destructive' :
               'text-muted-foreground'
             }`}>
@@ -291,7 +291,7 @@ export function ScenarioModeling({
           </div>
 
           <div className={`text-center p-4 rounded-lg border-2 ${
-            change.direction === 'increase' ? 'bg-emerald-500/10 border-emerald-500/30' :
+            change.direction === 'increase' ? 'bg-success/10 border-success/30' :
             change.direction === 'decrease' ? 'bg-destructive/10 border-destructive/30' :
             'bg-secondary/30 border-secondary'
           }`}>
@@ -301,7 +301,7 @@ export function ScenarioModeling({
             </p>
             <Badge
               className="mt-2"
-              style={{ backgroundColor: scenarioBandStyle.bg === 'bg-emerald-500/10' ? '#10b981' : scenarioBandStyle.bg === 'bg-amber-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}
+              style={{ backgroundColor: scenarioBandStyle.bg === 'bg-success/10' ? '#10b981' : scenarioBandStyle.bg === 'bg-brand-500/10' ? '#f59e0b' : '#ef4444', color: 'white' }}
             >
               {scenarioBandStyle.label}
             </Badge>
@@ -313,7 +313,7 @@ export function ScenarioModeling({
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground">Monthly Surplus Change:</span>
             <span className={`font-medium ${
-              scenarioResult.monthlySurplus >= baseResult.monthlySurplus ? 'text-emerald-600' : 'text-destructive'
+              scenarioResult.monthlySurplus >= baseResult.monthlySurplus ? 'text-success' : 'text-destructive'
             }`}>
               {formatCurrency(baseResult.monthlySurplus)} → {formatCurrency(scenarioResult.monthlySurplus)}
             </span>
@@ -439,7 +439,7 @@ function DeltaForm({ type, properties, liabilities, baseInputs, onAdd, onCancel 
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>-50%</span>
-              <span className={`font-medium ${value >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+              <span className={`font-medium ${value >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {value >= 0 ? '+' : ''}{value}%
               </span>
               <span>+50%</span>
@@ -459,7 +459,7 @@ function DeltaForm({ type, properties, liabilities, baseInputs, onAdd, onCancel 
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>-30%</span>
-              <span className={`font-medium ${value <= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+              <span className={`font-medium ${value <= 0 ? 'text-success' : 'text-destructive'}`}>
                 {value >= 0 ? '+' : ''}{value}%
               </span>
               <span>+30%</span>
@@ -479,7 +479,7 @@ function DeltaForm({ type, properties, liabilities, baseInputs, onAdd, onCancel 
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>-2%</span>
-              <span className={`font-medium ${value <= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+              <span className={`font-medium ${value <= 0 ? 'text-success' : 'text-destructive'}`}>
                 {value >= 0 ? '+' : ''}{value.toFixed(2)}%
               </span>
               <span>+3%</span>

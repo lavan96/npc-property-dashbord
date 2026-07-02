@@ -27,69 +27,69 @@ import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { cn } from '@/lib/utils';
 
 const requestTypeConfig: Record<string, { label: string; icon: typeof BarChart3; color: string }> = {
-  portfolio_review: { label: 'Portfolio Review', icon: BarChart3, color: 'border border-emerald-300/25 bg-gradient-to-br from-emerald-400/20 via-emerald-500/10 to-teal-500/10 text-emerald-200 ring-1 ring-emerald-300/20' },
-  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'border border-amber-300/25 bg-gradient-to-br from-amber-300/20 via-amber-500/10 to-orange-500/10 text-amber-200 ring-1 ring-amber-300/20' },
-  investment_property: { label: 'Investment Property', icon: Building2, color: 'border border-blue-300/25 bg-gradient-to-br from-blue-400/20 via-blue-500/10 to-indigo-500/10 text-blue-200 ring-1 ring-blue-300/20' },
+  portfolio_review: { label: 'Portfolio Review', icon: BarChart3, color: 'border border-success/25 bg-gradient-to-br from-success/20 via-success/10 to-success/10 text-success ring-1 ring-success/20' },
+  borrowing_capacity: { label: 'Borrowing Capacity', icon: PiggyBank, color: 'border border-brand-300/25 bg-gradient-to-br from-brand-300/20 via-brand-500/10 to-warning/10 text-brand-200 ring-1 ring-brand-300/20' },
+  investment_property: { label: 'Investment Property', icon: Building2, color: 'border border-info/25 bg-gradient-to-br from-info/20 via-info/10 to-accent/10 text-info ring-1 ring-info/20' },
 };
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; badgeVariant: string }> = {
-  pending: { label: 'Pending', icon: Clock, color: 'text-amber-300', badgeVariant: 'border-amber-300/35 bg-amber-400/10 text-amber-100 shadow-amber-950/20' },
-  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'text-blue-300', badgeVariant: 'border-blue-300/35 bg-blue-400/10 text-blue-100 shadow-blue-950/20' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-emerald-300', badgeVariant: 'border-emerald-300/35 bg-emerald-400/10 text-emerald-100 shadow-emerald-950/20' },
-  declined: { label: 'Declined', icon: XCircle, color: 'text-red-300', badgeVariant: 'border-red-300/35 bg-red-400/10 text-red-100 shadow-red-950/20' },
+  pending: { label: 'Pending', icon: Clock, color: 'text-brand-300', badgeVariant: 'border-brand-300/35 bg-brand-400/10 text-brand-100 shadow-brand-950/20' },
+  in_progress: { label: 'In Progress', icon: ArrowRight, color: 'text-info', badgeVariant: 'border-info/35 bg-info/10 text-info-foreground shadow-info/20' },
+  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-success', badgeVariant: 'border-success/35 bg-success/10 text-success-foreground shadow-success/20' },
+  declined: { label: 'Declined', icon: XCircle, color: 'text-destructive', badgeVariant: 'border-destructive/35 bg-destructive/10 text-destructive-foreground shadow-destructive/20' },
 };
 
 const statusCardConfig: Record<string, { glow: string; iconWrap: string; edge: string; count: string; active: string }> = {
   pending: {
     glow: 'hover:shadow-[0_18px_48px_rgba(245,158,11,0.22)]',
-    iconWrap: 'border-amber-300/25 bg-amber-300/10 text-amber-200 group-hover:bg-amber-300/20',
-    edge: 'from-amber-300/0 via-amber-300/80 to-amber-300/0',
-    count: 'text-amber-50',
-    active: 'border-amber-300/55 ring-2 ring-amber-300/20 shadow-[0_18px_48px_rgba(245,158,11,0.2)]',
+    iconWrap: 'border-brand-300/25 bg-brand-300/10 text-brand-200 group-hover:bg-brand-300/20',
+    edge: 'from-brand-300/0 via-brand-300/80 to-brand-300/0',
+    count: 'text-brand-50',
+    active: 'border-brand-300/55 ring-2 ring-brand-300/20 shadow-[0_18px_48px_rgba(245,158,11,0.2)]',
   },
   in_progress: {
     glow: 'hover:shadow-[0_18px_48px_rgba(59,130,246,0.22)]',
-    iconWrap: 'border-blue-300/25 bg-blue-400/10 text-blue-200 group-hover:bg-blue-400/20',
-    edge: 'from-blue-300/0 via-blue-300/80 to-amber-200/30',
-    count: 'text-blue-50',
-    active: 'border-blue-300/55 ring-2 ring-blue-300/20 shadow-[0_18px_48px_rgba(59,130,246,0.2)]',
+    iconWrap: 'border-info/25 bg-info/10 text-info group-hover:bg-info/20',
+    edge: 'from-info/0 via-info/80 to-brand-200/30',
+    count: 'text-info-foreground',
+    active: 'border-info/55 ring-2 ring-info/20 shadow-[0_18px_48px_rgba(59,130,246,0.2)]',
   },
   completed: {
     glow: 'hover:shadow-[0_18px_48px_rgba(16,185,129,0.2)]',
-    iconWrap: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-200 group-hover:bg-emerald-400/20',
-    edge: 'from-emerald-300/0 via-emerald-300/80 to-teal-200/30',
-    count: 'text-emerald-50',
-    active: 'border-emerald-300/55 ring-2 ring-emerald-300/20 shadow-[0_18px_48px_rgba(16,185,129,0.18)]',
+    iconWrap: 'border-success/25 bg-success/10 text-success group-hover:bg-success/20',
+    edge: 'from-success/0 via-success/80 to-success/30',
+    count: 'text-success-foreground',
+    active: 'border-success/55 ring-2 ring-success/20 shadow-[0_18px_48px_rgba(16,185,129,0.18)]',
   },
   declined: {
     glow: 'hover:shadow-[0_18px_48px_rgba(248,113,113,0.18)]',
-    iconWrap: 'border-red-300/25 bg-red-400/10 text-red-200 group-hover:bg-red-400/20',
-    edge: 'from-red-300/0 via-red-300/70 to-red-300/0',
-    count: 'text-red-50',
-    active: 'border-red-300/50 ring-2 ring-red-300/20 shadow-[0_18px_48px_rgba(248,113,113,0.16)]',
+    iconWrap: 'border-destructive/25 bg-destructive/10 text-destructive group-hover:bg-destructive/20',
+    edge: 'from-destructive/0 via-destructive/70 to-destructive/0',
+    count: 'text-destructive-foreground',
+    active: 'border-destructive/50 ring-2 ring-destructive/20 shadow-[0_18px_48px_rgba(248,113,113,0.16)]',
   },
 };
 
 const statusButtonConfig: Record<string, { idle: string; active: string; icon: string }> = {
   pending: {
-    idle: 'hover:border-amber-300/45 hover:bg-amber-300/10 hover:text-amber-100 focus-visible:ring-amber-300/35',
-    active: 'border-amber-300/55 bg-amber-300/15 text-amber-100 ring-2 ring-amber-300/20 shadow-[0_10px_26px_rgba(245,158,11,0.16)]',
-    icon: 'text-amber-200',
+    idle: 'hover:border-brand-300/45 hover:bg-brand-300/10 hover:text-brand-100 focus-visible:ring-brand-300/35',
+    active: 'border-brand-300/55 bg-brand-300/15 text-brand-100 ring-2 ring-brand-300/20 shadow-[0_10px_26px_rgba(245,158,11,0.16)]',
+    icon: 'text-brand-200',
   },
   in_progress: {
-    idle: 'hover:border-blue-300/45 hover:bg-blue-400/10 hover:text-blue-100 focus-visible:ring-blue-300/35',
-    active: 'border-blue-300/55 bg-blue-400/15 text-blue-100 ring-2 ring-blue-300/20 shadow-[0_10px_26px_rgba(59,130,246,0.16)]',
-    icon: 'text-blue-200',
+    idle: 'hover:border-info/45 hover:bg-info/10 hover:text-info-foreground focus-visible:ring-info/35',
+    active: 'border-info/55 bg-info/15 text-info-foreground ring-2 ring-info/20 shadow-[0_10px_26px_rgba(59,130,246,0.16)]',
+    icon: 'text-info',
   },
   completed: {
-    idle: 'hover:border-emerald-300/45 hover:bg-emerald-400/10 hover:text-emerald-100 focus-visible:ring-emerald-300/35',
-    active: 'border-emerald-300/55 bg-emerald-400/15 text-emerald-100 ring-2 ring-emerald-300/20 shadow-[0_10px_26px_rgba(16,185,129,0.14)]',
-    icon: 'text-emerald-200',
+    idle: 'hover:border-success/45 hover:bg-success/10 hover:text-success-foreground focus-visible:ring-success/35',
+    active: 'border-success/55 bg-success/15 text-success-foreground ring-2 ring-success/20 shadow-[0_10px_26px_rgba(16,185,129,0.14)]',
+    icon: 'text-success',
   },
   declined: {
-    idle: 'hover:border-red-300/45 hover:bg-red-400/10 hover:text-red-100 focus-visible:ring-red-300/35',
-    active: 'border-red-300/55 bg-red-400/15 text-red-100 ring-2 ring-red-300/20 shadow-[0_10px_26px_rgba(248,113,113,0.14)]',
-    icon: 'text-red-200',
+    idle: 'hover:border-destructive/45 hover:bg-destructive/10 hover:text-destructive-foreground focus-visible:ring-destructive/35',
+    active: 'border-destructive/55 bg-destructive/15 text-destructive-foreground ring-2 ring-destructive/20 shadow-[0_10px_26px_rgba(248,113,113,0.14)]',
+    icon: 'text-destructive',
   },
 };
 
@@ -247,25 +247,25 @@ export default function ReportRequests() {
   };
 
   return (
-    <DashboardThemeFrame variant="page" className="relative min-h-[calc(100vh-6rem)] rounded-[1.5rem] border border-border/60 bg-background/80 p-3 shadow-2xl shadow-sm dark:shadow-black/10 selection:bg-primary/20 selection:text-foreground dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/40 sm:rounded-[2rem] sm:p-6 lg:p-8">
+    <DashboardThemeFrame variant="page" className="relative min-h-[calc(100vh-6rem)] rounded-[1.5rem] border border-border/60 bg-background/80 p-3 shadow-2xl shadow-sm dark:shadow-black/10 selection:bg-primary/20 selection:text-foreground dark:border-white/10 dark:bg-background/80 dark:shadow-black/40 sm:rounded-[2rem] sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.18),transparent_32%),radial-gradient(circle_at_85%_12%,rgba(59,130,246,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%)]" />
-      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-300/60 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/60 to-transparent" />
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-6">
         {/* Header */}
         <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 p-5 shadow-lg shadow-primary/5 sm:p-7">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-200 shadow-inner shadow-amber-950/20">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-300/25 bg-brand-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-brand-200 shadow-inner shadow-brand-950/20">
                 <Send className="h-3.5 w-3.5" />
                 Portal Operations
               </div>
               <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground dark:text-white sm:text-5xl">Client Report Requests</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-zinc-300/85 sm:text-base">Manage incoming report requests from portal clients</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/85 dark:text-foreground/85 sm:text-base">Manage incoming report requests from portal clients</p>
             </div>
-            <div className="rounded-2xl border border-amber-300/15 bg-background/25 dark:bg-black/25 px-4 py-3 text-sm text-muted-foreground dark:text-zinc-400 shadow-inner shadow-sm dark:shadow-black/30">
-              <span className="text-2xl font-semibold tabular-nums text-amber-200">{requests.length}</span>
+            <div className="rounded-2xl border border-brand-300/15 bg-background/25 dark:bg-black/25 px-4 py-3 text-sm text-muted-foreground dark:text-muted-foreground shadow-inner shadow-sm dark:shadow-black/30">
+              <span className="text-2xl font-semibold tabular-nums text-brand-200">{requests.length}</span>
               <span className="ml-2">total requests</span>
             </div>
           </div>
@@ -281,7 +281,7 @@ export default function ReportRequests() {
               <Card
                 key={status}
                 className={cn(
-                  'group relative cursor-pointer overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-sm dark:shadow-black/25 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-300/35 active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20',
+                  'group relative cursor-pointer overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-sm dark:shadow-black/25 outline-none transition-all duration-300 hover:-translate-y-1 hover:border-brand-300/35 active:translate-y-0 focus-visible:border-brand-300/45 focus-visible:ring-2 focus-visible:ring-brand-300/20',
                   tile.glow,
                   statusFilter === status && tile.active
                 )}
@@ -296,7 +296,7 @@ export default function ReportRequests() {
                   <div className={cn('absolute inset-x-0 top-0 h-px bg-gradient-to-r opacity-70 transition-opacity group-hover:opacity-100', tile.edge)} />
                   <div className="absolute -right-8 -top-10 h-24 w-24 rounded-full bg-card/5 dark:bg-white/5 blur-2xl transition-opacity group-hover:opacity-80" />
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:text-zinc-500">{conf.label}</p>
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:text-muted-foreground">{conf.label}</p>
                     <div className={cn('rounded-2xl border p-2.5 shadow-inner transition-all duration-300 group-hover:scale-105', tile.iconWrap)}>
                       <Icon className={cn('h-5 w-5', conf.color)} />
                     </div>
@@ -315,34 +315,34 @@ export default function ReportRequests() {
 
         {/* Filters */}
         <DashboardThemeFrame variant="toolbar" className="relative overflow-hidden p-3 shadow-xl shadow-sm dark:shadow-black/10 sm:p-4 dark:shadow-black/25">
-          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/35 to-transparent" />
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="group/search relative flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-zinc-500 transition-colors group-focus-within/search:text-amber-200" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground transition-colors group-focus-within/search:text-brand-200" />
               <Input
                 aria-label="Search report requests"
                 placeholder="Search by client, property, or notes..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-12 rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 pl-11 pr-4 text-sm text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-zinc-500 transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                className="h-12 rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 pl-11 pr-4 text-sm text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 hover:border-white/20 hover:bg-black/55 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger
                 aria-label="Filter report requests by type"
                 className={cn(
-                  'h-12 w-full rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 px-4 text-sm font-medium text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 transition-all duration-200 hover:border-amber-300/30 hover:bg-black/55 focus:border-amber-300/55 focus:ring-2 focus:ring-amber-300/20 focus:ring-offset-2 focus:ring-offset-zinc-950 data-[state=open]:border-amber-300/45 data-[state=open]:bg-amber-300/10 lg:w-60',
-                  typeFilter !== 'all' && 'border-amber-300/35 bg-amber-300/10 text-amber-100'
+                  'h-12 w-full rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 px-4 text-sm font-medium text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 transition-all duration-200 hover:border-brand-300/30 hover:bg-black/55 focus:border-brand-300/55 focus:ring-2 focus:ring-brand-300/20 focus:ring-offset-2 focus:ring-offset-zinc-950 data-[state=open]:border-brand-300/45 data-[state=open]:bg-brand-300/10 lg:w-60',
+                  typeFilter !== 'all' && 'border-brand-300/35 bg-brand-300/10 text-brand-100'
                 )}
               >
-                <Filter className="mr-2 h-3.5 w-3.5 text-amber-200" />
+                <Filter className="mr-2 h-3.5 w-3.5 text-brand-200" />
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
-              <SelectContent className="overflow-hidden rounded-2xl border-border dark:border-white/10 bg-background/95 dark:bg-zinc-950/95 p-1 text-foreground dark:text-zinc-100 shadow-2xl shadow-sm dark:shadow-black/50 backdrop-blur-xl">
-                <SelectItem className="rounded-xl font-medium focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="all">All Types</SelectItem>
-                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="portfolio_review">Portfolio Review</SelectItem>
-                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="borrowing_capacity">Borrowing Capacity</SelectItem>
-                <SelectItem className="rounded-xl focus:bg-amber-300/10 focus:text-amber-100 data-[highlighted]:bg-amber-300/10 data-[highlighted]:text-amber-100" value="investment_property">Investment Property</SelectItem>
+              <SelectContent className="overflow-hidden rounded-2xl border-border dark:border-white/10 bg-background/95 dark:bg-background/95 p-1 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/50 backdrop-blur-xl">
+                <SelectItem className="rounded-xl font-medium focus:bg-brand-300/10 focus:text-brand-100 data-[highlighted]:bg-brand-300/10 data-[highlighted]:text-brand-100" value="all">All Types</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-brand-300/10 focus:text-brand-100 data-[highlighted]:bg-brand-300/10 data-[highlighted]:text-brand-100" value="portfolio_review">Portfolio Review</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-brand-300/10 focus:text-brand-100 data-[highlighted]:bg-brand-300/10 data-[highlighted]:text-brand-100" value="borrowing_capacity">Borrowing Capacity</SelectItem>
+                <SelectItem className="rounded-xl focus:bg-brand-300/10 focus:text-brand-100 data-[highlighted]:bg-brand-300/10 data-[highlighted]:text-brand-100" value="investment_property">Investment Property</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -352,40 +352,40 @@ export default function ReportRequests() {
         {isLoading ? (
           <div className="relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] p-4 shadow-xl shadow-sm dark:shadow-black/25">
             <div className="flex flex-col items-center justify-center rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 py-16 text-center">
-              <div className="mb-4 rounded-full border border-amber-300/20 bg-amber-300/10 p-3 shadow-[0_0_32px_rgba(245,158,11,0.16)]">
-                <Loader2 className="h-7 w-7 animate-spin text-amber-200" />
+              <div className="mb-4 rounded-full border border-brand-300/20 bg-brand-300/10 p-3 shadow-[0_0_32px_rgba(245,158,11,0.16)]">
+                <Loader2 className="h-7 w-7 animate-spin text-brand-200" />
               </div>
-              <p className="text-sm font-medium text-foreground dark:text-zinc-200">Loading report requests</p>
-              <p className="mt-1 text-xs text-muted-foreground dark:text-zinc-500">Fetching the latest client portal requests…</p>
+              <p className="text-sm font-medium text-foreground dark:text-foreground">Loading report requests</p>
+              <p className="mt-1 text-xs text-muted-foreground dark:text-muted-foreground">Fetching the latest client portal requests…</p>
             </div>
           </div>
         ) : error ? (
-          <Card className="overflow-hidden rounded-3xl border-red-400/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.2),rgba(9,9,11,0.86))] shadow-xl shadow-sm dark:shadow-black/25">
+          <Card className="overflow-hidden rounded-3xl border-destructive/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.2),rgba(9,9,11,0.86))] shadow-xl shadow-sm dark:shadow-black/25">
             <CardContent className="py-12 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-red-300/20 bg-red-400/10">
-                <XCircle className="h-7 w-7 text-red-200/80" />
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-destructive/20 bg-destructive/10">
+                <XCircle className="h-7 w-7 text-destructive/80" />
               </div>
-              <p className="font-semibold text-red-100">Unable to load report requests.</p>
-              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-red-100/70">{(error as Error).message || 'Please try again shortly.'}</p>
+              <p className="font-semibold text-destructive-foreground">Unable to load report requests.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-destructive-foreground/70">{(error as Error).message || 'Please try again shortly.'}</p>
             </CardContent>
           </Card>
         ) : filtered.length === 0 ? (
           <Card className="overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(135deg,rgba(24,24,27,0.82),rgba(9,9,11,0.78))] shadow-xl shadow-sm dark:shadow-black/25">
             <CardContent className="py-14 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-amber-300/15 bg-amber-300/10">
-                <Inbox className="h-7 w-7 text-amber-200/50" />
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-brand-300/15 bg-brand-300/10">
+                <Inbox className="h-7 w-7 text-brand-200/50" />
               </div>
-              <p className="font-medium text-muted-foreground dark:text-zinc-300">
+              <p className="font-medium text-muted-foreground dark:text-foreground">
                 {requests.length === 0 ? 'No report requests yet.' : 'No requests match your filters.'}
               </p>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground dark:text-zinc-500">
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground dark:text-muted-foreground">
                 {requests.length === 0 ? 'New portal requests will appear here as soon as clients submit them.' : 'Try adjusting the search term or selected request type/status filters.'}
               </p>
             </CardContent>
           </Card>
         ) : (
           <DashboardThemeFrame variant="section" className="relative p-3 shadow-xl shadow-sm dark:shadow-black/10 ring-1 ring-border dark:ring-white/[0.03] sm:p-4 dark:shadow-black/25">
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/30 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/30 to-transparent" />
             <div className="space-y-3 sm:space-y-4">
               {filtered.map((req: ReportRequest) => {
                 const typeConf = requestTypeConfig[req.request_type] || requestTypeConfig.portfolio_review;
@@ -394,7 +394,7 @@ export default function ReportRequests() {
                 return (
                   <Card
                     key={req.id}
-                    className="group cursor-pointer overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-sm dark:shadow-black/20 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-zinc-900/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)] active:translate-y-0 focus-visible:border-amber-300/45 focus-visible:ring-2 focus-visible:ring-amber-300/20"
+                    className="group cursor-pointer overflow-hidden rounded-3xl border-border dark:border-white/10 bg-[linear-gradient(145deg,rgba(24,24,27,0.94),rgba(9,9,11,0.86))] shadow-lg shadow-sm dark:shadow-black/20 outline-none transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-300/40 hover:bg-background/80 hover:shadow-[0_20px_52px_rgba(245,158,11,0.14)] active:translate-y-0 focus-visible:border-brand-300/45 focus-visible:ring-2 focus-visible:ring-brand-300/20"
                     onClick={() => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); }}
                     onKeyDown={(event) => handleKeyboardActivate(event, () => { setSelectedRequest(req); setAdminNotes(req.admin_notes || ''); })}
                     role="button"
@@ -402,7 +402,7 @@ export default function ReportRequests() {
                     aria-label={`Open ${typeConf.label} request for ${req.client_name}`}
                   >
                     <CardContent className="relative p-4 sm:p-5">
-                      <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-300/0 transition-colors duration-300 group-hover:bg-amber-300/80" />
+                      <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-brand-300/0 transition-colors duration-300 group-hover:bg-brand-300/80" />
                       <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                       <div className="flex items-start gap-4">
                         <div className={cn('shrink-0 rounded-2xl p-3.5 shadow-inner shadow-sm dark:shadow-black/20 transition-transform duration-300 group-hover:scale-105', typeConf.color)}>
@@ -413,21 +413,21 @@ export default function ReportRequests() {
                             <div className="min-w-0 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-sm font-semibold tracking-tight text-foreground dark:text-white sm:text-base">{typeConf.label}</p>
-                                <Badge variant="outline" className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur transition-colors duration-200 group-hover:border-amber-300/35', statConf.badgeVariant)}>
+                                <Badge variant="outline" className={cn('rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] shadow-sm backdrop-blur transition-colors duration-200 group-hover:border-brand-300/35', statConf.badgeVariant)}>
                                   {statConf.label}
                                 </Badge>
                               </div>
-                              <div className="grid gap-1.5 text-xs leading-5 text-muted-foreground dark:text-zinc-400">
-                                <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-amber-200/75" /><span className="capitalize font-medium text-foreground dark:text-zinc-100">{req.client_name}</span></div>
-                                {req.client_email && <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500" /><span className="break-all">{req.client_email}</span></div>}
-                                {req.client_phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500" /><span>{req.client_phone}</span></div>}
-                                {req.property_address && <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 text-muted-foreground dark:text-zinc-500" /><span>{req.property_address}</span></div>}
-                                {req.notes && <div className="flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 px-3 py-2 text-muted-foreground dark:text-zinc-300"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/60" /><span className="line-clamp-2">{req.notes}</span></div>}
+                              <div className="grid gap-1.5 text-xs leading-5 text-muted-foreground dark:text-muted-foreground">
+                                <div className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-brand-200/75" /><span className="capitalize font-medium text-foreground dark:text-foreground">{req.client_name}</span></div>
+                                {req.client_email && <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground" /><span className="break-all">{req.client_email}</span></div>}
+                                {req.client_phone && <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground" /><span>{req.client_phone}</span></div>}
+                                {req.property_address && <div className="flex items-start gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 text-muted-foreground dark:text-muted-foreground" /><span>{req.property_address}</span></div>}
+                                {req.notes && <div className="flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 px-3 py-2 text-muted-foreground dark:text-foreground"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-200/60" /><span className="line-clamp-2">{req.notes}</span></div>}
                               </div>
                             </div>
                             <div className="shrink-0 self-start rounded-2xl border border-border dark:border-white/10 bg-background/30 dark:bg-black/30 px-3 py-2 text-left shadow-inner shadow-sm dark:shadow-black/25 sm:text-right">
-                              <p className="text-xs font-medium tabular-nums text-foreground dark:text-zinc-200">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
-                              <p className="mt-0.5 text-[10px] text-muted-foreground dark:text-zinc-500">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
+                              <p className="text-xs font-medium tabular-nums text-foreground dark:text-foreground">{format(new Date(req.created_at), 'dd MMM yyyy')}</p>
+                              <p className="mt-0.5 text-[10px] text-muted-foreground dark:text-muted-foreground">{formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}</p>
                             </div>
                           </div>
                         </div>
@@ -443,16 +443,16 @@ export default function ReportRequests() {
 
       {/* Detail / Action Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => { if (!open) setSelectedRequest(null); }}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-amber-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-foreground dark:text-zinc-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-amber-300/40 [&>button:hover]:bg-amber-300/10 [&>button:hover]:text-amber-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-amber-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
-          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/70 to-transparent" />
+        <DialogContent className="w-[calc(100vw-2rem)] max-h-[min(calc(100vh-2rem),760px)] overflow-y-auto border-brand-300/25 bg-[linear-gradient(145deg,rgba(24,24,27,0.98),rgba(9,9,11,0.96))] p-0 text-foreground dark:text-foreground shadow-[0_28px_90px_rgba(0,0,0,0.72)] sm:max-w-xl sm:rounded-3xl [&>button]:right-5 [&>button]:top-5 [&>button]:rounded-full [&>button]:border [&>button]:border-white/10 [&>button]:bg-black/35 [&>button]:text-zinc-300 [&>button]:opacity-100 [&>button]:shadow-inner [&>button]:shadow-black/30 [&>button]:transition-all [&>button:hover]:border-brand-300/40 [&>button:hover]:bg-brand-300/10 [&>button:hover]:text-brand-100 [&>button:focus-visible]:ring-2 [&>button:focus-visible]:ring-brand-300/40 [&>button:focus-visible]:ring-offset-2 [&>button:focus-visible]:ring-offset-zinc-950">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
           <DialogHeader className="border-b border-border dark:border-white/10 bg-white/[0.02] px-4 pb-5 pt-6 text-left sm:px-6">
             <DialogTitle className="flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-foreground dark:text-white">
-              <span className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-2 text-amber-200 shadow-inner shadow-sm dark:shadow-black/20">
+              <span className="rounded-2xl border border-brand-300/25 bg-brand-300/10 p-2 text-brand-200 shadow-inner shadow-sm dark:shadow-black/20">
                 <Send className="h-4 w-4" />
               </span>
               Report Request Details
             </DialogTitle>
-            <DialogDescription className="pt-1 text-sm leading-6 text-muted-foreground dark:text-zinc-400">Review and manage this client report request.</DialogDescription>
+            <DialogDescription className="pt-1 text-sm leading-6 text-muted-foreground dark:text-muted-foreground">Review and manage this client report request.</DialogDescription>
           </DialogHeader>
           <div className="px-4 py-5 sm:px-6">
 
@@ -475,20 +475,20 @@ export default function ReportRequests() {
                   </div>
 
                   <div className="grid gap-2.5 text-sm">
-                    <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Client:</span><span className="min-w-0 font-semibold capitalize text-foreground dark:text-white">{selectedRequest.client_name}</span></div>
-                    {selectedRequest.client_email && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Email:</span><span className="min-w-0 break-all font-medium text-foreground dark:text-white">{selectedRequest.client_email}</span></div>}
-                    {selectedRequest.client_phone && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Phone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Phone:</span><span className="min-w-0 font-medium text-foreground dark:text-white">{selectedRequest.client_phone}</span></div>}
-                    {selectedRequest.client_address && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Address:</span><span className="min-w-0 break-words font-medium text-foreground dark:text-white">{selectedRequest.client_address}</span></div>}
-                    <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Requested:</span><span className="min-w-0 font-medium text-foreground dark:text-white">{format(new Date(selectedRequest.created_at), 'dd MMM yyyy, HH:mm')}</span></div>
-                    {selectedRequest.property_address && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-zinc-500" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Property:</span><span className="min-w-0 break-words font-medium text-foreground dark:text-white">{selectedRequest.property_address}</span></div>}
-                    {selectedRequest.notes && <div className="flex items-start gap-3 rounded-2xl border border-amber-300/10 bg-amber-300/5 px-3 py-3"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/70" /><span className="w-20 shrink-0 text-muted-foreground dark:text-zinc-500">Client notes:</span><span className="min-w-0 whitespace-pre-wrap break-words leading-5 text-foreground dark:text-white">{selectedRequest.notes}</span></div>}
+                    <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-200/70" /><span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground">Client:</span><span className="min-w-0 font-semibold capitalize text-foreground dark:text-white">{selectedRequest.client_name}</span></div>
+                    {selectedRequest.client_email && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-muted-foreground" /><span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground">Email:</span><span className="min-w-0 break-all font-medium text-foreground dark:text-white">{selectedRequest.client_email}</span></div>}
+                    {selectedRequest.client_phone && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Phone className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-muted-foreground" /><span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground">Phone:</span><span className="min-w-0 font-medium text-foreground dark:text-white">{selectedRequest.client_phone}</span></div>}
+                    {selectedRequest.client_address && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-muted-foreground" /><span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground">Address:</span><span className="min-w-0 break-words font-medium text-foreground dark:text-white">{selectedRequest.client_address}</span></div>}
+                    <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-muted-foreground" /><span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground">Requested:</span><span className="min-w-0 font-medium text-foreground dark:text-white">{format(new Date(selectedRequest.created_at), 'dd MMM yyyy, HH:mm')}</span></div>
+                    {selectedRequest.property_address && <div className="flex items-start gap-3 rounded-2xl border border-border dark:border-white/5 bg-background/15 dark:bg-black/15 px-3 py-2"><Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground dark:text-muted-foreground" /><span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground">Property:</span><span className="min-w-0 break-words font-medium text-foreground dark:text-white">{selectedRequest.property_address}</span></div>}
+                    {selectedRequest.notes && <div className="flex items-start gap-3 rounded-2xl border border-brand-300/10 bg-brand-300/5 px-3 py-3"><MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-200/70" /><span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground">Client notes:</span><span className="min-w-0 whitespace-pre-wrap break-words leading-5 text-foreground dark:text-white">{selectedRequest.notes}</span></div>}
                   </div>
                 </div>
 
                 {/* Admin Notes */}
                 <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
-                  <Label className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-zinc-100">
-                    <MessageSquare className="h-3.5 w-3.5 text-amber-200/75" />
+                  <Label className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-foreground">
+                    <MessageSquare className="h-3.5 w-3.5 text-brand-200/75" />
                     Admin Notes
                   </Label>
                   <Textarea
@@ -497,13 +497,13 @@ export default function ReportRequests() {
                     value={adminNotes}
                     onChange={(e) => setAdminNotes(e.target.value)}
                     rows={4}
-                    className="max-h-44 min-h-28 resize-y rounded-2xl border-border dark:border-white/10 bg-background/70 dark:bg-zinc-950/70 text-sm leading-6 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-zinc-500 transition-all duration-200 focus-visible:border-amber-300/55 focus-visible:ring-2 focus-visible:ring-amber-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                    className="max-h-44 min-h-28 resize-y rounded-2xl border-border dark:border-white/10 bg-background/70 dark:bg-background/70 text-sm leading-6 text-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/30 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground transition-all duration-200 focus-visible:border-brand-300/55 focus-visible:ring-2 focus-visible:ring-brand-300/20 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                   />
                 </div>
 
                 {/* Status Selector */}
                 <div className="space-y-2 rounded-3xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-4 shadow-inner shadow-sm dark:shadow-black/25">
-                  <Label className="text-sm font-semibold text-foreground dark:text-zinc-100">Update Status</Label>
+                  <Label className="text-sm font-semibold text-foreground dark:text-foreground">Update Status</Label>
                   <div className="flex flex-wrap gap-2.5">
                     {(['pending', 'in_progress', 'completed', 'declined'] as const).map((status) => {
                       const conf = statusConfig[status];
@@ -520,7 +520,7 @@ export default function ReportRequests() {
                           aria-label={`Set request status to ${conf.label}`}
                           onClick={() => handleStatusUpdate(selectedRequest.id, status)}
                           className={cn(
-                            'min-h-10 rounded-full border-border dark:border-white/10 bg-background/60 dark:bg-zinc-950/60 px-3.5 text-xs font-semibold text-muted-foreground dark:text-zinc-300 shadow-inner shadow-sm dark:shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
+                            'min-h-10 rounded-full border-border dark:border-white/10 bg-background/60 dark:bg-background/60 px-3.5 text-xs font-semibold text-muted-foreground dark:text-foreground shadow-inner shadow-sm dark:shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:translate-y-0 disabled:opacity-100',
                             buttonTone.idle,
                             isActive && buttonTone.active,
                             isActive && 'pointer-events-none',

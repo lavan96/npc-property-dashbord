@@ -18,15 +18,15 @@ export function CashFlowMetricsGrid({ baseFinancialData, projections, formatCurr
     .reduce((sum, projection) => sum + (projection.afterTaxCashFlowPA || 0), 0);
 
   return (
-    <Card className="overflow-hidden border-slate-200/80 bg-gradient-to-br from-card dark:from-slate-950 via-card dark:via-slate-900 to-slate-800 text-foreground dark:text-white shadow-lg">
+    <Card className="overflow-hidden border-border/80 bg-gradient-to-br from-card dark:from-background via-card dark:via-background to-background text-foreground dark:text-white shadow-lg">
       <CardContent className="p-0">
         <div className="border-b border-border dark:border-white/10 bg-card/5 dark:bg-white/5 px-4 py-3 md:px-5">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-200">Executive snapshot</p>
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-brand-200">Executive snapshot</p>
               <h3 className="text-lg font-semibold">10-year cash-flow position</h3>
             </div>
-            <p className="text-xs text-muted-foreground dark:text-slate-300">Derived from current projection values</p>
+            <p className="text-xs text-muted-foreground dark:text-foreground">Derived from current projection values</p>
           </div>
         </div>
 
@@ -90,16 +90,16 @@ function KpiTile({ icon: Icon, label, sublabel, value, tone, positive = false }:
   const isNegative = resolvedTone === 'negative';
 
   return (
-    <div className="min-h-[140px] bg-background dark:bg-slate-950/40 p-4 md:min-h-[150px] md:p-5">
+    <div className="min-h-[140px] bg-background dark:bg-background/40 p-4 md:min-h-[150px] md:p-5">
       <div className="mb-4 flex items-start justify-between gap-3">
-        <span className="rounded-2xl bg-card/10 dark:bg-white/10 p-2 text-amber-100">
+        <span className="rounded-2xl bg-card/10 dark:bg-white/10 p-2 text-brand-100">
           <Icon className="h-4 w-4" />
         </span>
         {resolvedTone && (
           <span className={cn(
             'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
-            isPositive && 'bg-emerald-400/10 text-emerald-200',
-            isNegative && 'bg-red-400/10 text-red-200'
+            isPositive && 'bg-success/10 text-success',
+            isNegative && 'bg-destructive/10 text-destructive'
           )}>
             {isNegative ? <ArrowDownRight className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
             {isNegative ? 'Negative' : 'Positive'}
@@ -107,15 +107,15 @@ function KpiTile({ icon: Icon, label, sublabel, value, tone, positive = false }:
         )}
       </div>
       <div className="space-y-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground dark:text-slate-400">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground dark:text-muted-foreground">{label}</p>
         <p className={cn(
           'break-words text-xl font-bold tracking-tight text-foreground dark:text-white md:text-2xl',
-          isPositive && 'text-emerald-200',
-          isNegative && 'text-red-200'
+          isPositive && 'text-success',
+          isNegative && 'text-destructive'
         )}>
           {value}
         </p>
-        <p className="text-xs text-muted-foreground dark:text-slate-400">{sublabel}</p>
+        <p className="text-xs text-muted-foreground dark:text-muted-foreground">{sublabel}</p>
       </div>
     </div>
   );

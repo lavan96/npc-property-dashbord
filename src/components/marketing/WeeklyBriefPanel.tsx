@@ -178,8 +178,8 @@ export function WeeklyBriefPanel({
               </p>
             </div>
           ) : currentBriefError ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-              <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-3 rounded-2xl border border-brand-500/20 bg-brand-500/10 p-4">
+              <AlertTriangle className="h-5 w-5 text-brand-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-foreground">Brief generation encountered an issue</p>
               <p className="mt-1 break-words text-xs text-muted-foreground">{currentBriefError}</p>

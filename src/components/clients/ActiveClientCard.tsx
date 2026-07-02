@@ -353,10 +353,10 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
 
   const getNoteTypeColor = (type: string) => {
     switch (type) {
-      case 'call': return 'text-green-600';
-      case 'email': return 'text-blue-600';
-      case 'meeting': return 'text-purple-600';
-      case 'task': return 'text-orange-600';
+      case 'call': return 'text-success';
+      case 'email': return 'text-info';
+      case 'meeting': return 'text-accent';
+      case 'task': return 'text-warning';
       default: return 'text-muted-foreground';
     }
   };
@@ -376,7 +376,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
   return (
     <Card className={cn(
       "client-tracker-gold-interaction group flex flex-col overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.96),hsl(var(--background)/0.74))] shadow-lg shadow-sm dark:shadow-black/10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10",
-      client.is_favorite && "ring-2 ring-yellow-400/50"
+      client.is_favorite && "ring-2 ring-brand-400/50"
     )}>
       <CardHeader className="border-b border-border/60 bg-card/35 pb-3">
         <div className="flex flex-col gap-2">
@@ -389,7 +389,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               {stageInfo.name}
             </Badge>
             {client.deal_status === 'closed' && (
-              <Badge variant="default" className={cn(activeClientBadgeClass, "border border-emerald-500/30 bg-emerald-500/15 text-emerald-100 shadow-emerald-500/15 hover:bg-emerald-500/20")}>
+              <Badge variant="default" className={cn(activeClientBadgeClass, "border border-success/30 bg-success/15 text-success-foreground shadow-success/15 hover:bg-success/20")}>
                 🏆 Deal Closed
               </Badge>
             )}
@@ -399,7 +399,7 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
               variant="ghost"
               size="icon"
               aria-label={client.is_favorite ? 'Remove from active clients' : 'Add to active clients'}
-              className={cn("h-10 w-10 shrink-0 hover:border-yellow-400/35 hover:bg-yellow-400/10 hover:text-yellow-400 focus-visible:ring-yellow-400/30", activeClientActionButtonClass)}
+              className={cn("h-10 w-10 shrink-0 hover:border-brand-400/35 hover:bg-brand-400/10 hover:text-brand-400 focus-visible:ring-brand-400/30", activeClientActionButtonClass)}
               onClick={() => toggleFavoriteMutation.mutate()}
               disabled={toggleFavoriteMutation.isPending}
             >
@@ -407,8 +407,8 @@ export function ActiveClientCard({ client, stageInfo }: ActiveClientCardProps) {
                 className={cn(
                   "h-5 w-5 transition-colors",
                   client.is_favorite 
-                    ? 'fill-yellow-400 text-yellow-400' 
-                    : 'text-muted-foreground hover:text-yellow-400'
+                    ? 'fill-brand-400 text-brand-400' 
+                    : 'text-muted-foreground hover:text-brand-400'
                 )} 
               />
             </Button>

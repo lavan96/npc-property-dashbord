@@ -25,42 +25,42 @@ const themes: Theme[] = [
   { 
     id: 'ocean', 
     name: 'Ocean', 
-    preview: 'bg-gradient-to-r from-blue-500 to-cyan-400',
-    userBg: 'bg-blue-500 text-foreground dark:text-white',
-    assistantBg: 'bg-blue-50 dark:bg-blue-950',
-    accent: 'bg-blue-500/10'
+    preview: 'bg-gradient-to-r from-info to-info',
+    userBg: 'bg-info text-foreground dark:text-white',
+    assistantBg: 'bg-info/10 dark:bg-info',
+    accent: 'bg-info/10'
   },
   { 
     id: 'forest', 
     name: 'Forest', 
-    preview: 'bg-gradient-to-r from-green-600 to-emerald-400',
-    userBg: 'bg-green-600 text-foreground dark:text-white',
-    assistantBg: 'bg-green-50 dark:bg-green-950',
-    accent: 'bg-green-500/10'
+    preview: 'bg-gradient-to-r from-success to-success',
+    userBg: 'bg-success text-foreground dark:text-white',
+    assistantBg: 'bg-success/10 dark:bg-success',
+    accent: 'bg-success/10'
   },
   { 
     id: 'sunset', 
     name: 'Sunset', 
-    preview: 'bg-gradient-to-r from-orange-500 to-pink-500',
-    userBg: 'bg-gradient-to-r from-orange-500 to-pink-500 text-foreground dark:text-white',
-    assistantBg: 'bg-orange-50 dark:bg-orange-950',
-    accent: 'bg-orange-500/10'
+    preview: 'bg-gradient-to-r from-warning to-accent',
+    userBg: 'bg-gradient-to-r from-warning to-accent text-foreground dark:text-white',
+    assistantBg: 'bg-warning/10 dark:bg-warning',
+    accent: 'bg-warning/10'
   },
   { 
     id: 'midnight', 
     name: 'Midnight', 
-    preview: 'bg-gradient-to-r from-purple-600 to-indigo-600',
-    userBg: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-foreground dark:text-white',
-    assistantBg: 'bg-purple-50 dark:bg-purple-950',
-    accent: 'bg-purple-500/10'
+    preview: 'bg-gradient-to-r from-accent to-accent',
+    userBg: 'bg-gradient-to-r from-accent to-accent text-foreground dark:text-white',
+    assistantBg: 'bg-accent/10 dark:bg-accent',
+    accent: 'bg-accent/10'
   },
   { 
     id: 'minimal', 
     name: 'Minimal', 
-    preview: 'bg-gradient-to-r from-gray-400 to-gray-600',
-    userBg: 'bg-gray-800 text-foreground dark:text-white dark:bg-gray-200 dark:text-gray-900',
-    assistantBg: 'bg-gray-100 dark:bg-gray-800',
-    accent: 'bg-gray-500/10'
+    preview: 'bg-gradient-to-r from-muted to-muted',
+    userBg: 'bg-background text-foreground dark:text-white dark:bg-muted dark:text-foreground',
+    assistantBg: 'bg-muted dark:bg-background',
+    accent: 'bg-muted0/10'
   },
 ];
 

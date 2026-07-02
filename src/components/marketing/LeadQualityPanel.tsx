@@ -103,9 +103,9 @@ export function LeadQualityPanel({ leadQuality, aiAnalysis, loading }: LeadQuali
                       <Badge
                         variant="outline"
                         className={`font-mono text-[10px] ${
-                          lq.quality_score >= 65 ? 'rounded-full border-emerald-500/30 text-emerald-600 dark:text-emerald-400' :
-                          lq.quality_score >= 40 ? 'border-amber-500/30 text-amber-600 dark:text-amber-400' :
-                          'border-red-500/30 text-red-600 dark:text-red-400'
+                          lq.quality_score >= 65 ? 'rounded-full border-success/30 text-success dark:text-success' :
+                          lq.quality_score >= 40 ? 'border-brand-500/30 text-brand-600 dark:text-brand-400' :
+                          'border-destructive/30 text-destructive dark:text-destructive'
                         }`}
                       >
                         Quality: {lq.quality_score}/100
@@ -126,7 +126,7 @@ export function LeadQualityPanel({ leadQuality, aiAnalysis, loading }: LeadQuali
                     {/* Metrics */}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
                       <span>
-                        Conv Rate: <span className={`font-mono font-medium ${lq.conversion_rate > 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+                        Conv Rate: <span className={`font-mono font-medium ${lq.conversion_rate > 10 ? 'text-success dark:text-success' : 'text-foreground'}`}>
                           {lq.conversion_rate.toFixed(1)}%
                         </span>
                       </span>

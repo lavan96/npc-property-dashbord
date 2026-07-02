@@ -148,7 +148,7 @@ function IndustrialMetricsReadinessPanel({ fields }: { fields: Partial<Record<Fi
 
         <div className="mt-3 grid gap-2 md:grid-cols-3">
           {visibleWarnings.map((warning) => <WarningCard key={`${warning.category}-${warning.message}`} warning={warning} />)}
-          {visibleWarnings.length === 0 && <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-200"><CheckCircle2 className="mr-1 inline h-4 w-4" />Industrial metrics are ready for report inclusion.</div>}
+          {visibleWarnings.length === 0 && <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-sm text-success"><CheckCircle2 className="mr-1 inline h-4 w-4" />Industrial metrics are ready for report inclusion.</div>}
         </div>
 
         {assessment.warnings.length > 3 && (
@@ -323,18 +323,18 @@ function nextActionForStatus(status: IndustrialMetricsReadinessStatus, warnings:
 
 function StatusBadge({ status }: { status: IndustrialMetricsReadinessStatus }) {
   const className = status === 'Verified' || status === 'Report Ready'
-    ? 'border-green-500/30 bg-green-500/10 text-green-200'
+    ? 'border-success/30 bg-success/10 text-success'
     : status === 'Benchmark Review Required'
-      ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+      ? 'border-brand-500/30 bg-brand-500/10 text-brand-200'
       : 'border-primary/30 bg-primary/5 text-primary';
   return <Badge variant="outline" className={className}>{status}</Badge>;
 }
 
 function WarningCard({ warning }: { warning: WarningItem }) {
   const className = warning.severity === 'Critical'
-    ? 'border-red-500/30 bg-red-500/10'
+    ? 'border-destructive/30 bg-destructive/10'
     : warning.severity === 'Required'
-      ? 'border-amber-500/30 bg-amber-500/10'
+      ? 'border-brand-500/30 bg-brand-500/10'
       : 'border-border/60 bg-background/30';
   return (
     <div className={`rounded-lg border p-3 text-sm ${className}`}>

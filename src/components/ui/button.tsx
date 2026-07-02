@@ -15,6 +15,7 @@ const buttonVariants = cva(
         success: "bg-success text-success-foreground hover:bg-success/90",
         warning: "bg-warning text-warning-foreground hover:bg-warning/90",
         info: "bg-info text-info-foreground hover:bg-info/90",
+        brand: "bg-brand text-brand-foreground hover:bg-brand/90",
         outline:
           "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:

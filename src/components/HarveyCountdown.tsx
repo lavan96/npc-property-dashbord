@@ -185,7 +185,7 @@ export function HarveyCountdown() {
         {/* Header glow */}
         <div className={`absolute inset-x-0 top-0 h-32 pointer-events-none transition-all duration-1000 ${
           showCelebration 
-            ? 'bg-gradient-to-b from-yellow-500/20 via-primary/10 to-transparent' 
+            ? 'bg-gradient-to-b from-brand-500/20 via-primary/10 to-transparent' 
             : 'bg-gradient-to-b from-primary/10 to-transparent'
         }`} />
 
@@ -229,11 +229,11 @@ export function HarveyCountdown() {
           <div className="flex items-center gap-2">
             {showCelebration ? (
               <>
-                <Trophy className="h-7 w-7 text-yellow-500 animate-bounce" />
+                <Trophy className="h-7 w-7 text-brand-500 animate-bounce" />
                 <PartyPopper className="h-6 w-6 text-primary animate-bounce [animation-delay:100ms]" />
-                <Sparkles className="h-7 w-7 text-yellow-500 animate-bounce [animation-delay:200ms]" />
+                <Sparkles className="h-7 w-7 text-brand-500 animate-bounce [animation-delay:200ms]" />
                 <Star className="h-6 w-6 text-primary animate-bounce [animation-delay:300ms]" />
-                <Heart className="h-7 w-7 text-red-500 animate-bounce [animation-delay:400ms]" />
+                <Heart className="h-7 w-7 text-destructive-foreground0 animate-bounce [animation-delay:400ms]" />
               </>
             ) : (
               <>
@@ -269,10 +269,10 @@ export function HarveyCountdown() {
           {isComplete ? (
             <div className="py-4 flex flex-col items-center gap-4">
               <div className="relative">
-                <p className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-yellow-400 via-primary to-pink-500 bg-clip-text text-transparent animate-pulse">
+                <p className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-brand-400 via-primary to-accent bg-clip-text text-transparent animate-pulse">
                   HE'S HERE FULL-TIME!
                 </p>
-                <div className="absolute -inset-2 bg-gradient-to-r from-yellow-400/20 via-primary/10 to-pink-500/20 blur-xl rounded-lg -z-10" />
+                <div className="absolute -inset-2 bg-gradient-to-r from-brand-400/20 via-primary/10 to-accent/20 blur-xl rounded-lg -z-10" />
               </div>
 
               <div className="flex gap-1.5 text-3xl">
@@ -313,7 +313,7 @@ export function HarveyCountdown() {
             variant="outline"
             className={`mt-2 ${
               showCelebration
-                ? 'border-yellow-500/40 hover:bg-yellow-500/10 text-foreground shadow-[0_0_20px_rgba(234,179,8,0.15)]'
+                ? 'border-brand-500/40 hover:bg-brand-500/10 text-foreground shadow-[0_0_20px_rgba(234,179,8,0.15)]'
                 : 'border-primary/30 hover:bg-primary/10 text-foreground'
             }`}
           >

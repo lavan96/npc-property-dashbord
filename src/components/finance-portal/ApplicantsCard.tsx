@@ -60,7 +60,7 @@ export function ApplicantsCard({ fileId }: { fileId: string }) {
           data.map(a => (
             <div key={a.id} className="flex items-center justify-between p-2 rounded border border-border/60 hover:bg-accent/30">
               <div className="flex items-center gap-2 min-w-0">
-                {a.is_primary && <Crown className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />}
+                {a.is_primary && <Crown className="h-3.5 w-3.5 text-brand-500 flex-shrink-0" />}
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{a.display_name}</p>
                   <p className="text-xs text-muted-foreground truncate">{a.email || a.phone || '—'}</p>

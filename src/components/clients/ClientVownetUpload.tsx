@@ -431,13 +431,13 @@ export function ClientVownetUpload({
                         className="shrink-0"
                       >
                         {item.action === 'add' && (
-                          <Badge className="bg-green-100 text-green-700 hover:bg-green-200">
+                          <Badge className="bg-success/15 text-success hover:bg-success/20">
                             <Plus className="h-3 w-3 mr-1" />
                             Add
                           </Badge>
                         )}
                         {item.action === 'update' && (
-                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                          <Badge className="bg-info/15 text-info hover:bg-info/20">
                             <RefreshCw className="h-3 w-3 mr-1" />
                             Update
                           </Badge>
@@ -486,12 +486,12 @@ export function ClientVownetUpload({
       )}
 
       {status === 'complete' && (
-        <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+        <div className="border border-success/30 bg-success/10 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <CheckCircle2 className="h-5 w-5 text-success" />
             <div>
-              <p className="font-medium text-sm text-green-800">Import Complete</p>
-              <p className="text-xs text-green-600">Portfolio has been updated successfully</p>
+              <p className="font-medium text-sm text-success">Import Complete</p>
+              <p className="text-xs text-success">Portfolio has been updated successfully</p>
             </div>
           </div>
           <Button 

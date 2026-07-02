@@ -49,10 +49,10 @@ export function CalendarHeatmap({ events, currentMonth, selectedDate, onDateSele
   const getHeatmapColor = (count: number) => {
     if (count === 0) return 'bg-muted/30';
     const intensity = count / maxEvents;
-    if (intensity <= 0.25) return 'bg-emerald-500/20 border-emerald-500/30';
-    if (intensity <= 0.5) return 'bg-amber-500/30 border-amber-500/40';
-    if (intensity <= 0.75) return 'bg-orange-500/40 border-orange-500/50';
-    return 'bg-red-500/50 border-red-500/60';
+    if (intensity <= 0.25) return 'bg-success/20 border-success/30';
+    if (intensity <= 0.5) return 'bg-brand-500/30 border-brand-500/40';
+    if (intensity <= 0.75) return 'bg-warning/40 border-warning/50';
+    return 'bg-destructive/50 border-destructive/60';
   };
 
   const getHeatmapLabel = (count: number) => {
@@ -74,19 +74,19 @@ export function CalendarHeatmap({ events, currentMonth, selectedDate, onDateSele
             <span>Free</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-emerald-500/20" />
+            <div className="w-3 h-3 rounded bg-success/20" />
             <span>Light</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-amber-500/30" />
+            <div className="w-3 h-3 rounded bg-brand-500/30" />
             <span>Moderate</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-orange-500/40" />
+            <div className="w-3 h-3 rounded bg-warning/40" />
             <span>Busy</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-500/50" />
+            <div className="w-3 h-3 rounded bg-destructive/50" />
             <span>Very Busy</span>
           </div>
         </div>

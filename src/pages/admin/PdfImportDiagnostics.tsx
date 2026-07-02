@@ -126,7 +126,7 @@ interface StatsResponse {
 }
 
 
-const METRIC_CARD_CLASS = "overflow-hidden rounded-2xl border-primary/15 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_12px_34px_rgba(15,23,42,0.08)] ring-1 ring-white/35 dark:border-white/10 dark:bg-slate-950/70 dark:ring-white/10 dark:shadow-black/30";
+const METRIC_CARD_CLASS = "overflow-hidden rounded-2xl border-primary/15 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_12px_34px_rgba(15,23,42,0.08)] ring-1 ring-white/35 dark:border-white/10 dark:bg-background/70 dark:ring-white/10 dark:shadow-black/30";
 const METRIC_LABEL_CLASS = "text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground";
 const METRIC_VALUE_CLASS = "mt-2 text-2xl font-bold tracking-tight text-foreground";
 
@@ -480,7 +480,7 @@ export default function PdfImportDiagnostics() {
       </div>
 
 
-      <Card className="overflow-hidden rounded-3xl border-primary/15 bg-card/85 shadow-[0_18px_55px_rgba(15,23,42,0.10)] ring-1 ring-white/35 dark:border-white/10 dark:bg-slate-950/60 dark:ring-white/10 dark:shadow-black/35">
+      <Card className="overflow-hidden rounded-3xl border-primary/15 bg-card/85 shadow-[0_18px_55px_rgba(15,23,42,0.10)] ring-1 ring-white/35 dark:border-white/10 dark:bg-background/60 dark:ring-white/10 dark:shadow-black/35">
         <CardHeader className="flex flex-col gap-4 border-b border-border/60 bg-muted/20 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
           <div>
             <CardTitle className="flex items-center gap-2 text-base">

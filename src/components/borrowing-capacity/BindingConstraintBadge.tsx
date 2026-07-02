@@ -26,8 +26,8 @@ const KIND_META: Record<
   { icon: typeof Lock; tone: string }
 > = {
   surplus: { icon: TrendingUp, tone: 'bg-primary/10 text-primary border-primary/30' },
-  dti_cap: { icon: Lock, tone: 'bg-amber-500/10 text-amber-600 border-amber-500/30 dark:text-amber-400' },
-  absolute_max: { icon: InfinityIcon, tone: 'bg-purple-500/10 text-purple-600 border-purple-500/30 dark:text-purple-400' },
+  dti_cap: { icon: Lock, tone: 'bg-brand-500/10 text-brand-600 border-brand-500/30 dark:text-brand-400' },
+  absolute_max: { icon: InfinityIcon, tone: 'bg-accent/10 text-accent border-accent/30 dark:text-accent' },
   none: { icon: AlertTriangle, tone: 'bg-destructive/10 text-destructive border-destructive/30' },
 };
 

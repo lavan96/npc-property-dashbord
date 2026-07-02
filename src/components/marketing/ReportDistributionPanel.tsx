@@ -105,9 +105,9 @@ const AUDIENCE_OPTIONS: Record<string, string> = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  sent: { label: 'Sent', color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30', icon: CheckCircle2 },
-  failed: { label: 'Failed', color: 'bg-red-500/10 text-red-600 border-red-500/30', icon: XCircle },
-  pending: { label: 'Pending', color: 'bg-amber-500/10 text-amber-600 border-amber-500/30', icon: Clock },
+  sent: { label: 'Sent', color: 'bg-success/10 text-success border-success/30', icon: CheckCircle2 },
+  failed: { label: 'Failed', color: 'bg-destructive/10 text-destructive border-destructive/30', icon: XCircle },
+  pending: { label: 'Pending', color: 'bg-brand-500/10 text-brand-600 border-brand-500/30', icon: Clock },
   skipped: { label: 'Skipped', color: 'bg-muted text-muted-foreground border-border', icon: Clock },
 };
 
@@ -506,7 +506,7 @@ export function ReportDistributionPanel() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="truncate text-sm font-semibold" title={schedule.name}>{schedule.name}</span>
-                            <Badge variant="outline" className={`rounded-full text-[10px] ${schedule.is_enabled ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-600' : 'border-border text-muted-foreground'}`}>
+                            <Badge variant="outline" className={`rounded-full text-[10px] ${schedule.is_enabled ? 'border-success/30 bg-success/5 text-success' : 'border-border text-muted-foreground'}`}>
                               {schedule.is_enabled ? 'Active' : 'Paused'}
                             </Badge>
                             <Badge variant="outline" className="rounded-full text-[10px]">
@@ -516,7 +516,7 @@ export function ReportDistributionPanel() {
                               {schedule.content_rotation_enabled ? '🔄 Rotation' : (REPORT_TYPE_OPTIONS[schedule.report_type || 'full'] || 'Full')}
                             </Badge>
                             {schedule.audience_segment && schedule.audience_segment !== 'general' && (
-                              <Badge variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/5 text-[10px] text-amber-600">
+                              <Badge variant="outline" className="rounded-full border-brand-500/30 bg-brand-500/5 text-[10px] text-brand-600">
                                 {AUDIENCE_OPTIONS[schedule.audience_segment] || schedule.audience_segment}
                               </Badge>
                             )}

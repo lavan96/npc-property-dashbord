@@ -25,26 +25,26 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
+        return <AlertCircle className="h-4 w-4 text-destructive" />;
       case 'high':
-        return <AlertTriangle className="h-4 w-4 text-orange-600" />;
+        return <AlertTriangle className="h-4 w-4 text-warning" />;
       case 'medium':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+        return <AlertTriangle className="h-4 w-4 text-brand-600" />;
       default:
-        return <Info className="h-4 w-4 text-blue-600" />;
+        return <Info className="h-4 w-4 text-info" />;
     }
   };
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">Critical</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Critical</Badge>;
       case 'high':
-        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">High</Badge>;
+        return <Badge className="bg-warning/10 text-warning border-warning/20">High</Badge>;
       case 'medium':
-        return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Medium</Badge>;
+        return <Badge className="bg-brand-500/10 text-brand-600 border-brand-500/20">Medium</Badge>;
       default:
-        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Low</Badge>;
+        return <Badge className="bg-info/10 text-info border-info/20">Low</Badge>;
     }
   };
 
@@ -58,27 +58,27 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
     <div className="space-y-6">
       {/* Flags Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card className={criticalFlags.length > 0 ? 'border-red-300 bg-red-50/50' : ''}>
+        <Card className={criticalFlags.length > 0 ? 'border-destructive/30 bg-destructive/50' : ''}>
           <CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-red-600">{criticalFlags.length}</div>
+            <div className="text-2xl font-bold text-destructive">{criticalFlags.length}</div>
             <p className="text-xs text-muted-foreground">Critical</p>
           </CardContent>
         </Card>
-        <Card className={highFlags.length > 0 ? 'border-orange-300 bg-orange-50/50' : ''}>
+        <Card className={highFlags.length > 0 ? 'border-warning/30 bg-warning/50' : ''}>
           <CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-orange-600">{highFlags.length}</div>
+            <div className="text-2xl font-bold text-warning">{highFlags.length}</div>
             <p className="text-xs text-muted-foreground">High</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-yellow-600">{mediumFlags.length}</div>
+            <div className="text-2xl font-bold text-brand-600">{mediumFlags.length}</div>
             <p className="text-xs text-muted-foreground">Medium</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{lowFlags.length}</div>
+            <div className="text-2xl font-bold text-info">{lowFlags.length}</div>
             <p className="text-xs text-muted-foreground">Low</p>
           </CardContent>
         </Card>
@@ -98,7 +98,7 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
             <>
               {/* Critical & High first */}
               {[...criticalFlags, ...highFlags].map((flag, i) => (
-                <div key={i} className="border rounded-lg p-3 space-y-2 bg-red-50/30">
+                <div key={i} className="border rounded-lg p-3 space-y-2 bg-destructive/30">
                   <div className="flex items-start gap-3">
                     {getSeverityIcon(flag.severity)}
                     <div className="flex-1 min-w-0">
@@ -111,7 +111,7 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
                         <p className="text-xs text-muted-foreground mt-1">{flag.propertyAddress}</p>
                       )}
                       {flag.recommendation && (
-                        <p className="text-xs text-blue-600 mt-1">→ {flag.recommendation}</p>
+                        <p className="text-xs text-info mt-1">→ {flag.recommendation}</p>
                       )}
                     </div>
                   </div>
@@ -133,7 +133,7 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
                         <p className="text-xs text-muted-foreground mt-1">{flag.propertyAddress}</p>
                       )}
                       {flag.recommendation && (
-                        <p className="text-xs text-blue-600 mt-1">→ {flag.recommendation}</p>
+                        <p className="text-xs text-info mt-1">→ {flag.recommendation}</p>
                       )}
                     </div>
                   </div>
@@ -159,9 +159,9 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
               <div key={i} className="border rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   {scenario.impact.cashFlowChange >= 0 ? (
-                    <TrendingUp className="h-5 w-5 text-green-600" />
+                    <TrendingUp className="h-5 w-5 text-success" />
                   ) : (
-                    <TrendingDown className="h-5 w-5 text-red-600" />
+                    <TrendingDown className="h-5 w-5 text-destructive" />
                   )}
                   <h4 className="font-medium">{scenario.name}</h4>
                 </div>
@@ -172,7 +172,7 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
                   <div>
                     <p className="text-xs text-muted-foreground">Cash Flow Impact</p>
                     <p className={`text-lg font-bold ${
-                      scenario.impact.cashFlowChange >= 0 ? 'text-green-600' : 'text-red-600'
+                      scenario.impact.cashFlowChange >= 0 ? 'text-success' : 'text-destructive'
                     }`}>
                       {formatCurrency(scenario.impact.cashFlowChange)}/mo
                     </p>
@@ -180,7 +180,7 @@ export function FlagsScenariosStep({ flags, scenarios }: FlagsScenariosStepProps
                   <div>
                     <p className="text-xs text-muted-foreground">New Monthly CF</p>
                     <p className={`text-lg font-bold ${
-                      scenario.impact.newNetCashflow >= 0 ? 'text-green-600' : 'text-red-600'
+                      scenario.impact.newNetCashflow >= 0 ? 'text-success' : 'text-destructive'
                     }`}>
                       ${scenario.impact.newNetCashflow.toLocaleString()}
                     </p>

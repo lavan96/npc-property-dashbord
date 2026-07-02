@@ -529,7 +529,7 @@ The Team`
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Net Monthly Cash Flow</p>
-                      <p className={`text-xl font-bold flex items-center gap-1 ${Number(fullClient?.net_monthly_cash_flow) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`text-xl font-bold flex items-center gap-1 ${Number(fullClient?.net_monthly_cash_flow) >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {Number(fullClient?.net_monthly_cash_flow) >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                         {formatCurrency(Number(fullClient?.net_monthly_cash_flow))}
                       </p>
@@ -662,7 +662,7 @@ The Team`
                         <div>
                           <Badge 
                             variant={property.property_type === 'owner_occupied' ? 'default' : property.property_type === 'smsf' ? 'outline' : property.property_type === 'rental' ? 'outline' : 'secondary'}
-                            className={property.property_type === 'smsf' ? 'border-amber-500 text-amber-700 bg-amber-50' : property.property_type === 'rental' ? 'border-blue-500 text-blue-700 bg-blue-50' : ''}
+                            className={property.property_type === 'smsf' ? 'border-brand-500 text-brand-700 bg-brand-50' : property.property_type === 'rental' ? 'border-info/30 text-info bg-info/10' : ''}
                           >
                             {property.property_type === 'owner_occupied' ? (
                               <>Owner Occupied</>
@@ -777,15 +777,15 @@ The Team`
                           <div className="grid gap-4 md:grid-cols-3 text-sm">
                             <div>
                               <p className="text-xs text-muted-foreground">Monthly Rental Income</p>
-                              <p className="font-medium text-green-600">{formatCurrency(Number(property.monthly_rental_income))}</p>
+                              <p className="font-medium text-success">{formatCurrency(Number(property.monthly_rental_income))}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">Monthly Expenses</p>
-                              <p className="font-medium text-red-600">{formatCurrency(Number(property.total_monthly_expenditure))}</p>
+                              <p className="font-medium text-destructive">{formatCurrency(Number(property.total_monthly_expenditure))}</p>
                             </div>
                             <div>
                               <p className="text-xs text-muted-foreground">Net Cash Flow</p>
-                              <p className={`font-medium ${Number(property.net_monthly_cashflow) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <p className={`font-medium ${Number(property.net_monthly_cashflow) >= 0 ? 'text-success' : 'text-destructive'}`}>
                                 {formatCurrency(Number(property.net_monthly_cashflow))}
                               </p>
                             </div>

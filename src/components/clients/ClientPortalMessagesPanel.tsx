@@ -211,24 +211,24 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
 
 
   return (
-    <div className={cn('flex min-h-0 flex-col overflow-hidden rounded-2xl border border-amber-300/15 bg-background dark:bg-zinc-950/90 shadow-xl shadow-sm dark:shadow-black/25', fillContainer ? 'h-full' : 'h-[600px]', className)}>
-      <div className="border-b border-amber-300/10 bg-gradient-to-r from-amber-300/10 via-emerald-300/[0.04] to-transparent px-4 py-3.5">
+    <div className={cn('flex min-h-0 flex-col overflow-hidden rounded-2xl border border-brand-300/15 bg-background dark:bg-background/90 shadow-xl shadow-sm dark:shadow-black/25', fillContainer ? 'h-full' : 'h-[600px]', className)}>
+      <div className="border-b border-brand-300/10 bg-gradient-to-r from-brand-300/10 via-success/[0.04] to-transparent px-4 py-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Avatar className="h-10 w-10 shrink-0 border border-amber-300/25 bg-amber-300/10">
-              <AvatarFallback className="bg-amber-300/10 text-xs font-semibold text-amber-100">
+            <Avatar className="h-10 w-10 shrink-0 border border-brand-300/25 bg-brand-300/10">
+              <AvatarFallback className="bg-brand-300/10 text-xs font-semibold text-brand-100">
                 {getInitials(displayName)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
                 <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
-                <Badge variant="outline" className="shrink-0 rounded-full border-emerald-300/25 bg-emerald-300/10 px-2 text-[10px] text-emerald-100">
+                <Badge variant="outline" className="shrink-0 rounded-full border-success/25 bg-success/10 px-2 text-[10px] text-success-foreground">
                   Client Portal
                 </Badge>
               </div>
               <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                <MessageCircle className="h-3.5 w-3.5 text-amber-200/80" />
+                <MessageCircle className="h-3.5 w-3.5 text-brand-200/80" />
                 <span>{messages.length} message{messages.length === 1 ? '' : 's'}</span>
               </div>
             </div>
@@ -241,14 +241,14 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
 
       <ScrollArea className="flex-1 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.05),transparent_34%)] p-4 [scrollbar-color:rgba(245,158,11,0.35)_rgba(24,24,27,0.9)]" ref={scrollRef as any}>
         {loading ? (
-          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-background dark:bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-sm dark:shadow-black/20">
-            <Loader2 className="mx-auto h-5 w-5 animate-spin text-amber-200/80" />
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-brand-300/15 bg-background dark:bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-sm dark:shadow-black/20">
+            <Loader2 className="mx-auto h-5 w-5 animate-spin text-brand-200/80" />
             <p className="mt-3 font-medium text-foreground">Loading client messages…</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">Preparing the latest client portal conversation.</p>
           </div>
         ) : messages.length === 0 ? (
-          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-amber-300/15 bg-background dark:bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-sm dark:shadow-black/20">
-            <MessageCircle className="mx-auto mb-3 h-9 w-9 text-amber-200/65" />
+          <div className="mx-auto my-12 max-w-sm rounded-3xl border border-brand-300/15 bg-background dark:bg-black/25 px-6 py-8 text-center text-sm text-muted-foreground shadow-xl shadow-sm dark:shadow-black/20">
+            <MessageCircle className="mx-auto mb-3 h-9 w-9 text-brand-200/65" />
             <p className="font-medium text-foreground">No messages yet. Send a message to start the conversation.</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">This thread is ready when the client conversation begins.</p>
           </div>
@@ -261,7 +261,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
                   <Avatar className="h-7 w-7 shrink-0">
                     <AvatarFallback className={cn(
                       'text-[10px] font-semibold',
-                      mine ? 'bg-amber-300/10 text-amber-100' : 'bg-emerald-300/10 text-emerald-100',
+                      mine ? 'bg-brand-300/10 text-brand-100' : 'bg-success/10 text-success-foreground',
                     )}>
                       {mine ? <Headphones className="h-3.5 w-3.5" /> : getInitials(m.sender_name || clientName)}
                     </AvatarFallback>
@@ -270,10 +270,10 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
                     <div className={cn(
                       'rounded-2xl border px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap break-words shadow-lg shadow-sm dark:shadow-black/15 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(0,0,0,0.22)]',
                       m.is_internal
-                        ? 'border-dashed border-amber-300/45 bg-amber-300/10 text-foreground rounded-br-md'
+                        ? 'border-dashed border-brand-300/45 bg-brand-300/10 text-foreground rounded-br-md'
                         : mine
-                          ? 'border-amber-300/30 bg-gradient-to-br from-amber-300 to-yellow-600 text-black rounded-br-md'
-                          : 'border-emerald-300/20 bg-card dark:bg-zinc-900/95 text-foreground rounded-bl-md',
+                          ? 'border-brand-300/30 bg-gradient-to-br from-brand-300 to-brand-600 text-black rounded-br-md'
+                          : 'border-success/20 bg-card dark:bg-background/95 text-foreground rounded-bl-md',
                     )}>
                       {!mine && (
                         <div className="mb-1.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] opacity-70">
@@ -288,7 +288,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
                         <Badge variant="outline" className={cn(
                           'text-[9px] px-1 py-0 h-3.5 gap-0.5',
                           m.is_internal || m.visibility_scope === 'internal_command_only'
-                            ? 'border-amber-500/40 text-amber-600'
+                            ? 'border-brand-500/40 text-brand-600'
                             : m.visibility_scope === 'command_client_with_finance_allocated'
                               ? 'border-primary/30 text-primary'
                               : 'border-border text-muted-foreground',
@@ -312,7 +312,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
         )}
       </ScrollArea>
 
-      <div className="shrink-0 border-t border-amber-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
+      <div className="shrink-0 border-t border-brand-300/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] p-3 shadow-[0_-18px_45px_rgba(0,0,0,0.22)]">
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Route:</span>
           {ROUTING_PRESETS.map(preset => {
@@ -323,7 +323,7 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
                 type="button"
                 size="sm"
                 variant={active ? 'default' : 'outline'}
-                className={cn('h-auto min-h-7 rounded-full px-3 py-1 text-xs transition-all duration-200 focus-visible:ring-amber-300', active ? 'bg-amber-300 text-black shadow-sm shadow-amber-950/20 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_10px_26px_rgba(245,158,11,0.18)]' : 'border-border dark:border-white/10 bg-background dark:bg-black/20 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/10 hover:text-amber-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)]')}
+                className={cn('h-auto min-h-7 rounded-full px-3 py-1 text-xs transition-all duration-200 focus-visible:ring-brand-300', active ? 'bg-brand-300 text-black shadow-sm shadow-brand-950/20 hover:-translate-y-0.5 hover:bg-brand-200 hover:shadow-[0_10px_26px_rgba(245,158,11,0.18)]' : 'border-border dark:border-white/10 bg-background dark:bg-black/20 text-muted-foreground hover:-translate-y-0.5 hover:border-brand-300/30 hover:bg-brand-300/10 hover:text-brand-100 hover:shadow-[0_10px_24px_rgba(0,0,0,0.2)]')}
                 onClick={() => setRoute(preset.value)}
                 title={preset.description}
               >
@@ -333,15 +333,15 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
           })}
         </div>
         <div className="mb-2 flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/25 p-2.5 text-[11px] leading-5 text-muted-foreground">
-          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-200/80" />
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-200/80" />
           <span>{selectedPreset.description}</span>
         </div>
 
         {financeAllocatedToClient && (
-          <div className="mb-2 rounded-2xl border border-amber-300/15 bg-amber-300/5 p-2.5">
+          <div className="mb-2 rounded-2xl border border-brand-300/15 bg-brand-300/5 p-2.5">
             <label className="mb-1 block text-[10px] uppercase tracking-wide text-muted-foreground">Finance action allocation</label>
             <Select value={financeAllocationStatus} onValueChange={(value) => setFinanceAllocationStatus(value as FinanceAllocationStatus)}>
-              <SelectTrigger className="h-9 rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/30 text-xs transition-all hover:border-amber-300/30 focus:ring-amber-300/40">
+              <SelectTrigger className="h-9 rounded-xl border-border dark:border-white/10 bg-background dark:bg-black/30 text-xs transition-all hover:border-brand-300/30 focus:ring-brand-300/40">
                 <SelectValue placeholder="Choose finance action" />
               </SelectTrigger>
               <SelectContent>
@@ -372,10 +372,10 @@ export function ClientPortalMessagesPanel({ clientId, clientName, className, fil
               }
             }}
             disabled={sending}
-            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 transition-all placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-amber-300/30 disabled:cursor-not-allowed disabled:opacity-60"
+            className="max-h-32 min-h-[72px] flex-1 resize-none rounded-xl border-0 bg-transparent text-sm leading-6 transition-all placeholder:text-muted-foreground/65 focus-visible:ring-2 focus-visible:ring-brand-300/30 disabled:cursor-not-allowed disabled:opacity-60"
             maxLength={5000}
           />
-          <Button type="button" size="icon" aria-label="Send Client Portal message" onClick={send} disabled={sending || !draft.trim()} className="h-10 w-10 shrink-0 rounded-xl bg-amber-300 text-black shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-amber-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-amber-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
+          <Button type="button" size="icon" aria-label="Send Client Portal message" onClick={send} disabled={sending || !draft.trim()} className="h-10 w-10 shrink-0 rounded-xl bg-brand-300 text-black shadow-lg shadow-brand-950/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-200 hover:shadow-[0_14px_32px_rgba(245,158,11,0.22)] focus-visible:ring-brand-300 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:translate-y-0">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

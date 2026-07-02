@@ -37,12 +37,12 @@ export function ReportLibraryHero({
 
   return (
     <DashboardThemeFrame as="header" variant="hero" className="border-primary/20 shadow-lg shadow-primary/5">
-      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl dark:bg-amber-300/10" />
-      <div className="pointer-events-none absolute left-10 top-0 h-px w-2/3 bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-brand-400/20 blur-3xl dark:bg-brand-300/10" />
+      <div className="pointer-events-none absolute left-10 top-0 h-px w-2/3 bg-gradient-to-r from-transparent via-brand-400/60 to-transparent" />
       <div className="relative flex flex-col gap-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <Badge className="mb-3 border-amber-400/25 bg-amber-500/10 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 hover:bg-amber-500/10 dark:text-amber-300" variant="outline">
+            <Badge className="mb-3 border-brand-400/25 bg-brand-500/10 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-700 hover:bg-brand-500/10 dark:text-brand-300" variant="outline">
               Report Intelligence Library
             </Badge>
             <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">
@@ -66,11 +66,11 @@ export function ReportLibraryHero({
           {metrics.map(({ label, value, icon: Icon }) => (
             <div
               key={label}
-              className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-sm shadow-sm dark:shadow-black/5 backdrop-blur dark:border-white/10 dark:bg-slate-950/45"
+              className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-sm shadow-sm dark:shadow-black/5 backdrop-blur dark:border-white/10 dark:bg-background/45"
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">{label}</span>
-                <Icon className="h-4 w-4 text-amber-600/80 dark:text-amber-300/80" />
+                <Icon className="h-4 w-4 text-brand-600/80 dark:text-brand-300/80" />
               </div>
               <div className="mt-3 text-2xl font-semibold tracking-tight text-foreground">{value}</div>
             </div>

@@ -10,6 +10,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "audit:style": "node scripts/audit-style-tokens.cjs",
+    "audit:style:report": "node scripts/audit-style-tokens.cjs --report",
     "preview": "vite preview",
     "test": "vitest run",
     "test:messaging-governance": "node scripts/validate-messaging-governance.cjs",

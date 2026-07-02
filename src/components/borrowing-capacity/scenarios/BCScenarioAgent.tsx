@@ -760,9 +760,9 @@ export function BCScenarioAgent({
                           variant="outline"
                           className={`mt-1 text-[9px] h-4 px-1.5 ${
                             scenario.executionRisk === 'low'
-                              ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+                              ? 'border-success/40 text-success dark:text-success'
                               : scenario.executionRisk === 'medium'
-                                ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
+                                ? 'border-brand-500/40 text-brand-600 dark:text-brand-400'
                                 : 'border-destructive/40 text-destructive'
                           }`}
                         >
@@ -837,9 +837,9 @@ export function BCScenarioAgent({
                     const hasTarget = typeof v.targetPurchasePrice === 'number' && v.targetPurchasePrice > 0;
                     const meets = v.meetsTarget === true;
                     const bandClass = v.serviceabilityBand === 'green'
-                      ? 'text-emerald-600 dark:text-emerald-400'
+                      ? 'text-success dark:text-success'
                       : v.serviceabilityBand === 'amber'
-                        ? 'text-amber-600 dark:text-amber-400'
+                        ? 'text-brand-600 dark:text-brand-400'
                         : 'text-destructive';
                     return (
                       <div className="mb-3 rounded-md border border-border/60 bg-muted/40 p-2 space-y-1.5">
@@ -859,7 +859,7 @@ export function BCScenarioAgent({
                           <span className="text-right font-medium">
                             {fmt(v.borrowingCapacity)}
                             {v.capacityChange !== 0 && (
-                              <span className={v.capacityChange > 0 ? 'text-emerald-600 dark:text-emerald-400 ml-1' : 'text-destructive ml-1'}>
+                              <span className={v.capacityChange > 0 ? 'text-success dark:text-success ml-1' : 'text-destructive ml-1'}>
                                 ({v.capacityChange > 0 ? '+' : ''}{fmt(v.capacityChange)})
                               </span>
                             )}
@@ -900,7 +900,7 @@ export function BCScenarioAgent({
                           )}
                         </div>
                         {v.validationIssues && v.validationIssues.length > 0 && (
-                          <div className="text-[10px] text-amber-600 dark:text-amber-400 pt-1 border-t border-border/40">
+                          <div className="text-[10px] text-brand-600 dark:text-brand-400 pt-1 border-t border-border/40">
                             ⚠ {v.validationIssues.length} validation note{v.validationIssues.length > 1 ? 's' : ''} — verify with finance.
                           </div>
                         )}

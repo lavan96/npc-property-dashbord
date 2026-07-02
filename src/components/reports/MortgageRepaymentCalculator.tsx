@@ -494,7 +494,7 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
       <Button 
         onClick={handleCalculate}
         disabled={!isValid || hasIOPeriodError}
-        className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+        className="w-full bg-brand-500 hover:bg-brand-600 text-black font-semibold"
         size="lg"
       >
         <Calculator className="h-4 w-4 mr-2" />
@@ -527,9 +527,9 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
             </div>
             
             {/* Total Interest */}
-            <div className="p-4 rounded-lg border bg-gradient-to-br from-orange-500/5 to-orange-500/10">
+            <div className="p-4 rounded-lg border bg-gradient-to-br from-warning/5 to-warning/10">
               <div className="flex items-center gap-2 mb-1">
-                <Percent className="h-4 w-4 text-orange-600" />
+                <Percent className="h-4 w-4 text-warning" />
                 <span className="text-xs font-medium text-muted-foreground">Total Interest</span>
               </div>
               <p className="text-xl font-bold text-foreground">
@@ -538,9 +538,9 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
             </div>
             
             {/* Total Paid */}
-            <div className="p-4 rounded-lg border bg-gradient-to-br from-blue-500/5 to-blue-500/10">
+            <div className="p-4 rounded-lg border bg-gradient-to-br from-info/5 to-info/10">
               <div className="flex items-center gap-2 mb-1">
-                <BarChart3 className="h-4 w-4 text-blue-600" />
+                <BarChart3 className="h-4 w-4 text-info" />
                 <span className="text-xs font-medium text-muted-foreground">Total Paid</span>
               </div>
               <p className="text-xl font-bold text-foreground">
@@ -549,16 +549,16 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
             </div>
             
             {/* Payoff Time */}
-            <div className="p-4 rounded-lg border bg-gradient-to-br from-green-500/5 to-green-500/10">
+            <div className="p-4 rounded-lg border bg-gradient-to-br from-success/5 to-success/10">
               <div className="flex items-center gap-2 mb-1">
-                <Clock className="h-4 w-4 text-green-600" />
+                <Clock className="h-4 w-4 text-success" />
                 <span className="text-xs font-medium text-muted-foreground">Payoff Time</span>
               </div>
               <p className="text-xl font-bold text-foreground">
                 {calculationResult.payoffYears}y {calculationResult.payoffMonths}m
               </p>
               {calculationResult.payoffYears < loanTermYears && (
-                <Badge variant="secondary" className="text-xs mt-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <Badge variant="secondary" className="text-xs mt-1 bg-success/15 text-success dark:bg-success/30 dark:text-success">
                   Early payoff!
                 </Badge>
               )}
@@ -567,14 +567,14 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
           
           {/* Interest Saved (if applicable) */}
           {calculationResult.interestSavedVsBaseline > 0 && (
-            <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+            <div className="p-3 rounded-lg bg-success/10 dark:bg-success/30 border border-success/30 dark:border-success/30">
               <div className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                <TrendingDown className="h-4 w-4 text-success" />
+                <span className="text-sm font-medium text-success dark:text-success">
                   You save {formatCurrency(calculationResult.interestSavedVsBaseline)} in interest
                 </span>
               </div>
-              <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+              <p className="text-xs text-success dark:text-success-foreground0 mt-1">
                 Compared to no extra repayments or offset
               </p>
             </div>
@@ -651,10 +651,10 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
                         {calculationResult.yearlySummary.slice(0, 10).map((year) => (
                           <TableRow key={year.year}>
                             <TableCell className="font-medium">Year {year.year}</TableCell>
-                            <TableCell className="text-right text-orange-600 dark:text-orange-400">
+                            <TableCell className="text-right text-warning dark:text-warning">
                               {formatCurrency(year.totalInterest)}
                             </TableCell>
-                            <TableCell className="text-right text-green-600 dark:text-green-400">
+                            <TableCell className="text-right text-success dark:text-success">
                               {formatCurrency(year.totalPrincipal)}
                             </TableCell>
                             <TableCell className="text-right font-medium">
@@ -681,7 +681,7 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
                       </TableHeader>
                       <TableBody>
                         {calculationResult.schedule.slice(0, 120).map((period) => (
-                          <TableRow key={period.period} className={period.isInterestOnly ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                          <TableRow key={period.period} className={period.isInterestOnly ? 'bg-brand-50/50 dark:bg-brand-950/20' : ''}>
                             <TableCell className="font-medium">
                               {period.period}
                               {period.isInterestOnly && (
@@ -691,10 +691,10 @@ const [rateInputMode, setRateInputMode] = useState<'preset' | 'custom'>('preset'
                             <TableCell className="text-right">
                               {formatCurrencyPrecise(period.totalPayment)}
                             </TableCell>
-                            <TableCell className="text-right text-orange-600 dark:text-orange-400">
+                            <TableCell className="text-right text-warning dark:text-warning">
                               {formatCurrencyPrecise(period.interest)}
                             </TableCell>
-                            <TableCell className="text-right text-green-600 dark:text-green-400">
+                            <TableCell className="text-right text-success dark:text-success">
                               {formatCurrencyPrecise(period.principal + period.extraPayment)}
                             </TableCell>
                             <TableCell className="text-right font-medium">

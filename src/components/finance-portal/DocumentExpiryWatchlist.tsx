@@ -27,7 +27,7 @@ export function DocumentExpiryWatchlist({ withinDays = 30 }: { withinDays?: numb
     const days = Math.floor((new Date(date).getTime() - Date.now()) / 86400000);
     if (days < 0) return { label: `${Math.abs(days)}d expired`, tone: 'bg-destructive/15 text-destructive' };
     if (days <= 7) return { label: `${days}d`, tone: 'bg-destructive/15 text-destructive' };
-    if (days <= 14) return { label: `${days}d`, tone: 'bg-amber-500/15 text-amber-500' };
+    if (days <= 14) return { label: `${days}d`, tone: 'bg-brand-500/15 text-brand-500' };
     return { label: `${days}d`, tone: 'bg-muted text-muted-foreground' };
   };
 
@@ -35,7 +35,7 @@ export function DocumentExpiryWatchlist({ withinDays = 30 }: { withinDays?: numb
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-amber-500" />
+          <CalendarClock className="h-4 w-4 text-brand-500" />
           Document expiry watchlist
           <Badge variant="secondary" className="ml-auto">{items.length}</Badge>
         </CardTitle>
@@ -53,7 +53,7 @@ export function DocumentExpiryWatchlist({ withinDays = 30 }: { withinDays?: numb
               to={`/finance/purchase-files/${it.purchase_file_id}?tab=documents`}
               className="flex items-center gap-2 rounded-md border p-2 text-sm hover:bg-muted/40 transition-colors"
             >
-              <FileWarning className="h-4 w-4 text-amber-500 shrink-0" />
+              <FileWarning className="h-4 w-4 text-brand-500 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm truncate">{it.label}</p>
                 <p className="text-xs text-muted-foreground truncate">

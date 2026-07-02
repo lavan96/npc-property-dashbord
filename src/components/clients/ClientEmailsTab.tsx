@@ -187,20 +187,20 @@ export function ClientEmailsTab({ clientId, clientName }: ClientEmailsTabProps) 
         return <Badge variant="default" className="text-[10px]">Unread</Badge>;
       case 'summarized':
         return (
-          <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/30">
+          <Badge variant="outline" className="text-[10px] text-success border-success/30">
             <Sparkles className="h-2.5 w-2.5 mr-0.5" /> Summarized
           </Badge>
         );
       case 'drafted':
         return (
-          <Badge variant="outline" className="text-[10px] text-purple-600 border-purple-500/30">
+          <Badge variant="outline" className="text-[10px] text-accent border-accent/30">
             <MessageSquare className="h-2.5 w-2.5 mr-0.5" /> Drafted
           </Badge>
         );
       case 'replied':
       case 'sent':
         return (
-          <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-500/30">
+          <Badge variant="outline" className="text-[10px] text-info border-info/30">
             <Reply className="h-2.5 w-2.5 mr-0.5" /> {status === 'sent' ? 'Sent' : 'Replied'}
           </Badge>
         );

@@ -9,9 +9,9 @@ export function CashFlowConstructionPanel({ children, active = true }: CashFlowC
   if (!active) return null;
 
   return (
-    <section className="space-y-4 rounded-[1.75rem] border border-amber-200/70 bg-gradient-to-br from-amber-50/50 via-background to-background p-3 shadow-sm md:p-4 dark:border-amber-900/40 dark:from-amber-950/20">
+    <section className="space-y-4 rounded-[1.75rem] border border-brand-200/70 bg-gradient-to-br from-brand-50/50 via-background to-background p-3 shadow-sm md:p-4 dark:border-brand-900/40 dark:from-brand-950/20">
       <div className="flex items-center gap-3 px-1">
-        <span className="rounded-2xl bg-amber-500/10 p-2 text-amber-600 shadow-sm ring-1 ring-amber-500/10">
+        <span className="rounded-2xl bg-brand-500/10 p-2 text-brand-600 shadow-sm ring-1 ring-brand-500/10">
           <HardHat className="h-4 w-4" />
         </span>
         <div>

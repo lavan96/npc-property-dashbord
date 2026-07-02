@@ -32,10 +32,10 @@ export function DataQualityIndicator({ dataSources, inline = false, showDetails 
   const overallQuality = calculateOverallDataQuality(dataSources);
   
   const getQualityColor = (quality: number): string => {
-    if (quality >= 90) return 'bg-green-500 dark:bg-green-600';
-    if (quality >= 75) return 'bg-blue-500 dark:bg-blue-600';
-    if (quality >= 60) return 'bg-yellow-500 dark:bg-yellow-600';
-    return 'bg-orange-500 dark:bg-orange-600';
+    if (quality >= 90) return 'bg-success dark:bg-success';
+    if (quality >= 75) return 'bg-info dark:bg-info';
+    if (quality >= 60) return 'bg-brand-500 dark:bg-brand-600';
+    return 'bg-warning dark:bg-warning';
   };
 
   const getQualityIcon = (quality: number) => {

@@ -16,7 +16,7 @@ interface Props {
 
 const STATUS_STYLE: Record<string, string> = {
   active: 'bg-success/15 text-success border-success/30',
-  paused: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  paused: 'bg-brand-500/15 text-brand-500 border-brand-500/30',
   completed: 'bg-muted text-muted-foreground border-border',
   cancelled: 'bg-destructive/15 text-destructive border-destructive/30',
 };

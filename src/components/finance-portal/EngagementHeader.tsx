@@ -85,7 +85,7 @@ export function EngagementHeader() {
             <div className={cn(
               'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium tabular-nums',
               streak >= 5
-                ? 'border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-orange-500/10 text-amber-700 dark:text-amber-300'
+                ? 'border-brand-500/40 bg-gradient-to-r from-brand-500/15 to-warning/10 text-brand-700 dark:text-brand-300'
                 : streak > 0
                   ? 'border-primary/30 bg-primary/10 text-primary'
                   : 'border-border bg-muted/40 text-muted-foreground',
@@ -100,7 +100,7 @@ export function EngagementHeader() {
         </Tooltip>
 
         {latestBadge && (
-          <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1">
+          <Badge variant="outline" className="border-brand-500/40 bg-brand-500/10 text-brand-700 dark:text-brand-300 gap-1">
             <Award className="h-3 w-3" />
             {latestBadge.metadata?.label || latestBadge.badge_key.replace(/_/g, ' ')}
           </Badge>

@@ -110,12 +110,12 @@ function AnalyticsKPIs({ deals }: { deals: DealWithClient[] }) {
   }, [deals]);
 
   const cards = [
-    { label: 'Pipeline Value', value: formatCurrency(kpis.totalValue), icon: DollarSign, color: 'text-amber-500', tone: 'gold' },
-    { label: 'Avg Deal Value', value: formatCurrency(kpis.avgValue), icon: Target, color: 'text-amber-500', tone: 'gold' },
-    { label: 'Est. Commission', value: formatCurrency(kpis.totalCommission), sub: `${formatCurrency(kpis.commissionReceived)} received`, icon: TrendingUp, color: 'text-amber-500', tone: 'gold' },
-    { label: 'Avg Deal Age', value: `${kpis.avgAge} days`, icon: Clock, color: 'text-sky-500', tone: 'analytical' },
-    { label: 'Conversion Rate', value: `${kpis.conversionRate}%`, sub: `${kpis.completedDeals} settled`, icon: Zap, color: 'text-violet-500', tone: 'conversion' },
-    { label: 'New (30d)', value: String(kpis.recentDeals), icon: Activity, color: 'text-rose-500', tone: 'urgent' },
+    { label: 'Pipeline Value', value: formatCurrency(kpis.totalValue), icon: DollarSign, color: 'text-brand-500', tone: 'gold' },
+    { label: 'Avg Deal Value', value: formatCurrency(kpis.avgValue), icon: Target, color: 'text-brand-500', tone: 'gold' },
+    { label: 'Est. Commission', value: formatCurrency(kpis.totalCommission), sub: `${formatCurrency(kpis.commissionReceived)} received`, icon: TrendingUp, color: 'text-brand-500', tone: 'gold' },
+    { label: 'Avg Deal Age', value: `${kpis.avgAge} days`, icon: Clock, color: 'text-info-foreground0', tone: 'analytical' },
+    { label: 'Conversion Rate', value: `${kpis.conversionRate}%`, sub: `${kpis.completedDeals} settled`, icon: Zap, color: 'text-accent-foreground0', tone: 'conversion' },
+    { label: 'New (30d)', value: String(kpis.recentDeals), icon: Activity, color: 'text-destructive-foreground0', tone: 'urgent' },
   ];
 
   return (
@@ -125,10 +125,10 @@ function AnalyticsKPIs({ deals }: { deals: DealWithClient[] }) {
           key={c.label}
           className={cn(
             'group relative overflow-hidden border-border/70 bg-card/95 shadow-md shadow-sm dark:shadow-black/5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl',
-            c.tone === 'gold' && 'bg-gradient-to-br from-amber-500/15 via-card to-card ring-1 ring-amber-400/20',
-            c.tone === 'conversion' && 'bg-gradient-to-br from-violet-500/12 via-card to-card ring-1 ring-violet-400/15',
-            c.tone === 'urgent' && 'bg-gradient-to-br from-rose-500/12 via-card to-card ring-1 ring-rose-400/15',
-            c.tone === 'analytical' && 'bg-gradient-to-br from-sky-500/10 via-card to-card ring-1 ring-sky-400/15'
+            c.tone === 'gold' && 'bg-gradient-to-br from-brand-500/15 via-card to-card ring-1 ring-brand-400/20',
+            c.tone === 'conversion' && 'bg-gradient-to-br from-accent/12 via-card to-card ring-1 ring-accent/15',
+            c.tone === 'urgent' && 'bg-gradient-to-br from-destructive/12 via-card to-card ring-1 ring-destructive/15',
+            c.tone === 'analytical' && 'bg-gradient-to-br from-info/10 via-card to-card ring-1 ring-info/15'
           )}
         >
           <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent opacity-40" />
@@ -627,7 +627,7 @@ function ResponsibleLeaderboard({ deals }: { deals: DealWithClient[] }) {
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-muted/70 shadow-inner">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-primary transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-brand-400 to-primary transition-all duration-500"
                   style={{ width: `${(person.value / maxValue) * 100}%` }}
                 />
               </div>
@@ -650,7 +650,7 @@ export function PipelineAnalytics({ deals, isLoading }: Props) {
 
   if (deals.length === 0) {
     return (
-      <DealStatePanel tone="gold" icon={<BarChart3 className="h-7 w-7 text-amber-200" />} eyebrow="Analytics ready" title="No deals to analyse yet" description="Analytics will populate as real deals move through the pipeline. No placeholder revenue or conversion data is shown." />
+      <DealStatePanel tone="gold" icon={<BarChart3 className="h-7 w-7 text-brand-200" />} eyebrow="Analytics ready" title="No deals to analyse yet" description="Analytics will populate as real deals move through the pipeline. No placeholder revenue or conversion data is shown." />
     );
   }
 
@@ -659,7 +659,7 @@ export function PipelineAnalytics({ deals, isLoading }: Props) {
       <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background via-muted/20 to-background p-4 shadow-sm">
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-amber-500">Executive analytics</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-brand-500">Executive analytics</p>
             <h3 className="text-xl font-black tracking-tight text-foreground">Pipeline performance command centre</h3>
           </div>
           <p className="max-w-xl text-xs leading-relaxed text-muted-foreground">Live deal intelligence across revenue, conversion, velocity, risk, and team ownership.</p>

@@ -175,13 +175,13 @@ export function useCascadedIndustrialField(
 export function SourceBadge({ source }: { source: IndustrialMetricSource }) {
   const variant = source === 'User Override' ? 'secondary' : source === 'Verified' ? 'default' : 'outline';
   const toneClass = source === 'Verified'
-    ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100 shadow-emerald-500/10'
+    ? 'border-success/40 bg-success/15 text-success-foreground shadow-success/10'
     : source === 'User Override' || source === 'Manual'
-      ? 'border-sky-400/40 bg-sky-500/15 text-sky-100 shadow-sky-500/10'
+      ? 'border-info/40 bg-info/15 text-info-foreground shadow-info/10'
       : source === 'AI Estimate' || source === 'Research Engine'
-        ? 'border-purple-400/40 bg-purple-500/15 text-purple-100 shadow-purple-500/10'
+        ? 'border-accent/40 bg-accent/15 text-accent-foreground shadow-accent/10'
         : source === 'Blank'
-          ? 'border-amber-400/40 bg-amber-500/15 text-amber-100 shadow-amber-500/10'
+          ? 'border-brand-400/40 bg-brand-500/15 text-brand-100 shadow-brand-500/10'
           : 'border-primary/30 bg-primary/10 text-primary shadow-primary/10';
   return <Badge variant={variant} className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold leading-5 shadow-sm ${toneClass}`}>Source: {sourceLabels[source]}</Badge>;
 }
@@ -190,8 +190,8 @@ export function SourceActions({ field }: { field: ReturnType<typeof useCascadedI
   return (
     <div className="space-y-1 text-xs text-muted-foreground">
       {field.pendingSource && (
-        <div className="rounded-xl border border-sky-400/30 bg-sky-500/10 p-3 shadow-inner">
-          <p className="font-medium text-sky-100">Manual override active — new source value available.</p>
+        <div className="rounded-xl border border-info/30 bg-info/10 p-3 shadow-inner">
+          <p className="font-medium text-info-foreground">Manual override active — new source value available.</p>
           <p className="mt-0.5">This field currently uses a saved override; compare before replacing it.</p>
           <div className="mt-1 flex flex-wrap gap-2">
             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={field.keepOverride}>Keep override</Button>

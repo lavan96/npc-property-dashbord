@@ -181,17 +181,17 @@ export function ResourceOptimization({ events, currentWeek, selectedDate, onSlot
   }, [events, weekDays]);
 
   const getScoreColor = (score: number) => {
-    if (score >= 70) return 'text-green-400';
-    if (score >= 50) return 'text-amber-400';
-    if (score >= 30) return 'text-orange-400';
-    return 'text-red-400';
+    if (score >= 70) return 'text-success';
+    if (score >= 50) return 'text-brand-400';
+    if (score >= 30) return 'text-warning';
+    return 'text-destructive';
   };
 
   const getScoreBg = (score: number) => {
-    if (score >= 70) return 'bg-green-500/20 border-green-500/30';
-    if (score >= 50) return 'bg-amber-500/20 border-amber-500/30';
-    if (score >= 30) return 'bg-orange-500/20 border-orange-500/30';
-    return 'bg-red-500/20 border-red-500/30';
+    if (score >= 70) return 'bg-success/20 border-success/30';
+    if (score >= 50) return 'bg-brand-500/20 border-brand-500/30';
+    if (score >= 30) return 'bg-warning/20 border-warning/30';
+    return 'bg-destructive/20 border-destructive/30';
   };
 
   return (
@@ -300,10 +300,10 @@ export function ResourceOptimization({ events, currentWeek, selectedDate, onSlot
                   <div
                     className={cn(
                       'h-8 rounded-sm mb-1 transition-all hover:scale-105',
-                      h.avgScore >= 70 && 'bg-green-500/60',
-                      h.avgScore >= 50 && h.avgScore < 70 && 'bg-amber-500/60',
-                      h.avgScore >= 30 && h.avgScore < 50 && 'bg-orange-500/60',
-                      h.avgScore < 30 && 'bg-red-500/30'
+                      h.avgScore >= 70 && 'bg-success/60',
+                      h.avgScore >= 50 && h.avgScore < 70 && 'bg-brand-500/60',
+                      h.avgScore >= 30 && h.avgScore < 50 && 'bg-warning/60',
+                      h.avgScore < 30 && 'bg-destructive/30'
                     )}
                     style={{ opacity: 0.3 + (h.avgScore / 100) * 0.7 }}
                   />
@@ -316,7 +316,7 @@ export function ResourceOptimization({ events, currentWeek, selectedDate, onSlot
           {/* Tips */}
           <Card className="p-3 bg-muted/30">
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-400 mt-0.5" />
+              <CheckCircle2 className="h-4 w-4 text-success mt-0.5" />
               <div className="space-y-1">
                 <p className="text-xs font-medium">Optimization Tips</p>
                 <ul className="text-[10px] text-muted-foreground space-y-0.5">

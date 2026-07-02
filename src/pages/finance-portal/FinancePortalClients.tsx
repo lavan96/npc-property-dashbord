@@ -52,13 +52,13 @@ interface NewClientFormData {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-emerald-500',
-  lead: 'bg-amber-500',
-  prospect: 'bg-blue-500',
+  active: 'bg-success',
+  lead: 'bg-brand-500',
+  prospect: 'bg-info',
   inactive: 'bg-zinc-400',
-  nurture: 'bg-purple-500',
-  settled: 'bg-emerald-600',
-  'under contract': 'bg-sky-500',
+  nurture: 'bg-accent',
+  settled: 'bg-success',
+  'under contract': 'bg-info',
 };
 
 const EMPTY_CLIENT_FORM: NewClientFormData = {
@@ -962,12 +962,12 @@ export default function FinancePortalClients() {
                 const riskTone = pf?.risk_level === 'high'
                   ? 'bg-destructive/10 text-destructive border-destructive/20'
                   : pf?.risk_level === 'medium'
-                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                    ? 'bg-brand-500/10 text-brand-700 dark:text-brand-400 border-brand-500/20'
                     : '';
                 const deadlineTone = daysToDeadline != null && daysToDeadline <= 2
                   ? 'bg-destructive/10 text-destructive border-destructive/20'
                   : daysToDeadline != null && daysToDeadline <= 7
-                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                    ? 'bg-brand-500/10 text-brand-700 dark:text-brand-400 border-brand-500/20'
                     : 'bg-muted text-muted-foreground';
 
                 return (

@@ -27,7 +27,7 @@ export function NotificationsDropdown() {
     switch (type) {
       case 'report_generated':
       case 'report_generation_completed':
-        return <FileCheck className="h-4 w-4 text-green-500" />;
+        return <FileCheck className="h-4 w-4 text-success-foreground0" />;
       case 'report_failed':
       case 'report_generation_failed':
         return <FileX className="h-4 w-4 text-destructive" />;
@@ -36,84 +36,84 @@ export function NotificationsDropdown() {
       case 'report_regeneration_started':
         return <RefreshCw className="h-4 w-4 text-primary animate-spin" />;
       case 'report_regeneration_completed':
-        return <FileCheck className="h-4 w-4 text-emerald-500" />;
+        return <FileCheck className="h-4 w-4 text-success-foreground0" />;
       case 'report_regeneration_failed':
         return <FileX className="h-4 w-4 text-destructive" />;
       case 'report_archived':
         return <Archive className="h-4 w-4 text-muted-foreground" />;
       case 'report_restored':
-        return <ArchiveRestore className="h-4 w-4 text-green-500" />;
+        return <ArchiveRestore className="h-4 w-4 text-success-foreground0" />;
       case 'call_completed':
         return <Phone className="h-4 w-4 text-primary" />;
       case 'appointment_created':
-        return <CalendarPlus className="h-4 w-4 text-green-500" />;
+        return <CalendarPlus className="h-4 w-4 text-success-foreground0" />;
       case 'appointment_rescheduled':
-        return <CalendarClock className="h-4 w-4 text-amber-500" />;
+        return <CalendarClock className="h-4 w-4 text-brand-500" />;
       case 'appointment_cancelled':
         return <CalendarX className="h-4 w-4 text-destructive" />;
       // Phase 1 additions
       case 'client_reminder_due':
-        return <Clock className="h-4 w-4 text-amber-500" />;
+        return <Clock className="h-4 w-4 text-brand-500" />;
       case 'client_reminder_overdue':
         return <AlarmClock className="h-4 w-4 text-destructive" />;
       case 'call_alert_triggered':
-        return <AlertCircle className="h-4 w-4 text-amber-500" />;
+        return <AlertCircle className="h-4 w-4 text-brand-500" />;
       case 'missed_call':
         return <PhoneMissed className="h-4 w-4 text-destructive" />;
       case 'email_received':
         return <Mail className="h-4 w-4 text-primary" />;
       case 'email_reply_sent':
-        return <Send className="h-4 w-4 text-green-500" />;
+        return <Send className="h-4 w-4 text-success-foreground0" />;
       // Phase 3 - Client & Portfolio
       case 'client_created':
-        return <UserPlus className="h-4 w-4 text-green-500" />;
+        return <UserPlus className="h-4 w-4 text-success-foreground0" />;
       case 'client_updated':
-        return <UserCheck className="h-4 w-4 text-blue-500" />;
+        return <UserCheck className="h-4 w-4 text-info-foreground0" />;
       case 'portfolio_updated':
-        return <Wallet className="h-4 w-4 text-purple-500" />;
+        return <Wallet className="h-4 w-4 text-accent-foreground0" />;
       case 'vownet_form_uploaded':
-        return <FileSpreadsheet className="h-4 w-4 text-green-500" />;
+        return <FileSpreadsheet className="h-4 w-4 text-success-foreground0" />;
       case 'vownet_form_exported':
-        return <Download className="h-4 w-4 text-blue-500" />;
+        return <Download className="h-4 w-4 text-info-foreground0" />;
       case 'finance_agent_notified':
         return <Send className="h-4 w-4 text-primary" />;
       case 'client_file_shared':
-        return <Share2 className="h-4 w-4 text-cyan-500" />;
+        return <Share2 className="h-4 w-4 text-info-foreground0" />;
       // Phase 4 - System & User
       case 'user_role_updated':
-        return <ShieldCheck className="h-4 w-4 text-purple-500" />;
+        return <ShieldCheck className="h-4 w-4 text-accent-foreground0" />;
       case 'new_user_invited':
-        return <UserCog className="h-4 w-4 text-green-500" />;
+        return <UserCog className="h-4 w-4 text-success-foreground0" />;
       case 'system_maintenance':
-        return <Wrench className="h-4 w-4 text-amber-500" />;
+        return <Wrench className="h-4 w-4 text-brand-500" />;
       case 'data_import_complete':
-        return <DatabaseZap className="h-4 w-4 text-green-500" />;
+        return <DatabaseZap className="h-4 w-4 text-success-foreground0" />;
       case 'report_comment_added':
-        return <MessageSquare className="h-4 w-4 text-blue-500" />;
+        return <MessageSquare className="h-4 w-4 text-info-foreground0" />;
       case 'outlook_event_created':
-        return <CalendarPlus className="h-4 w-4 text-blue-500" />;
+        return <CalendarPlus className="h-4 w-4 text-info-foreground0" />;
       // Phase 6 - Extended coverage
       case 'agreement_generated':
-        return <FileSignature className="h-4 w-4 text-emerald-500" />;
+        return <FileSignature className="h-4 w-4 text-success-foreground0" />;
       case 'new_ghl_contact':
-        return <Contact className="h-4 w-4 text-cyan-500" />;
+        return <Contact className="h-4 w-4 text-info-foreground0" />;
       case 'new_marketing_lead':
-        return <Megaphone className="h-4 w-4 text-orange-500" />;
+        return <Megaphone className="h-4 w-4 text-warning-foreground0" />;
       case 'portal_report_requested':
-        return <FileText className="h-4 w-4 text-violet-500" />;
+        return <FileText className="h-4 w-4 text-accent-foreground0" />;
       case 'client_reminder_upcoming':
-        return <Timer className="h-4 w-4 text-blue-400" />;
+        return <Timer className="h-4 w-4 text-info" />;
       case 'conversation_shared':
-        return <Users className="h-4 w-4 text-purple-500" />;
+        return <Users className="h-4 w-4 text-accent-foreground0" />;
       // Game Plan
       case 'game_plan_created':
-        return <Map className="h-4 w-4 text-indigo-500" />;
+        return <Map className="h-4 w-4 text-accent-foreground0" />;
       case 'game_plan_updated':
-        return <Flag className="h-4 w-4 text-amber-500" />;
+        return <Flag className="h-4 w-4 text-brand-500" />;
       case 'game_plan_milestone_completed':
-        return <Target className="h-4 w-4 text-emerald-500" />;
+        return <Target className="h-4 w-4 text-success-foreground0" />;
       default:
-        return <Info className="h-4 w-4 text-blue-500" />;
+        return <Info className="h-4 w-4 text-info-foreground0" />;
     }
   };
 

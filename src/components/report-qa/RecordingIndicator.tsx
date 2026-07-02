@@ -32,11 +32,11 @@ export function RecordingIndicator({
   const isNearLimit = duration >= maxDuration - 60; // Last minute warning
 
   // Different styling for paused vs recording state
-  const borderColor = isPaused ? 'border-orange-500/30' : 'border-red-500/30';
-  const bgColor = isPaused ? 'bg-orange-500/10' : 'bg-red-500/10';
-  const accentColor = isPaused ? 'text-orange-500' : 'text-red-500';
-  const progressBgColor = isPaused ? 'bg-orange-500/20' : 'bg-red-500/20';
-  const progressFillColor = isNearLimit ? 'bg-orange-500' : (isPaused ? 'bg-orange-500/60' : 'bg-red-500/60');
+  const borderColor = isPaused ? 'border-warning/30' : 'border-destructive/30';
+  const bgColor = isPaused ? 'bg-warning/10' : 'bg-destructive/10';
+  const accentColor = isPaused ? 'text-warning-foreground0' : 'text-destructive-foreground0';
+  const progressBgColor = isPaused ? 'bg-warning/20' : 'bg-destructive/20';
+  const progressFillColor = isNearLimit ? 'bg-warning' : (isPaused ? 'bg-warning/60' : 'bg-destructive/60');
 
   return (
     <div 
@@ -54,13 +54,13 @@ export function RecordingIndicator({
         {/* Recording/Paused indicator */}
         <div className="relative" aria-hidden="true">
           {isPaused ? (
-            <div className="w-5 h-5 rounded-full bg-orange-500/20 flex items-center justify-center">
-              <Pause className="w-3 h-3 text-orange-500" />
+            <div className="w-5 h-5 rounded-full bg-warning/20 flex items-center justify-center">
+              <Pause className="w-3 h-3 text-warning-foreground0" />
             </div>
           ) : (
             <>
-              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse motion-reduce:animate-none" />
-              <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-500 animate-ping opacity-50 motion-reduce:animate-none" />
+              <div className="w-3 h-3 rounded-full bg-destructive animate-pulse motion-reduce:animate-none" />
+              <div className="absolute inset-0 w-3 h-3 rounded-full bg-destructive animate-ping opacity-50 motion-reduce:animate-none" />
             </>
           )}
         </div>
@@ -71,7 +71,7 @@ export function RecordingIndicator({
             {[...Array(20)].map((_, i) => (
               <div
                 key={i}
-                className="w-1 bg-red-500/70 rounded-full motion-reduce:!transform-none"
+                className="w-1 bg-destructive/70 rounded-full motion-reduce:!transform-none"
                 style={{
                   height: '100%',
                   animation: 'waveform 1s ease-in-out infinite',
@@ -90,7 +90,7 @@ export function RecordingIndicator({
         {duration > 0 && (
           <span className={cn(
             "text-xs font-mono ml-auto",
-            isNearLimit ? "text-orange-500 font-semibold" : accentColor + '/70'
+            isNearLimit ? "text-warning-foreground0 font-semibold" : accentColor + '/70'
           )}>
             {formatDuration(duration)} / {formatDuration(maxDuration)}
           </span>
@@ -107,7 +107,7 @@ export function RecordingIndicator({
       
       {/* Near limit warning */}
       {isNearLimit && (
-        <p className="text-xs text-orange-500 font-medium">
+        <p className="text-xs text-warning-foreground0 font-medium">
           ⚠️ Recording will stop in {formatDuration(maxDuration - duration)}
         </p>
       )}
@@ -122,17 +122,17 @@ export function RecordingIndicator({
       
       {/* Live transcription preview */}
       {liveTranscript && !isPaused && (
-        <div className="text-sm text-muted-foreground italic border-t border-red-500/20 pt-2 mt-1">
-          <span className="text-red-500/60 text-xs mr-1">Live:</span>
+        <div className="text-sm text-muted-foreground italic border-t border-destructive/20 pt-2 mt-1">
+          <span className="text-destructive-foreground0/60 text-xs mr-1">Live:</span>
           {liveTranscript}
-          <span className="inline-block w-1 h-4 bg-red-500/50 ml-0.5 animate-pulse motion-reduce:animate-none" />
+          <span className="inline-block w-1 h-4 bg-destructive/50 ml-0.5 animate-pulse motion-reduce:animate-none" />
         </div>
       )}
 
       {/* Paused instructions */}
       {isPaused && (
         <p className="text-xs text-muted-foreground mt-1">
-          Click <span className="text-orange-500 font-medium">Resume</span> to continue or <span className="text-destructive font-medium">Stop</span> to transcribe
+          Click <span className="text-warning-foreground0 font-medium">Resume</span> to continue or <span className="text-destructive font-medium">Stop</span> to transcribe
         </p>
       )}
       

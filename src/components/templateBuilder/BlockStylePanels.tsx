@@ -163,7 +163,7 @@ export function BlockVisibilityPanel({ block, onChange }: { block: Block; onChan
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {block.locked ? <Lock className="h-3.5 w-3.5 text-amber-500" /> : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
+          {block.locked ? <Lock className="h-3.5 w-3.5 text-brand-500" /> : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
           <Label className="text-xs">Lock (editor only)</Label>
         </div>
         <Switch checked={!!block.locked} onCheckedChange={(c) => onChange({ ...block, locked: c || undefined })} />

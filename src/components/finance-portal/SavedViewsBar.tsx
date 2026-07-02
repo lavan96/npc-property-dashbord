@@ -120,7 +120,7 @@ export function SavedViewsBar({ scope, currentFilters, currentSort = null, onApp
               >
                 <Check className={cn('h-3.5 w-3.5 shrink-0', activeId === v.id ? 'text-primary' : 'opacity-0')} />
                 <span className="flex-1 truncate">{v.name}</span>
-                {v.is_default && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />}
+                {v.is_default && <Star className="h-3.5 w-3.5 text-brand-500 fill-brand-500" />}
                 <Button
                   variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100"
                   onClick={(e) => { e.stopPropagation(); handleSetDefault(v.id); }}

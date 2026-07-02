@@ -47,16 +47,16 @@ interface CriticalMomentDetectionProps {
 }
 
 const ROOT_CAUSE_LABELS: Record<string, { label: string; color: string }> = {
-  pricing_objection: { label: 'Pricing Objection', color: 'text-amber-500' },
-  service_complaint: { label: 'Service Complaint', color: 'text-red-500' },
-  agent_confusion: { label: 'Agent Confusion', color: 'text-orange-500' },
-  long_hold_time: { label: 'Long Hold Time', color: 'text-yellow-500' },
-  unresolved_query: { label: 'Unresolved Query', color: 'text-purple-500' },
-  technical_issue: { label: 'Technical Issue', color: 'text-blue-500' },
-  miscommunication: { label: 'Miscommunication', color: 'text-pink-500' },
-  customer_frustration: { label: 'Customer Frustration', color: 'text-red-600' },
-  wrong_transfer: { label: 'Wrong Transfer', color: 'text-indigo-500' },
-  information_gap: { label: 'Information Gap', color: 'text-cyan-500' },
+  pricing_objection: { label: 'Pricing Objection', color: 'text-brand-500' },
+  service_complaint: { label: 'Service Complaint', color: 'text-destructive-foreground0' },
+  agent_confusion: { label: 'Agent Confusion', color: 'text-warning-foreground0' },
+  long_hold_time: { label: 'Long Hold Time', color: 'text-brand-500' },
+  unresolved_query: { label: 'Unresolved Query', color: 'text-accent-foreground0' },
+  technical_issue: { label: 'Technical Issue', color: 'text-info-foreground0' },
+  miscommunication: { label: 'Miscommunication', color: 'text-accent-foreground0' },
+  customer_frustration: { label: 'Customer Frustration', color: 'text-destructive' },
+  wrong_transfer: { label: 'Wrong Transfer', color: 'text-accent-foreground0' },
+  information_gap: { label: 'Information Gap', color: 'text-info-foreground0' },
 };
 
 export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps) => {
@@ -116,11 +116,11 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
   }, [callsWithCriticalMoments]);
 
   const getSeverityColor = (severity: number | null) => {
-    if (!severity) return 'bg-gray-500';
-    if (severity <= 2) return 'bg-yellow-500';
-    if (severity <= 3) return 'bg-orange-500';
-    if (severity <= 4) return 'bg-red-500';
-    return 'bg-red-600';
+    if (!severity) return 'bg-muted0';
+    if (severity <= 2) return 'bg-brand-500';
+    if (severity <= 3) return 'bg-warning';
+    if (severity <= 4) return 'bg-destructive';
+    return 'bg-destructive';
   };
 
   return (
@@ -138,26 +138,26 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
             <p className="text-xl font-bold">{stats.total}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-red-500/5 to-card">
+        <Card className="bg-gradient-to-br from-destructive/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-red-500/10">
-                <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+              <div className="p-1.5 rounded-lg bg-destructive/10">
+                <AlertCircle className="w-3.5 h-3.5 text-destructive-foreground0" />
               </div>
               <span className="text-xs text-muted-foreground">Critical (4-5)</span>
             </div>
-            <p className="text-xl font-bold text-red-500">{stats.critical}</p>
+            <p className="text-xl font-bold text-destructive-foreground0">{stats.critical}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/5 to-card">
+        <Card className="bg-gradient-to-br from-brand-500/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-amber-500/10">
-                <Target className="w-3.5 h-3.5 text-amber-500" />
+              <div className="p-1.5 rounded-lg bg-brand-500/10">
+                <Target className="w-3.5 h-3.5 text-brand-500" />
               </div>
               <span className="text-xs text-muted-foreground">Avg Severity</span>
             </div>
-            <p className="text-xl font-bold text-amber-500">{stats.avgSeverity.toFixed(1)}</p>
+            <p className="text-xl font-bold text-brand-500">{stats.avgSeverity.toFixed(1)}</p>
           </CardContent>
         </Card>
       </div>
@@ -256,10 +256,10 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
                         </div>
 
                         {/* Critical Moment Highlight */}
-                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 mb-2">
+                        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-2">
                           <div className="flex items-center gap-2 mb-1">
-                            <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                            <span className="text-xs font-medium text-red-500">Trigger Phrase:</span>
+                            <AlertTriangle className="w-3.5 h-3.5 text-destructive-foreground0" />
+                            <span className="text-xs font-medium text-destructive-foreground0">Trigger Phrase:</span>
                           </div>
                           <p className="text-sm italic">
                             "{call.negative_sentiment_moment?.triggerPhrase}"
@@ -297,7 +297,7 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-red-500" />
+              <Zap className="w-5 h-5 text-destructive-foreground0" />
               Critical Moment Analysis
             </DialogTitle>
           </DialogHeader>
@@ -327,16 +327,16 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
               </div>
 
               {/* Critical Moment */}
-              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
                 <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-5 h-5 text-red-500" />
-                  <h3 className="font-semibold text-red-500">Critical Moment Detected</h3>
+                  <AlertTriangle className="w-5 h-5 text-destructive-foreground0" />
+                  <h3 className="font-semibold text-destructive-foreground0">Critical Moment Detected</h3>
                 </div>
                 
                 <div className="space-y-3">
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Trigger Phrase:</p>
-                    <p className="text-sm font-medium bg-red-500/20 p-2 rounded">
+                    <p className="text-sm font-medium bg-destructive/20 p-2 rounded">
                       "{selectedCall.negative_sentiment_moment?.triggerPhrase}"
                     </p>
                   </div>
@@ -374,15 +374,15 @@ export const CriticalMomentDetection = ({ calls }: CriticalMomentDetectionProps)
 
               {/* AI Recommendations */}
               {selectedCall.ai_recommendations && selectedCall.ai_recommendations.length > 0 && (
-                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <div className="p-4 rounded-lg bg-brand-500/10 border border-brand-500/20">
                   <div className="flex items-center gap-2 mb-3">
-                    <Lightbulb className="w-5 h-5 text-amber-500" />
+                    <Lightbulb className="w-5 h-5 text-brand-500" />
                     <h3 className="font-semibold">AI Recommendations</h3>
                   </div>
                   <ul className="space-y-2">
                     {selectedCall.ai_recommendations.map((rec, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
-                        <ChevronRight className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                        <ChevronRight className="w-4 h-4 text-brand-500 mt-0.5 shrink-0" />
                         <span>{rec}</span>
                       </li>
                     ))}

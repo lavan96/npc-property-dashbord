@@ -205,11 +205,11 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
   const hasAnySettings = Object.values(settings).some(v => v !== null);
 
   return (
-    <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-900 dark:bg-purple-950/20">
+    <Card className="border-accent/30 bg-accent/50 dark:border-accent/30 dark:bg-accent/20">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Settings className="h-5 w-5 text-purple-600" />
+            <Settings className="h-5 w-5 text-accent" />
             AI Analysis Configuration
             <TooltipProvider>
               <Tooltip>
@@ -259,7 +259,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
             {savedTemplates.length > 0 && (
               <div className="space-y-2 pb-4 border-b">
                 <Label className="text-sm font-medium flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4 text-purple-600" />
+                  <FolderOpen className="h-4 w-4 text-accent" />
                   Load Saved Template
                 </Label>
                 <div className="flex flex-wrap gap-2">
@@ -288,7 +288,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Risk Tolerance"
                   tooltip="Determines how aggressive the recommendations will be regarding leverage, property selection, and growth strategies."
-                  icon={<Shield className="h-4 w-4 text-purple-600" />}
+                  icon={<Shield className="h-4 w-4 text-accent" />}
                   value={settings.riskTolerance}
                   onClear={() => clearField('riskTolerance')}
                 >
@@ -310,7 +310,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Investment Strategy Focus"
                   tooltip="The primary investment approach - whether to prioritize capital appreciation, rental income, or a balanced approach."
-                  icon={<Target className="h-4 w-4 text-purple-600" />}
+                  icon={<Target className="h-4 w-4 text-accent" />}
                   value={settings.investmentStrategy}
                   onClear={() => clearField('investmentStrategy')}
                 >
@@ -333,7 +333,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Time Horizon"
                   tooltip="How long until the client expects to achieve their investment goals or need returns."
-                  icon={<Clock className="h-4 w-4 text-purple-600" />}
+                  icon={<Clock className="h-4 w-4 text-accent" />}
                   value={settings.timeHorizon}
                   onClear={() => clearField('timeHorizon')}
                 >
@@ -365,7 +365,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Projection Period"
                   tooltip="Number of years to project portfolio growth and cashflow."
-                  icon={<TrendingUp className="h-4 w-4 text-purple-600" />}
+                  icon={<TrendingUp className="h-4 w-4 text-accent" />}
                   value={settings.projectionPeriod}
                   onClear={() => clearField('projectionPeriod')}
                 >
@@ -388,7 +388,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Growth Rate Assumption"
                   tooltip="The assumed annual capital growth rate for projections."
-                  icon={<Percent className="h-4 w-4 text-purple-600" />}
+                  icon={<Percent className="h-4 w-4 text-accent" />}
                   value={settings.growthRateAssumption}
                   onClear={() => clearField('growthRateAssumption')}
                 >
@@ -410,7 +410,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Interest Rate Scenario"
                   tooltip="Stress test the portfolio against potential interest rate changes."
-                  icon={<ChartBar className="h-4 w-4 text-purple-600" />}
+                  icon={<ChartBar className="h-4 w-4 text-accent" />}
                   value={settings.interestRateScenario}
                   onClear={() => clearField('interestRateScenario')}
                 >
@@ -441,7 +441,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Equity Strategy"
                   tooltip="How aggressively should equity be redeployed for portfolio growth?"
-                  icon={<Building2 className="h-4 w-4 text-purple-600" />}
+                  icon={<Building2 className="h-4 w-4 text-accent" />}
                   value={settings.equityStrategy}
                   onClear={() => clearField('equityStrategy')}
                 >
@@ -463,7 +463,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Debt Reduction Priority"
                   tooltip="The approach to managing and reducing debt across the portfolio."
-                  icon={<Wallet className="h-4 w-4 text-purple-600" />}
+                  icon={<Wallet className="h-4 w-4 text-accent" />}
                   value={settings.debtReductionPriority}
                   onClear={() => clearField('debtReductionPriority')}
                 >
@@ -485,7 +485,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Next Property Preference"
                   tooltip="What type of property should be recommended for the next acquisition?"
-                  icon={<Building2 className="h-4 w-4 text-purple-600" />}
+                  icon={<Building2 className="h-4 w-4 text-accent" />}
                   value={settings.nextPropertyPreference}
                   onClear={() => clearField('nextPropertyPreference')}
                 >
@@ -518,7 +518,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Tax Optimization Priority"
                   tooltip="How much emphasis to place on tax deductions and negative gearing strategies."
-                  icon={<PiggyBank className="h-4 w-4 text-purple-600" />}
+                  icon={<PiggyBank className="h-4 w-4 text-accent" />}
                   value={settings.taxOptimizationPriority}
                   onClear={() => clearField('taxOptimizationPriority')}
                 >
@@ -540,7 +540,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Retirement Timeline"
                   tooltip="Years until retirement - affects long-term strategy recommendations."
-                  icon={<Landmark className="h-4 w-4 text-purple-600" />}
+                  icon={<Landmark className="h-4 w-4 text-accent" />}
                   value={settings.retirementTimeline}
                   onClear={() => clearField('retirementTimeline')}
                 >
@@ -557,7 +557,7 @@ export function PortfolioAnalysisConfig({ settings, onChange }: PortfolioAnalysi
                 <ConfigField
                   label="Market Outlook"
                   tooltip="Your assessment of the current property market conditions - shapes risk commentary."
-                  icon={<ChartBar className="h-4 w-4 text-purple-600" />}
+                  icon={<ChartBar className="h-4 w-4 text-accent" />}
                   value={settings.marketOutlook}
                   onClear={() => clearField('marketOutlook')}
                 >

@@ -189,10 +189,10 @@ export function ReportVersionComparison({ reportId, versionA, versionB, open, on
                     <div className="text-xs text-muted-foreground">Quality Score</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {qualityChange > 0 && <TrendingUp className="h-5 w-5 text-green-600" />}
-                    {qualityChange < 0 && <TrendingDown className="h-5 w-5 text-red-600" />}
+                    {qualityChange > 0 && <TrendingUp className="h-5 w-5 text-success" />}
+                    {qualityChange < 0 && <TrendingDown className="h-5 w-5 text-destructive" />}
                     {qualityChange !== 0 && (
-                      <span className={`text-sm font-medium ${qualityChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`text-sm font-medium ${qualityChange > 0 ? 'text-success' : 'text-destructive'}`}>
                         {qualityChange > 0 ? '+' : ''}{qualityChange}
                       </span>
                     )}

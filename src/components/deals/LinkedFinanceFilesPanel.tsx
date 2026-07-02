@@ -8,9 +8,9 @@ import type { DealWithClient } from '@/hooks/useAllDeals';
 
 const FINANCE_STATUS_TONE: Record<string, string> = {
   at_risk: 'border-destructive/40 bg-destructive/5 text-destructive',
-  unconditional_approval: 'border-emerald-500/40 bg-emerald-500/5 text-emerald-500',
-  settled: 'border-emerald-500/40 bg-emerald-500/5 text-emerald-500',
-  ready_for_settlement: 'border-emerald-500/40 bg-emerald-500/5 text-emerald-500',
+  unconditional_approval: 'border-success/40 bg-success/5 text-success-foreground0',
+  settled: 'border-success/40 bg-success/5 text-success-foreground0',
+  ready_for_settlement: 'border-success/40 bg-success/5 text-success-foreground0',
 };
 
 function statusLabel(s?: string | null) {
@@ -25,10 +25,10 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
   const unlinked = useMemo(() => deals.filter(d => !d.financeFile), [deals]);
 
   return (
-    <Card className="overflow-hidden rounded-[1.35rem] border-amber-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.88)_44%,rgba(0,0,0,0.70))] shadow-[0_22px_60px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.07)]">
-      <CardHeader className="space-y-4 border-b border-amber-100/10 px-4 pb-4 pt-4 sm:px-5">
+    <Card className="overflow-hidden rounded-[1.35rem] border-brand-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.88)_44%,rgba(0,0,0,0.70))] shadow-[0_22px_60px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.07)]">
+      <CardHeader className="space-y-4 border-b border-brand-100/10 px-4 pb-4 pt-4 sm:px-5">
         <div className="flex items-start gap-3">
-          <div className="rounded-2xl border border-amber-200/25 bg-amber-300/10 p-2.5 text-amber-100 shadow-[0_0_24px_rgba(245,158,11,0.14)]">
+          <div className="rounded-2xl border border-brand-200/25 bg-brand-300/10 p-2.5 text-brand-100 shadow-[0_0_24px_rgba(245,158,11,0.14)]">
             <Link2 className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -43,11 +43,11 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row">
-            <Badge variant="outline" className="gap-1 border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+            <Badge variant="outline" className="gap-1 border-success/30 bg-success/10 px-2.5 py-1 text-success dark:text-success">
               <CheckCircle2 className="h-3 w-3" />
               {linked.length} linked
             </Badge>
-            <Badge variant="outline" className="gap-1 border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-300">
+            <Badge variant="outline" className="gap-1 border-brand-500/40 bg-brand-500/10 px-2.5 py-1 text-brand-700 dark:text-brand-300">
               <AlertTriangle className="h-3 w-3" />
               {unlinked.length} unlinked
             </Badge>
@@ -55,9 +55,9 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
         </div>
       </CardHeader>
       <CardContent className="space-y-4 p-4 sm:p-5">
-        <div className="rounded-[1rem] border border-amber-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(255,255,255,0.035))] p-3 shadow-inner">
+        <div className="rounded-[1rem] border border-brand-300/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),rgba(255,255,255,0.035))] p-3 shadow-inner">
           <div className="flex gap-3">
-            <div className="mt-0.5 rounded-lg bg-amber-500/15 p-1.5 text-amber-700 dark:text-amber-300">
+            <div className="mt-0.5 rounded-lg bg-brand-500/15 p-1.5 text-brand-700 dark:text-brand-300">
               <FileSearch className="h-4 w-4" />
             </div>
             <div className="space-y-1">
@@ -81,7 +81,7 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
               const pf = d.financeFile!;
               const tone = FINANCE_STATUS_TONE[pf.finance_status || ''] || 'border-border/80 bg-background/70';
               return (
-                <div key={d.id} className={`group flex items-center justify-between gap-3 rounded-[1rem] border p-3 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-white/[0.07] ${tone}`}>
+                <div key={d.id} className={`group flex items-center justify-between gap-3 rounded-[1rem] border p-3 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300/40 hover:bg-white/[0.07] ${tone}`}>
                   <div className="min-w-0">
                     <p className="font-semibold truncate text-foreground">{d.client_name}</p>
                     <p className="mt-1 text-muted-foreground truncate">

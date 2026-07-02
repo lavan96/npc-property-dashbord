@@ -712,7 +712,7 @@ export function IcrDscrCalculatorCard() {
                   <StressInput label="DSCR uplift" value={conservativeDscrIncrease} onChange={setConservativeDscrIncrease} />
                   <StressInput label="Debt yield uplift %" value={conservativeDebtYieldIncreasePct} onChange={setConservativeDebtYieldIncreasePct} />
                 </div>
-                {!coverage ? <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Stress test results appear once the base coverage calculation is ready.</p> : <div className="grid gap-3 xl:grid-cols-2">{stressScenarios.map(scenario => <StressScenarioCard key={scenario.label} scenario={scenario} />)}</div>}
+                {!coverage ? <p className="rounded-md border border-brand-500/30 bg-brand-500/10 p-3 text-sm text-brand-100">Stress test results appear once the base coverage calculation is ready.</p> : <div className="grid gap-3 xl:grid-cols-2">{stressScenarios.map(scenario => <StressScenarioCard key={scenario.label} scenario={scenario} />)}</div>}
                 <Button size="sm" variant="outline" onClick={saveCoverageScenarios} disabled={!coverage || stressScenarios.length === 0}>Save as Coverage Scenario</Button>
               </CollapsibleContent>
             </div>
@@ -726,7 +726,7 @@ export function IcrDscrCalculatorCard() {
               </div>
               {coverageWarnings.length > 3 && <Button variant="link" className="h-auto p-0 text-primary underline" onClick={() => setAdvancedOpen(true)}>View all assumptions and warnings</Button>}
             </div>
-            {priorityWarnings.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-amber-100">{priorityWarnings.map(warning => <li key={`${warning.category}-${warning.message}`} className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2"><span className="font-medium">{warning.category}:</span> {warning.message}</li>)}</ul> : <p className="mt-3 text-sm text-muted-foreground">No warnings to show for the current input state.</p>}
+            {priorityWarnings.length > 0 ? <ul className="mt-3 space-y-2 text-sm text-brand-100">{priorityWarnings.map(warning => <li key={`${warning.category}-${warning.message}`} className="rounded-md border border-brand-500/30 bg-brand-500/10 px-3 py-2"><span className="font-medium">{warning.category}:</span> {warning.message}</li>)}</ul> : <p className="mt-3 text-sm text-muted-foreground">No warnings to show for the current input state.</p>}
           </section>
         </CardContent>
       </Card>
@@ -778,7 +778,7 @@ function InputBlock({ label, state, onChange, onKeepOverride, onUseSource, place
       <div className="mb-1 flex items-center justify-between gap-2"><Label>{label}</Label><Tooltip><TooltipTrigger asChild><Badge variant="outline" className="cursor-help gap-1 text-[10px]"><Info className="h-3 w-3" />{sourceBadge(state.source)}</Badge></TooltipTrigger><TooltipContent><p>{state.sourceDetail || `Source: ${state.source}`}</p></TooltipContent></Tooltip></div>
       <Input type="text" inputMode="decimal" step={step} value={state.value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
       {state.sourceDetail && <p className="mt-1 text-[11px] text-muted-foreground">{state.sourceDetail}</p>}
-      {state.pendingSource && <div className="mt-1 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-200"><div>New source value available. This field currently uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={onKeepOverride}>Keep override</Button><Button size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}
+      {state.pendingSource && <div className="mt-1 rounded border border-brand-500/30 bg-brand-500/10 p-2 text-xs text-brand-200"><div>New source value available. This field currently uses a saved override.</div><div className="mt-1 flex gap-2"><Button size="sm" variant="outline" onClick={onKeepOverride}>Keep override</Button><Button size="sm" variant="outline" onClick={onUseSource}>Use source value</Button></div></div>}
     </div>
   );
 }
@@ -788,7 +788,7 @@ function StressInput({ label, value, onChange }: { label: string; value: string;
 }
 
 function StressScenarioCard({ scenario }: { scenario: { label: string; result: ReturnType<typeof calculateIcrDscrEngine>; constraint: string; status: string; noi: number; loanAmount: number } }) {
-  const statusClass = scenario.status === 'Pass' ? 'text-emerald-400' : scenario.status === 'Marginal' ? 'text-amber-300' : 'text-red-300';
+  const statusClass = scenario.status === 'Pass' ? 'text-success' : scenario.status === 'Marginal' ? 'text-brand-300' : 'text-destructive';
   return <div className="rounded-lg border border-border/60 bg-background/50 p-3 text-sm"><div className="mb-2 flex items-center justify-between gap-2"><div className="font-semibold">{scenario.label}</div><Badge variant={scenario.status === 'Pass' ? 'default' : scenario.status === 'Marginal' ? 'outline' : 'destructive'}>{scenario.status}</Badge></div><div className="grid gap-x-4 gap-y-1 sm:grid-cols-2"><Row label="Assessment Rate" value={`${scenario.result.assessmentRateUsedPct.toFixed(2)}%`} /><Row label="NOI" value={fmt(scenario.noi)} /><Row label="Loan Amount" value={fmt(scenario.loanAmount)} /><Row label="Annual Interest" value={fmt(scenario.result.annualInterest)} /><Row label="Annual Debt Service" value={fmt(scenario.result.annualDebtService)} /><Row label="ICR" value={`${scenario.result.icr}x`} /><Row label="DSCR" value={`${scenario.result.dscr}x`} /><Row label="Debt Yield" value={`${(scenario.result.debtYield * 100).toFixed(2)}%`} /><Row label="Binding Constraint" value={scenario.constraint} /><div className={`flex justify-between ${statusClass}`}><span>Status</span><span>{scenario.status}</span></div></div></div>;
 }
 
@@ -810,12 +810,12 @@ function StatusBadge({ status }: { status: string }) {
   const isPending = ['Awaiting Coverage Inputs', 'Preliminary Coverage Estimate', 'pending', PENDING].includes(status);
   const displayStatus = status === 'pass' ? 'Pass' : status === 'fail' ? 'Fail' : status === 'pending' ? PENDING : status;
   const className = isPass
-    ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+    ? 'border-success/40 bg-success/15 text-success'
     : isFail
-      ? 'border-red-500/40 bg-red-500/15 text-red-200'
+      ? 'border-destructive/40 bg-destructive/15 text-destructive'
       : isPending
-        ? 'border-sky-500/40 bg-sky-500/15 text-sky-200'
-        : 'border-amber-500/40 bg-amber-500/15 text-amber-200';
+        ? 'border-info/40 bg-info/15 text-info'
+        : 'border-brand-500/40 bg-brand-500/15 text-brand-200';
   return <Badge variant="outline" className={`${className} rounded-full px-2.5 py-1 font-semibold`}>{isPass ? 'Pass' : isFail ? 'Fail' : isPending ? 'Pending' : 'Review'} · {displayStatus}</Badge>;
 }
 
@@ -825,11 +825,11 @@ function LinkedSourceBadge({ label }: { label: string }) {
 
 function MetricCard({ label, value, prominent, status }: { label: string; value: string; prominent?: boolean; status?: 'pass' | 'fail' | 'pending' }) {
   const statusClass = status === 'pass'
-    ? 'border-emerald-500/35 bg-emerald-500/10'
+    ? 'border-success/35 bg-success/10'
     : status === 'fail'
-      ? 'border-red-500/35 bg-red-500/10'
+      ? 'border-destructive/35 bg-destructive/10'
       : status === 'pending'
-        ? 'border-sky-500/35 bg-sky-500/10'
+        ? 'border-info/35 bg-info/10'
         : 'border-primary/20 bg-background/60';
   return <div className={`rounded-xl border p-4 ${statusClass} ${prominent ? 'shadow-md' : ''}`}><div className="flex items-center justify-between gap-2"><div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>{status && <StatusBadge status={status} />}</div><div className="mt-2 text-3xl font-bold text-primary sm:text-4xl">{value}</div></div>;
 }

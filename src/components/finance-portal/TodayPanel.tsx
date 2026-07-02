@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 type Bucket = 'breaching' | 'stale' | 'settling' | 'at_risk';
 const BUCKET_META: Record<Bucket, { label: string; icon: any; tone: string }> = {
   breaching: { label: 'Breaching in next 24h', icon: AlertTriangle, tone: 'text-destructive border-destructive/30 bg-destructive/5' },
-  stale:     { label: 'No partner action 72h+', icon: Clock,        tone: 'text-amber-500 border-amber-500/30 bg-amber-500/5' },
+  stale:     { label: 'No partner action 72h+', icon: Clock,        tone: 'text-brand-500 border-brand-500/30 bg-brand-500/5' },
   settling:  { label: 'Settling this week',     icon: CalendarClock, tone: 'text-success border-success/30 bg-success/5' },
   at_risk:   { label: 'Flagged at risk',        icon: ShieldAlert,  tone: 'text-destructive border-destructive/30 bg-destructive/5' },
 };

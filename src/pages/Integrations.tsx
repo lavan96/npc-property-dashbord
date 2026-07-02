@@ -409,8 +409,8 @@ export default function Integrations() {
 
     if (status === 'configured') {
       return {
-        className: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
-        iconClassName: 'text-emerald-500 dark:text-emerald-300',
+        className: 'border-success/20 bg-success/10 text-success dark:text-success',
+        iconClassName: 'text-success-foreground0 dark:text-success',
         label: 'Required credentials saved',
         detail: `${configuredRequiredFields.length}/${requiredFields.length} required fields configured`,
       };
@@ -418,8 +418,8 @@ export default function Integrations() {
 
     if (status === 'partial') {
       return {
-        className: 'border-amber-400/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-        iconClassName: 'text-amber-600 dark:text-amber-300',
+        className: 'border-brand-400/25 bg-brand-500/10 text-brand-700 dark:text-brand-300',
+        iconClassName: 'text-brand-600 dark:text-brand-300',
         label: 'Partial setup',
         detail: `${configuredRequiredFields.length}/${requiredFields.length} required fields configured`,
       };
@@ -439,28 +439,28 @@ export default function Integrations() {
     switch (status) {
       case 'configured':
         return (
-          <Badge variant="outline" className={`${baseBadgeClass} border-emerald-400/30 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300`}>
+          <Badge variant="outline" className={`${baseBadgeClass} border-success/30 bg-success/10 text-success-foreground0 dark:text-success`}>
             <CheckCircle2 className="h-3 w-3 shrink-0" />
             <span className="truncate">Configured</span>
           </Badge>
         );
       case 'connected':
         return (
-          <Badge variant="outline" className={`${baseBadgeClass} border-emerald-400/30 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300`}>
+          <Badge variant="outline" className={`${baseBadgeClass} border-success/30 bg-success/10 text-success-foreground0 dark:text-success`}>
             <CheckCircle2 className="h-3 w-3 shrink-0" />
             <span className="truncate">Connected</span>
           </Badge>
         );
       case 'partial':
         return (
-          <Badge variant="outline" className={`${baseBadgeClass} border-amber-400/35 bg-amber-500/10 text-amber-600 dark:text-amber-300`}>
+          <Badge variant="outline" className={`${baseBadgeClass} border-brand-400/35 bg-brand-500/10 text-brand-600 dark:text-brand-300`}>
             <AlertCircle className="h-3 w-3 shrink-0" />
             <span className="truncate">Incomplete</span>
           </Badge>
         );
       case 'pending':
         return (
-          <Badge variant="outline" className={`${baseBadgeClass} border-amber-400/35 bg-amber-500/10 text-amber-600 dark:text-amber-300`}>
+          <Badge variant="outline" className={`${baseBadgeClass} border-brand-400/35 bg-brand-500/10 text-brand-600 dark:text-brand-300`}>
             <AlertCircle className="h-3 w-3 shrink-0" />
             <span className="truncate">Pending</span>
           </Badge>
@@ -491,10 +491,10 @@ export default function Integrations() {
 
   const getIntegrationTone = (integrationId: string) => {
     const aiTone = {
-      card: 'hover:border-violet-400/30',
+      card: 'hover:border-accent/30',
       header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(124,58,237,0.075))]',
-      icon: 'border-violet-400/20 bg-violet-500/10 text-violet-400 group-hover:border-violet-400/35 group-hover:bg-violet-500/15 group-hover:shadow-[0_16px_36px_rgba(124,58,237,0.18)]',
-      field: 'focus-within:border-violet-400/30',
+      icon: 'border-accent/20 bg-accent/10 text-accent group-hover:border-accent/35 group-hover:bg-accent/15 group-hover:shadow-[0_16px_36px_rgba(124,58,237,0.18)]',
+      field: 'focus-within:border-accent/30',
     };
 
     const tones: Record<string, typeof aiTone> = {
@@ -505,10 +505,10 @@ export default function Integrations() {
         field: 'focus-within:border-primary/35',
       },
       vapi: {
-        card: 'hover:border-teal-400/30',
+        card: 'hover:border-success/30',
         header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.075))]',
-        icon: 'border-teal-400/20 bg-teal-500/10 text-teal-400 group-hover:border-teal-400/35 group-hover:bg-teal-500/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
-        field: 'focus-within:border-teal-400/30',
+        icon: 'border-success/20 bg-success/10 text-success group-hover:border-success/35 group-hover:bg-success/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
+        field: 'focus-within:border-success/30',
       },
       gohighlevel: {
         card: 'hover:border-primary/35',
@@ -517,10 +517,10 @@ export default function Integrations() {
         field: 'focus-within:border-primary/35',
       },
       twilio: {
-        card: 'hover:border-teal-400/30',
+        card: 'hover:border-success/30',
         header: 'bg-[linear-gradient(135deg,hsl(var(--background)/0.46),rgba(20,184,166,0.07))]',
-        icon: 'border-teal-400/20 bg-teal-500/10 text-teal-400 group-hover:border-teal-400/35 group-hover:bg-teal-500/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
-        field: 'focus-within:border-teal-400/30',
+        icon: 'border-success/20 bg-success/10 text-success group-hover:border-success/35 group-hover:bg-success/15 group-hover:shadow-[0_16px_36px_rgba(20,184,166,0.18)]',
+        field: 'focus-within:border-success/30',
       },
       microsoft: {
         card: 'hover:border-primary/35',
@@ -584,7 +584,7 @@ export default function Integrations() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="max-w-full gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold leading-none text-emerald-500 shadow-sm dark:text-emerald-300">
+              <Badge variant="outline" className="max-w-full gap-1 rounded-full border border-success/30 bg-success/10 px-2.5 py-1 text-[11px] font-semibold leading-none text-success-foreground0 shadow-sm dark:text-success">
                 <Cloud className="h-3 w-3 shrink-0" />
                 <span className="truncate">Supabase</span>
               </Badge>
@@ -593,7 +593,7 @@ export default function Integrations() {
               <p className="text-xs font-semibold">Configured in Supabase secrets:</p>
               <ul className="mt-1 max-h-44 overflow-y-auto text-xs [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
                 {secretStatus.configuredSecrets.map(s => (
-                  <li key={s} className="text-green-400">✓ {s}</li>
+                  <li key={s} className="text-success">✓ {s}</li>
                 ))}
               </ul>
             </TooltipContent>
@@ -605,7 +605,7 @@ export default function Integrations() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="max-w-full gap-1 rounded-full border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold leading-none text-amber-600 shadow-sm dark:text-amber-300">
+              <Badge variant="outline" className="max-w-full gap-1 rounded-full border border-brand-400/35 bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold leading-none text-brand-600 shadow-sm dark:text-brand-300">
                 <Cloud className="h-3 w-3 shrink-0" />
                 <span className="truncate">Partial</span>
               </Badge>
@@ -614,10 +614,10 @@ export default function Integrations() {
               <p className="text-xs font-semibold">Supabase secrets status:</p>
               <ul className="mt-1 max-h-44 overflow-y-auto text-xs [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin]">
                 {secretStatus.configuredSecrets.map(s => (
-                  <li key={s} className="text-green-400">✓ {s}</li>
+                  <li key={s} className="text-success">✓ {s}</li>
                 ))}
                 {secretStatus.missingSecrets.map(s => (
-                  <li key={s} className="text-red-400">✗ {s}</li>
+                  <li key={s} className="text-destructive">✗ {s}</li>
                 ))}
               </ul>
             </TooltipContent>
@@ -652,7 +652,7 @@ export default function Integrations() {
     return (
       <Card
         key={integration.id}
-        className={`group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
+        className={`group min-w-0 overflow-hidden rounded-3xl border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.18)_100%)] shadow-[0_14px_40px_rgba(15,23,42,0.08)] ring-1 ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(15,23,42,0.13),0_0_0_1px_hsl(var(--primary)/0.10)] dark:border-white/10 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/30 ${tone.card}`}
       >
         <CardHeader className={`border-b border-border/50 pb-4 ${tone.header}`}>
           <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -824,8 +824,8 @@ export default function Integrations() {
       </DashboardThemeFrame>
 
       {supabaseSetupRequired && (
-        <Alert className="min-w-0 rounded-2xl border-amber-400/40 bg-amber-500/10 shadow-sm">
-          <AlertCircle className="h-4 w-4 text-yellow-500" />
+        <Alert className="min-w-0 rounded-2xl border-brand-400/40 bg-brand-500/10 shadow-sm">
+          <AlertCircle className="h-4 w-4 text-brand-500" />
           <AlertDescription className="text-sm">
             <span className="font-medium">Supabase Access Token Required:</span> To sync API keys to Supabase secrets,
             add a <code className="bg-muted px-1 rounded">SUPABASE_ACCESS_TOKEN</code> secret in your{' '}
@@ -876,7 +876,7 @@ export default function Integrations() {
               .map(renderIntegrationCard)}
             {integrations.filter(i => getIntegrationStatus(i) === 'configured').length === 0 && (
               <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.78),hsl(var(--muted)/0.24))] px-6 py-12 text-center text-muted-foreground shadow-inner shadow-sm xl:col-span-2">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-500/10 text-emerald-500 dark:text-emerald-300">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-success/20 bg-success/10 text-success-foreground0 dark:text-success">
                   <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <p className="max-w-md text-sm font-medium">No integrations have been fully configured yet.</p>

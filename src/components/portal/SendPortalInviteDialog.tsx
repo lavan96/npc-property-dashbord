@@ -162,9 +162,9 @@ export function SendPortalInviteDialog({
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Compliance Tracking</p>
                     <div className="flex items-center gap-2">
                       {status.portal_user.has_accepted_terms ? (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-success-foreground0 shrink-0" />
                       ) : (
-                        <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                        <CircleDot className="h-4 w-4 text-brand-500 shrink-0" />
                       )}
                       <span className="text-sm text-foreground">Terms & Conditions</span>
                       <Badge variant={status.portal_user.has_accepted_terms ? 'default' : 'secondary'} className="ml-auto text-[10px]">
@@ -178,9 +178,9 @@ export function SendPortalInviteDialog({
                     )}
                     <div className="flex items-center gap-2">
                       {status.portal_user.has_completed_onboarding ? (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-success-foreground0 shrink-0" />
                       ) : (
-                        <CircleDot className="h-4 w-4 text-amber-500 shrink-0" />
+                        <CircleDot className="h-4 w-4 text-brand-500 shrink-0" />
                       )}
                       <span className="text-sm text-foreground">Onboarding Tour</span>
                       <Badge variant={status.portal_user.has_completed_onboarding ? 'default' : 'secondary'} className="ml-auto text-[10px]">

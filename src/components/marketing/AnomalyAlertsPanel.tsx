@@ -35,15 +35,15 @@ const typeStyles: Record<string, { variant: 'destructive' | 'default'; bg: strin
   },
   warning: {
     variant: 'default',
-    bg: 'bg-amber-500/5 dark:bg-amber-500/10',
-    border: 'border-amber-500/30',
-    icon: <AlertCircle className="h-4 w-4 text-amber-500" />,
+    bg: 'bg-brand-500/5 dark:bg-brand-500/10',
+    border: 'border-brand-500/30',
+    icon: <AlertCircle className="h-4 w-4 text-brand-500" />,
   },
   info: {
     variant: 'default',
-    bg: 'bg-blue-500/5 dark:bg-blue-500/10',
-    border: 'border-blue-500/30',
-    icon: <Info className="h-4 w-4 text-blue-500" />,
+    bg: 'bg-info/5 dark:bg-info/10',
+    border: 'border-info/30',
+    icon: <Info className="h-4 w-4 text-info-foreground0" />,
   },
 };
 
@@ -58,8 +58,8 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
       <Card className="overflow-hidden border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/5 dark:border-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-brand-500/20 bg-brand-500/10">
+              <AlertTriangle className="h-4 w-4 text-brand-500" />
             </span>
             Anomaly Detection
           </CardTitle>
@@ -84,8 +84,8 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
       <CardHeader className="pb-3">
         <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-500/20 bg-amber-500/10">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-brand-500/20 bg-brand-500/10">
+              <AlertTriangle className="h-4 w-4 text-brand-500" />
             </span>
             <span className="truncate">Anomaly Detection</span>
           </CardTitle>
@@ -96,12 +96,12 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
               </Badge>
             )}
             {warnings.length > 0 && (
-              <Badge className="rounded-full border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400">
+              <Badge className="rounded-full border-brand-500/30 bg-brand-500/15 text-[10px] text-brand-600 dark:text-brand-400">
                 {warnings.length} Warning{warnings.length > 1 ? 's' : ''}
               </Badge>
             )}
             {anomalies.length === 0 && (
-              <Badge variant="secondary" className="rounded-full border-emerald-500/20 bg-emerald-500/10 text-[10px] text-emerald-600 dark:text-emerald-400">
+              <Badge variant="secondary" className="rounded-full border-success/20 bg-success/10 text-[10px] text-success dark:text-success">
                 All Clear
               </Badge>
             )}
@@ -110,8 +110,8 @@ export function AnomalyAlertsPanel({ anomalies, loading }: AnomalyAlertsPanelPro
       </CardHeader>
       <CardContent>
         {anomalies.length === 0 ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 py-7 text-center text-muted-foreground">
-            <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+          <div className="rounded-2xl border border-success/20 bg-success/10 py-7 text-center text-muted-foreground">
+            <div className="mb-2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-success/20 bg-success/15 text-success dark:text-success">
               <span className="text-lg">✓</span>
             </div>
             <p className="text-sm font-semibold text-foreground">No anomalies detected</p>

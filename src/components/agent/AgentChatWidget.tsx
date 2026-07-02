@@ -19,14 +19,14 @@ import { extractFileContent, formatFilesForAgent, ACCEPTED_EXTENSIONS, type Extr
 
 // Consistent color palette for sender attribution in collaborative conversations
 const SENDER_COLORS = [
-  'text-blue-600 dark:text-blue-400',
-  'text-emerald-600 dark:text-emerald-400',
-  'text-orange-600 dark:text-orange-400',
-  'text-primary dark:text-purple-400',
-  'text-rose-600 dark:text-rose-400',
-  'text-cyan-600 dark:text-cyan-400',
-  'text-amber-600 dark:text-amber-400',
-  'text-primary/80 dark:text-indigo-400',
+  'text-info dark:text-info',
+  'text-success dark:text-success',
+  'text-warning dark:text-warning',
+  'text-primary dark:text-accent',
+  'text-destructive dark:text-destructive',
+  'text-info dark:text-info',
+  'text-brand-600 dark:text-brand-400',
+  'text-primary/80 dark:text-accent',
 ];
 
 function getSenderColor(senderId: string, senderMap: Map<string, number>): string {
@@ -633,11 +633,11 @@ export function AgentChatWidget() {
               ) : (
                 <div className="space-y-3">
                   {[
-                    { icon: '⏰', label: 'Overdue Reminders', count: notifications.overdue_reminders, color: 'text-red-600 dark:text-red-400 bg-red-500/10', action: '⏰ Overdue reminders' },
-                    { icon: '🚨', label: 'Urgent Deals', count: notifications.urgent_deals, color: 'text-orange-600 dark:text-orange-400 bg-orange-500/10', action: '🚨 Show urgent deals' },
-                    { icon: '🏠', label: 'Settlements This Week', count: notifications.upcoming_settlements, color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10', action: '🏠 Upcoming settlements' },
-                    { icon: '📞', label: 'Unread Call Alerts', count: notifications.unread_call_alerts, color: 'text-primary dark:text-purple-400 bg-primary/10', action: '📞 Unread call alerts' },
-                    { icon: '⚠️', label: 'Clawback Risk (90d)', count: notifications.clawback_risk_deals, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10', action: '⚠️ Clawback risk deals' },
+                    { icon: '⏰', label: 'Overdue Reminders', count: notifications.overdue_reminders, color: 'text-destructive dark:text-destructive bg-destructive/10', action: '⏰ Overdue reminders' },
+                    { icon: '🚨', label: 'Urgent Deals', count: notifications.urgent_deals, color: 'text-warning dark:text-warning bg-warning/10', action: '🚨 Show urgent deals' },
+                    { icon: '🏠', label: 'Settlements This Week', count: notifications.upcoming_settlements, color: 'text-info dark:text-info bg-info/10', action: '🏠 Upcoming settlements' },
+                    { icon: '📞', label: 'Unread Call Alerts', count: notifications.unread_call_alerts, color: 'text-primary dark:text-accent bg-primary/10', action: '📞 Unread call alerts' },
+                    { icon: '⚠️', label: 'Clawback Risk (90d)', count: notifications.clawback_risk_deals, color: 'text-brand-600 dark:text-brand-400 bg-brand-500/10', action: '⚠️ Clawback risk deals' },
                   ].map((item) => (
                     <button
                       key={item.label}
@@ -652,9 +652,9 @@ export function AgentChatWidget() {
                     </button>
                   ))}
                   <div className={cn("mt-3 text-center py-2 rounded-lg text-xs font-medium",
-                    notifications.severity === 'high' ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
-                    notifications.severity === 'medium' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    notifications.severity === 'high' ? 'bg-destructive/10 text-destructive dark:text-destructive' :
+                    notifications.severity === 'medium' ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400' :
+                    'bg-success/10 text-success dark:text-success'
                   )}>
                     {notifications.severity === 'high' ? '🔴 Needs immediate attention' : notifications.severity === 'medium' ? '🟡 Some items need review' : '🟢 All clear'}
                   </div>
@@ -772,7 +772,7 @@ export function AgentChatWidget() {
                           <p className="text-xs font-medium truncate">{task.name}</p>
                           <p className="text-[10px] text-muted-foreground">{task.schedule_description || task.schedule_cron}</p>
                         </div>
-                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", task.is_enabled ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground')}>
+                        <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full font-medium", task.is_enabled ? 'bg-success/10 text-success dark:text-success' : 'bg-muted text-muted-foreground')}>
                           {task.is_enabled ? 'Active' : 'Paused'}
                         </span>
                       </div>
@@ -808,7 +808,7 @@ export function AgentChatWidget() {
                   ) : (settingsData.actions || []).map((action: any) => (
                     <div key={action.id} className="rounded-lg border border-border/30 p-2.5">
                       <div className="flex items-center gap-2">
-                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", action.status === 'success' ? 'bg-emerald-500' : 'bg-red-500')} />
+                        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", action.status === 'success' ? 'bg-success' : 'bg-destructive')} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-medium truncate">{action.tool_name}</p>
                           <p className="text-[10px] text-muted-foreground">{new Date(action.created_at).toLocaleString()}</p>
@@ -951,8 +951,8 @@ export function AgentChatWidget() {
                             {(variant === 'shared_with_me' || variant === 'shared_by_me') && conv.permission && (
                               <span className={cn("shrink-0 text-[9px] px-1.5 py-0.5 rounded-full border",
                                 conv.permission === 'collaborate'
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                                  ? 'bg-success/10 text-success dark:text-success border-success/20'
+                                  : 'bg-info/10 text-info dark:text-info border-info/20'
                               )}>
                                 {conv.permission === 'collaborate' ? '✏️' : '👁️'}
                               </span>

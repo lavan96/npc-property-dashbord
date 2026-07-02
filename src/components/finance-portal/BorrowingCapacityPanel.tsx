@@ -40,8 +40,8 @@ const fmtAUD = (n: any) =>
 const fmtPct = (n: any, digits = 2) => (n == null ? '—' : `${Number(n).toFixed(digits)}%`);
 
 const bandStyles: Record<string, string> = {
-  green: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
-  amber: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
+  green: 'bg-success/10 text-success dark:text-success border-success/20',
+  amber: 'bg-brand-500/10 text-brand-700 dark:text-brand-400 border-brand-500/20',
   red: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
@@ -169,16 +169,16 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
 
       {/* Warnings */}
       {warnings.length > 0 && (
-        <Card className="border-amber-500/30">
+        <Card className="border-brand-500/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600" /> Warnings
+              <AlertTriangle className="h-4 w-4 text-brand-600" /> Warnings
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-1.5 text-sm">
               {warnings.map((w, i) => (
-                <li key={i} className="flex gap-2"><span className="text-amber-600">•</span><span>{w}</span></li>
+                <li key={i} className="flex gap-2"><span className="text-brand-600">•</span><span>{w}</span></li>
               ))}
             </ul>
           </CardContent>
@@ -190,14 +190,14 @@ export function BorrowingCapacityPanel({ clientId }: Props) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Recommendations
+              <CheckCircle2 className="h-4 w-4 text-success" /> Recommendations
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm">
               {recommendations.map((r: any, i: number) => (
                 <li key={i} className="flex gap-2">
-                  <span className="text-emerald-600">•</span>
+                  <span className="text-success">•</span>
                   <span>{typeof r === 'string' ? r : (r?.message || r?.text || JSON.stringify(r))}</span>
                 </li>
               ))}

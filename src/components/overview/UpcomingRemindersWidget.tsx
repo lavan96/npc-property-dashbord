@@ -24,7 +24,7 @@ const sourceIcons: Record<string, typeof Bell> = {
 
 const priorityConfig: Record<string, { color: string; label: string }> = {
   high: { color: 'text-destructive', label: 'High' },
-  medium: { color: 'text-amber-500', label: 'Medium' },
+  medium: { color: 'text-brand-500', label: 'Medium' },
   low: { color: 'text-muted-foreground', label: 'Low' },
 };
 
@@ -32,8 +32,8 @@ function getDueBadge(dueDate: string) {
   const d = new Date(dueDate);
   const badgeClassName = "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] shadow-sm";
   if (isPast(d) && !isToday(d)) return <Badge variant="destructive" className={badgeClassName}>Overdue</Badge>;
-  if (isToday(d)) return <Badge className={`${badgeClassName} bg-amber-500 text-foreground dark:text-white hover:bg-amber-500`}>Today</Badge>;
-  if (isTomorrow(d)) return <Badge variant="secondary" className={`${badgeClassName} bg-blue-500/10 text-blue-700 hover:bg-blue-500/15 dark:text-blue-300`}>Tomorrow</Badge>;
+  if (isToday(d)) return <Badge className={`${badgeClassName} bg-brand-500 text-foreground dark:text-white hover:bg-brand-500`}>Today</Badge>;
+  if (isTomorrow(d)) return <Badge variant="secondary" className={`${badgeClassName} bg-info/10 text-info hover:bg-info/15 dark:text-info`}>Tomorrow</Badge>;
   if (isWithinInterval(d, { start: new Date(), end: addDays(new Date(), 7) }))
     return <Badge variant="secondary" className={`${badgeClassName} bg-primary/10 text-primary hover:bg-primary/15`}>This Week</Badge>;
   return <Badge variant="outline" className={`${badgeClassName} border-border/80 bg-background/70 text-muted-foreground`}>Upcoming</Badge>;
@@ -85,7 +85,7 @@ export function UpcomingRemindersWidget() {
               </Badge>
             )}
             {todayCount > 0 && (
-              <Badge className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground dark:text-white shadow-sm hover:bg-amber-500">
+              <Badge className="rounded-full bg-brand-500 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground dark:text-white shadow-sm hover:bg-brand-500">
                 {todayCount} Today
               </Badge>
             )}

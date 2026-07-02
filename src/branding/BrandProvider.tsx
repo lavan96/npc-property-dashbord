@@ -9,7 +9,7 @@ import {
   defaultBrandThemeConfig,
 } from './brand-defaults';
 import { getBrandAssetSrc } from './brand-assets';
-import { applyBrandTokenMap, resolveBrandTokens } from './token-resolver';
+import { applyBrandTokenMap, resolveBrandFontVars, resolveBrandTokens } from './token-resolver';
 import type { BrandContextValue, BrandLogoConfig, BrandThemeConfig, EmailSignatureSettings, ThemeMode, WhiteLabelSettings } from './brand-types';
 
 const BrandContext = createContext<BrandContextValue | undefined>(undefined);
@@ -47,6 +47,10 @@ function buildStructuredConfig(settings: WhiteLabelSettings) {
   const themeConfig: BrandThemeConfig = mergeThemeConfig({
     primaryColor: settings.primaryColor,
     accentColor: settings.accentColor,
+    brandColor: settings.brandColor,
+    fontFamily: settings.fontFamily,
+    headingFontFamily: settings.headingFontFamily,
+    fontScale: settings.fontScale,
     darkModeDefault: settings.darkModeDefault,
     emailSignature: settings.emailSignature,
   });
@@ -87,6 +91,12 @@ function mapDatabaseSettings(data: Record<string, unknown>): WhiteLabelSettings 
   const themeConfig: BrandThemeConfig = {
     primaryColor: rawThemeConfig?.primaryColor ?? (data.primary_color as string) ?? null,
     accentColor: rawThemeConfig?.accentColor ?? (data.accent_color as string) ?? null,
+    // New brand + typography inputs live only in the theme_config JSONB (no
+    // legacy columns), so read them straight from the structured config.
+    brandColor: rawThemeConfig?.brandColor ?? null,
+    fontFamily: rawThemeConfig?.fontFamily ?? null,
+    headingFontFamily: rawThemeConfig?.headingFontFamily ?? null,
+    fontScale: rawThemeConfig?.fontScale ?? null,
     darkModeDefault:
       (rawThemeConfig?.darkModeDefault as ThemeMode | undefined) ??
       (data.dark_mode_default as ThemeMode) ??
@@ -110,6 +120,10 @@ function mapDatabaseSettings(data: Record<string, unknown>): WhiteLabelSettings 
     companyName: (data.company_name as string) || defaultBrandConfig.companyName,
     primaryColor: themeConfig.primaryColor,
     accentColor: themeConfig.accentColor,
+    brandColor: themeConfig.brandColor,
+    fontFamily: themeConfig.fontFamily,
+    headingFontFamily: themeConfig.headingFontFamily,
+    fontScale: themeConfig.fontScale,
     darkModeDefault: themeConfig.darkModeDefault,
     emailSignature,
     themeConfig,
@@ -167,6 +181,14 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resolvedTokens = useMemo(() => resolveBrandTokens(settings), [settings]);
+  const resolvedFontVars = useMemo(() => resolveBrandFontVars(settings), [settings]);
+
+  // Typography tokens are theme-agnostic, so apply them independently of the
+  // light/dark colour cascade. This makes the White-Label font selection cascade
+  // to every text component (body + headings + base size).
+  useEffect(() => {
+    applyBrandTokenMap(resolvedFontVars);
+  }, [resolvedFontVars]);
 
   useEffect(() => {
     const applyTheme = (nextTheme: ThemeMode) => {

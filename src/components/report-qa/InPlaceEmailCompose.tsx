@@ -297,20 +297,20 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
               <div className={cn(
                 "p-4 rounded-lg border",
                 pdfError 
-                  ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                  ? "bg-brand-50 dark:bg-brand-950/30 border-brand-200 dark:border-brand-800"
                   : "bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20"
               )}>
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "p-2.5 rounded-lg",
-                    pdfError ? "bg-amber-100 dark:bg-amber-900/50" : "bg-primary/10"
+                    pdfError ? "bg-brand-100 dark:bg-brand-900/50" : "bg-primary/10"
                   )}>
                     {isLoadingPDF ? (
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     ) : (
                       <FileText className={cn(
                         "h-6 w-6",
-                        pdfError ? "text-amber-600" : "text-primary"
+                        pdfError ? "text-brand-600" : "text-primary"
                       )} />
                     )}
                   </div>
@@ -318,7 +318,7 @@ export const InPlaceEmailCompose: React.FC<InPlaceEmailComposeProps> = ({
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm truncate">{attachment.fileName}</p>
                       {!isLoadingPDF && !pdfError && (
-                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-green-300 text-green-600 bg-green-50">
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-success/30 text-success bg-success/10">
                           <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
                           Ready
                         </Badge>

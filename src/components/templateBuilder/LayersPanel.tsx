@@ -197,7 +197,7 @@ export function LayersPanel({
                           )}
                           {typeof (o as any).confidence === 'number' && (o as any).confidence < 0.9 && (
                             <span
-                              className={`text-[9px] font-semibold tabular-nums px-1 rounded ${(o as any).confidence < 0.5 ? 'bg-destructive/15 text-destructive' : 'bg-amber-500/15 text-amber-600'}`}
+                              className={`text-[9px] font-semibold tabular-nums px-1 rounded ${(o as any).confidence < 0.5 ? 'bg-destructive/15 text-destructive' : 'bg-brand-500/15 text-brand-600'}`}
                               title={`Import extraction confidence: ${Math.round((o as any).confidence * 100)}%${(o as any).confidence < 0.5 ? ' — locked by default; unlock to edit' : ''}`}
                             >
                               {Math.round((o as any).confidence * 100)}%

@@ -53,11 +53,11 @@ export function CashFlowCommandHeader({
 
         <div className="flex flex-wrap items-center gap-2 xl:justify-center">
           {hasChanges ? (
-            <Badge variant="outline" className="rounded-full border-orange-300 bg-orange-50 px-3 py-1 text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
+            <Badge variant="outline" className="rounded-full border-warning/30 bg-warning/10 px-3 py-1 text-warning dark:bg-warning/30 dark:text-warning">
               Unsaved Changes
             </Badge>
           ) : (
-            <Badge variant="outline" className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <Badge variant="outline" className="rounded-full border-success/30 bg-success/10 px-3 py-1 text-success dark:bg-success/30 dark:text-success">
               Saved
             </Badge>
           )}
@@ -67,7 +67,7 @@ export function CashFlowCommandHeader({
             </Badge>
           )}
           {comparisonMode && (
-            <Badge variant="outline" className="rounded-full border-blue-200 bg-blue-50 px-3 py-1 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
+            <Badge variant="outline" className="rounded-full border-info/30 bg-info/10 px-3 py-1 text-info dark:bg-info/30 dark:text-info">
               <GitCompare className="mr-1.5 h-3.5 w-3.5" />
               Comparing {comparisonCount} {comparisonCount === 1 ? 'property' : 'properties'}
             </Badge>

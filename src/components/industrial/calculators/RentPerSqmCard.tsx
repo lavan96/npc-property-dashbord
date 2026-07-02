@@ -108,21 +108,21 @@ export function RentPerSqmCard() {
   ];
 
   return (
-    <Card className="overflow-hidden rounded-3xl border-primary/20 bg-gradient-to-br from-card via-card/95 to-amber-500/5 shadow-lg shadow-primary/5 transition-shadow hover:shadow-xl">
+    <Card className="overflow-hidden rounded-3xl border-primary/20 bg-gradient-to-br from-card via-card/95 to-brand-500/5 shadow-lg shadow-primary/5 transition-shadow hover:shadow-xl">
       <CardHeader className="border-b border-border/60 bg-background/30 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle>Rent per m² GLA</CardTitle>
             <CardDescription>Enter rent, area and outgoings, then review the locked $/m² outputs below.</CardDescription>
           </div>
-          <Badge variant="outline" className="rounded-full border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-200 shadow-sm shadow-amber-500/10">Rent metrics</Badge>
+          <Badge variant="outline" className="rounded-full border-brand-500/30 bg-brand-500/10 px-3 py-1 text-brand-200 shadow-sm shadow-brand-500/10">Rent metrics</Badge>
         </div>
       </CardHeader>
       <CardContent className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.95fr)] lg:gap-6">
         <div className="space-y-3">
           <IndustrialMetricAiWorkflow actions={aiActions} />
-          <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 to-background/40 p-4 shadow-inner">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">Editable inputs</p>
+          <div className="rounded-2xl border border-brand-500/20 bg-gradient-to-br from-brand-500/10 to-background/40 p-4 shadow-inner">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-200">Editable inputs</p>
           <CascadedInput label="Base Rent p.a. ($)" value={baseRent.value} placeholder="Pulled from NOI tab or enter manually" source={baseRent.source} onChange={baseRent.setValue} onVerify={baseRent.markVerified} />
           <SourceActions field={baseRent} />
           <CascadedInput label="GLA (m²)" value={gla.value} placeholder="Pulled from property profile or enter manually" source={gla.source} onChange={gla.setValue} onVerify={gla.markVerified} />
@@ -153,15 +153,15 @@ function CascadedInput({ label, value, placeholder, source, onChange, onVerify }
         <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</Label>
         <div className="flex items-center gap-1"><SourceBadge source={source} /><button type="button" className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary transition hover:bg-primary/10 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40" onClick={onVerify}>Verify</button></div>
       </div>
-      <Input type="text" inputMode="decimal" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="h-11 rounded-xl border-amber-500/30 bg-background/90 shadow-inner transition-all hover:border-amber-400/60 focus-visible:ring-amber-400" />
+      <Input type="text" inputMode="decimal" value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="h-11 rounded-xl border-brand-500/30 bg-background/90 shadow-inner transition-all hover:border-brand-400/60 focus-visible:ring-brand-400" />
     </div>
   );
 }
 
 function EmptyState({ critical }: { critical: boolean }) {
   return (
-    <div className={`rounded-2xl border p-3 text-sm shadow-inner ${critical ? 'border-red-500/30 bg-red-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
-      <p className={`flex items-center gap-2 font-semibold ${critical ? 'text-red-200' : 'text-amber-200'}`}><AlertTriangle className="h-4 w-4" />{critical ? 'Check Industrial Inputs' : 'Awaiting Industrial Inputs'}</p>
+    <div className={`rounded-2xl border p-3 text-sm shadow-inner ${critical ? 'border-destructive/30 bg-destructive/10' : 'border-brand-500/30 bg-brand-500/10'}`}>
+      <p className={`flex items-center gap-2 font-semibold ${critical ? 'text-destructive' : 'text-brand-200'}`}><AlertTriangle className="h-4 w-4" />{critical ? 'Check Industrial Inputs' : 'Awaiting Industrial Inputs'}</p>
       <p className="text-muted-foreground">{critical ? 'GLA must be greater than zero before rent benchmarks can be calculated.' : 'Import property size, rent, outgoings and price data to calculate industrial benchmarks.'}</p>
     </div>
   );
@@ -170,7 +170,7 @@ function EmptyState({ critical }: { critical: boolean }) {
 type Tone = 'preliminary' | 'verified' | 'critical';
 
 function OutputRow({ label, value, tooltip, tone, bold, muted, highlight }: { label: string; value: string; tooltip?: string; tone: Tone; bold?: boolean; muted?: boolean; highlight?: boolean }) {
-  const toneClass = tone === 'critical' ? 'text-red-300' : tone === 'verified' ? 'text-green-300' : 'text-amber-300';
+  const toneClass = tone === 'critical' ? 'text-destructive' : tone === 'verified' ? 'text-success' : 'text-brand-300';
   return (
     <div className={`rounded-xl border border-border/50 bg-card/45 px-3 py-2 transition-colors hover:border-primary/25 hover:bg-card/70 flex justify-between items-center gap-4 ${highlight ? 'text-lg font-bold' : bold ? 'font-semibold' : ''} ${muted ? 'text-sm' : ''}`}>
       <span className="flex items-center gap-1 text-muted-foreground">

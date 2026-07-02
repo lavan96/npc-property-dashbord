@@ -16,11 +16,11 @@ import { useCommissionLedger, useCommissionPayouts, useRevenueDashboard, COMMISS
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const STATUS_TONE: Record<CommissionStatus, string> = {
-  forecast: 'bg-amber-500/10 text-amber-700 border-amber-500/30',
-  invoiced: 'bg-blue-500/10 text-blue-700 border-blue-500/30',
-  received: 'bg-green-500/10 text-green-700 border-green-500/30',
-  reconciled: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30',
-  clawed_back: 'bg-red-500/10 text-red-700 border-red-500/30',
+  forecast: 'bg-brand-500/10 text-brand-700 border-brand-500/30',
+  invoiced: 'bg-info/10 text-info border-info/30',
+  received: 'bg-success/10 text-success border-success/30',
+  reconciled: 'bg-success/10 text-success border-success/30',
+  clawed_back: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
 const fmtCurrency = (v: number | null | undefined) =>
@@ -72,7 +72,7 @@ export default function Commissions() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Forecast Net</span>
-                <Clock className="h-4 w-4 text-amber-500" />
+                <Clock className="h-4 w-4 text-brand-500" />
               </div>
               <p className="text-2xl font-bold">{fmtCurrency(stats.totalForecast)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats.forecast} entries</p>
@@ -82,9 +82,9 @@ export default function Commissions() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Received Net</span>
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
               </div>
-              <p className="text-2xl font-bold text-green-600">{fmtCurrency(stats.totalReceived)}</p>
+              <p className="text-2xl font-bold text-success">{fmtCurrency(stats.totalReceived)}</p>
               <p className="text-xs text-muted-foreground mt-1">{stats.received} entries</p>
             </CardContent>
           </Card>
@@ -92,9 +92,9 @@ export default function Commissions() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">Clawback</span>
-                <TrendingUp className="h-4 w-4 text-red-500 rotate-180" />
+                <TrendingUp className="h-4 w-4 text-destructive-foreground0 rotate-180" />
               </div>
-              <p className="text-2xl font-bold text-red-600">{fmtCurrency(stats.totalClawback)}</p>
+              <p className="text-2xl font-bold text-destructive">{fmtCurrency(stats.totalClawback)}</p>
             </CardContent>
           </Card>
           <Card>

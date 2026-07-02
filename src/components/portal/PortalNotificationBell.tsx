@@ -22,9 +22,9 @@ const typeIcons: Record<string, React.ElementType> = {
 };
 
 const typeStyles: Record<string, string> = {
-  info: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  info: 'bg-info/10 text-info dark:text-info',
+  success: 'bg-success/10 text-success dark:text-success',
+  warning: 'bg-brand-500/10 text-brand-600 dark:text-brand-400',
   action: 'bg-primary/10 text-primary',
 };
 

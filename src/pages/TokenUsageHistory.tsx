@@ -49,11 +49,11 @@ const FN_LABEL: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   const normalized = status.toLowerCase();
   const className = normalized === "success" || normalized === "committed" || normalized === "completed" || normalized.includes("commit")
-    ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+    ? "border-success/25 bg-success/10 text-success dark:text-success"
     : normalized.includes("fail") || normalized.includes("cancel") || normalized === "insufficient_funds" || normalized.includes("error")
       ? "border-destructive/25 bg-destructive/10 text-destructive"
       : normalized.includes("reserve") || normalized.includes("pending") || normalized.includes("progress")
-        ? "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+        ? "border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300"
         : "border-border/70 bg-muted/60 text-muted-foreground";
   return (
     <Badge variant="outline" className={cn("max-w-full whitespace-nowrap rounded-full px-2.5 py-0.5 capitalize", className)} title={status}>
@@ -150,18 +150,18 @@ export default function TokenUsageHistory() {
       value: totals.used.toLocaleString(),
       icon: Coins,
       helper: "Actual committed usage",
-      accent: "from-emerald-500/12 via-card to-muted/30",
-      iconClass: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-      valueClass: "text-emerald-700 dark:text-emerald-300",
+      accent: "from-success/12 via-card to-muted/30",
+      iconClass: "border-success/25 bg-success/10 text-success dark:text-success",
+      valueClass: "text-success dark:text-success",
     },
     {
       label: "Tokens Reserved",
       value: totals.reserved.toLocaleString(),
       icon: ShieldCheck,
       helper: "Reserved token capacity",
-      accent: "from-amber-500/15 via-card to-muted/30",
-      iconClass: "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-      valueClass: "text-amber-700 dark:text-amber-300",
+      accent: "from-brand-500/15 via-card to-muted/30",
+      iconClass: "border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300",
+      valueClass: "text-brand-700 dark:text-brand-300",
     },
   ];
 
@@ -171,7 +171,7 @@ export default function TokenUsageHistory() {
         <div className="flex min-w-0 items-start gap-4">
           <div className="relative shrink-0 rounded-2xl border border-primary/25 bg-primary/10 p-3 text-primary shadow-[0_14px_35px_hsl(var(--primary)/0.16)]">
             <FileKey2 className="h-7 w-7" />
-            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-emerald-500" aria-hidden="true" />
+            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-card bg-success" aria-hidden="true" />
           </div>
           <div className="min-w-0 space-y-2">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -227,7 +227,7 @@ export default function TokenUsageHistory() {
         ))}
       </div>
 
-      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] ring-1 ring-black/5 dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/35 dark:ring-white/5">
+      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] ring-1 ring-black/5 dark:border-white/10 dark:bg-background/75 dark:shadow-black/35 dark:ring-white/5">
         <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-1.5">
@@ -406,10 +406,10 @@ export default function TokenUsageHistory() {
                                   <span className="font-medium text-muted-foreground">{r.estimated_tokens.toLocaleString()}</span>
                                 </TableCell>
                                 <TableCell className="align-top text-right tabular-nums">
-                                  <span className="font-semibold text-amber-700 dark:text-amber-300">{r.reserved_tokens.toLocaleString()}</span>
+                                  <span className="font-semibold text-brand-700 dark:text-brand-300">{r.reserved_tokens.toLocaleString()}</span>
                                 </TableCell>
                                 <TableCell className="align-top text-right font-semibold tabular-nums">
-                                  <span className="text-emerald-700 dark:text-emerald-300">{r.actual_tokens.toLocaleString()}</span>
+                                  <span className="text-success dark:text-success">{r.actual_tokens.toLocaleString()}</span>
                                 </TableCell>
                                 <TableCell className="align-top text-right text-xs tabular-nums text-muted-foreground">
                                   <span className="inline-flex rounded-full border border-border/60 bg-muted/45 px-2 py-1 font-medium shadow-sm">{fmtMs(r.duration_ms)}</span>

@@ -23,9 +23,9 @@ type Tone = 'neutral'|'progress'|'positive'|'caution'|'critical';
 
 const TONE_CLASS: Record<Tone, string> = {
   neutral:  'bg-muted text-muted-foreground border-border',
-  progress: 'bg-sky-500/15 text-sky-500 border-sky-500/30',
-  positive: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30',
-  caution:  'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  progress: 'bg-info/15 text-info-foreground0 border-info/30',
+  positive: 'bg-success/15 text-success-foreground0 border-success/30',
+  caution:  'bg-brand-500/15 text-brand-500 border-brand-500/30',
   critical: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
@@ -207,7 +207,7 @@ function DocumentRequestsCard({ requests }: { requests: DocRequest[] }) {
   const outstanding = requests.filter(r => r.status === 'required' || r.status === 'requested');
   const rejected = requests.filter(r => r.status === 'rejected');
   return (
-    <Card className="border-amber-500/30 bg-amber-500/5">
+    <Card className="border-brand-500/30 bg-brand-500/5">
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <FileText className="h-4 w-4" />Documents requested
@@ -352,7 +352,7 @@ function PortfolioSummary({ portfolio }: { portfolio: Portfolio }) {
                   </span>
                   <span className={cn(
                     'whitespace-nowrap',
-                    m.days <= 3 ? 'text-destructive' : m.days <= 7 ? 'text-amber-500' : 'text-muted-foreground',
+                    m.days <= 3 ? 'text-destructive' : m.days <= 7 ? 'text-brand-500' : 'text-muted-foreground',
                   )}>
                     {new Date(m.due_date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} · {m.days}d
                   </span>
@@ -455,7 +455,7 @@ function FileCard({ file }: { file: FileRow }) {
                   <Link to="/client/action-items">Open <ArrowRight className="h-4 w-4 ml-1" /></Link>
                 </Button>
               ) : (
-                <span className="text-emerald-500 flex items-center gap-1 text-sm"><CheckCircle2 className="h-4 w-4" />Clear</span>
+                <span className="text-success-foreground0 flex items-center gap-1 text-sm"><CheckCircle2 className="h-4 w-4" />Clear</span>
               )}
             </div>
             {file.next_task_due && (
@@ -495,7 +495,7 @@ function Stat({
       <div className="flex items-baseline gap-1 mt-0.5">
         <p className="text-sm font-medium truncate">{value}</p>
         {sub && (
-          <span className={cn('text-[10px]', tone === 'caution' ? 'text-amber-500' : 'text-muted-foreground')}>
+          <span className={cn('text-[10px]', tone === 'caution' ? 'text-brand-500' : 'text-muted-foreground')}>
             · {sub}
           </span>
         )}

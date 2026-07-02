@@ -19,16 +19,16 @@ interface BudgetRecommendation {
 }
 
 const typeConfig = {
-  increase: { icon: ArrowUpCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/5', border: 'border-emerald-500/20', label: 'Scale Up' },
-  decrease: { icon: ArrowDownCircle, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/5', border: 'border-amber-500/20', label: 'Reduce' },
-  pause: { icon: PauseCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/5', border: 'border-red-500/20', label: 'Pause' },
-  reallocate: { icon: Repeat, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/5', border: 'border-blue-500/20', label: 'Reallocate' },
+  increase: { icon: ArrowUpCircle, color: 'text-success dark:text-success', bg: 'bg-success/5', border: 'border-success/20', label: 'Scale Up' },
+  decrease: { icon: ArrowDownCircle, color: 'text-brand-600 dark:text-brand-400', bg: 'bg-brand-500/5', border: 'border-brand-500/20', label: 'Reduce' },
+  pause: { icon: PauseCircle, color: 'text-destructive dark:text-destructive', bg: 'bg-destructive/5', border: 'border-destructive/20', label: 'Pause' },
+  reallocate: { icon: Repeat, color: 'text-info dark:text-info', bg: 'bg-info/5', border: 'border-info/20', label: 'Reallocate' },
 };
 
 const priorityBadge = {
-  high: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
-  medium: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-  low: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  high: 'bg-destructive/10 text-destructive dark:text-destructive border-destructive/20',
+  medium: 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/20',
+  low: 'bg-info/10 text-info dark:text-info border-info/20',
 };
 
 interface BudgetAdvisorPanelProps {

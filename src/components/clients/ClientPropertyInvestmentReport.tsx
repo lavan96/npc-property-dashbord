@@ -379,12 +379,12 @@ export function ClientPropertyInvestmentReport({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="h-3 w-3 text-green-500" />;
+        return <CheckCircle2 className="h-3 w-3 text-success-foreground0" />;
       case 'pending':
       case 'processing':
-        return <Clock className="h-3 w-3 text-yellow-500 animate-pulse" />;
+        return <Clock className="h-3 w-3 text-brand-500 animate-pulse" />;
       case 'failed':
-        return <AlertCircle className="h-3 w-3 text-red-500" />;
+        return <AlertCircle className="h-3 w-3 text-destructive-foreground0" />;
       default:
         return null;
     }
@@ -393,7 +393,7 @@ export function ClientPropertyInvestmentReport({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default" className="text-xs bg-green-500">Completed</Badge>;
+        return <Badge variant="default" className="text-xs bg-success">Completed</Badge>;
       case 'pending':
       case 'processing':
         return <Badge variant="secondary" className="text-xs">Processing...</Badge>;

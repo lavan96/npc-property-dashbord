@@ -229,7 +229,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
   const OverrideBadge = () => (
     <Badge 
       variant="secondary" 
-      className="ml-2 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+      className="ml-2 text-xs bg-brand-100 dark:bg-brand-900/30 text-brand-800 dark:text-brand-200 border-brand-300 dark:border-brand-700"
     >
       <PenLine className="h-3 w-3 mr-1" />
       Edited
@@ -426,10 +426,10 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                       <div className={`w-14 h-14 rounded-xl font-bold text-xl flex items-center justify-center shadow-sm ${
                         (() => {
                           const grade = report.investment_score.grade?.toUpperCase();
-                          if (grade === 'A+' || grade === 'A') return 'bg-emerald-500 text-foreground dark:text-white';
-                          if (grade === 'B+' || grade === 'B') return 'bg-yellow-500 text-black';
-                          if (grade === 'C+' || grade === 'C') return 'bg-orange-500 text-foreground dark:text-white';
-                          return 'bg-red-500 text-foreground dark:text-white';
+                          if (grade === 'A+' || grade === 'A') return 'bg-success text-foreground dark:text-white';
+                          if (grade === 'B+' || grade === 'B') return 'bg-brand-500 text-black';
+                          if (grade === 'C+' || grade === 'C') return 'bg-warning text-foreground dark:text-white';
+                          return 'bg-destructive text-foreground dark:text-white';
                         })()
                       }`}>
                         {report.investment_score.grade || '—'}
@@ -454,11 +454,11 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                         ) : (
                           <>
                             <div className="flex items-center gap-1">
-                              <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                              <Star className="h-4 w-4 text-brand-500 fill-brand-500" />
                               <span className={`text-2xl font-bold ${
-                                (report.investment_score.totalScore || 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400' :
-                                (report.investment_score.totalScore || 0) >= 55 ? 'text-yellow-600 dark:text-yellow-400' :
-                                'text-red-600 dark:text-red-400'
+                                (report.investment_score.totalScore || 0) >= 75 ? 'text-success dark:text-success' :
+                                (report.investment_score.totalScore || 0) >= 55 ? 'text-brand-600 dark:text-brand-400' :
+                                'text-destructive dark:text-destructive'
                               }`}>
                                 {report.investment_score.totalScore}
                               </span>
@@ -482,17 +482,17 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
             {/* Manual Overrides Indicator */}
             {hasOverrides && (
               <Collapsible open={showOverrides} onOpenChange={setShowOverrides}>
-                <Card className="flex-shrink-0 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
+                <Card className="flex-shrink-0 border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-900/20">
                   <CardHeader className="pb-3">
                     <CollapsibleTrigger className="w-full">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <PenLine className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-                          <span className="font-semibold text-amber-800 dark:text-amber-200">
+                          <PenLine className="h-4 w-4 text-brand-700 dark:text-brand-300" />
+                          <span className="font-semibold text-brand-800 dark:text-brand-200">
                             {overriddenFields.length} Field{overriddenFields.length !== 1 ? 's' : ''} Manually Edited
                           </span>
                         </div>
-                        <ChevronDown className={`h-4 w-4 text-amber-700 dark:text-amber-300 transition-transform ${showOverrides ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 text-brand-700 dark:text-brand-300 transition-transform ${showOverrides ? 'rotate-180' : ''}`} />
                       </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -501,7 +501,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                           <Badge 
                             key={field.key} 
                             variant="secondary"
-                            className="text-xs font-normal bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                            className="text-xs font-normal bg-brand-100 dark:bg-brand-900/30 text-brand-800 dark:text-brand-200 border-brand-300 dark:border-brand-700"
                           >
                             <PenLine className="h-3 w-3 mr-1" />
                             {field.displayName}
@@ -509,7 +509,7 @@ export function InvestmentReportViewer({ report, isOpen, onClose, onReportUpdate
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        These values appear with <Badge variant="secondary" className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 inline-flex items-center"><PenLine className="h-3 w-3 mr-1" />Edited</Badge> badges in the report content below. Toggle this section to show/hide the badges.
+                        These values appear with <Badge variant="secondary" className="text-xs bg-brand-100 dark:bg-brand-900/30 text-brand-800 dark:text-brand-200 border-brand-300 dark:border-brand-700 inline-flex items-center"><PenLine className="h-3 w-3 mr-1" />Edited</Badge> badges in the report content below. Toggle this section to show/hide the badges.
                       </p>
                     </CollapsibleContent>
                   </CardHeader>

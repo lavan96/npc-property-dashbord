@@ -664,11 +664,11 @@ export function DcfCalculatorCard() {
 
 
   const readinessTone = readinessStatus === 'DCF Verified'
-    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-100'
+    ? 'border-success/40 bg-success/10 text-success-foreground'
     : readinessStatus === 'Cashflow Generated'
       ? 'border-primary/40 bg-primary/10 text-primary'
       : readinessStatus === 'Cashflow Out of Date' || readinessStatus === 'Preliminary DCF Estimate' || readinessStatus === 'Specialist Review Recommended'
-        ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+        ? 'border-brand-500/40 bg-brand-500/10 text-brand-100'
         : parsed.requiredReady
           ? 'border-primary/40 bg-primary/10 text-primary'
           : 'border-border bg-muted/30 text-muted-foreground';
@@ -686,8 +686,8 @@ export function DcfCalculatorCard() {
           </div>
           <div className="flex flex-wrap gap-2 lg:justify-end">
             <Badge variant="outline" className={readinessTone}>{readinessStatus}</Badge>
-            {cashflowCurrent && <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-100">Report-ready draft</Badge>}
-            {cashflowOutOfDate && <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-100">Regeneration required</Badge>}
+            {cashflowCurrent && <Badge variant="outline" className="border-success/40 bg-success/10 text-success-foreground">Report-ready draft</Badge>}
+            {cashflowOutOfDate && <Badge variant="outline" className="border-brand-500/40 bg-brand-500/10 text-brand-100">Regeneration required</Badge>}
           </div>
         </div>
       </CardHeader>
@@ -792,9 +792,9 @@ export function DcfCalculatorCard() {
                 <Badge variant="outline" className={readinessTone}>{cashflowCurrent ? 'Generated' : cashflowOutOfDate ? 'Out of date' : 'Pending'}</Badge>
               </div>
               {readinessStatus === 'Awaiting DCF Inputs' && <p className="mt-2 text-xs leading-5 text-muted-foreground">{EMPTY_HELPER}</p>}
-              {cashflowCurrent && <p className="mt-2 text-xs text-emerald-200">Cashflow generated · {generatedAt ? new Date(generatedAt).toLocaleString() : 'Generated'} · {DCF_CALCULATION_VERSION}</p>}
-              {cashflowOutOfDate && <p className="mt-2 text-xs text-amber-200">Cashflow out of date · regenerate before export.</p>}
-              {!!priorityWarnings.length && <div className="mt-3 space-y-1">{priorityWarnings.map((w) => <p key={w.message} className="text-xs text-amber-100">• {w.message}</p>)}</div>}
+              {cashflowCurrent && <p className="mt-2 text-xs text-success">Cashflow generated · {generatedAt ? new Date(generatedAt).toLocaleString() : 'Generated'} · {DCF_CALCULATION_VERSION}</p>}
+              {cashflowOutOfDate && <p className="mt-2 text-xs text-brand-200">Cashflow out of date · regenerate before export.</p>}
+              {!!priorityWarnings.length && <div className="mt-3 space-y-1">{priorityWarnings.map((w) => <p key={w.message} className="text-xs text-brand-100">• {w.message}</p>)}</div>}
             </section>
 
             <section className="rounded-2xl border bg-muted/10 p-4">
@@ -831,7 +831,7 @@ export function DcfCalculatorCard() {
               <div><Label>AI / Research Estimate Preview</Label><p className="text-xs text-muted-foreground">Preview, edit, accept or reject suggested DCF assumptions before applying them. Estimates never auto-populate fields.</p></div>
               <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => applyEstimates(false)} disabled={!estimates.length}>Accept all estimates</Button><Button size="sm" onClick={() => applyEstimates(true)} disabled={!estimates.some((e) => e.selected)}>Accept selected estimates</Button><Button size="sm" variant="ghost" onClick={() => setEstimatePanelOpen(false)}>Close</Button></div>
             </div>
-            {estimateMessage && <p className="mt-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">{estimateMessage}</p>}
+            {estimateMessage && <p className="mt-3 rounded border border-brand-500/30 bg-brand-500/10 p-2 text-xs text-brand-100">{estimateMessage}</p>}
             {!!estimates.length && <div className="mt-3 space-y-2">{estimates.map((item) => <div key={item.id} className="rounded-md border bg-background/40 p-3 text-xs"><div className="flex flex-wrap items-center justify-between gap-2"><label className="flex items-center gap-2 font-medium"><input type="checkbox" checked={item.selected} onChange={(e) => updateEstimate(item.id, { selected: e.target.checked })} />{item.label}</label><div className="flex flex-wrap gap-1"><Badge variant="outline">{item.origin}</Badge><Badge variant="outline">{item.confidence} confidence</Badge></div></div><div className="mt-2 grid gap-2 md:grid-cols-[220px_1fr]"><div><Label className="text-[11px]">Suggested value</Label><Input className="mt-1 h-8" value={item.value} onChange={(e) => updateEstimate(item.id, { value: e.target.value })} /></div><div className="grid gap-1 text-muted-foreground"><div>Source basis: <span className="text-foreground">{item.sourceBasis}</span></div><div>Missing information: <span className="text-foreground">{item.missingInfo}</span></div><div>Risk notes: <span className="text-foreground">{item.riskNotes}</span></div><div>Recommended verification: <span className="text-foreground">{item.recommendedVerification}</span></div></div></div><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => applyEstimates(true)} disabled={!item.selected}>Apply selected</Button><Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => rejectEstimate(item.id)}>Reject estimate</Button></div></div>)}</div>}
           </section>
         )}
@@ -849,9 +849,9 @@ export function DcfCalculatorCard() {
             </Select>
             <div className="space-y-1 text-xs leading-5 text-muted-foreground">
               <p>Current mode: <span className="font-medium text-foreground">{noiTreatmentLabels[noiTreatmentMode]}</span>. This controls whether vacancy is applied in the DCF or already included in Base NOI.</p>
-              {noiTreatmentMode === 'requires_confirmation' && <p className="text-amber-200">Requires confirmation before generating cashflow.</p>}
-              {vacancyMayBeDoubleCounted && <p className="text-amber-200">Base NOI appears to already include vacancy. Applying vacancy again may double-count vacancy loss.</p>}
-              {!!criticalWarnings.length && <p className="text-red-200">Critical issue: {criticalWarnings[0].message}</p>}
+              {noiTreatmentMode === 'requires_confirmation' && <p className="text-brand-200">Requires confirmation before generating cashflow.</p>}
+              {vacancyMayBeDoubleCounted && <p className="text-brand-200">Base NOI appears to already include vacancy. Applying vacancy again may double-count vacancy loss.</p>}
+              {!!criticalWarnings.length && <p className="text-destructive">Critical issue: {criticalWarnings[0].message}</p>}
             </div>
           </div>
         </section>
@@ -882,13 +882,13 @@ export function DcfCalculatorCard() {
         <section className="rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/20 p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2"><Label className="text-sm font-semibold">Commentary / Report Controls</Label><Button size="sm" variant={includeCommentary ? 'secondary' : 'outline'} onClick={() => setIncludeCommentary((v) => !v)}>Include DCF commentary in report</Button></div>
           <div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={exportBlocked} title={exportBlocked ? 'Generate current cashflow before exporting DCF outputs.' : exportWarning ?? undefined}>Include in client report</Button><Button size="sm" variant="outline" disabled={exportBlocked} title={exportBlocked ? 'Generate current cashflow before exporting DCF outputs.' : exportWarning ?? undefined}>Export cashflow schedule</Button><Button size="sm" variant="outline" disabled={!result || cashflowOutOfDate} title={!result || cashflowOutOfDate ? 'Generate current cashflow before saving a scenario.' : undefined}>Save as scenario</Button></div>
-          {exportBlocked && <p className="mt-2 text-xs text-amber-200">Generate current cashflow before exporting DCF outputs.</p>}{exportWarning && <p className="mt-2 text-xs text-amber-200">{exportWarning}</p>}
+          {exportBlocked && <p className="mt-2 text-xs text-brand-200">Generate current cashflow before exporting DCF outputs.</p>}{exportWarning && <p className="mt-2 text-xs text-brand-200">{exportWarning}</p>}
           {includeCommentary && <Textarea className="mt-3 min-h-[220px]" value={dcfCommentary} onChange={(e) => setDcfCommentary(e.target.value)} placeholder="Generate the base DCF first, then edit commentary before export." />}
         </section>
 
         <section className="rounded-2xl border bg-muted/10 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2"><Label className="text-sm font-semibold">Warnings / Assumptions</Label>{!!dcfWarnings.length && <Button size="sm" variant="link" className="h-auto p-0 text-xs text-primary" onClick={() => setShowWarningLog((v) => !v)}>View all assumptions and warnings</Button>}</div>
-          <div className="mt-3 space-y-1">{priorityWarnings.length ? priorityWarnings.map((w) => <p key={w.message} className="text-xs text-amber-100">• {w.message}</p>) : <p className="text-xs text-muted-foreground">No priority DCF warnings currently detected.</p>}</div>
+          <div className="mt-3 space-y-1">{priorityWarnings.length ? priorityWarnings.map((w) => <p key={w.message} className="text-xs text-brand-100">• {w.message}</p>) : <p className="text-xs text-muted-foreground">No priority DCF warnings currently detected.</p>}</div>
           {showWarningLog && <div className="mt-3 space-y-2 text-xs">{dcfWarnings.length ? dcfWarnings.map((w) => <div key={w.message} className="rounded border bg-background/40 p-2"><div className="font-medium text-foreground">{w.message}</div><div className="text-muted-foreground">Group: {w.group} · Priority: {w.priority}{w.exportBlock ? ' · Blocks export' : ''}</div></div>) : <div className="text-muted-foreground">No DCF warnings currently detected.</div>}</div>}
           <Separator className="my-3" />
           <Label className="text-xs">DCF Assumption History</Label>
@@ -944,7 +944,7 @@ function PanelHeading({ kicker, title, description, badge }: { kicker: string; t
         <Label className="mt-1 block text-sm font-semibold">{title}</Label>
         {description && <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">{description}</p>}
       </div>
-      {badge && <Badge variant="outline" className="w-fit border-amber-500/30 bg-amber-500/10 text-amber-100">{badge}</Badge>}
+      {badge && <Badge variant="outline" className="w-fit border-brand-500/30 bg-brand-500/10 text-brand-100">{badge}</Badge>}
     </div>
   );
 }
@@ -954,7 +954,7 @@ function Field({ label, v, set, step, placeholder, source, pending, onKeep, onUs
     <div className="space-y-1.5 rounded-xl border border-border/60 bg-background/45 p-3">
       <div className="flex items-center justify-between gap-2"><Label className="text-xs">{label}</Label><Badge variant="outline" className="shrink-0 border-primary/30 bg-primary/5 text-[10px] text-primary">{sourceLabels[source]}</Badge></div>
       <Input className="bg-card/80" type="text" inputMode="decimal" step={step} value={v} placeholder={placeholder} onChange={e => set(e.target.value)} />
-      {pending && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] leading-4 text-amber-100"><p className="font-medium">Manual override active — new source value available.</p><p className="text-muted-foreground">{sourceLabels[pending.source]}: {pending.value}</p><div className="mt-1 flex gap-1"><Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onKeep}>Keep override</Button><Button type="button" size="sm" className="h-6 px-2 text-[11px]" onClick={onUseSource}>Use source value</Button></div></div>}
+      {pending && <div className="rounded-lg border border-brand-500/30 bg-brand-500/10 p-2 text-[11px] leading-4 text-brand-100"><p className="font-medium">Manual override active — new source value available.</p><p className="text-muted-foreground">{sourceLabels[pending.source]}: {pending.value}</p><div className="mt-1 flex gap-1"><Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onKeep}>Keep override</Button><Button type="button" size="sm" className="h-6 px-2 text-[11px]" onClick={onUseSource}>Use source value</Button></div></div>}
     </div>
   );
 }

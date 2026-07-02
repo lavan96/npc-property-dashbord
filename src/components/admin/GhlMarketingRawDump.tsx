@@ -69,12 +69,12 @@ interface BridgeRow {
 }
 
 const TYPE_COLOR: Record<string, string> = {
-  form: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  survey: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-  quiz: 'bg-pink-500/15 text-pink-400 border-pink-500/30',
-  funnel: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  funnel_page: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  workflow: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+  form: 'bg-info/15 text-info border-info/30',
+  survey: 'bg-accent/15 text-accent border-accent/30',
+  quiz: 'bg-accent/15 text-accent border-accent/30',
+  funnel: 'bg-brand-500/15 text-brand-400 border-brand-500/30',
+  funnel_page: 'bg-success/15 text-success border-success/30',
+  workflow: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
 function fmtBytes(n: number): string {
@@ -330,12 +330,12 @@ export function GhlMarketingRawDump() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         <Badge variant="outline" className="text-[10px]">JSON</Badge>
-                        {r.has_raw_html && <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-300">HTML</Badge>}
-                        {r.has_markdown && <Badge variant="outline" className="text-[10px] bg-cyan-500/10 text-cyan-400">MD</Badge>}
-                        {r.has_inlined_css && <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-400">CSS</Badge>}
+                        {r.has_raw_html && <Badge variant="outline" className="text-[10px] bg-success/10 text-success">HTML</Badge>}
+                        {r.has_markdown && <Badge variant="outline" className="text-[10px] bg-info/10 text-info">MD</Badge>}
+                        {r.has_inlined_css && <Badge variant="outline" className="text-[10px] bg-info/10 text-info">CSS</Badge>}
                         {r.has_portable && <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary">Portable</Badge>}
-                        {r.has_screenshot && <Badge variant="outline" className="text-[10px] bg-fuchsia-500/10 text-fuchsia-400">Shot</Badge>}
-                        {r.has_submissions && <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-400">Subs</Badge>}
+                        {r.has_screenshot && <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent">Shot</Badge>}
+                        {r.has_submissions && <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive">Subs</Badge>}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -371,7 +371,7 @@ export function GhlMarketingRawDump() {
       <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Workflow className="h-5 w-5 text-rose-400" />
+            <Workflow className="h-5 w-5 text-destructive" />
             Workflow Snapshot Bridge
           </CardTitle>
           <CardDescription>

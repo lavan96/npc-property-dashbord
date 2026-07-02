@@ -292,12 +292,12 @@ export function LeadAttributionPanel() {
   };
 
   const sourceColors: Record<string, string> = {
-    meta: 'bg-blue-500',
-    facebook: 'bg-blue-500',
-    google: 'bg-red-500',
-    referral: 'bg-emerald-500',
-    organic: 'bg-green-500',
-    email: 'bg-purple-500',
+    meta: 'bg-info',
+    facebook: 'bg-info',
+    google: 'bg-destructive',
+    referral: 'bg-success',
+    organic: 'bg-success',
+    email: 'bg-accent',
     unknown: 'bg-muted-foreground',
   };
 
@@ -320,7 +320,7 @@ export function LeadAttributionPanel() {
                 <Megaphone className="h-4 w-4 text-primary" />
               </span>
               <span className="truncate">Lead Source Attribution</span>
-              <Badge variant="secondary" className="rounded-full border-emerald-500/20 bg-emerald-500/10 text-[10px] text-emerald-600 dark:text-emerald-400">CRM Linked</Badge>
+              <Badge variant="secondary" className="rounded-full border-success/20 bg-success/10 text-[10px] text-success dark:text-success">CRM Linked</Badge>
               {enrichedCount > 0 && (
                 <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/5 text-[10px] text-primary">
                   <Sparkles className="h-2.5 w-2.5 mr-0.5" />
@@ -604,9 +604,9 @@ export function LeadAttributionPanel() {
               <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border/50 flex-wrap gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span>Capture:</span>
-                  {autoCount > 0 && <Badge variant="outline" className="text-[9px] bg-emerald-500/5">Auto: {autoCount}</Badge>}
-                  {manualCount > 0 && <Badge variant="outline" className="text-[9px] bg-blue-500/5">Manual: {manualCount}</Badge>}
-                  {csvCount > 0 && <Badge variant="outline" className="text-[9px] bg-amber-500/5">CSV: {csvCount}</Badge>}
+                  {autoCount > 0 && <Badge variant="outline" className="text-[9px] bg-success/5">Auto: {autoCount}</Badge>}
+                  {manualCount > 0 && <Badge variant="outline" className="text-[9px] bg-info/5">Manual: {manualCount}</Badge>}
+                  {csvCount > 0 && <Badge variant="outline" className="text-[9px] bg-brand-500/5">CSV: {csvCount}</Badge>}
                   {enrichedCount > 0 && <Badge variant="outline" className="text-[9px] bg-primary/5">Enriched: {enrichedCount}</Badge>}
                 </div>
                 <div className="flex items-center gap-1.5">

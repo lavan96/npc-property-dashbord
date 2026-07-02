@@ -51,21 +51,21 @@ export function AddPhaseDialog({ open, onOpenChange, planId, nextOrder, onCreate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-sm dark:shadow-black/20 sm:max-w-md dark:border-white/10 dark:bg-slate-950 dark:shadow-black/40">
+      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--background)/0.94)_55%,hsl(var(--primary)/0.08))] p-0 shadow-2xl shadow-sm dark:shadow-black/20 sm:max-w-md dark:border-white/10 dark:bg-background dark:shadow-black/40">
         <DialogHeader className="border-b border-border/60 px-5 py-4 dark:border-white/10">
           <DialogTitle className="text-xl font-bold tracking-tight text-foreground">Add Phase</DialogTitle>
           <p className="text-sm text-muted-foreground">Create the next step in this strategic playbook.</p>
         </DialogHeader>
         <div className="space-y-4 px-5 py-5">
-          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
             <Label htmlFor="game-plan-phase-name">Phase Name</Label>
             <Input id="game-plan-phase-name" value={name} onChange={e => setName(e.target.value)} placeholder="Discovery & Research" className="mt-1.5 h-10 rounded-xl bg-card/80 focus-visible:ring-primary/35" />
           </div>
-          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
             <Label htmlFor="game-plan-phase-description">Description (optional)</Label>
             <Textarea id="game-plan-phase-description" value={description} onChange={e => setDescription(e.target.value)} placeholder="What happens in this phase..." rows={2} className="mt-1.5 rounded-xl bg-card/80 focus-visible:ring-primary/35" />
           </div>
-          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
             <Label>Icon</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               {PHASE_ICONS.map(i => (
@@ -79,7 +79,7 @@ export function AddPhaseDialog({ open, onOpenChange, planId, nextOrder, onCreate
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+          <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
             <Label>Color</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               {PHASE_COLORS.map(c => (
@@ -93,7 +93,7 @@ export function AddPhaseDialog({ open, onOpenChange, planId, nextOrder, onCreate
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+            <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
               <Label>Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -107,7 +107,7 @@ export function AddPhaseDialog({ open, onOpenChange, planId, nextOrder, onCreate
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+            <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm dark:border-white/10 dark:bg-background/35">
               <Label>End Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -124,7 +124,7 @@ export function AddPhaseDialog({ open, onOpenChange, planId, nextOrder, onCreate
             </div>
           </div>
         </div>
-        <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-slate-950/85 sm:flex-row">
+        <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-border/60 bg-background/90 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-background/85 sm:flex-row">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl focus-visible:ring-primary/35">Cancel</Button>
           <Button onClick={handleCreate} disabled={!name.trim() || loading} className="rounded-xl shadow-lg shadow-primary/20 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/25 focus-visible:ring-primary/35 motion-reduce:transition-none motion-reduce:hover:translate-y-0">{loading ? 'Adding...' : 'Add Phase'}</Button>
         </DialogFooter>

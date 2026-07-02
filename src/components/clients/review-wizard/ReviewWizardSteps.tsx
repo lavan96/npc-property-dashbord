@@ -42,7 +42,7 @@ export function ReviewWizardSteps({
               isClickable && "cursor-pointer hover:text-primary",
               !isClickable && "cursor-not-allowed opacity-50",
               isCurrent && "text-primary",
-              isCompleted && "text-green-600"
+              isCompleted && "text-success"
             )}
           >
             {isCompleted ? (

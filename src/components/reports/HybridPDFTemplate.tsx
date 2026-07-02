@@ -1,5 +1,7 @@
 import { forwardRef } from 'react';
 import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { useBrand } from '@/branding/BrandProvider';
+import { getBrandPdfPalette } from '@/branding/brandPalette';
 
 interface HybridPDFTemplateProps {
   suburb: string;
@@ -21,7 +23,9 @@ export const HybridPDFTemplate = forwardRef<HTMLDivElement, HybridPDFTemplatePro
   ({ suburb, state, profileContent, marketData, performanceContent, demographicsContent, infrastructureContent, investmentInsights, investmentScore }, ref) => {
     const { settings } = useGlobalReportSettings();
     const { contactDetails, disclaimer } = settings;
-    
+    const { settings: brand } = useBrand();
+    const palette = getBrandPdfPalette(brand.brandColor);
+
     const cleanText = (text: string) => {
       return text
         .replace(/^[*#]+\s*/gm, '')

@@ -364,8 +364,8 @@ export function ReportLibraryPicker({ onAdd, existingNames = [], disabled, class
         <ScrollArea className="flex-1 min-h-0">
           <div className="space-y-2 px-3 py-3 sm:px-4">
             {loading ? (
-              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-amber-500/25 bg-amber-500/10 p-8 text-center shadow-sm">
-                <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/25 bg-amber-500/15 text-amber-600 shadow-sm dark:text-amber-300">
+              <div className="mx-auto my-10 max-w-sm rounded-2xl border border-brand-500/25 bg-brand-500/10 p-8 text-center shadow-sm">
+                <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-500/25 bg-brand-500/15 text-brand-600 shadow-sm dark:text-brand-300">
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </span>
                 <p className="font-semibold text-foreground">Loading report library…</p>

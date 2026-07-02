@@ -209,19 +209,19 @@ export const TrendAlerts = ({ calls }: TrendAlertsProps) => {
 
   const getAlertIcon = (alert: TrendAlert) => {
     switch (alert.severity) {
-      case 'critical': return <AlertCircle className="w-5 h-5 text-red-500" />;
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-amber-500" />;
-      case 'positive': return <CheckCircle className="w-5 h-5 text-emerald-500" />;
-      default: return <Bell className="w-5 h-5 text-blue-500" />;
+      case 'critical': return <AlertCircle className="w-5 h-5 text-destructive-foreground0" />;
+      case 'warning': return <AlertTriangle className="w-5 h-5 text-brand-500" />;
+      case 'positive': return <CheckCircle className="w-5 h-5 text-success-foreground0" />;
+      default: return <Bell className="w-5 h-5 text-info-foreground0" />;
     }
   };
 
   const getAlertBorderColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'border-red-500/30 bg-red-500/5';
-      case 'warning': return 'border-amber-500/30 bg-amber-500/5';
-      case 'positive': return 'border-emerald-500/30 bg-emerald-500/5';
-      default: return 'border-blue-500/30 bg-blue-500/5';
+      case 'critical': return 'border-destructive/30 bg-destructive/5';
+      case 'warning': return 'border-brand-500/30 bg-brand-500/5';
+      case 'positive': return 'border-success/30 bg-success/5';
+      default: return 'border-info/30 bg-info/5';
     }
   };
 
@@ -244,37 +244,37 @@ export const TrendAlerts = ({ calls }: TrendAlertsProps) => {
             <p className="text-xl font-bold">{alerts.length}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-red-500/5 to-card">
+        <Card className="bg-gradient-to-br from-destructive/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-red-500/10">
-                <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+              <div className="p-1.5 rounded-lg bg-destructive/10">
+                <AlertCircle className="w-3.5 h-3.5 text-destructive-foreground0" />
               </div>
               <span className="text-xs text-muted-foreground">Critical</span>
             </div>
-            <p className="text-xl font-bold text-red-500">{criticalCount}</p>
+            <p className="text-xl font-bold text-destructive-foreground0">{criticalCount}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/5 to-card">
+        <Card className="bg-gradient-to-br from-brand-500/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-amber-500/10">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <div className="p-1.5 rounded-lg bg-brand-500/10">
+                <AlertTriangle className="w-3.5 h-3.5 text-brand-500" />
               </div>
               <span className="text-xs text-muted-foreground">Warning</span>
             </div>
-            <p className="text-xl font-bold text-amber-500">{warningCount}</p>
+            <p className="text-xl font-bold text-brand-500">{warningCount}</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-emerald-500/5 to-card">
+        <Card className="bg-gradient-to-br from-success/5 to-card">
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+              <div className="p-1.5 rounded-lg bg-success/10">
+                <TrendingUp className="w-3.5 h-3.5 text-success-foreground0" />
               </div>
               <span className="text-xs text-muted-foreground">Positive</span>
             </div>
-            <p className="text-xl font-bold text-emerald-500">{positiveCount}</p>
+            <p className="text-xl font-bold text-success-foreground0">{positiveCount}</p>
           </CardContent>
         </Card>
       </div>
@@ -293,7 +293,7 @@ export const TrendAlerts = ({ calls }: TrendAlertsProps) => {
         <CardContent>
           {alerts.length === 0 ? (
             <div className="text-center py-12">
-              <CheckCircle className="w-12 h-12 mx-auto text-emerald-500 mb-3" />
+              <CheckCircle className="w-12 h-12 mx-auto text-success-foreground0 mb-3" />
               <p className="font-medium">All Clear!</p>
               <p className="text-sm text-muted-foreground">No trend alerts at this time. Everything is running smoothly.</p>
             </div>
@@ -314,7 +314,7 @@ export const TrendAlerts = ({ calls }: TrendAlertsProps) => {
                             {alert.change !== null && (
                               <Badge 
                                 variant="outline" 
-                                className={alert.change > 0 ? 'text-red-500 border-red-500/30' : 'text-emerald-500 border-emerald-500/30'}
+                                className={alert.change > 0 ? 'text-destructive-foreground0 border-destructive/30' : 'text-success-foreground0 border-success/30'}
                               >
                                 {alert.change > 0 ? '+' : ''}{alert.change.toFixed(0)}%
                               </Badge>

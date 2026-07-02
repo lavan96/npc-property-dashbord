@@ -149,7 +149,7 @@ export function FinancePortalMessagesPanel({ clientId }: Props) {
       </div>
 
       {mode === 'allocated' && allocationStatus && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800">
+        <div className="rounded-lg border border-brand-500/30 bg-brand-500/10 px-3 py-2 text-xs text-brand-800">
           Command Centre allocated this thread as <strong>{allocationStatus.replace(/_/g, ' ')}</strong>. Reply/action only within this permitted thread.
         </div>
       )}

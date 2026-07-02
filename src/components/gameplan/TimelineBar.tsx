@@ -3,7 +3,7 @@ import { type GamePlanPhase } from '@/hooks/useGamePlans';
 const phaseStatusColors: Record<string, string> = {
   not_started: 'bg-muted',
   in_progress: 'bg-primary',
-  completed: 'bg-green-500',
+  completed: 'bg-success',
   blocked: 'bg-destructive',
 };
 

@@ -79,13 +79,13 @@ const fileCategories = [
 ];
 
 const categoryColors: Record<string, string> = {
-  general: 'bg-gray-500/10 text-gray-600',
-  contract: 'bg-blue-500/10 text-blue-600',
-  id: 'bg-purple-500/10 text-purple-600',
-  financial: 'bg-green-500/10 text-green-600',
-  property: 'bg-orange-500/10 text-orange-600',
-  correspondence: 'bg-cyan-500/10 text-cyan-600',
-  other: 'bg-slate-500/10 text-slate-600',
+  general: 'bg-muted0/10 text-muted-foreground',
+  contract: 'bg-info/10 text-info',
+  id: 'bg-accent/10 text-accent',
+  financial: 'bg-success/10 text-success',
+  property: 'bg-warning/10 text-warning',
+  correspondence: 'bg-info/10 text-info',
+  other: 'bg-muted0/10 text-muted-foreground',
 };
 
 /**

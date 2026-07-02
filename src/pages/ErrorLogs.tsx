@@ -65,12 +65,12 @@ interface ErrorStats {
 }
 
 const SOURCE_CONFIG: Record<ErrorSource, { label: string; icon: React.ElementType; color: string }> = {
-  investment_report: { label: 'Investment Reports', icon: FileText, color: 'text-blue-500' },
-  bulk_generation: { label: 'Bulk Generation', icon: Zap, color: 'text-purple-500' },
-  vapi_call: { label: 'Voice AI (Vapi)', icon: Phone, color: 'text-green-500' },
-  api_service: { label: 'API Services', icon: Bot, color: 'text-orange-500' },
-  email_sync: { label: 'Email Sync', icon: Mail, color: 'text-cyan-500' },
-  automation: { label: 'Automation', icon: RefreshCw, color: 'text-pink-500' },
+  investment_report: { label: 'Investment Reports', icon: FileText, color: 'text-info-foreground0' },
+  bulk_generation: { label: 'Bulk Generation', icon: Zap, color: 'text-accent-foreground0' },
+  vapi_call: { label: 'Voice AI (Vapi)', icon: Phone, color: 'text-success-foreground0' },
+  api_service: { label: 'API Services', icon: Bot, color: 'text-warning-foreground0' },
+  email_sync: { label: 'Email Sync', icon: Mail, color: 'text-info-foreground0' },
+  automation: { label: 'Automation', icon: RefreshCw, color: 'text-accent-foreground0' },
 };
 
 const SEVERITY_CONFIG: Record<ErrorSeverity, { label: string; variant: 'destructive' | 'default' | 'outline'; icon: React.ElementType }> = {
@@ -385,7 +385,7 @@ export default function ErrorLogs() {
       {isLoading && !stats && <ErrorStatsSkeleton />}
       {stats && (
         <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,13.5rem),1fr))] gap-4">
-          <Card className="group min-w-0 overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--muted)/0.18))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-border/70 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--muted)/0.18))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_48px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Total Errors</CardTitle>
               <span className="rounded-xl border border-border/70 bg-background/70 p-2 text-muted-foreground">
@@ -400,7 +400,7 @@ export default function ErrorLogs() {
             </CardContent>
           </Card>
 
-          <Card className="group min-w-0 overflow-hidden rounded-2xl border-destructive/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-destructive/35 dark:border-destructive/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-destructive/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-destructive/35 dark:border-destructive/25 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Critical</CardTitle>
               <span className="rounded-xl border border-destructive/25 bg-destructive/10 p-2 text-destructive">
@@ -413,7 +413,7 @@ export default function ErrorLogs() {
             </CardContent>
           </Card>
 
-          <Card className="group min-w-0 overflow-hidden rounded-2xl border-destructive/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-destructive/35 dark:border-destructive/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-destructive/25 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--destructive)/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-destructive/35 dark:border-destructive/25 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Errors</CardTitle>
               <span className="rounded-xl border border-destructive/25 bg-destructive/10 p-2 text-destructive">
@@ -426,7 +426,7 @@ export default function ErrorLogs() {
             </CardContent>
           </Card>
 
-          <Card className="group min-w-0 overflow-hidden rounded-2xl border-warning/30 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--warning)/0.08))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-warning/45 dark:border-warning/25 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-warning/30 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(var(--warning)/0.08))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-warning/45 dark:border-warning/25 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Warnings</CardTitle>
               <span className="rounded-xl border border-warning/30 bg-warning/10 p-2 text-warning">
@@ -439,11 +439,11 @@ export default function ErrorLogs() {
             </CardContent>
           </Card>
 
-          <Card className="group min-w-0 overflow-hidden rounded-2xl border-emerald-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(160_84%_39%/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30 dark:border-emerald-400/20 dark:bg-slate-950/80 dark:ring-white/10 dark:shadow-black/25">
+          <Card className="group min-w-0 overflow-hidden rounded-2xl border-success/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.98),hsl(160_84%_39%/0.06))] shadow-[0_14px_40px_rgba(15,23,42,0.07)] ring-1 ring-border/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-success/30 dark:border-success/20 dark:bg-background/80 dark:ring-white/10 dark:shadow-black/25">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="min-w-0 truncate text-sm font-medium text-muted-foreground">Trend</CardTitle>
               {stats.trend === 'down' ? (
-                <span className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-2 text-emerald-500">
+                <span className="rounded-xl border border-success/25 bg-success/10 p-2 text-success-foreground0">
                   <TrendingDown className="h-4 w-4" />
                 </span>
               ) : stats.trend === 'up' ? (
@@ -467,7 +467,7 @@ export default function ErrorLogs() {
       )}
 
       {/* Filters */}
-      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(var(--background)/0.90)_54%,hsl(var(--primary)/0.07))] shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/70 dark:ring-white/10 dark:shadow-black/25">
+      <Card className="min-w-0 overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(var(--background)/0.90)_54%,hsl(var(--primary)/0.07))] shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:bg-background/70 dark:ring-white/10 dark:shadow-black/25">
         <CardHeader className="pb-3">
           <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
@@ -486,13 +486,13 @@ export default function ErrorLogs() {
                   placeholder="Search errors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="min-w-0 rounded-2xl border-border/70 bg-background/70 pl-9 pr-3 shadow-inner shadow-black/5 transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-primary/30 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55"
+                  className="min-w-0 rounded-2xl border-border/70 bg-background/70 pl-9 pr-3 shadow-inner shadow-black/5 transition-all duration-200 placeholder:text-muted-foreground/70 hover:border-primary/30 focus-visible:border-primary/45 focus-visible:ring-2 focus-visible:ring-primary/35 dark:border-white/10 dark:bg-background/55"
                 />
               </div>
             </div>
 
             <Select value={selectedSource} onValueChange={(v) => setSelectedSource(v as ErrorSource | 'all')}>
-              <SelectTrigger aria-label="Filter error logs by source" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+              <SelectTrigger aria-label="Filter error logs by source" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-background/55">
                 <SelectValue placeholder="All Sources" />
               </SelectTrigger>
               <SelectContent className="max-h-72 min-w-[190px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
@@ -506,7 +506,7 @@ export default function ErrorLogs() {
             </Select>
 
             <Select value={selectedSeverity} onValueChange={(v) => setSelectedSeverity(v as ErrorSeverity | 'all')}>
-              <SelectTrigger aria-label="Filter error logs by severity" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+              <SelectTrigger aria-label="Filter error logs by severity" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-background/55">
                 <SelectValue placeholder="All Severities" />
               </SelectTrigger>
               <SelectContent className="max-h-72 min-w-[160px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
@@ -518,7 +518,7 @@ export default function ErrorLogs() {
             </Select>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as '24h' | '7d' | '30d')}>
-              <SelectTrigger aria-label="Filter error logs by date range" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-slate-950/55">
+              <SelectTrigger aria-label="Filter error logs by date range" className="w-full min-w-0 rounded-2xl border-border/70 bg-background/80 shadow-sm transition-all duration-200 hover:border-primary/30 focus:ring-2 focus:ring-primary/35 dark:border-white/10 dark:bg-background/55">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="max-h-72 min-w-[145px] rounded-2xl border-border/70 bg-popover/95 shadow-2xl backdrop-blur-xl dark:border-white/10">
@@ -542,7 +542,7 @@ export default function ErrorLogs() {
 
       {/* Error Tabs by Source */}
       <Tabs defaultValue="all" className="min-w-0">
-        <TabsList aria-label="Filter error logs by source category" className="h-auto w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto rounded-[1.35rem] border border-primary/15 bg-card/80 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-black/20">
+        <TabsList aria-label="Filter error logs by source category" className="h-auto w-full min-w-0 max-w-full justify-start gap-2 overflow-x-auto rounded-[1.35rem] border border-primary/15 bg-card/80 p-2 shadow-[0_14px_42px_rgba(15,23,42,0.07)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 dark:bg-background/45 dark:shadow-black/20">
           <TabsTrigger value="all" aria-label={`Show all error logs (${filteredErrors.length})`} className="min-w-max gap-2 rounded-2xl border border-transparent px-4 py-2 text-muted-foreground transition-all duration-200 data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-[0_12px_30px_hsl(var(--primary)/0.22)]">
             All
             <Badge variant="secondary" className="ml-1 rounded-full bg-background/80 px-2 text-foreground data-[state=active]:bg-primary-foreground/20">{filteredErrors.length}</Badge>
@@ -595,7 +595,7 @@ function ErrorStatsSkeleton() {
     <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,13.5rem),1fr))] gap-4" role="status" aria-busy="true" aria-label="Loading error summary">
       <span className="sr-only">Loading error summary</span>
       {Array.from({ length: 5 }).map((_, index) => (
-        <Card key={index} className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10">
+        <Card key={index} className="min-w-0 overflow-hidden rounded-2xl border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-background/80 dark:ring-white/10">
           <CardContent className="space-y-4 p-6">
             <div className="flex items-center justify-between gap-3">
               <div className="h-4 w-24 animate-pulse rounded-full bg-muted" />
@@ -645,7 +645,7 @@ function ErrorListSkeleton() {
     <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading error records">
       <span className="sr-only">Loading error records</span>
       {Array.from({ length: 3 }).map((_, index) => (
-        <Card key={index} className="min-w-0 overflow-hidden rounded-[1.35rem] border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-slate-950/80 dark:ring-white/10">
+        <Card key={index} className="min-w-0 overflow-hidden rounded-[1.35rem] border-border/70 bg-card/90 ring-1 ring-border/40 dark:border-white/10 dark:bg-background/80 dark:ring-white/10">
           <CardContent className="p-5">
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex min-w-0 flex-1 gap-3">
@@ -694,9 +694,9 @@ function ErrorList({
 
   if (errors.length === 0) {
     return (
-      <Card className={`min-w-0 overflow-hidden rounded-[1.5rem] border ${hasActiveFilters ? 'border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--primary)/0.06))]' : 'border-emerald-500/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(160_84%_39%/0.06))]'} shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25`}>
+      <Card className={`min-w-0 overflow-hidden rounded-[1.5rem] border ${hasActiveFilters ? 'border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--primary)/0.06))]' : 'border-success/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(160_84%_39%/0.06))]'} shadow-[0_16px_48px_rgba(15,23,42,0.08)] ring-1 ring-border/40 dark:border-white/10 dark:ring-white/10 dark:shadow-black/25`}>
         <CardContent className="flex min-w-0 flex-col items-center justify-center px-6 py-12 text-center">
-          <span className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border ${hasActiveFilters ? 'border-primary/25 bg-primary/10 text-primary' : 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500'} shadow-sm`}>
+          <span className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border ${hasActiveFilters ? 'border-primary/25 bg-primary/10 text-primary' : 'border-success/25 bg-success/10 text-success-foreground0'} shadow-sm`}>
             {hasActiveFilters ? <Search className="h-7 w-7" /> : <CheckCircle2 className="h-7 w-7" />}
           </span>
           <h3 className="text-lg font-semibold text-foreground">No errors found</h3>
@@ -782,7 +782,7 @@ function ErrorCard({
           <CardHeader aria-label={`${isExpanded ? 'Collapse' : 'Expand'} details for ${rowLabel}`} className="cursor-pointer px-4 py-4 transition-colors hover:bg-background/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-5">
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex min-w-0 flex-1 items-start gap-3">
-                <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-background/70 shadow-sm dark:border-white/10 dark:bg-slate-950/55 ${sourceConfig.color}`}>
+                <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-background/70 shadow-sm dark:border-white/10 dark:bg-background/55 ${sourceConfig.color}`}>
                   <SourceIcon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1 space-y-2">
@@ -791,14 +791,14 @@ function ErrorCard({
                       <SeverityIcon className="h-3 w-3" />
                       {severityConfig.label}
                     </Badge>
-                    <Badge variant="secondary" className="max-w-full gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-xs font-medium text-foreground dark:border-white/10 dark:bg-slate-950/55">
+                    <Badge variant="secondary" className="max-w-full gap-1 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-xs font-medium text-foreground dark:border-white/10 dark:bg-background/55">
                       <SourceIcon className="h-3 w-3 shrink-0" />
                       <span className="truncate">{sourceConfig.label}</span>
                     </Badge>
                     <Badge variant="outline" className="min-w-0 max-w-full rounded-full bg-background/70 px-2.5 py-1 font-mono text-xs" title={error.errorCode}>
                       <span className="truncate">{error.errorCode}</span>
                     </Badge>
-                    <span className="flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs text-muted-foreground dark:border-white/10 dark:bg-slate-950/45">
+                    <span className="flex min-w-0 max-w-full items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-xs text-muted-foreground dark:border-white/10 dark:bg-background/45">
                       <Clock className="h-3 w-3 shrink-0" />
                       <span className="truncate">{formatDistanceToNow(error.createdAt, { addSuffix: true })}</span>
                     </span>
@@ -836,7 +836,7 @@ function ErrorCard({
                     </Button>
                   </Link>
                 )}
-                <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-foreground dark:border-white/10 dark:bg-slate-950/45">
+                <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-foreground dark:border-white/10 dark:bg-background/45">
                   {isExpanded ? (
                     <ChevronUp className="h-5 w-5" />
                   ) : (
@@ -852,7 +852,7 @@ function ErrorCard({
           <CardContent className="space-y-4 px-4 pb-5 pt-0 sm:px-5">
             <div className="min-w-0 border-t border-border/60 pt-4 dark:border-white/10">
               <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-                <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-background/40">
                   <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
                     <h4 className="min-w-0 truncate text-sm font-semibold text-foreground">Error Summary</h4>
                     <Badge variant={severityConfig.variant} className="shrink-0 rounded-full px-2.5 py-1">
@@ -879,7 +879,7 @@ function ErrorCard({
                   </dl>
                 </div>
 
-                <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                <div className="min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-background/40">
                   <h4 className="mb-3 text-sm font-semibold text-foreground">Source & Context</h4>
                   <dl className="space-y-2 text-sm">
                     <div className="grid min-w-0 gap-1 sm:grid-cols-[7rem_1fr] sm:items-start">
@@ -903,12 +903,12 @@ function ErrorCard({
               </div>
 
               {error.metadata && Object.keys(error.metadata).length > 0 && (
-                <div className="mt-4 min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                <div className="mt-4 min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-background/40">
                   <h4 className="mb-3 text-sm font-semibold text-foreground">Technical Metadata</h4>
                   <dl className="grid min-w-0 gap-2 text-sm md:grid-cols-2">
                     {Object.entries(error.metadata).map(([key, value]) => (
                       value && (
-                        <div key={key} className="grid min-w-0 gap-1 rounded-xl border border-border/50 bg-card/75 p-3 dark:border-white/10 dark:bg-slate-950/35">
+                        <div key={key} className="grid min-w-0 gap-1 rounded-xl border border-border/50 bg-card/75 p-3 dark:border-white/10 dark:bg-background/35">
                           <dt className="text-xs capitalize text-muted-foreground">{key.replace(/([A-Z])/g, ' $1').trim()}:</dt>
                           <dd className="min-w-0 break-words font-mono text-xs text-foreground" title={String(value)}>{String(value)}</dd>
                         </div>
@@ -919,7 +919,7 @@ function ErrorCard({
               )}
 
               {error.rawError && (
-                <div className="mt-4 min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-slate-950/40">
+                <div className="mt-4 min-w-0 rounded-2xl border border-border/60 bg-background/65 p-4 shadow-inner shadow-black/5 dark:border-white/10 dark:bg-background/40">
                   <h4 className="mb-3 text-sm font-semibold text-foreground">Diagnostic Details</h4>
                   <pre className="max-h-48 max-w-full min-w-0 overflow-auto rounded-xl border border-border/60 bg-muted/70 p-3 text-xs leading-5 text-foreground [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:border-white/10 whitespace-pre-wrap break-all">
                     {error.rawError}

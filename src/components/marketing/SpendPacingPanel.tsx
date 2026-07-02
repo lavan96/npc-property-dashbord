@@ -128,7 +128,7 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
               </Badge>
             )}
             {underSpending > 0 && (
-              <Badge className="rounded-full border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400">
+              <Badge className="rounded-full border-brand-500/30 bg-brand-500/15 text-[10px] text-brand-600 dark:text-brand-400">
                 {underSpending} underspending
               </Badge>
             )}
@@ -140,10 +140,10 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
           {pacingData.map((pacing) => {
             const barWidth = Math.min(pacing.pacingPercent, 150);
             const barColor = pacing.pacingStatus === 'overspend'
-              ? 'bg-red-500'
+              ? 'bg-destructive'
               : pacing.pacingStatus === 'underspend'
-                ? 'bg-amber-500'
-                : 'bg-emerald-500';
+                ? 'bg-brand-500'
+                : 'bg-success';
 
             return (
               <div key={pacing.id} className="space-y-3 rounded-2xl border border-border/60 bg-background/40 p-3 shadow-sm transition-colors hover:border-primary/25 hover:bg-background/55">
@@ -156,16 +156,16 @@ export function SpendPacingPanel({ campaigns, insights, datePreset, loading }: S
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <span className={cn('rounded-full border bg-background/60 px-2 py-1 text-sm font-mono font-semibold', 
-                      pacing.pacingStatus === 'overspend' ? 'text-red-600 dark:text-red-400' :
-                      pacing.pacingStatus === 'underspend' ? 'text-amber-600 dark:text-amber-400' :
-                      'text-emerald-600 dark:text-emerald-400'
+                      pacing.pacingStatus === 'overspend' ? 'text-destructive dark:text-destructive' :
+                      pacing.pacingStatus === 'underspend' ? 'text-brand-600 dark:text-brand-400' :
+                      'text-success dark:text-success'
                     )}>
                       {pacing.pacingPercent.toFixed(0)}%
                     </span>
                     {pacing.pacingStatus === 'overspend' && (
                       <Tooltip>
                         <TooltipTrigger>
-                          <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+                          <AlertTriangle className="h-3.5 w-3.5 text-destructive-foreground0" />
                         </TooltipTrigger>
                         <TooltipContent>
                           Spending faster than expected. Projected to exhaust budget early.

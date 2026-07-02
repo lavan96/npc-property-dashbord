@@ -89,7 +89,7 @@ export function RegenerateWithPerplexityButton({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-teal-500" />
+              <Sparkles className="h-5 w-5 text-success-foreground0" />
               Regenerate with Perplexity AI?
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">

@@ -90,7 +90,7 @@ export default function TemplateSharePreview() {
         </div>
         <div className="flex items-center gap-2">
           {isPreviewMode && (
-            <span className="text-[10px] uppercase tracking-wider rounded bg-yellow-500/20 text-yellow-700 px-2 py-0.5 font-semibold">
+            <span className="text-[10px] uppercase tracking-wider rounded bg-brand-500/20 text-brand-700 px-2 py-0.5 font-semibold">
               Preview
             </span>
           )}

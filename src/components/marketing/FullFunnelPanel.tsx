@@ -102,7 +102,7 @@ export function FullFunnelPanel() {
                   Lead → Deal: <span className="font-mono font-semibold">{formatPct(stages[1].value, stages[0].value)}</span>
                 </Badge>
                 {stages[4]?.value > 0 && (
-                  <Badge variant="outline" className="gap-1 rounded-full border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-600 dark:text-emerald-400">
+                  <Badge variant="outline" className="gap-1 rounded-full border-success/30 bg-success/10 text-xs text-success dark:text-success">
                     Lead → Settled: <span className="font-mono font-semibold">{formatPct(stages[4].value, stages[0].value)}</span>
                   </Badge>
                 )}

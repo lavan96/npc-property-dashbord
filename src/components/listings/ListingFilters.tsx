@@ -106,11 +106,11 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
   return (
     <Dialog open={isOpen} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="relative h-10 rounded-full border-border/70 bg-background/90 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/60 hover:bg-amber-50/80 hover:text-amber-700 focus-visible:ring-2 focus-visible:ring-amber-400/35 dark:border-white/10 dark:bg-slate-950/55 dark:hover:bg-amber-400/10 dark:hover:text-amber-200">
+        <Button variant="outline" size="sm" className="relative h-10 rounded-full border-border/70 bg-background/90 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-400/60 hover:bg-brand-50/80 hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-brand-400/35 dark:border-white/10 dark:bg-background/55 dark:hover:bg-brand-400/10 dark:hover:text-brand-200">
           <Filter className="h-4 w-4 mr-2" />
           Filters
           {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 p-0 text-xs text-foreground dark:text-white shadow-sm">
+            <Badge variant="secondary" className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 p-0 text-xs text-foreground dark:text-white shadow-sm">
               {activeFilterCount}
             </Badge>
           )}
@@ -364,21 +364,21 @@ export function ListingFilters({ filters, setFilters, uniqueValues }: ListingFil
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Filters</h4>
               <div className="flex flex-wrap gap-3">
-                <label className="flex min-w-[180px] flex-1 cursor-pointer items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3 transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-50/60 focus-within:ring-2 focus-within:ring-amber-400/30 dark:hover:bg-amber-400/10">
+                <label className="flex min-w-[180px] flex-1 cursor-pointer items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-400/50 hover:bg-brand-50/60 focus-within:ring-2 focus-within:ring-brand-400/30 dark:hover:bg-brand-400/10">
                   <Checkbox
                     checked={localFilters.hasInspection}
                     onCheckedChange={(checked) => setLocalFilters({ ...localFilters, hasInspection: !!checked })}
                   />
                   <span className="text-sm font-medium">Has inspection scheduled</span>
                 </label>
-                <label className="flex min-w-[180px] flex-1 cursor-pointer items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3 transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-50/60 focus-within:ring-2 focus-within:ring-amber-400/30 dark:hover:bg-amber-400/10">
+                <label className="flex min-w-[180px] flex-1 cursor-pointer items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-400/50 hover:bg-brand-50/60 focus-within:ring-2 focus-within:ring-brand-400/30 dark:hover:bg-brand-400/10">
                   <Checkbox
                     checked={localFilters.lowConfidence}
                     onCheckedChange={(checked) => setLocalFilters({ ...localFilters, lowConfidence: !!checked })}
                   />
                   <span className="text-sm font-medium">Low confidence only</span>
                 </label>
-                <label className="flex min-w-[180px] flex-1 cursor-pointer items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3 transition-all hover:-translate-y-0.5 hover:border-amber-400/50 hover:bg-amber-50/60 focus-within:ring-2 focus-within:ring-amber-400/30 dark:hover:bg-amber-400/10">
+                <label className="flex min-w-[180px] flex-1 cursor-pointer items-center gap-2 rounded-xl border border-border/70 bg-muted/30 p-3 transition-all hover:-translate-y-0.5 hover:border-brand-400/50 hover:bg-brand-50/60 focus-within:ring-2 focus-within:ring-brand-400/30 dark:hover:bg-brand-400/10">
                   <Checkbox
                     checked={localFilters.offMarket}
                     onCheckedChange={(checked) => setLocalFilters({ ...localFilters, offMarket: !!checked })}

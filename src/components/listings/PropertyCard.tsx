@@ -24,12 +24,12 @@ import {
 import { cn } from '@/lib/utils';
 
 const LISTING_CARD_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-[0.02em] shadow-sm';
-const LISTING_CARD_PROPERTY_TYPE_BADGE = 'border-slate-200/80 bg-slate-50/90 text-slate-700 dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-200';
+const LISTING_CARD_PROPERTY_TYPE_BADGE = 'border-border/80 bg-muted/90 text-foreground dark:border-white/10 dark:bg-white/[0.06] dark:text-foreground';
 const LISTING_CARD_CONFIDENCE_BADGE = 'rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
 const getListingCardConfidenceBadgeTone = (confidence: number) =>
   confidence >= 0.7
-    ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-400/30 dark:bg-teal-400/10 dark:text-teal-200'
-    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200';
+    ? 'border-success/30 bg-success/10 text-success dark:border-success/30 dark:bg-success/10 dark:text-success'
+    : 'border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-400/30 dark:bg-brand-400/10 dark:text-brand-200';
 
 interface PropertyCardProps {
   listing: PropertyListing;

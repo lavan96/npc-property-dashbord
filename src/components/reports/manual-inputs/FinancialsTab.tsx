@@ -393,11 +393,11 @@ export function FinancialsTab({
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full justify-between p-4 h-auto border-2 border-dashed border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/5 rounded-lg"
+            className="w-full justify-between p-4 h-auto border-2 border-dashed border-brand-500/30 hover:border-brand-500/50 hover:bg-brand-500/5 rounded-lg"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/10">
-                <Banknote className="h-5 w-5 text-amber-600" />
+              <div className="p-2 rounded-lg bg-brand-500/10">
+                <Banknote className="h-5 w-5 text-brand-600" />
               </div>
               <div className="text-left">
                 <p className="font-semibold text-foreground">Mortgage Repayment Calculator</p>
@@ -468,7 +468,7 @@ export function FinancialsTab({
               Acquisition Costs
             </h3>
             {isFirstHomeBuyer && (
-              <Badge variant="secondary" className="bg-green-500/10 text-green-600">
+              <Badge variant="secondary" className="bg-success/10 text-success">
                 First Home Buyer
               </Badge>
             )}
@@ -505,7 +505,7 @@ export function FinancialsTab({
               />
             </div>
             {isFirstHomeBuyer && (
-              <p className="text-xs text-green-600">
+              <p className="text-xs text-success">
                 First Home Buyer concessions may apply based on state
               </p>
             )}
@@ -651,14 +651,14 @@ export function FinancialsTab({
 
                 {/* Show captured value and Use button */}
                 {(capturedStampDuty || manualStampDutyInput) && parseFloat(capturedStampDuty || manualStampDutyInput) > 0 && (
-                  <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg border border-green-500/30">
+                  <div className="flex items-center justify-between p-3 bg-success/10 rounded-lg border border-success/30">
                     <div className="flex items-center gap-3">
-                      <Check className="h-5 w-5 text-green-600" />
+                      <Check className="h-5 w-5 text-success" />
                       <div>
-                        <p className="text-sm font-semibold text-green-700">
+                        <p className="text-sm font-semibold text-success">
                           Stamp Duty: ${formatNumberWithCommas(capturedStampDuty || manualStampDutyInput)}
                         </p>
-                        <p className="text-xs text-green-600">
+                        <p className="text-xs text-success">
                           Ready to apply to your analysis
                         </p>
                       </div>
@@ -669,7 +669,7 @@ export function FinancialsTab({
                       size="sm"
                       onClick={handleUseValue}
                       disabled={disabled}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-success hover:bg-success"
                     >
                       <Check className="h-4 w-4 mr-1" />
                       Use Value

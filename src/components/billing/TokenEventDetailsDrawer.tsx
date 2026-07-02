@@ -65,9 +65,9 @@ function getEventTone(event: string, status?: string | null, error?: string | nu
   }
   if (normalized.includes("commit") || normalized.includes("success") || normalized.includes("complete")) {
     return {
-      badge: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-      rail: "bg-emerald-500/55",
-      dot: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      badge: "border-success/25 bg-success/10 text-success dark:text-success",
+      rail: "bg-success/55",
+      dot: "border-success/30 bg-success/10 text-success dark:text-success",
       Icon: CheckCircle2,
       label: "Commit",
     };
@@ -203,7 +203,7 @@ export function TokenEventDetailsDrawer({
             <div className="min-w-0 space-y-6 pb-8">
               {/* Outcome */}
               <section className="min-w-0">
-                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />Outcome</h3>
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-success dark:text-success" />Outcome</h3>
                 {data.outcomes.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No outcome row yet.</p>
                 ) : (
@@ -221,7 +221,7 @@ export function TokenEventDetailsDrawer({
                       <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                         <div><p className="text-muted-foreground">Estimated</p><p className="font-semibold tabular-nums">{o.estimated_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Reserved</p><p className="font-semibold tabular-nums text-primary">{o.reserved_tokens.toLocaleString()}</p></div>
-                        <div><p className="text-muted-foreground">Used</p><p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{o.actual_tokens.toLocaleString()}</p></div>
+                        <div><p className="text-muted-foreground">Used</p><p className="font-semibold tabular-nums text-success dark:text-success">{o.actual_tokens.toLocaleString()}</p></div>
                         <div><p className="text-muted-foreground">Duration</p><p className="font-semibold tabular-nums">{fmtMs(o.duration_ms)}</p></div>
                       </div>
                       {o.error_message && (
@@ -271,7 +271,7 @@ export function TokenEventDetailsDrawer({
                             <div className="grid min-w-0 grid-cols-2 gap-2 pt-1 sm:grid-cols-4">
                               <div><p className="text-muted-foreground">Requested</p><p className="font-medium tabular-nums">{e.requested_tokens.toLocaleString()}</p></div>
                               <div><p className="text-muted-foreground">Reserved</p><p className="font-medium tabular-nums text-primary">{e.reserved_tokens.toLocaleString()}</p></div>
-                              <div><p className="text-muted-foreground">Used</p><p className="font-medium tabular-nums text-emerald-700 dark:text-emerald-300">{e.used_tokens.toLocaleString()}</p></div>
+                              <div><p className="text-muted-foreground">Used</p><p className="font-medium tabular-nums text-success dark:text-success">{e.used_tokens.toLocaleString()}</p></div>
                               <div><p className="text-muted-foreground">Available</p><p className="font-medium tabular-nums">{e.available_tokens.toLocaleString()}</p></div>
                             </div>
                             {e.reason && <p className="break-words rounded-xl border border-border/60 bg-muted/35 p-2 text-muted-foreground">Reason: {e.reason}</p>}

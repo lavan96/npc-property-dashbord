@@ -27,8 +27,8 @@ export function ReportLibraryEmptyState({
 }: ReportLibraryEmptyStateProps) {
   return (
     <DashboardThemeFrame variant="section" className="flex min-h-[24rem] flex-col items-center justify-center p-8 text-center">
-      <div className="pointer-events-none absolute -top-24 h-52 w-52 rounded-full bg-amber-400/10 blur-3xl" />
-      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/25 bg-amber-500/10 text-amber-700 shadow-sm shadow-amber-500/10 dark:text-amber-300">
+      <div className="pointer-events-none absolute -top-24 h-52 w-52 rounded-full bg-brand-400/10 blur-3xl" />
+      <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-brand-400/25 bg-brand-500/10 text-brand-700 shadow-sm shadow-brand-500/10 dark:text-brand-300">
         <Icon className="h-7 w-7" />
       </div>
       <div className="relative mt-5 max-w-md space-y-2">

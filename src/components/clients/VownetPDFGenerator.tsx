@@ -11,6 +11,8 @@ import { jsPDF } from 'jspdf';
 import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from '@/utils/borrowingCapacityPdfSections';
 import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
 import { fetchGlobalReportSettings, type ContactDetails, type ProfessionalDisclaimer } from '@/hooks/useGlobalReportSettings';
+import { getBrandPdfPalette } from '@/branding/brandPalette';
+import { useBrand } from '@/branding/BrandProvider';
 import { smartCapitalize } from '@/lib/nameUtils';
 import {
   buildHouseholdIncome,
@@ -375,6 +377,7 @@ export function VownetPDFGenerator({
   const [isSending, setIsSending] = useState(false);
   const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
   const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(false);
+  const { settings: brand } = useBrand();
   const { contacts, defaultContact, hasContacts } = useFinanceContacts();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -452,6 +455,7 @@ export function VownetPDFGenerator({
 
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
+    applyBrandGold(brand.brandColor);
     let iframe: HTMLIFrameElement | null = null;
 
     try {
@@ -940,12 +944,17 @@ export function VownetPDFGenerator({
   );
 }
 
-// Brand colors
+// Brand colors. The gold ramp is centralised on the shared brand palette
+// (src/branding/brandPalette.ts) so it stays consistent with the app and the
+// other PDF templates instead of being hardcoded here. (Making it re-resolve
+// per generation from the live White-Label brand colour is a follow-up — this
+// async string builder would need the brand colour threaded in.)
+const NPC_GOLD = getBrandPdfPalette();
 const NPC_COLORS = {
-  gold: '#c9a227',
-  goldLight: '#e8d59d',
-  goldDark: '#a88520',
-  goldTint: '#fdf9ed',
+  gold: NPC_GOLD.gold,
+  goldLight: NPC_GOLD.goldLight,
+  goldDark: NPC_GOLD.goldDeep,
+  goldTint: NPC_GOLD.cream,
   darkBlue: '#113361',
   navy: '#0d264d',
   black: '#0a0a0a',
@@ -961,6 +970,20 @@ const NPC_COLORS = {
   danger: '#dc2626',
   dangerLight: '#fef2f2',
 };
+
+/**
+ * Re-resolve the gold ramp from the active White-Label brand colour just before
+ * a PDF is generated, so exported documents cascade with the brand. NPC_COLORS
+ * is a module singleton read by the HTML builders; PDF generation is sequential
+ * (user-triggered), so mutating it here is safe.
+ */
+function applyBrandGold(brandColorHsl?: string | null) {
+  const p = getBrandPdfPalette(brandColorHsl);
+  NPC_COLORS.gold = p.gold;
+  NPC_COLORS.goldLight = p.goldLight;
+  NPC_COLORS.goldDark = p.goldDeep;
+  NPC_COLORS.goldTint = p.cream;
+}
 
 // Generate the full HTML content for the PDF
 function generateHTMLContent(
@@ -1837,7 +1860,7 @@ function generateHTMLContent(
         .section-header.gold .section-header-text::before { content: ''; }
         
         .subsection-header { 
-          background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%); 
+          background: linear-gradient(90deg, ${NPC_COLORS.goldTint} 0%, ${NPC_COLORS.goldTint} 100%); 
           color: ${NPC_COLORS.darkGray}; 
           padding: 14px 20px; 
           font-size: 9.5pt; 
@@ -2122,7 +2145,7 @@ function generateHTMLContent(
         
         /* Assets Summary */
         .assets-summary {
-          background: linear-gradient(135deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%);
+          background: linear-gradient(135deg, ${NPC_COLORS.goldTint} 0%, ${NPC_COLORS.goldTint} 100%);
           border: 2px solid ${NPC_COLORS.gold};
           padding: 14px 18px;
           display: flex;
@@ -2225,7 +2248,7 @@ function generateHTMLContent(
         /* Summary Box - Gold Accent */
         .summary-box { 
           border: 2px solid ${NPC_COLORS.gold}; 
-          background: linear-gradient(135deg, ${NPC_COLORS.goldTint} 0%, #fefcf8 100%);
+          background: linear-gradient(135deg, ${NPC_COLORS.goldTint} 0%, ${NPC_COLORS.goldTint} 100%);
           padding: 18px; 
           margin-top: 16px;
           border-radius: 8px;
@@ -2653,17 +2676,17 @@ function generateHTMLContent(
       
       <!-- FINAL PAGE - Contact & Disclaimer -->
       <div class="page final-page" style="background-color: #141414; display: flex; flex-direction: column; justify-content: flex-start; padding: 60px 40px;">
-        <div style="color: #BF9B50; font-size: 28px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">${_companyLine1}</div>
-        ${_companyLine2 ? `<div style="color: #BF9B50; font-size: 16px; font-weight: normal; text-transform: uppercase; margin-bottom: 30px;">${_companyLine2}</div>` : '<div style="margin-bottom: 30px;"></div>'}
+        <div style="color: ${NPC_COLORS.goldDark}; font-size: 28px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">${_companyLine1}</div>
+        ${_companyLine2 ? `<div style="color: ${NPC_COLORS.goldDark}; font-size: 16px; font-weight: normal; text-transform: uppercase; margin-bottom: 30px;">${_companyLine2}</div>` : '<div style="margin-bottom: 30px;"></div>'}
         
-        <div style="color: #BF9B50; font-size: 14px; font-weight: bold; margin-bottom: 20px;">CONTACT US</div>
+        <div style="color: ${NPC_COLORS.goldDark}; font-size: 14px; font-weight: bold; margin-bottom: 20px;">CONTACT US</div>
         
         <table style="border-collapse: collapse; margin-bottom: auto;">
-          ${_website ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">WEBSITE:</td><td style="color: #BF9B50; font-size: 9px;">${_website}</td></tr>` : ''}
-          ${_email ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">EMAIL:</td><td style="color: #BF9B50; font-size: 9px;">${_email}</td></tr>` : ''}
-          ${_phone ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">PHONE:</td><td style="color: #BF9B50; font-size: 9px;">${_phone}</td></tr>` : ''}
-          ${_address ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ADDRESS:</td><td style="color: #BF9B50; font-size: 9px;">${_address}</td></tr>` : ''}
-          ${_abn ? `<tr style="height: 28px;"><td style="color: #BF9B50; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ABN:</td><td style="color: #BF9B50; font-size: 9px;">${_abn}</td></tr>` : ''}
+          ${_website ? `<tr style="height: 28px;"><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">WEBSITE:</td><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px;">${_website}</td></tr>` : ''}
+          ${_email ? `<tr style="height: 28px;"><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">EMAIL:</td><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px;">${_email}</td></tr>` : ''}
+          ${_phone ? `<tr style="height: 28px;"><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">PHONE:</td><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px;">${_phone}</td></tr>` : ''}
+          ${_address ? `<tr style="height: 28px;"><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ADDRESS:</td><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px;">${_address}</td></tr>` : ''}
+          ${_abn ? `<tr style="height: 28px;"><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px; font-weight: bold; padding-right: 20px; white-space: nowrap;">ABN:</td><td style="color: ${NPC_COLORS.goldDark}; font-size: 9px;">${_abn}</td></tr>` : ''}
         </table>
         
         ${_disclaimerText ? `<div style="color: #999999; font-size: 8.5px; line-height: 1.4; margin-top: auto; padding-bottom: 20px;">

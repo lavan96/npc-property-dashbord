@@ -250,7 +250,7 @@ export function SendToClientModal({
 
         {sent ? (
           <div className="flex flex-col items-center gap-3 py-8">
-            <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+            <CheckCircle2 className="h-12 w-12 text-success-foreground0" />
             <p className="text-sm font-medium text-foreground">Report sent successfully!</p>
           </div>
         ) : (
@@ -426,7 +426,7 @@ export function SendToClientModal({
                               </Button>
                             </div>
                             {entry.noteVisibility === 'both' && entry.notes && (
-                              <p className="text-[10px] text-amber-600">This note will be displayed to {clientName} on their portal.</p>
+                              <p className="text-[10px] text-brand-600">This note will be displayed to {clientName} on their portal.</p>
                             )}
                           </div>
                         )}

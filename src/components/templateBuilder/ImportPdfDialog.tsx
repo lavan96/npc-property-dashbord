@@ -578,7 +578,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[min(92dvh,920px)] w-[calc(100vw-1rem)] max-w-3xl overflow-hidden border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--background))_58%,hsl(var(--primary)/0.08)_100%)] p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-slate-950 dark:shadow-black/45 sm:w-[calc(100vw-2rem)] sm:max-w-3xl">
+      <DialogContent className="max-h-[min(92dvh,920px)] w-[calc(100vw-1rem)] max-w-3xl overflow-hidden border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--background))_58%,hsl(var(--primary)/0.08)_100%)] p-0 shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-background dark:shadow-black/45 sm:w-[calc(100vw-2rem)] sm:max-w-3xl">
         <div className="max-h-[min(92dvh,920px)] overflow-y-auto p-5 [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] sm:p-6">
         <DialogHeader className="space-y-3 border-b border-border/60 pb-4">
           <DialogTitle className="flex min-w-0 items-center gap-3 text-xl font-semibold tracking-tight">

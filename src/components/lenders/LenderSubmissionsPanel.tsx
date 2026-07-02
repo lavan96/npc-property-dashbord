@@ -21,8 +21,8 @@ interface Props { clientId: string; dealId?: string; }
 
 const STATUS_VARIANT: Record<LenderSubmissionStatus, string> = {
   draft: 'bg-muted text-muted-foreground',
-  pre_assessment: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  submitted: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  pre_assessment: 'bg-info/10 text-info dark:text-info',
+  submitted: 'bg-brand-500/10 text-brand-600 dark:text-brand-400',
   conditional_approval: 'bg-primary/10 text-primary',
   unconditional_approval: 'bg-primary/15 text-primary',
   loan_docs_issued: 'bg-primary/20 text-primary',

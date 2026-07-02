@@ -74,7 +74,7 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
 
   function StatusDate({ date }: { date: string }) {
     return (
-      <span className="inline-flex min-w-[4.25rem] items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+      <span className="inline-flex min-w-[4.25rem] items-center justify-center rounded-full border border-success/25 bg-success/10 px-2 py-1 text-[11px] font-semibold tabular-nums text-success dark:text-success">
         {formatStatusDate(date)}
       </span>
     );
@@ -83,11 +83,11 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
   function ToggleCheck({ value, field, dateField, row }: { value: boolean; field: string; dateField?: string; row: InvoiceRow }) {
     if (!onUpdatePayment) {
       return value ? (
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-success/25 bg-success/10 text-success dark:text-success">
           <CheckCircle className="h-4 w-4" />
         </span>
       ) : (
-        <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+        <span className="mx-auto flex h-7 w-7 items-center justify-center rounded-full border border-brand-500/20 bg-brand-500/10 text-brand-700 dark:text-brand-300">
           <Circle className="h-3.5 w-3.5" />
         </span>
       );
@@ -108,8 +108,8 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
         className={cn(
           'mx-auto flex h-7 w-7 items-center justify-center rounded-full border transition-all hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
           value
-            ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 shadow-sm shadow-emerald-500/10 dark:text-emerald-300'
-            : 'border-amber-500/20 bg-amber-500/10 text-amber-700 hover:border-amber-500/35 hover:bg-amber-500/15 dark:text-amber-300'
+            ? 'border-success/25 bg-success/10 text-success shadow-sm shadow-success/10 dark:text-success'
+            : 'border-brand-500/20 bg-brand-500/10 text-brand-700 hover:border-brand-500/35 hover:bg-brand-500/15 dark:text-brand-300'
         )}
         title={`Toggle ${field.replace(/_/g, ' ')}`}
       >
@@ -124,13 +124,13 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
 
   if (invoiceRows.length === 0) {
     return (
-      <DealStatePanel icon={<FileText className="h-7 w-7 text-amber-200" />} eyebrow="Builder invoices" title="No build progress payments found" description="Builder invoice tracking will appear when House & Land deals include real build payment stages." />
+      <DealStatePanel icon={<FileText className="h-7 w-7 text-brand-200" />} eyebrow="Builder invoices" title="No build progress payments found" description="Builder invoice tracking will appear when House & Land deals include real build payment stages." />
     );
   }
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-[1.35rem] border-amber-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_36%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.90)_48%,rgba(0,0,0,0.72))] shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]">
-      <CardHeader className="border-b border-amber-100/10 bg-background dark:bg-black/15 px-4 py-4 sm:px-6">
+    <Card className="min-w-0 overflow-hidden rounded-[1.35rem] border-brand-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_36%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.90)_48%,rgba(0,0,0,0.72))] shadow-[0_22px_60px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.07)]">
+      <CardHeader className="border-b border-brand-100/10 bg-background dark:bg-black/15 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-base font-semibold tracking-tight sm:text-lg">
@@ -147,9 +147,9 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
         </div>
       </CardHeader>
       <CardContent className="min-w-0 p-3 sm:p-4">
-        <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-amber-100/15 bg-background dark:bg-zinc-950/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
+        <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-brand-100/15 bg-background dark:bg-background/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] [scrollbar-color:rgba(245,158,11,0.42)_rgba(24,24,27,0.78)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-brand-300/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/70">
           <Table className="min-w-[900px]">
-            <TableHeader className="sticky top-0 z-10 bg-background dark:bg-zinc-950/85 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/75">
+            <TableHeader className="sticky top-0 z-10 bg-background dark:bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/75">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="whitespace-nowrap px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Client</TableHead>
                 <TableHead className="whitespace-nowrap px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Stage</TableHead>
@@ -164,7 +164,7 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
             </TableHeader>
             <TableBody>
               {invoiceRows.map((row, idx) => (
-                <TableRow className="group border-amber-100/10 hover:bg-amber-300/[0.055]" key={`${row.dealId}-${row.stageNumber}-${idx}`}>
+                <TableRow className="group border-brand-100/10 hover:bg-brand-300/[0.055]" key={`${row.dealId}-${row.stageNumber}-${idx}`}>
                   <TableCell className="whitespace-nowrap px-4 py-4 text-xs font-semibold text-foreground sm:text-sm">{row.clientName}</TableCell>
                   <TableCell className="whitespace-nowrap px-4 py-4 text-xs text-muted-foreground sm:text-sm">{row.stageName}</TableCell>
                   <TableCell className="hidden px-4 py-4 text-right font-mono text-xs tabular-nums text-foreground sm:table-cell sm:text-sm">{row.percentage}%</TableCell>
@@ -199,7 +199,7 @@ export function BuilderInvoiceLog({ deals, isLoading, onUpdatePayment }: Props) 
                   </TableCell>
                   <TableCell className="px-4 py-4 text-center">
                     {row.commissionReceived ? (
-                      <Badge variant="outline" className="rounded-full border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">Paid</Badge>
+                      <Badge variant="outline" className="rounded-full border-success/25 bg-success/10 px-2.5 py-1 text-[10px] font-semibold text-success dark:text-success">Paid</Badge>
                     ) : (
                       <ToggleCheck value={row.commissionReceived} field="commission_received" dateField="commission_received_date" row={row} />
                     )}

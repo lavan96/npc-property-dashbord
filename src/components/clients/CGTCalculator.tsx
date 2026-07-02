@@ -174,9 +174,9 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
             </div>
 
             {isMainResidence && (
-              <div className="flex items-start gap-2 p-3 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900">
-                <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-green-800 dark:text-green-300">
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-success/30 bg-success/10 dark:bg-success/20 dark:border-success/30">
+                <CheckCircle2 className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-success dark:text-success">
                   As your main residence, this property is generally exempt from CGT. 
                   The calculator below will show $0 CGT. Toggle this off if the property 
                   was ever rented out or used for income-producing purposes (partial exemption may apply).
@@ -341,7 +341,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                   <Card className="border-0 shadow-none bg-muted/50">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Capital Gain</p>
-                      <p className={`text-base sm:text-lg font-bold ${result.isCapitalLoss ? 'text-red-600' : 'text-green-600'}`}>
+                      <p className={`text-base sm:text-lg font-bold ${result.isCapitalLoss ? 'text-destructive' : 'text-success'}`}>
                         {formatCurrency(result.grossCapitalGain)}
                       </p>
                     </CardContent>
@@ -349,7 +349,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                   <Card className="border-0 shadow-none bg-muted/50">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Estimated CGT</p>
-                      <p className={`text-base sm:text-lg font-bold ${result.estimatedCGT > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      <p className={`text-base sm:text-lg font-bold ${result.estimatedCGT > 0 ? 'text-warning' : 'text-success'}`}>
                         {formatCurrency(result.estimatedCGT)}
                       </p>
                     </CardContent>
@@ -379,7 +379,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                     <Separator className="my-1" />
                     <div className="flex justify-between">
                       <span>Gross Capital Gain</span>
-                      <span className={`font-medium ${result.isCapitalLoss ? 'text-red-600' : 'text-green-600'}`}>
+                      <span className={`font-medium ${result.isCapitalLoss ? 'text-destructive' : 'text-success'}`}>
                         {formatCurrency(result.grossCapitalGain)}
                       </span>
                     </div>
@@ -401,13 +401,13 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                       </span>
                     </div>
                     {result.eligibleForDiscount && !result.isMainResidence && (
-                      <div className="flex justify-between text-green-600">
+                      <div className="flex justify-between text-success">
                         <span>CGT Discount (50%)</span>
                         <span className="font-medium">-{formatCurrency(result.cgtDiscount)}</span>
                       </div>
                     )}
                     {result.isMainResidence && (
-                      <div className="flex justify-between text-green-600">
+                      <div className="flex justify-between text-success">
                         <span>Main Residence Exemption</span>
                         <span className="font-medium">Full Exemption</span>
                       </div>
@@ -428,7 +428,7 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
                     <Separator className="my-1" />
                     <div className="flex justify-between font-semibold text-sm">
                       <span>Estimated CGT Payable</span>
-                      <span className={result.estimatedCGT > 0 ? 'text-orange-600' : 'text-green-600'}>
+                      <span className={result.estimatedCGT > 0 ? 'text-warning' : 'text-success'}>
                         {formatCurrency(result.estimatedCGT)}
                       </span>
                     </div>
@@ -459,9 +459,9 @@ export function CGTCalculator({ property, clientGrossAnnualIncome }: CGTCalculat
 
                 {/* Capital Loss Notice */}
                 {result.isCapitalLoss && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
-                    <TrendingDown className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-amber-800 dark:text-amber-300">
+                  <div className="flex items-start gap-2 p-3 rounded-lg border border-brand-200 bg-brand-50 dark:bg-brand-950/20 dark:border-brand-900">
+                    <TrendingDown className="h-4 w-4 text-brand-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-brand-800 dark:text-brand-300">
                       This sale would result in a <strong>capital loss</strong> of {formatCurrency(Math.abs(result.grossCapitalGain))}. 
                       Capital losses can be carried forward and offset against future capital gains.
                     </p>

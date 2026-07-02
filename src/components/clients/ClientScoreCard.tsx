@@ -140,30 +140,30 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
   const getRiskBadge = (level: string) => {
     switch (level) {
       case 'low':
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20"><Shield className="h-3 w-3 mr-1" />Low Risk</Badge>;
+        return <Badge className="bg-success/10 text-success border-success/20"><Shield className="h-3 w-3 mr-1" />Low Risk</Badge>;
       case 'medium':
-        return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"><Activity className="h-3 w-3 mr-1" />Medium Risk</Badge>;
+        return <Badge className="bg-brand-500/10 text-brand-600 border-brand-500/20"><Activity className="h-3 w-3 mr-1" />Medium Risk</Badge>;
       case 'high':
-        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20"><AlertTriangle className="h-3 w-3 mr-1" />High Risk</Badge>;
+        return <Badge className="bg-warning/10 text-warning border-warning/20"><AlertTriangle className="h-3 w-3 mr-1" />High Risk</Badge>;
       case 'critical':
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" />Critical Risk</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20"><AlertTriangle className="h-3 w-3 mr-1" />Critical Risk</Badge>;
       default:
         return <Badge variant="secondary">Unknown</Badge>;
     }
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    if (score >= 40) return 'text-orange-600';
-    return 'text-red-600';
+    if (score >= 80) return 'text-success';
+    if (score >= 60) return 'text-brand-600';
+    if (score >= 40) return 'text-warning';
+    return 'text-destructive';
   };
 
   const getProgressColor = (score: number) => {
-    if (score >= 80) return 'bg-green-500';
-    if (score >= 60) return 'bg-yellow-500';
-    if (score >= 40) return 'bg-orange-500';
-    return 'bg-red-500';
+    if (score >= 80) return 'bg-success';
+    if (score >= 60) return 'bg-brand-500';
+    if (score >= 40) return 'bg-warning';
+    return 'bg-destructive';
   };
 
   if (isLoading) {
@@ -310,7 +310,7 @@ export function ClientScoreCard({ clientId }: ClientScoreCardProps) {
             <p className="text-xs font-medium text-muted-foreground mb-2">Risk Factors</p>
             <ul className="space-y-1">
               {(scores.risk_factors as string[]).map((factor, i) => (
-                <li key={i} className="text-xs text-orange-600 flex items-center gap-1">
+                <li key={i} className="text-xs text-warning flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />
                   {factor}
                 </li>

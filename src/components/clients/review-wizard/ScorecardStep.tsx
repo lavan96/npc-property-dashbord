@@ -40,29 +40,29 @@ export function ScorecardStep({
   propertyScores
 }: ScorecardStepProps) {
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    if (score >= 40) return 'text-orange-600';
-    return 'text-red-600';
+    if (score >= 80) return 'text-success';
+    if (score >= 60) return 'text-brand-600';
+    if (score >= 40) return 'text-warning';
+    return 'text-destructive';
   };
 
   const getProgressColor = (score: number) => {
-    if (score >= 80) return 'bg-green-500';
-    if (score >= 60) return 'bg-yellow-500';
-    if (score >= 40) return 'bg-orange-500';
-    return 'bg-red-500';
+    if (score >= 80) return 'bg-success';
+    if (score >= 60) return 'bg-brand-500';
+    if (score >= 40) return 'bg-warning';
+    return 'bg-destructive';
   };
 
   const getRiskBadge = (level: string) => {
     switch (level) {
       case 'low':
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20"><Shield className="h-3 w-3 mr-1" />Low Risk</Badge>;
+        return <Badge className="bg-success/10 text-success border-success/20"><Shield className="h-3 w-3 mr-1" />Low Risk</Badge>;
       case 'medium':
-        return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"><Activity className="h-3 w-3 mr-1" />Medium Risk</Badge>;
+        return <Badge className="bg-brand-500/10 text-brand-600 border-brand-500/20"><Activity className="h-3 w-3 mr-1" />Medium Risk</Badge>;
       case 'high':
-        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20"><AlertTriangle className="h-3 w-3 mr-1" />High Risk</Badge>;
+        return <Badge className="bg-warning/10 text-warning border-warning/20"><AlertTriangle className="h-3 w-3 mr-1" />High Risk</Badge>;
       case 'critical':
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" />Critical Risk</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20"><AlertTriangle className="h-3 w-3 mr-1" />Critical Risk</Badge>;
       default:
         return <Badge variant="secondary">Unknown</Badge>;
     }
@@ -71,13 +71,13 @@ export function ScorecardStep({
   const getClassificationIcon = (classification: string) => {
     switch (classification) {
       case 'Star':
-        return <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />;
+        return <Star className="h-4 w-4 text-brand-500 fill-brand-500" />;
       case 'Good':
-        return <ThumbsUp className="h-4 w-4 text-green-500" />;
+        return <ThumbsUp className="h-4 w-4 text-success-foreground0" />;
       case 'Average':
-        return <Minus className="h-4 w-4 text-gray-500" />;
+        return <Minus className="h-4 w-4 text-muted-foreground" />;
       case 'Underperformer':
-        return <ThumbsDown className="h-4 w-4 text-red-500" />;
+        return <ThumbsDown className="h-4 w-4 text-destructive-foreground0" />;
       default:
         return null;
     }
@@ -86,17 +86,17 @@ export function ScorecardStep({
   const getClassificationBadge = (classification: string, isRental?: boolean) => {
     // Rental properties get a special badge
     if (isRental) {
-      return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Living Expense</Badge>;
+      return <Badge className="bg-info/10 text-info border-info/20">Living Expense</Badge>;
     }
     switch (classification) {
       case 'Star':
-        return <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Star Performer</Badge>;
+        return <Badge className="bg-brand-500/10 text-brand-700 border-brand-500/20">Star Performer</Badge>;
       case 'Good':
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Good</Badge>;
+        return <Badge className="bg-success/10 text-success border-success/20">Good</Badge>;
       case 'Average':
-        return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20">Average</Badge>;
+        return <Badge className="bg-muted0/10 text-muted-foreground border-border/20">Average</Badge>;
       case 'Underperformer':
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">Underperformer</Badge>;
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Underperformer</Badge>;
       default:
         return null;
     }
@@ -185,7 +185,7 @@ export function ScorecardStep({
               <p className="text-sm font-medium mb-2">Risk Factors</p>
               <div className="space-y-1">
                 {riskFactors.map((factor, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-orange-600">
+                  <div key={i} className="flex items-center gap-2 text-sm text-warning">
                     <AlertTriangle className="h-4 w-4" />
                     {factor}
                   </div>
@@ -247,7 +247,7 @@ export function ScorecardStep({
                     <p className="text-muted-foreground mb-1">Strengths</p>
                     <div className="flex flex-wrap gap-1">
                       {prop.strengths.map((s, i) => (
-                        <Badge key={i} variant="outline" className="text-green-600 border-green-300 text-xs">
+                        <Badge key={i} variant="outline" className="text-success border-success/30 text-xs">
                           {s}
                         </Badge>
                       ))}
@@ -259,7 +259,7 @@ export function ScorecardStep({
                     <p className="text-muted-foreground mb-1">Concerns</p>
                     <div className="flex flex-wrap gap-1">
                       {prop.concerns.map((c, i) => (
-                        <Badge key={i} variant="outline" className="text-red-600 border-red-300 text-xs">
+                        <Badge key={i} variant="outline" className="text-destructive border-destructive/30 text-xs">
                           {c}
                         </Badge>
                       ))}

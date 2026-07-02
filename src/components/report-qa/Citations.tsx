@@ -141,7 +141,7 @@ export function Citations({
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors border border-blue-500/20"
+                  className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-info/10 text-info dark:text-info hover:bg-info/20 transition-colors border border-info/20"
                 >
                   <span className="font-medium">[{i + 1}]</span>
                   <span className="truncate max-w-[140px]">{getDomain(url)}</span>

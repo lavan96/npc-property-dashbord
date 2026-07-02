@@ -35,16 +35,16 @@ interface ForecastPanelProps {
 }
 
 function TrendIcon({ trend }: { trend: string }) {
-  if (trend === 'increasing' || trend === 'improving') return <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />;
-  if (trend === 'decreasing' || trend === 'worsening') return <TrendingDown className="h-3.5 w-3.5 text-red-500" />;
+  if (trend === 'increasing' || trend === 'improving') return <TrendingUp className="h-3.5 w-3.5 text-success-foreground0" />;
+  if (trend === 'decreasing' || trend === 'worsening') return <TrendingDown className="h-3.5 w-3.5 text-destructive-foreground0" />;
   return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
 function TrendBadge({ label, trend }: { label: string; trend: string }) {
   const colorClass = (trend === 'improving' || (trend === 'increasing' && (label === 'Leads')))
-    ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5'
+    ? 'border-success/30 text-success dark:text-success bg-success/5'
     : (trend === 'worsening' || (trend === 'decreasing' && label === 'Leads') || (trend === 'increasing' && label === 'Spend'))
-      ? 'border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/5'
+      ? 'border-destructive/30 text-destructive dark:text-destructive bg-destructive/5'
       : 'border-muted-foreground/30 text-muted-foreground bg-muted/30';
 
   return (
@@ -264,9 +264,9 @@ export function ForecastPanel({ forecast, trends, projections, aiAnalysis, aiErr
         )}
 
         {aiError && (
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-600 dark:text-amber-400">{aiError}</p>
+          <div className="rounded-2xl border border-brand-500/20 bg-brand-500/5 p-3 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-brand-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-brand-600 dark:text-brand-400">{aiError}</p>
           </div>
         )}
 

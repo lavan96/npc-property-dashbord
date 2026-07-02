@@ -86,13 +86,13 @@ const formatCurrency = (value: number | null | undefined): string => {
 const getGradeColor = (grade: string): string => {
   switch (grade?.toUpperCase()) {
     case 'A+':
-    case 'A': return 'text-green-600';
+    case 'A': return 'text-success';
     case 'B+':
-    case 'B': return 'text-blue-600';
+    case 'B': return 'text-info';
     case 'C+':
-    case 'C': return 'text-yellow-600';
+    case 'C': return 'text-brand-600';
     case 'D':
-    case 'F': return 'text-red-600';
+    case 'F': return 'text-destructive';
     default: return 'text-muted-foreground';
   }
 };
@@ -409,7 +409,7 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Equity</p>
-                        <p className="text-xl font-bold text-green-600">{formatCurrency(reportData.analysis.keyMetrics.equity)}</p>
+                        <p className="text-xl font-bold text-success">{formatCurrency(reportData.analysis.keyMetrics.equity)}</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">LVR</p>
@@ -432,13 +432,13 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                     <div className="grid grid-cols-2 gap-4 text-center">
                       <div>
                         <p className="text-sm text-muted-foreground">Monthly Cashflow</p>
-                        <p className={`text-2xl font-bold ${Number(property.net_monthly_cashflow) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-2xl font-bold ${Number(property.net_monthly_cashflow) >= 0 ? 'text-success' : 'text-destructive'}`}>
                           {formatCurrency(property.net_monthly_cashflow)}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Annual Cashflow</p>
-                        <p className={`text-2xl font-bold ${reportData.analysis.keyMetrics.annualCashflow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-2xl font-bold ${reportData.analysis.keyMetrics.annualCashflow >= 0 ? 'text-success' : 'text-destructive'}`}>
                           {formatCurrency(reportData.analysis.keyMetrics.annualCashflow)}
                         </p>
                       </div>
@@ -460,7 +460,7 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                 <div className="grid grid-cols-2 gap-4">
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-green-700 flex items-center gap-1">
+                      <CardTitle className="text-sm text-success flex items-center gap-1">
                         <TrendingUp className="h-4 w-4" /> Strengths
                       </CardTitle>
                     </CardHeader>
@@ -474,7 +474,7 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-amber-700 flex items-center gap-1">
+                      <CardTitle className="text-sm text-brand-700 flex items-center gap-1">
                         <AlertTriangle className="h-4 w-4" /> Concerns
                       </CardTitle>
                     </CardHeader>
@@ -488,7 +488,7 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-blue-700">Opportunities</CardTitle>
+                      <CardTitle className="text-sm text-info">Opportunities</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ul className="text-sm space-y-1">
@@ -500,7 +500,7 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-red-700">Risks</CardTitle>
+                      <CardTitle className="text-sm text-destructive">Risks</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ul className="text-sm space-y-1">
@@ -527,7 +527,7 @@ Provide a comprehensive property investment analysis. Return valid JSON:
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Projected Equity</p>
-                        <p className="text-xl font-bold text-green-600">
+                        <p className="text-xl font-bold text-success">
                           {formatCurrency(reportData.analysis.tenYearProjection.projectedEquity)}
                         </p>
                       </div>

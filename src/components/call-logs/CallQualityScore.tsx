@@ -165,26 +165,26 @@ export const calculateCallQualityScore = (
 };
 
 const getGradeColor = (grade: string): string => {
-  if (grade.startsWith('A')) return 'border-emerald-300/40 bg-emerald-500/20 text-emerald-100 shadow-emerald-500/10';
-  if (grade.startsWith('B')) return 'border-blue-300/40 bg-blue-500/20 text-blue-100 shadow-blue-500/10';
-  if (grade.startsWith('C')) return 'border-amber-300/40 bg-amber-500/20 text-amber-100 shadow-amber-500/10';
-  if (grade.startsWith('D')) return 'border-orange-300/40 bg-orange-500/20 text-orange-100 shadow-orange-500/10';
-  return 'border-red-400/40 bg-red-500/20 text-red-100 shadow-red-500/10';
+  if (grade.startsWith('A')) return 'border-success/40 bg-success/20 text-success-foreground shadow-success/10';
+  if (grade.startsWith('B')) return 'border-info/40 bg-info/20 text-info-foreground shadow-info/10';
+  if (grade.startsWith('C')) return 'border-brand-300/40 bg-brand-500/20 text-brand-100 shadow-brand-500/10';
+  if (grade.startsWith('D')) return 'border-warning/40 bg-warning/20 text-warning-foreground shadow-warning/10';
+  return 'border-destructive/40 bg-destructive/20 text-destructive-foreground shadow-destructive/10';
 };
 
 const getGradeTextColor = (grade: string): string => {
-  if (grade.startsWith('A')) return 'text-emerald-500';
-  if (grade.startsWith('B')) return 'text-blue-500';
-  if (grade.startsWith('C')) return 'text-amber-500';
-  if (grade.startsWith('D')) return 'text-orange-500';
-  return 'text-red-500';
+  if (grade.startsWith('A')) return 'text-success-foreground0';
+  if (grade.startsWith('B')) return 'text-info-foreground0';
+  if (grade.startsWith('C')) return 'text-brand-500';
+  if (grade.startsWith('D')) return 'text-warning-foreground0';
+  return 'text-destructive-foreground0';
 };
 
 const getTrendIcon = (score: number, maxScore: number) => {
   const percentage = (score / maxScore) * 100;
-  if (percentage >= 70) return <TrendingUp className="w-3 h-3 text-emerald-500" />;
-  if (percentage >= 40) return <Minus className="w-3 h-3 text-amber-500" />;
-  return <TrendingDown className="w-3 h-3 text-red-500" />;
+  if (percentage >= 70) return <TrendingUp className="w-3 h-3 text-success-foreground0" />;
+  if (percentage >= 40) return <Minus className="w-3 h-3 text-brand-500" />;
+  return <TrendingDown className="w-3 h-3 text-destructive-foreground0" />;
 };
 
 export const CallQualityScore = ({

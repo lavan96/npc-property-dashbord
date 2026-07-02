@@ -23,11 +23,11 @@ interface Props {
 
 const STATUS_TONE: Record<ComplianceStatus, string> = {
   draft: 'bg-muted text-muted-foreground',
-  pending_signature: 'bg-amber-500/10 text-amber-700 border-amber-500/30',
-  signed: 'bg-green-500/10 text-green-700 border-green-500/30',
-  expired: 'bg-red-500/10 text-red-700 border-red-500/30',
+  pending_signature: 'bg-brand-500/10 text-brand-700 border-brand-500/30',
+  signed: 'bg-success/10 text-success border-success/30',
+  expired: 'bg-destructive/10 text-destructive border-destructive/30',
   superseded: 'bg-muted text-muted-foreground',
-  voided: 'bg-red-500/10 text-red-700 border-red-500/30',
+  voided: 'bg-destructive/10 text-destructive border-destructive/30',
 };
 
 export function ComplianceTab({ clientId, dealId }: Props) {
@@ -116,7 +116,7 @@ export function ComplianceTab({ clientId, dealId }: Props) {
               <CardContent className="text-xs space-y-1 pt-0">
                 <div className="flex justify-between text-muted-foreground">
                   <span>v{r.version} · {format(new Date(r.generated_at), 'dd MMM yy')}</span>
-                  {r.signed_at && <span className="text-green-600">Signed {format(new Date(r.signed_at), 'dd MMM')}</span>}
+                  {r.signed_at && <span className="text-success">Signed {format(new Date(r.signed_at), 'dd MMM')}</span>}
                 </div>
                 <div className="flex gap-1 mt-2">
                   {r.status !== 'signed' && (

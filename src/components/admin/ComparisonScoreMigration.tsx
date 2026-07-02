@@ -70,7 +70,7 @@ export function ComparisonScoreMigration() {
   };
 
   return (
-    <Card className="min-w-0 overflow-hidden rounded-2xl border-warning/25 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--warning)/0.08))] shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-warning/10 dark:border-warning/20 dark:bg-slate-950/80 dark:shadow-black/30">
+    <Card className="min-w-0 overflow-hidden rounded-2xl border-warning/25 bg-[linear-gradient(145deg,hsl(var(--card)),hsl(var(--warning)/0.08))] shadow-[0_18px_44px_hsl(var(--foreground)/0.07)] ring-1 ring-warning/10 dark:border-warning/20 dark:bg-background/80 dark:shadow-black/30">
       <CardHeader className="space-y-2">
         <CardTitle className="flex min-w-0 items-center gap-2 text-lg md:text-xl">
           <Database className="h-5 w-5 shrink-0 text-warning" />

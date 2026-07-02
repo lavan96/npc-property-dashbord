@@ -57,7 +57,7 @@ export function IndustrialMetricAiWorkflow({ title = 'AI / Research Benchmarks',
   };
 
   return (
-    <Card className="overflow-hidden border-purple-400/20 bg-gradient-to-br from-card/90 via-card/70 to-purple-500/5 shadow-sm transition-shadow hover:shadow-md">
+    <Card className="overflow-hidden border-accent/20 bg-gradient-to-br from-card/90 via-card/70 to-accent/5 shadow-sm transition-shadow hover:shadow-md">
       <details>
         <summary className="group cursor-pointer list-none">
           <CardHeader className="space-y-1 pb-3">
@@ -67,11 +67,11 @@ export function IndustrialMetricAiWorkflow({ title = 'AI / Research Benchmarks',
         </summary>
         <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
-          {actions.map((action) => <Button key={action.id} type="button" size="sm" variant="outline" className="rounded-full border-purple-400/30 bg-background/70 transition-all hover:-translate-y-0.5 hover:border-purple-300 hover:bg-purple-500/10 focus-visible:ring-purple-400" onClick={() => runAction(action)}>{action.label}</Button>)}
+          {actions.map((action) => <Button key={action.id} type="button" size="sm" variant="outline" className="rounded-full border-accent/30 bg-background/70 transition-all hover:-translate-y-0.5 hover:border-accent/30 hover:bg-accent/10 focus-visible:ring-accent" onClick={() => runAction(action)}>{action.label}</Button>)}
         </div>
-        {message && <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-muted-foreground">{message}</div>}
+        {message && <div className="rounded-md border border-brand-500/30 bg-brand-500/10 p-2 text-xs text-muted-foreground">{message}</div>}
         {preview && (
-          <div className="rounded-2xl border border-purple-400/25 bg-background/60 p-4 text-sm shadow-inner">
+          <div className="rounded-2xl border border-accent/25 bg-background/60 p-4 text-sm shadow-inner">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="font-semibold text-foreground">AI / Research Preview — {preview.label}</p>

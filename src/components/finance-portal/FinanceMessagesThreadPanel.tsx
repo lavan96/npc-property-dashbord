@@ -60,12 +60,12 @@ export function FinanceMessagesThreadPanel({ thread, invoke, onMessageSent, clas
               <h2 className="truncate text-base font-semibold text-foreground sm:text-lg">{name}</h2>
               {secondary && <span className="truncate text-xs text-muted-foreground sm:text-sm">& {secondary}</span>}
               {thread.visibility_scope === 'finance_client_with_command_visibility' && (
-                <Badge variant="outline" className="h-5 border-teal-500/30 bg-teal-500/10 px-2 text-[10px] font-semibold text-teal-700">
+                <Badge variant="outline" className="h-5 border-success/30 bg-success/10 px-2 text-[10px] font-semibold text-success">
                   Client + CC visible
                 </Badge>
               )}
               {thread.finance_allocated && (
-                <Badge variant="outline" className="h-5 border-amber-500/30 bg-amber-500/10 px-2 text-[10px] font-semibold text-amber-700">
+                <Badge variant="outline" className="h-5 border-brand-500/30 bg-brand-500/10 px-2 text-[10px] font-semibold text-brand-700">
                   {String(thread.allocation_status || 'Finance allocated').replace(/_/g, ' ')}
                 </Badge>
               )}

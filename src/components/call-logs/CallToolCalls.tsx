@@ -154,7 +154,7 @@ export const CallToolCalls = ({ artifactMessages }: CallToolCallsProps) => {
           <AccordionItem key={tc.id} value={tc.id} className="border rounded-lg px-1 overflow-hidden">
             <AccordionTrigger className="hover:no-underline py-3">
               <div className="flex items-center gap-3 text-left flex-1">
-                <div className={`w-2 h-2 rounded-full ${tc.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                <div className={`w-2 h-2 rounded-full ${tc.success ? 'bg-success' : 'bg-destructive'}`} />
                 <span className="font-mono text-sm font-medium">{tc.name}</span>
                 {tc.timestamp && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1 ml-auto mr-2">

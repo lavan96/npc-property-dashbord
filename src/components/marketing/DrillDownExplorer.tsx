@@ -130,13 +130,13 @@ export function DrillDownExplorer({
           {!loading && enrichedRows.length > 0 && (
             <div className="flex items-center gap-3 flex-wrap text-xs">
               {bestCTR && level !== 'account' && (
-                <Badge variant="outline" className="max-w-full gap-1 truncate rounded-full border-emerald-500/30 bg-emerald-500/5 text-[10px] font-normal text-emerald-600 dark:text-emerald-400" title={`Best CTR: ${getRowName(bestCTR)} (${formatPercent(bestCTR.ctr)})`}>
+                <Badge variant="outline" className="max-w-full gap-1 truncate rounded-full border-success/30 bg-success/5 text-[10px] font-normal text-success dark:text-success" title={`Best CTR: ${getRowName(bestCTR)} (${formatPercent(bestCTR.ctr)})`}>
                   <ArrowUpRight className="h-3 w-3" />
                   <span className="truncate">Best CTR: {getRowName(bestCTR)} ({formatPercent(bestCTR.ctr)})</span>
                 </Badge>
               )}
               {bestCPL && level !== 'account' && (
-                <Badge variant="outline" className="max-w-full gap-1 truncate rounded-full border-blue-500/30 bg-blue-500/5 text-[10px] font-normal text-blue-600 dark:text-blue-400" title={`Best CPL: ${getRowName(bestCPL)} (${formatCurrency(bestCPL._cpl)})`}>
+                <Badge variant="outline" className="max-w-full gap-1 truncate rounded-full border-info/30 bg-info/5 text-[10px] font-normal text-info dark:text-info" title={`Best CPL: ${getRowName(bestCPL)} (${formatCurrency(bestCPL._cpl)})`}>
                   <ArrowDownRight className="h-3 w-3" />
                   <span className="truncate">Best CPL: {getRowName(bestCPL)} ({formatCurrency(bestCPL._cpl)})</span>
                 </Badge>
@@ -247,9 +247,9 @@ export function DrillDownExplorer({
                                 <Badge
                                   variant="outline"
                                   className={`font-mono text-[10px] cursor-default ${
-                                    health.status === 'healthy' ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5' :
-                                    health.status === 'watch' ? 'border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5' :
-                                    'border-red-500/30 text-red-600 dark:text-red-400 bg-red-500/5'
+                                    health.status === 'healthy' ? 'border-success/30 text-success dark:text-success bg-success/5' :
+                                    health.status === 'watch' ? 'border-brand-500/30 text-brand-600 dark:text-brand-400 bg-brand-500/5' :
+                                    'border-destructive/30 text-destructive dark:text-destructive bg-destructive/5'
                                   }`}
                                 >
                                   {health.score}

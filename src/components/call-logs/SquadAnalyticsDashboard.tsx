@@ -52,11 +52,11 @@ const FALLBACK_COLORS = ['#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16', 
 
 
 const squadPanel =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
 const squadKpiCard =
-  'group relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-amber-500/10';
+  'group relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/35 hover:shadow-brand-500/10';
 const squadChartCard =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/45 before:to-transparent hover:border-amber-300/30 hover:shadow-amber-500/10';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/45 before:to-transparent hover:border-brand-300/30 hover:shadow-brand-500/10';
 const squadChartShell = 'rounded-2xl border border-border dark:border-white/10 bg-background dark:bg-black/20 p-3';
 const squadTooltipContentStyle = {
   backgroundColor: 'rgba(9, 9, 11, 0.96)',
@@ -229,20 +229,20 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
   return (
     <div className="space-y-6">
       <Card className={squadPanel}>
-        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-accent/10 blur-3xl" />
         <CardHeader className="relative border-b border-border dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.92),rgba(0,0,0,0.72),rgba(126,34,206,0.16))]">
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-brand-300/20 bg-brand-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-100">
             <GitBranch className="h-3 w-3" />
             Squad Intelligence
           </div>
-          <CardTitle className="mt-3 flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/10 text-purple-200 shadow-inner shadow-purple-950/40">
+          <CardTitle className="mt-3 flex items-center gap-3 text-2xl text-foreground dark:text-foreground">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10 text-accent shadow-inner shadow-accent/40">
               <Users className="h-5 w-5" />
             </span>
             Squad Performance Analytics
           </CardTitle>
-          <CardDescription className="text-muted-foreground dark:text-zinc-400">
+          <CardDescription className="text-muted-foreground dark:text-muted-foreground">
             Team-performance intelligence across squad calls, handoffs, intents, and assistant involvement
           </CardDescription>
         </CardHeader>
@@ -250,67 +250,67 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card className={cn(squadKpiCard, 'from-purple-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-purple-300/35 hover:shadow-purple-500/10')}>
+        <Card className={cn(squadKpiCard, 'from-accent/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-accent/35 hover:shadow-accent/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-purple-300/25 bg-purple-500/10 p-3 shadow-inner shadow-purple-950/40">
-                <Users className="h-5 w-5 text-purple-300" />
+              <div className="rounded-2xl border border-accent/25 bg-accent/10 p-3 shadow-inner shadow-accent/40">
+                <Users className="h-5 w-5 text-accent" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Squad Calls</p>
-                <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{summaryStats.totalSquadCalls}</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Squad Calls</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{summaryStats.totalSquadCalls}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(squadKpiCard, 'from-emerald-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-emerald-300/35 hover:shadow-emerald-500/10')}>
+        <Card className={cn(squadKpiCard, 'from-success/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-success/35 hover:shadow-success/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 shadow-inner shadow-emerald-950/40">
-                <CheckCircle className="h-5 w-5 text-emerald-300" />
+              <div className="rounded-2xl border border-success/25 bg-success/10 p-3 shadow-inner shadow-success/40">
+                <CheckCircle className="h-5 w-5 text-success" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Success Rate</p>
-                <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{summaryStats.successRate}%</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Success Rate</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{summaryStats.successRate}%</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(squadKpiCard, 'from-blue-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-blue-300/35 hover:shadow-blue-500/10')}>
+        <Card className={cn(squadKpiCard, 'from-info/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-info/35 hover:shadow-info/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-blue-300/25 bg-blue-500/10 p-3 shadow-inner shadow-blue-950/40">
-                <GitBranch className="h-5 w-5 text-blue-300" />
+              <div className="rounded-2xl border border-info/25 bg-info/10 p-3 shadow-inner shadow-info/40">
+                <GitBranch className="h-5 w-5 text-info" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Avg Handoffs</p>
-                <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{handoffStats.avgHandoffs}</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Avg Handoffs</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{handoffStats.avgHandoffs}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(squadKpiCard, 'from-amber-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95')}>
+        <Card className={cn(squadKpiCard, 'from-brand-500/15 via-card dark:via-background/85 to-background dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-3 shadow-inner shadow-amber-950/40">
-                <Users className="h-5 w-5 text-amber-300" />
+              <div className="rounded-2xl border border-brand-300/25 bg-brand-500/10 p-3 shadow-inner shadow-brand-950/40">
+                <Users className="h-5 w-5 text-brand-300" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Avg Agents/Call</p>
-                <p className="text-3xl font-bold text-amber-200">{avgAgentsPerCall}</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Avg Agents/Call</p>
+                <p className="text-3xl font-bold text-brand-200">{avgAgentsPerCall}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(squadKpiCard, 'from-cyan-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-cyan-300/35 hover:shadow-cyan-500/10')}>
+        <Card className={cn(squadKpiCard, 'from-info/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-info/35 hover:shadow-info/10')}>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-3 shadow-inner shadow-cyan-950/40">
-                <Clock className="h-5 w-5 text-cyan-300" />
+              <div className="rounded-2xl border border-info/25 bg-info/10 p-3 shadow-inner shadow-info/40">
+                <Clock className="h-5 w-5 text-info" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Avg Duration</p>
-                <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{formatDuration(summaryStats.avgDuration)}</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Avg Duration</p>
+                <p className="text-3xl font-bold text-foreground dark:text-foreground">{formatDuration(summaryStats.avgDuration)}</p>
               </div>
             </div>
           </CardContent>
@@ -321,12 +321,12 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Intent Distribution */}
         <Card className={squadChartCard}>
-          <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-purple-500/10 via-transparent to-amber-500/10">
-            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-zinc-50">
-              <Target className="h-5 w-5 text-purple-300" />
+          <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-accent/10 via-transparent to-brand-500/10">
+            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-foreground">
+              <Target className="h-5 w-5 text-accent" />
               Call Intent Distribution
             </CardTitle>
-            <CardDescription className="text-muted-foreground dark:text-zinc-400">Breakdown of caller intents (discovery, strategy, finance)</CardDescription>
+            <CardDescription className="text-muted-foreground dark:text-muted-foreground">Breakdown of caller intents (discovery, strategy, finance)</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             {intentData.length > 0 ? (
@@ -366,12 +366,12 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
 
         {/* Success Rate by Intent */}
         <Card className={squadChartCard}>
-          <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-emerald-500/10 via-transparent to-blue-500/10">
-            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-zinc-50">
-              <TrendingUp className="h-5 w-5 text-emerald-300" />
+          <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-success/10 via-transparent to-info/10">
+            <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-foreground">
+              <TrendingUp className="h-5 w-5 text-success" />
               Success Rate by Intent
             </CardTitle>
-            <CardDescription className="text-muted-foreground dark:text-zinc-400">Completion rates for each call intent type</CardDescription>
+            <CardDescription className="text-muted-foreground dark:text-muted-foreground">Completion rates for each call intent type</CardDescription>
           </CardHeader>
           <CardContent className="p-4">
             {successByIntent.length > 0 ? (
@@ -412,12 +412,12 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
 
       {/* Assistant Performance */}
       <Card className={squadChartCard}>
-        <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-purple-500/10 via-transparent to-blue-500/10">
-          <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-zinc-50">
-            <Users className="h-5 w-5 text-purple-300" />
+        <CardHeader className="relative border-b border-border dark:border-white/10 bg-gradient-to-r from-accent/10 via-transparent to-info/10">
+          <CardTitle className="flex items-center gap-2 text-base text-foreground dark:text-foreground">
+            <Users className="h-5 w-5 text-accent" />
             Squad Assistant Performance
           </CardTitle>
-          <CardDescription className="text-muted-foreground dark:text-zinc-400">Individual assistant involvement and completion rates in squad calls</CardDescription>
+          <CardDescription className="text-muted-foreground dark:text-muted-foreground">Individual assistant involvement and completion rates in squad calls</CardDescription>
         </CardHeader>
         <CardContent className="p-4">
           {assistantStats.length > 0 ? (
@@ -427,20 +427,20 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
                   ? Math.round((assistant.completed / assistant.count) * 100) 
                   : 0;
                 return (
-                  <div key={assistant.id} className="group flex items-center justify-between rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-300/30 hover:bg-amber-300/[0.06] hover:shadow-lg hover:shadow-amber-500/10">
+                  <div key={assistant.id} className="group flex items-center justify-between rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand-300/30 hover:bg-brand-300/[0.06] hover:shadow-lg hover:shadow-brand-500/10">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/10 shadow-inner shadow-purple-950/40">
-                        <span className="text-sm font-semibold text-purple-200">{index + 1}</span>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10 shadow-inner shadow-accent/40">
+                        <span className="text-sm font-semibold text-accent">{index + 1}</span>
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-foreground dark:text-zinc-100">{assistant.name}</p>
-                        <p className="truncate font-mono text-xs text-muted-foreground dark:text-zinc-500">{assistant.id.slice(0, 12)}...</p>
+                        <p className="truncate font-semibold text-foreground dark:text-foreground">{assistant.name}</p>
+                        <p className="truncate font-mono text-xs text-muted-foreground dark:text-muted-foreground">{assistant.id.slice(0, 12)}...</p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-4">
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-foreground dark:text-zinc-100">{assistant.count} calls</p>
-                        <p className="text-xs text-muted-foreground dark:text-zinc-500">{assistant.completed} completed</p>
+                        <p className="text-sm font-semibold text-foreground dark:text-foreground">{assistant.count} calls</p>
+                        <p className="text-xs text-muted-foreground dark:text-muted-foreground">{assistant.completed} completed</p>
                       </div>
                       <Badge 
                         className={callLogBadgeTone(successRate >= 70 ? 'success' : successRate >= 40 ? 'warning' : 'danger')}
@@ -466,30 +466,30 @@ export const SquadAnalyticsDashboard = ({ calls }: SquadAnalyticsDashboardProps)
 
       {/* Handoff Metrics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card className={cn(squadKpiCard, 'from-blue-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-blue-300/35 hover:shadow-blue-500/10')}>
+        <Card className={cn(squadKpiCard, 'from-info/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-info/35 hover:shadow-info/10')}>
           <CardContent className="p-6">
             <div className="text-center">
-              <GitBranch className="mx-auto mb-3 h-8 w-8 text-blue-300" />
-              <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{handoffStats.totalHandoffs}</p>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Total Handoffs</p>
+              <GitBranch className="mx-auto mb-3 h-8 w-8 text-info" />
+              <p className="text-3xl font-bold text-foreground dark:text-foreground">{handoffStats.totalHandoffs}</p>
+              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Total Handoffs</p>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(squadKpiCard, 'from-emerald-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-emerald-300/35 hover:shadow-emerald-500/10')}>
+        <Card className={cn(squadKpiCard, 'from-success/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-success/35 hover:shadow-success/10')}>
           <CardContent className="p-6">
             <div className="text-center">
-              <TrendingUp className="mx-auto mb-3 h-8 w-8 text-emerald-300" />
-              <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{handoffStats.maxHandoffs}</p>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Max Handoffs (Single Call)</p>
+              <TrendingUp className="mx-auto mb-3 h-8 w-8 text-success" />
+              <p className="text-3xl font-bold text-foreground dark:text-foreground">{handoffStats.maxHandoffs}</p>
+              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Max Handoffs (Single Call)</p>
             </div>
           </CardContent>
         </Card>
-        <Card className={cn(squadKpiCard, 'from-purple-500/15 via-card dark:via-zinc-950/85 to-background dark:to-black/95 hover:border-purple-300/35 hover:shadow-purple-500/10')}>
+        <Card className={cn(squadKpiCard, 'from-accent/15 via-card dark:via-background/85 to-background dark:to-black/95 hover:border-accent/35 hover:shadow-accent/10')}>
           <CardContent className="p-6">
             <div className="text-center">
-              <Users className="mx-auto mb-3 h-8 w-8 text-purple-300" />
-              <p className="text-3xl font-bold text-foreground dark:text-zinc-50">{handoffStats.callsWithHandoffs}</p>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-500">Calls With Handoffs</p>
+              <Users className="mx-auto mb-3 h-8 w-8 text-accent" />
+              <p className="text-3xl font-bold text-foreground dark:text-foreground">{handoffStats.callsWithHandoffs}</p>
+              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Calls With Handoffs</p>
             </div>
           </CardContent>
         </Card>

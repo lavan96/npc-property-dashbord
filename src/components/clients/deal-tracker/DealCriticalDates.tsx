@@ -47,10 +47,10 @@ function DateWarningBadge({ dateStr }: { dateStr: string }) {
     return <Badge variant="destructive" className="text-[10px]">Overdue by {Math.abs(daysAway)}d</Badge>;
   }
   if (daysAway <= 5) {
-    return <Badge className="text-[10px] bg-red-500">{daysAway}d away</Badge>;
+    return <Badge className="text-[10px] bg-destructive">{daysAway}d away</Badge>;
   }
   if (daysAway <= 14) {
-    return <Badge className="text-[10px] bg-amber-500">{daysAway}d away</Badge>;
+    return <Badge className="text-[10px] bg-brand-500">{daysAway}d away</Badge>;
   }
   return <Badge variant="outline" className="text-[10px]">{daysAway}d away</Badge>;
 }

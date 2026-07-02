@@ -173,7 +173,7 @@ export function IncomeExpensesTab({
             {annualRent > 0 && (
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Annual Income</p>
-                <p className="text-lg font-bold text-green-600">${annualRent.toLocaleString()}</p>
+                <p className="text-lg font-bold text-success">${annualRent.toLocaleString()}</p>
               </div>
             )}
           </div>
@@ -472,7 +472,7 @@ export function IncomeExpensesTab({
       </div>
 
       {/* Net Position Summary */}
-      <Card className={netAnnualIncome >= 0 ? 'border-green-500/50 bg-green-500/5' : 'border-red-500/50 bg-red-500/5'}>
+      <Card className={netAnnualIncome >= 0 ? 'border-success/50 bg-success/5' : 'border-destructive/50 bg-destructive/5'}>
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -480,7 +480,7 @@ export function IncomeExpensesTab({
               <p className="text-xs text-muted-foreground">Income ${annualRent.toLocaleString()} - Expenses ${totalAnnualExpenses.toLocaleString()}</p>
             </div>
             <div className="text-right">
-              <p className={`text-2xl font-bold ${netAnnualIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-2xl font-bold ${netAnnualIncome >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {netAnnualIncome >= 0 ? '+' : ''}${netAnnualIncome.toLocaleString()}/yr
               </p>
               <p className="text-sm text-muted-foreground">{grossYield}% gross yield</p>

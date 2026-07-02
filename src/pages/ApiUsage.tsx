@@ -241,11 +241,11 @@ function ApiUsageStatusBadge({ status }: ApiUsageStatusBadgeProps) {
   const isSuccess = status === 'success';
 
   return isSuccess ? (
-    <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-[10px] text-green-400">
+    <Badge variant="outline" className="border-success/30 bg-success/10 text-[10px] text-success">
       <CheckCircle2 className="h-3 w-3 mr-1" /> OK
     </Badge>
   ) : (
-    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-400">
+    <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-[10px] text-destructive">
       <XCircle className="h-3 w-3 mr-1" /> Error
     </Badge>
   );
@@ -601,7 +601,7 @@ export default function ApiUsage() {
 
       {/* Multi-Select Filters */}
       {data && (
-        <DashboardThemeFrame variant="toolbar" className="min-w-0 flex-wrap border-primary/10 bg-card/70 shadow-[0_12px_36px_rgba(15,23,42,0.06)] dark:bg-slate-950/35">
+        <DashboardThemeFrame variant="toolbar" className="min-w-0 flex-wrap border-primary/10 bg-card/70 shadow-[0_12px_36px_rgba(15,23,42,0.06)] dark:bg-background/35">
           <span className="mr-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"><Filter className="h-3.5 w-3.5" />Filters:</span>
           <MultiSelectFilter
             label="Services"
@@ -648,7 +648,7 @@ export default function ApiUsage() {
             caption={`${data.summary.successRate}% success`}
           />
           <ApiUsageMetricCard
-            icon={<Phone className="h-4 w-4 text-pink-500" />}
+            icon={<Phone className="h-4 w-4 text-accent-foreground0" />}
             label="VAPI Calls"
             value={data.vapi?.totalCalls || 0}
             caption={`${data.vapi?.totalMinutes || 0} min`}
@@ -660,13 +660,13 @@ export default function ApiUsage() {
             caption={data.consumption ? `${data.consumption.summary.totalRequests} calls` : 'No data'}
           />
           <ApiUsageMetricCard
-            icon={<DollarSign className="h-4 w-4 text-green-500" />}
+            icon={<DollarSign className="h-4 w-4 text-success-foreground0" />}
             label="Total Spend"
             value={`$${totalCombinedCost.toFixed(2)}`}
             caption={data.summary.period}
           />
           <ApiUsageMetricCard
-            icon={<CalendarDays className="h-4 w-4 text-orange-500" />}
+            icon={<CalendarDays className="h-4 w-4 text-warning-foreground0" />}
             label="Projected /mo"
             value={`$${data.projections?.totalProjectedMonthly?.toFixed(2) || '0.00'}`}
             caption={`Based on ${data.summary.period} avg`}
@@ -677,7 +677,7 @@ export default function ApiUsage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0">
-        <DashboardThemeFrame variant="toolbar" className={`${API_USAGE_TABLE_SCROLL} border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:bg-slate-950/45 dark:shadow-black/25`}>
+        <DashboardThemeFrame variant="toolbar" className={`${API_USAGE_TABLE_SCROLL} border-primary/15 bg-card/75 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.08)] dark:bg-background/45 dark:shadow-black/25`}>
           <TabsList aria-label="API usage sections" className="inline-flex h-auto w-auto min-w-max gap-1 bg-transparent p-0">
             <TabsTrigger value="overview" className={API_USAGE_TAB_TRIGGER}>Overview</TabsTrigger>
             <TabsTrigger value="consumption" className={API_USAGE_TAB_TRIGGER}>LLM Costs</TabsTrigger>
@@ -1089,30 +1089,30 @@ export default function ApiUsage() {
                 description="Monitor existing voice call volume, minutes, telephony cost, and projected monthly VAPI spend for the selected date range."
               >
                 <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
-                <Badge variant="outline" className="border-pink-500/25 bg-pink-500/10 text-pink-500">{data.vapi.totalCalls} calls</Badge>
+                <Badge variant="outline" className="border-accent/25 bg-accent/10 text-accent-foreground0">{data.vapi.totalCalls} calls</Badge>
               </ApiUsageTabHeader>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <ApiUsageMetricCard
-                  icon={<Phone className="h-4 w-4 text-pink-500" />}
+                  icon={<Phone className="h-4 w-4 text-accent-foreground0" />}
                   label="Total Calls"
                   value={data.vapi.totalCalls}
                   caption={`${data.vapi.inbound} inbound / ${data.vapi.outbound} outbound`}
                 />
                 <ApiUsageMetricCard
-                  icon={<Clock className="h-4 w-4 text-blue-500" />}
+                  icon={<Clock className="h-4 w-4 text-info-foreground0" />}
                   label="Total Minutes"
                   value={data.vapi.totalMinutes}
                   caption={`~${data.vapi.totalCalls > 0 ? Math.round(data.vapi.totalMinutes / data.vapi.totalCalls) : 0} min/call avg`}
                 />
                 <ApiUsageMetricCard
-                  icon={<DollarSign className="h-4 w-4 text-green-500" />}
+                  icon={<DollarSign className="h-4 w-4 text-success-foreground0" />}
                   label="Voice Cost"
                   value={`$${data.vapi.totalCost.toFixed(2)}`}
                   caption={`$${data.vapi.avgCostPerCall.toFixed(2)}/call`}
                 />
                 <ApiUsageMetricCard
-                  icon={<CalendarDays className="h-4 w-4 text-orange-500" />}
+                  icon={<CalendarDays className="h-4 w-4 text-warning-foreground0" />}
                   label="Projected /mo"
                   value={`$${data.projections?.projectedMonthlyVapi?.toFixed(2) || '0'}`}
                   caption="incl. Twilio telephony"
@@ -1125,7 +1125,7 @@ export default function ApiUsage() {
               <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-pink-500" />
+                    <Phone className="h-4 w-4 text-accent-foreground0" />
                     Daily VAPI Call Volume & Cost
                   </CardTitle>
                   <CardDescription className="text-xs">Calls (bars) and cost (line) over time</CardDescription>
@@ -1152,7 +1152,7 @@ export default function ApiUsage() {
               <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-500" />
+                    <Clock className="h-4 w-4 text-info-foreground0" />
                     Daily Call Minutes
                   </CardTitle>
                   <CardDescription className="text-xs">Minutes consumed per day (Twilio telephony)</CardDescription>
@@ -1199,7 +1199,7 @@ export default function ApiUsage() {
                 description="Review existing spend projections, daily averages, voice cost exposure, and configured service budget thresholds without changing alert logic."
               >
                 <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">{data.summary.period}</Badge>
-                <Badge variant="outline" className="border-amber-500/25 bg-amber-500/10 text-amber-500">Projected monthly</Badge>
+                <Badge variant="outline" className="border-brand-500/25 bg-brand-500/10 text-brand-500">Projected monthly</Badge>
               </ApiUsageTabHeader>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1210,13 +1210,13 @@ export default function ApiUsage() {
                   caption={`$${data.projections.dailyAvgCost.toFixed(4)}/day avg`}
                 />
                 <ApiUsageMetricCard
-                  icon={<Phone className="h-4 w-4 text-pink-500" />}
+                  icon={<Phone className="h-4 w-4 text-accent-foreground0" />}
                   label="VAPI + Twilio"
                   value={`$${data.projections.projectedMonthlyVapi.toFixed(2)}`}
                   caption="Voice & telephony"
                 />
                 <ApiUsageMetricCard
-                  icon={<CalendarDays className="h-4 w-4 text-orange-500" />}
+                  icon={<CalendarDays className="h-4 w-4 text-warning-foreground0" />}
                   label="Total Projected"
                   value={`$${data.projections.totalProjectedMonthly.toFixed(2)}`}
                   caption="per month"
@@ -1229,7 +1229,7 @@ export default function ApiUsage() {
               <Card className={`${API_USAGE_PANEL_CARD} lg:col-span-2`}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-green-500" />
+                    <DollarSign className="h-4 w-4 text-success-foreground0" />
                     Service Budget Tracking
                   </CardTitle>
                   <CardDescription className="text-xs">Current spend vs projected monthly by service</CardDescription>
@@ -1338,13 +1338,13 @@ export default function ApiUsage() {
                   caption="Across tracked calls"
                 />
                 <ApiUsageMetricCard
-                  icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  icon={<CheckCircle2 className="h-4 w-4 text-success-foreground0" />}
                   label="Success Rate"
                   value={`${data.summary.successRate}%`}
                   caption={`${data.summary.successCalls.toLocaleString()} successful`}
                 />
                 <ApiUsageMetricCard
-                  icon={<XCircle className="h-4 w-4 text-red-500" />}
+                  icon={<XCircle className="h-4 w-4 text-destructive-foreground0" />}
                   label="Errors"
                   value={data.summary.errorCalls.toLocaleString()}
                   caption="Failed health interactions"
@@ -1395,7 +1395,7 @@ export default function ApiUsage() {
                             <div className="w-3 h-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
                             <span className="min-w-0 truncate text-sm font-medium text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
                           </div>
-                          <Badge variant="outline" className={svc.successRate >= 95 ? 'border-green-500/30 text-green-400 bg-green-500/10' : svc.successRate >= 80 ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}>
+                          <Badge variant="outline" className={svc.successRate >= 95 ? 'border-success/30 text-success bg-success/10' : svc.successRate >= 80 ? 'border-brand-500/30 text-brand-400 bg-brand-500/10' : 'border-destructive/30 text-destructive bg-destructive/10'}>
                             {svc.successRate}%
                           </Badge>
                         </div>
@@ -1445,7 +1445,7 @@ export default function ApiUsage() {
                           <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: getServiceColor(svc.service) }} />
                           <span className="min-w-0 truncate text-sm font-semibold text-foreground" title={formatServiceName(svc.service)}>{formatServiceName(svc.service)}</span>
                         </div>
-                        <Badge variant="outline" className={svc.successRate >= 95 ? 'shrink-0 border-green-500/30 bg-green-500/10 text-green-400' : svc.successRate >= 80 ? 'shrink-0 border-yellow-500/30 bg-yellow-500/10 text-yellow-400' : 'shrink-0 border-red-500/30 bg-red-500/10 text-red-400'}>
+                        <Badge variant="outline" className={svc.successRate >= 95 ? 'shrink-0 border-success/30 bg-success/10 text-success' : svc.successRate >= 80 ? 'shrink-0 border-brand-500/30 bg-brand-500/10 text-brand-400' : 'shrink-0 border-destructive/30 bg-destructive/10 text-destructive'}>
                           {svc.successRate}%
                         </Badge>
                       </div>
@@ -1518,13 +1518,13 @@ export default function ApiUsage() {
                   caption="Matching current filters"
                 />
                 <ApiUsageMetricCard
-                  icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  icon={<CheckCircle2 className="h-4 w-4 text-success-foreground0" />}
                   label="Successful"
                   value={filteredHealthLogs.filter(log => log.status === 'success').length.toLocaleString()}
                   caption="Existing success severity"
                 />
                 <ApiUsageMetricCard
-                  icon={<XCircle className="h-4 w-4 text-red-500" />}
+                  icon={<XCircle className="h-4 w-4 text-destructive-foreground0" />}
                   label="Errors"
                   value={filteredHealthLogs.filter(log => log.status !== 'success').length.toLocaleString()}
                   caption="Existing error severity"

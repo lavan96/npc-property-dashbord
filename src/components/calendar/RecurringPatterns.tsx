@@ -179,9 +179,9 @@ export function RecurringPatterns({ events, onPatternClick }: RecurringPatternsP
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 80) return 'text-green-400';
-    if (confidence >= 60) return 'text-amber-400';
-    return 'text-orange-400';
+    if (confidence >= 80) return 'text-success';
+    if (confidence >= 60) return 'text-brand-400';
+    return 'text-warning';
   };
 
   return (
@@ -220,9 +220,9 @@ export function RecurringPatterns({ events, onPatternClick }: RecurringPatternsP
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       'p-1.5 rounded-md',
-                      pattern.confidence >= 80 && 'bg-green-500/20',
-                      pattern.confidence >= 60 && pattern.confidence < 80 && 'bg-amber-500/20',
-                      pattern.confidence < 60 && 'bg-orange-500/20'
+                      pattern.confidence >= 80 && 'bg-success/20',
+                      pattern.confidence >= 60 && pattern.confidence < 80 && 'bg-brand-500/20',
+                      pattern.confidence < 60 && 'bg-warning/20'
                     )}>
                       {getPatternIcon(pattern.type)}
                     </div>

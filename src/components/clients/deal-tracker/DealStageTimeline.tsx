@@ -17,15 +17,15 @@ interface DealStageTimelineProps {
 
 const STATUS_ICONS: Record<StageStatus, React.ReactNode> = {
   pending: <Circle className="h-4 w-4 text-muted-foreground" />,
-  in_progress: <Clock className="h-4 w-4 text-amber-500" />,
-  complete: <Check className="h-4 w-4 text-green-600" />,
+  in_progress: <Clock className="h-4 w-4 text-brand-500" />,
+  complete: <Check className="h-4 w-4 text-success" />,
   skipped: <SkipForward className="h-4 w-4 text-muted-foreground/50" />,
 };
 
 const STATUS_COLORS: Record<StageStatus, string> = {
   pending: 'border-muted-foreground/30 bg-muted/30',
-  in_progress: 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/20',
-  complete: 'border-green-600 bg-green-500/10',
+  in_progress: 'border-brand-500 bg-brand-500/10 ring-2 ring-brand-500/20',
+  complete: 'border-success/30 bg-success/10',
   skipped: 'border-muted-foreground/20 bg-muted/20 opacity-60',
 };
 
@@ -60,7 +60,7 @@ function StageDatePicker({ stage, onUpdateStage }: { stage: DealStage; onUpdateS
         </PopoverContent>
       </Popover>
       {stage.completed_at && (
-        <span className="text-green-600">✓ {format(new Date(stage.completed_at), 'dd MMM yyyy')}</span>
+        <span className="text-success">✓ {format(new Date(stage.completed_at), 'dd MMM yyyy')}</span>
       )}
     </div>
   );
@@ -113,7 +113,7 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
               {!isLast && (
                 <div className={cn(
                   'w-0.5 flex-1 min-h-[16px]',
-                  stage.status === 'complete' ? 'bg-green-500/50' : 'bg-border'
+                  stage.status === 'complete' ? 'bg-success/50' : 'bg-border'
                 )} />
               )}
             </div>
@@ -177,7 +177,7 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                     <Check className="h-3 w-3" />
                     Completed
                     {stage.status === 'complete' && stage.completed_at && (
-                      <span className="text-green-600 ml-1">
+                      <span className="text-success ml-1">
                         ({format(new Date(stage.completed_at), 'dd MMM yyyy')})
                       </span>
                     )}
@@ -201,7 +201,7 @@ export function DealStageTimeline({ stages, onUpdateStage }: DealStageTimelinePr
                     <FileCheck className="h-3 w-3" />
                     Invoice Received
                     {stage.invoice_received && stage.invoice_received_date && (
-                      <span className="text-green-600 ml-1">
+                      <span className="text-success ml-1">
                         ({format(new Date(stage.invoice_received_date), 'dd MMM yyyy')})
                       </span>
                     )}

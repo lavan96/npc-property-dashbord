@@ -171,7 +171,7 @@ export function CreativeGalleryPanel({ datePreset }: CreativeGalleryProps) {
                           {isBestCPL && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge className="bg-emerald-600 text-foreground dark:text-white text-[9px] px-1.5 py-0 gap-0.5">
+                                <Badge className="bg-success text-foreground dark:text-white text-[9px] px-1.5 py-0 gap-0.5">
                                   <Trophy className="h-2.5 w-2.5" /> CPL
                                 </Badge>
                               </TooltipTrigger>

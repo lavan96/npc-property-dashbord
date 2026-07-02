@@ -36,24 +36,24 @@ interface Props {
 }
 
 const STATUS_TONE: Record<string, { tone: string; icon: any; label: string }> = {
-  sent: { tone: 'border-amber-300/70 bg-amber-500/14 text-amber-950 ring-1 ring-amber-300/25 dark:border-amber-200/40 dark:bg-amber-300/14 dark:text-amber-100 dark:ring-amber-200/10', icon: Mail, label: 'Sent' },
-  delivered: { tone: 'border-amber-300/70 bg-amber-500/14 text-amber-950 ring-1 ring-amber-300/25 dark:border-amber-200/40 dark:bg-amber-300/14 dark:text-amber-100 dark:ring-amber-200/10', icon: Eye, label: 'Delivered' },
-  completed: { tone: 'border-emerald-300/70 bg-emerald-500/14 text-emerald-900 ring-1 ring-emerald-300/25 dark:border-emerald-200/40 dark:bg-emerald-300/14 dark:text-emerald-100 dark:ring-emerald-200/10', icon: CheckCircle2, label: 'Completed' },
-  signed: { tone: 'border-emerald-300/70 bg-emerald-500/14 text-emerald-900 ring-1 ring-emerald-300/25 dark:border-emerald-200/40 dark:bg-emerald-300/14 dark:text-emerald-100 dark:ring-emerald-200/10', icon: CheckCircle2, label: 'Signed' },
-  declined: { tone: 'border-red-300/55 bg-red-500/10 text-red-800 dark:border-red-300/30 dark:bg-red-400/10 dark:text-red-100', icon: XCircle, label: 'Declined' },
-  voided: { tone: 'border-red-300/55 bg-red-500/10 text-red-800 dark:border-red-300/30 dark:bg-red-400/10 dark:text-red-100', icon: AlertTriangle, label: 'Voided' },
-  expired: { tone: 'border-red-300/55 bg-red-500/10 text-red-800 dark:border-red-300/30 dark:bg-red-400/10 dark:text-red-100', icon: Clock, label: 'Expired' },
-  created: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: Clock, label: 'Created' },
-  generated: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: FileText, label: 'Generated' },
-  draft: { tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200', icon: FileText, label: 'Draft' },
-  autoresponded: { tone: 'border-amber-300/55 bg-amber-500/14 text-amber-900 dark:border-amber-200/35 dark:bg-amber-300/14 dark:text-amber-100', icon: AlertTriangle, label: 'Bounced' },
+  sent: { tone: 'border-brand-300/70 bg-brand-500/14 text-brand-950 ring-1 ring-brand-300/25 dark:border-brand-200/40 dark:bg-brand-300/14 dark:text-brand-100 dark:ring-brand-200/10', icon: Mail, label: 'Sent' },
+  delivered: { tone: 'border-brand-300/70 bg-brand-500/14 text-brand-950 ring-1 ring-brand-300/25 dark:border-brand-200/40 dark:bg-brand-300/14 dark:text-brand-100 dark:ring-brand-200/10', icon: Eye, label: 'Delivered' },
+  completed: { tone: 'border-success/70 bg-success/14 text-success ring-1 ring-success/25 dark:border-success/40 dark:bg-success/14 dark:text-success-foreground dark:ring-success/10', icon: CheckCircle2, label: 'Completed' },
+  signed: { tone: 'border-success/70 bg-success/14 text-success ring-1 ring-success/25 dark:border-success/40 dark:bg-success/14 dark:text-success-foreground dark:ring-success/10', icon: CheckCircle2, label: 'Signed' },
+  declined: { tone: 'border-destructive/55 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive-foreground', icon: XCircle, label: 'Declined' },
+  voided: { tone: 'border-destructive/55 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive-foreground', icon: AlertTriangle, label: 'Voided' },
+  expired: { tone: 'border-destructive/55 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive-foreground', icon: Clock, label: 'Expired' },
+  created: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground', icon: Clock, label: 'Created' },
+  generated: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground', icon: FileText, label: 'Generated' },
+  draft: { tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground', icon: FileText, label: 'Draft' },
+  autoresponded: { tone: 'border-brand-300/55 bg-brand-500/14 text-brand-900 dark:border-brand-200/35 dark:bg-brand-300/14 dark:text-brand-100', icon: AlertTriangle, label: 'Bounced' },
 };
 
 export function DocuSignStatusBadge({ status }: { status?: string | null }) {
   if (!status) return null;
   const key = status.toLowerCase();
   const cfg = STATUS_TONE[key] || {
-    tone: 'border-slate-300/70 bg-slate-100/80 text-slate-700 dark:border-slate-600/70 dark:bg-slate-800/70 dark:text-slate-200',
+    tone: 'border-border/70 bg-muted/80 text-foreground dark:border-border/70 dark:bg-background/70 dark:text-foreground',
     icon: Clock,
     label: status,
   };
@@ -74,7 +74,7 @@ function fmtDate(ts?: string | null) { return ts ? format(new Date(ts), 'dd MMM 
 
 function DetailRow({ label, value, mono = false }: { label: string; value?: string | null; mono?: boolean }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border/60 bg-background/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45),0_8px_22px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-slate-950/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+    <div className="min-w-0 rounded-xl border border-border/60 bg-background/80 p-3 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.45),0_8px_22px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-background/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
       <dt className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
       <dd className={`mt-1 break-words text-sm font-medium text-foreground ${mono ? 'font-mono text-xs leading-5' : ''}`}>
         {value || '—'}
@@ -85,7 +85,7 @@ function DetailRow({ label, value, mono = false }: { label: string; value?: stri
 
 function CaseFileSection({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.52),0_16px_42px_rgba(15,23,42,0.07)] ring-1 ring-border dark:ring-white/50 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_20px_48px_rgba(0,0,0,0.30)] dark:ring-white/10">
+    <section className="overflow-hidden rounded-2xl border border-border/70 bg-card/90 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.52),0_16px_42px_rgba(15,23,42,0.07)] ring-1 ring-border dark:ring-white/50 dark:border-white/10 dark:bg-background/55 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_20px_48px_rgba(0,0,0,0.30)] dark:ring-white/10">
       <div className="flex items-center gap-2 border-b border-border/65 bg-muted/40 px-4 py-3 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.045]">
         <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
           <Icon className="h-4 w-4" />
@@ -157,12 +157,12 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
         <DialogHeader className="border-b border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.18),transparent_34%),linear-gradient(135deg,hsl(var(--card)),hsl(var(--muted)/0.38))] px-5 py-5 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,hsl(43_84%_52%/0.16),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.86))] sm:px-6">
           <DialogTitle className="flex min-w-0 flex-col gap-4 pr-8 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/35 bg-amber-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-amber-700 shadow-sm dark:border-amber-200/25 dark:text-amber-100">
+              <div className="inline-flex items-center gap-2 rounded-full border border-brand-300/35 bg-brand-500/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-brand-700 shadow-sm dark:border-brand-200/25 dark:text-brand-100">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Agreement case file
               </div>
               <div className="flex min-w-0 items-start gap-3">
-                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-300/35 bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_52%,hsl(38_92%_50%))] text-slate-950 shadow-lg shadow-amber-500/20">
+                <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-brand-300/35 bg-[linear-gradient(135deg,hsl(48_96%_89%),hsl(43_84%_52%)_52%,hsl(38_92%_50%))] text-foreground shadow-lg shadow-brand-500/20">
                   <FileText className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
@@ -205,7 +205,7 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
                   />
                 </>
               )}
-              <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="h-10 rounded-xl border-border/70 bg-background/80 gap-2 shadow-sm hover:bg-primary/10 hover:text-primary dark:bg-slate-950/55">
+              <Button size="sm" variant="outline" onClick={refresh} disabled={loading} className="h-10 rounded-xl border-border/70 bg-background/80 gap-2 shadow-sm hover:bg-primary/10 hover:text-primary dark:bg-background/55">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Refresh
               </Button>
@@ -235,7 +235,7 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
 
             <CaseFileSection title="Agreement status" icon={FileCheck2}>
               <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-xl border border-border/55 bg-background/70 p-3 shadow-sm dark:bg-slate-950/35">
+                <div className="rounded-xl border border-border/55 bg-background/70 p-3 shadow-sm dark:bg-background/35">
                   <dt className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">Agreement status</dt>
                   <dd className="mt-2"><StatusBadge status={agreement?.status || envelope?.status} /></dd>
                 </div>
@@ -273,7 +273,7 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
               ) : (
                 <div className="space-y-3">
                   {signers.map((s, i) => (
-                    <div key={i} className="rounded-2xl border border-border/65 bg-background/75 p-4 text-sm shadow-sm dark:bg-slate-950/35">
+                    <div key={i} className="rounded-2xl border border-border/65 bg-background/75 p-4 text-sm shadow-sm dark:bg-background/35">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="break-words font-bold text-foreground">{s.name}</div>
@@ -307,7 +307,7 @@ export function EnvelopeStatusDialog({ open, onOpenChange, scope, recordId, titl
                 {events.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-border/70 bg-muted/25 p-4 text-sm text-muted-foreground">No events recorded yet.</p>
                 ) : (
-                  <div className="overflow-hidden rounded-2xl border border-border/65 bg-background/70 dark:bg-slate-950/35">
+                  <div className="overflow-hidden rounded-2xl border border-border/65 bg-background/70 dark:bg-background/35">
                     {events.slice().reverse().map((ev, i) => (
                       <div key={i} className="grid gap-2 border-b border-border/45 p-3 text-xs last:border-0 sm:grid-cols-[9rem_1fr]">
                         <span className="font-semibold text-muted-foreground">{fmt(ev.timestamp)}</span>

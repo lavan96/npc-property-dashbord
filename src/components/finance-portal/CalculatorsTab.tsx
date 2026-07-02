@@ -271,7 +271,7 @@ function LenderComparePanel({ fileId, file }: { fileId: string; file: any }) {
                         <div className="flex gap-1 mt-1">
                           {c.offset_available && <Badge variant="outline" className="text-[10px]">Offset</Badge>}
                           {c.redraw_available && <Badge variant="outline" className="text-[10px]">Redraw</Badge>}
-                          {c.lmi_waived && <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-500">LMI waived</Badge>}
+                          {c.lmi_waived && <Badge variant="outline" className="text-[10px] border-success/30 text-success-foreground0">LMI waived</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">{Number(c.rate_pa).toFixed(2)}%</TableCell>
@@ -497,7 +497,7 @@ function BridgingForm({ fileId, file }: { fileId: string; file: any }) {
               <Row k="Total bridging interest" v={AUD(result.total_bridging_interest)} bold />
               <Row k="End loan monthly repayment" v={AUD(result.end_monthly_repayment)} />
               <Row k="Bridging finance required" v={AUD(result.bridging_finance_required)} bold />
-              {result.notes?.map((n: string, i: number) => <p key={i} className="text-xs text-amber-500">{n}</p>)}
+              {result.notes?.map((n: string, i: number) => <p key={i} className="text-xs text-brand-500">{n}</p>)}
             </>
           )}
         </CardContent>
@@ -569,7 +569,7 @@ function RefiForm({ fileId, file }: { fileId: string; file: any }) {
               <Row k="Annual saving" v={AUD(result.annual_saving)} />
               <Row k="Break-even" v={result.break_even_months ? `${result.break_even_months} mo` : '—'} />
               <Row k="5-year net saving" v={AUD(result.five_year_saving)} bold />
-              {result.notes?.map((n: string, i: number) => <p key={i} className="text-xs text-amber-500">{n}</p>)}
+              {result.notes?.map((n: string, i: number) => <p key={i} className="text-xs text-brand-500">{n}</p>)}
             </>
           )}
         </CardContent>
@@ -687,7 +687,7 @@ function NumField({ label, value, onChange, step = 1 }: { label: string; value: 
 }
 
 function Row({ k, v, tone, bold }: { k: string; v: string; tone?: 'ok' | 'warn'; bold?: boolean }) {
-  const toneCls = tone === 'warn' ? 'text-amber-500' : tone === 'ok' ? 'text-emerald-500' : '';
+  const toneCls = tone === 'warn' ? 'text-brand-500' : tone === 'ok' ? 'text-success-foreground0' : '';
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{k}</span>

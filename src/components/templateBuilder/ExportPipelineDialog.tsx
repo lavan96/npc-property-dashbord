@@ -416,7 +416,7 @@ export function ExportPipelineDialog({
                   </div>
                 </div>
               </div>
-              <div className={`rounded border p-3 text-xs ${rendererErrorCount > 0 ? 'border-destructive/30 bg-destructive/5 text-destructive' : rendererNoteCount > 0 ? 'border-amber-500/30 bg-amber-500/5 text-amber-700' : 'border-success/30 bg-success/5 text-success'}`}>
+              <div className={`rounded border p-3 text-xs ${rendererErrorCount > 0 ? 'border-destructive/30 bg-destructive/5 text-destructive' : rendererNoteCount > 0 ? 'border-brand-500/30 bg-brand-500/5 text-brand-700' : 'border-success/30 bg-success/5 text-success'}`}>
                 <div className="font-semibold flex items-center gap-2">
                   {rendererErrorCount > 0 ? <FileWarning className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                   Renderer pre-flight
@@ -503,7 +503,7 @@ export function ExportPipelineDialog({
           <div className="px-6 pt-3 border-t space-y-1.5">
             {capabilityReports.map((report) => (
               <div key={report.format} className="flex items-start gap-2 text-[11px] text-muted-foreground">
-                <FileWarning className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                <FileWarning className="h-3.5 w-3.5 mt-0.5 shrink-0 text-brand-500" />
                 <div className="min-w-0">
                   <span className="font-medium uppercase text-foreground mr-1">{report.format}</span>
                   {report.issues.map((issue) => issue.message).join(' ')}

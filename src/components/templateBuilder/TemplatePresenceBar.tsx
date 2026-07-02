@@ -135,7 +135,7 @@ export function TemplatePresenceBar({
                 {u.page_id && <div className="text-muted-foreground">page {u.page_id.slice(0, 8)}</div>}
                 {u.selected_block_id && <div className="text-muted-foreground">block {u.selected_block_id.slice(0, 8)}</div>}
                 {u.selected_overlay_id && <div className="text-muted-foreground">overlay {u.selected_overlay_id.slice(0, 8)}</div>}
-                {u.editing_text && <div className="text-amber-600">editing text</div>}
+                {u.editing_text && <div className="text-brand-600">editing text</div>}
               </TooltipContent>
             </Tooltip>
           );

@@ -15,11 +15,11 @@ import { cn } from '@/lib/utils';
 
 
 const cleanupDialogShell =
-  'overflow-hidden border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/98 via-card dark:via-zinc-900/95 to-background dark:to-black/95 p-0 text-foreground dark:text-zinc-50 shadow-2xl shadow-sm dark:shadow-black/50 sm:max-w-2xl';
+  'overflow-hidden border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/98 via-card dark:via-background/95 to-background dark:to-black/95 p-0 text-foreground dark:text-foreground shadow-2xl shadow-sm dark:shadow-black/50 sm:max-w-2xl';
 const cleanupSectionCard =
-  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-emerald-200/35 before:to-transparent';
+  'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-background/95 via-card dark:via-background/80 to-background dark:to-black/90 shadow-xl shadow-sm dark:shadow-black/25 before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-success/35 before:to-transparent';
 const cleanupTriggerBase =
-  'group gap-2 border-emerald-300/20 bg-emerald-500/10 text-emerald-100 shadow-lg shadow-sm dark:shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-emerald-300/40 hover:bg-emerald-500/15 hover:text-emerald-50 hover:shadow-emerald-500/10 focus-visible:ring-2 focus-visible:ring-emerald-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+  'group gap-2 border-success/20 bg-success/10 text-success-foreground shadow-lg shadow-sm dark:shadow-black/20 transition-all hover:-translate-y-0.5 hover:border-success/40 hover:bg-success/15 hover:text-success-foreground hover:shadow-success/10 focus-visible:ring-2 focus-visible:ring-success/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 
 interface CleanupResult {
   id: string;
@@ -166,15 +166,15 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
         </Button>
       </DialogTrigger>
       <DialogContent className={cleanupDialogShell}>
-        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
-        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-success/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-success/10 blur-3xl" />
         <DialogHeader className="relative border-b border-border dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.94),rgba(0,0,0,0.78),rgba(6,78,59,0.18))] px-6 py-5">
-          <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
+          <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-success-foreground">
             <ShieldCheck className="h-3 w-3" />
             Data Quality Utility
           </div>
-          <DialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-500/10 text-emerald-200 shadow-inner shadow-emerald-950/40">
+          <DialogTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-foreground">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-success/25 bg-success/10 text-success shadow-inner shadow-success/40">
               <UserCheck className="h-5 w-5" />
             </span>
             Cleanup Contact Names
@@ -183,13 +183,13 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
 
         <div className="space-y-5 px-6 py-5">
           <Card className={cleanupSectionCard}>
-            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-emerald-500/10 via-transparent to-blue-500/10 pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-zinc-50"><DatabaseZap className="h-4 w-4 text-emerald-300" />What This Does</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground dark:text-zinc-500">
+            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-success/10 via-transparent to-info/10 pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm text-foreground dark:text-foreground"><DatabaseZap className="h-4 w-4 text-success" />What This Does</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground dark:text-muted-foreground">
                 Syncs contact names from GoHighLevel CRM
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-4 text-sm text-muted-foreground dark:text-zinc-400">
+            <CardContent className="p-4 text-sm text-muted-foreground dark:text-muted-foreground">
               <ul className="grid gap-2 sm:grid-cols-2">
                 <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Looks up each call's phone number in GHL</li>
                 <li className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-3 py-2">Updates customer name with GHL contact's full name</li>
@@ -201,10 +201,10 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
 
           <div className="flex items-center justify-between rounded-3xl border border-border dark:border-white/10 bg-white/[0.03] p-4 shadow-inner shadow-sm dark:shadow-black/20">
             <div className="space-y-0.5">
-              <Label htmlFor="force-update" className="text-sm font-semibold text-foreground dark:text-zinc-100">
+              <Label htmlFor="force-update" className="text-sm font-semibold text-foreground dark:text-foreground">
                 Force Update All
               </Label>
-              <p className="text-xs text-muted-foreground dark:text-zinc-500">
+              <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                 Re-sync all records, even those with existing names
               </p>
             </div>
@@ -218,19 +218,19 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
 
           {isRunning && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm text-foreground dark:text-zinc-100">
+              <div className="flex items-center justify-between text-sm text-foreground dark:text-foreground">
                 <span>Processing batch {currentBatch}...</span>
-                <span className="text-muted-foreground dark:text-zinc-500">
+                <span className="text-muted-foreground dark:text-muted-foreground">
                   {processedCount} / {totalRecords || '?'} records
                 </span>
               </div>
               <Progress value={progress} className="h-2 overflow-hidden rounded-full bg-card/10 dark:bg-white/10" />
               <div className="flex items-center gap-4 text-sm">
-                <Badge variant="outline" className="gap-1 rounded-full border-emerald-300/20 bg-emerald-500/10 text-emerald-100">
-                  <CheckCircle className="h-3 w-3 text-emerald-300" />
+                <Badge variant="outline" className="gap-1 rounded-full border-success/20 bg-success/10 text-success-foreground">
+                  <CheckCircle className="h-3 w-3 text-success" />
                   {updatedCount} updated
                 </Badge>
-                <Badge variant="outline" className="gap-1 rounded-full border-border dark:border-white/10 bg-white/[0.03] text-muted-foreground dark:text-zinc-300">
+                <Badge variant="outline" className="gap-1 rounded-full border-border dark:border-white/10 bg-white/[0.03] text-muted-foreground dark:text-foreground">
                   <AlertCircle className="h-3 w-3 text-muted-foreground" />
                   {processedCount - updatedCount} skipped
                 </Badge>
@@ -240,14 +240,14 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
 
           {logs.length > 0 && (
             <Card className={cleanupSectionCard}>
-              <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-emerald-500/10 pb-2">
-                <CardTitle className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-400">Activity Log</CardTitle>
+              <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-info/10 via-transparent to-success/10 pb-2">
+                <CardTitle className="text-xs uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Activity Log</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[150px] p-3">
                   <div className="space-y-1 font-mono text-xs">
                     {logs.map((log, i) => (
-                      <div key={i} className="text-muted-foreground dark:text-zinc-500">
+                      <div key={i} className="text-muted-foreground dark:text-muted-foreground">
                         {log}
                       </div>
                     ))}
@@ -260,7 +260,7 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
           <Button
             onClick={runCleanup}
             disabled={isRunning}
-            className="w-full gap-2 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 font-semibold text-black shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:from-emerald-300 hover:via-teal-300 hover:to-emerald-400 hover:shadow-emerald-500/30 disabled:translate-y-0 disabled:opacity-50"
+            className="w-full gap-2 rounded-2xl bg-gradient-to-r from-success via-success to-success font-semibold text-black shadow-lg shadow-success/20 transition-all hover:-translate-y-0.5 hover:from-success hover:via-success hover:to-success hover:shadow-success/30 disabled:translate-y-0 disabled:opacity-50"
           >
             {isRunning ? (
               <>
@@ -275,7 +275,7 @@ export const CleanupContactNames: React.FC<{ onComplete?: () => void; triggerCla
             )}
           </Button>
 
-          <p className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-4 py-3 text-center text-xs text-muted-foreground dark:text-zinc-500">
+          <p className="rounded-2xl border border-border dark:border-white/10 bg-white/[0.03] px-4 py-3 text-center text-xs text-muted-foreground dark:text-muted-foreground">
             This may take a few minutes for large datasets. Do not close this dialog.
           </p>
         </div>
