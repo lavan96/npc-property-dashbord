@@ -16,7 +16,7 @@ import {
   ShieldAlert, Component, Sparkles, Command as CommandIcon, Wand2, LayoutTemplate, ClipboardCopy, ClipboardPaste,
   RefreshCw, GitCompareArrows, GitBranch, ClipboardCheck, Lock, FileText,
   ChevronDown, MoreHorizontal, CheckSquare, Settings2, Image as ImageIcon, Type, Table as TableIcon, MapPinned,
-  Zap, Cpu,
+  Zap, Cpu, Activity,
 } from 'lucide-react';
 // Always-mounted editor chrome stays eagerly imported; the heavy on-demand
 // dialogs below are React.lazy + MountOnFirstOpen so they're code-split out of
@@ -31,6 +31,8 @@ import { PageMastersDialog } from '@/components/templateBuilder/PageMastersDialo
 import { ThemesDialog } from '@/components/templateBuilder/ThemesDialog';
 import { LiveHtmlPreview } from '@/components/templateBuilder/LiveHtmlPreview';
 import { MountOnFirstOpen } from '@/components/templateBuilder/MountOnFirstOpen';
+import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
+import { usePersistedImportReviewController } from '@/components/templateBuilder/usePersistedImportReviewController';
 
 const ResyncPdfDialog = lazy(() => import('@/components/templateBuilder/ResyncPdfDialog').then((m) => ({ default: m.ResyncPdfDialog })));
 const ReferenceImportDialog = lazy(() => import('@/components/templateBuilder/ReferenceImportDialog').then((m) => ({ default: m.ReferenceImportDialog })));
@@ -207,6 +209,25 @@ export default function TemplateBuilderEdit() {
   const { update, create } = useReportTemplateMutations();
   const { data: versions = [] } = useReportTemplateVersions(id);
   const qc = useQueryClient();
+  const importReview = usePersistedImportReviewController({ onRepairApplied: () => { if (id) void qc.invalidateQueries({ queryKey: ['report-templates', id] }); } });
+  const { data: linkedImport, isLoading: linkedImportLoading } = useQuery({
+    queryKey: ['template-imports', 'linked-template', id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('template_imports')
+        .select('id,source_filename,updated_at,created_at')
+        .eq('created_template_id', id!)
+        .eq('status', 'completed')
+        .not('meta->>cdir_artifact_path', 'is', null)
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -1562,6 +1583,7 @@ export default function TemplateBuilderEdit() {
           openBindingFixer: () => setFixerOpen(true),
         }}
       />
+      <ImportReviewDialog {...importReview.dialogProps} />
       <MountOnFirstOpen open={snippetsOpen}>
         <SnippetLibraryDialog
           open={snippetsOpen}
@@ -1631,6 +1653,20 @@ export default function TemplateBuilderEdit() {
           >
             <Component className="h-3.5 w-3.5" /> Snippets
           </Button>
+          {(linkedImport || linkedImportLoading) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => linkedImport?.id && importReview.openPersistedReview(linkedImport.id)}
+              disabled={!linkedImport?.id || importReview.reviewLoadingId === linkedImport?.id}
+              className="ml-1 h-8 gap-1.5 text-xs"
+              title={linkedImport?.source_filename ? `Open Visual QA for ${linkedImport.source_filename}` : 'Loading linked import QA'}
+            >
+              {importReview.reviewLoadingId === linkedImport?.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />}
+              Visual QA
+            </Button>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Popover>
