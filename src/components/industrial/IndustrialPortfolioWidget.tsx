@@ -95,7 +95,7 @@ export function IndustrialPortfolioWidget() {
         <Button
           variant="outline"
           size="sm"
-          className="dashboard-luxury-action min-h-10 shrink-0 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0"
+          className="dashboard-luxury-primary-cta min-h-10 shrink-0 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0"
           onClick={() => navigate('/industrial')}
         >
           View <ArrowRight className="ml-1.5 h-3.5 w-3.5" />

@@ -564,7 +564,7 @@ export function AgentChatWidget() {
         className="dashboard-floating-action-button fixed bottom-[5.5rem] right-4 z-[55] flex h-14 w-14 items-center justify-center rounded-full transition-all hover:scale-105 group md:bottom-6 md:right-6 md:z-40"
         aria-label="Open AI Assistant"
       >
-        <Diamond className="h-6 w-6 text-black group-hover:animate-pulse" />
+        <Diamond className="h-6 w-6 text-primary-foreground group-hover:animate-pulse" />
         {notifCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-pulse">
             {notifCount > 9 ? '9+' : notifCount}
@@ -591,9 +591,9 @@ export function AgentChatWidget() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <Diamond className="h-5 w-5 text-black dark:text-primary" />
+          <Diamond className="h-5 w-5 text-primary-foreground dark:text-primary" />
           <span className="font-semibold text-sm">Aurixa Agent</span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Gemini</span>
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary-foreground/15 text-primary-foreground dark:bg-primary/10 dark:text-primary">Gemini</span>
         </div>
         <div className="flex items-center gap-0.5">
           {/* Notification bell */}

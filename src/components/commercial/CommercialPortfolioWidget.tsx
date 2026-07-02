@@ -109,7 +109,7 @@ export function CommercialPortfolioWidget() {
         <Button
           variant="outline"
           size="sm"
-          className="dashboard-luxury-action min-h-10 shrink-0 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0"
+          className="dashboard-luxury-primary-cta min-h-10 shrink-0 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0"
           onClick={() => navigate('/commercial')}
         >
           View <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -127,7 +127,7 @@ export function CommercialPortfolioWidget() {
             <Building2 className="h-10 w-10 mx-auto mb-2 opacity-40" />
             No commercial assets yet.
             <div className="mt-3">
-              <Button size="sm" variant="outline" className="dashboard-luxury-action min-h-10 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0" onClick={() => navigate('/commercial')}>
+              <Button size="sm" variant="outline" className="dashboard-luxury-primary-cta min-h-10 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0" onClick={() => navigate('/commercial')}>
                 Add your first commercial property
               </Button>
             </div>

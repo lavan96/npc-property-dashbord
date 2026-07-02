@@ -481,8 +481,8 @@ Clean, modern admin dashboard with confidence-based color coding
   .dashboard-shell {
     @apply relative min-h-screen bg-background text-foreground;
     background-image:
-      radial-gradient(circle at 12% 0%, hsl(var(--dashboard-primary-soft) / 0.82), transparent 27rem),
-      radial-gradient(circle at 92% 6%, hsl(var(--dashboard-primary-strong) / 0.10), transparent 24rem),
+      radial-gradient(circle at 12% 0%, hsl(var(--dashboard-primary-soft) / 0.34), transparent 25rem),
+      radial-gradient(circle at 92% 6%, hsl(var(--dashboard-primary-strong) / 0.055), transparent 22rem),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--surface-2)) 52%, hsl(var(--surface-1)) 100%);
   }
 
@@ -878,16 +878,16 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   :root:not(.dark) .dashboard-luxury-action {
-    border: 1px solid hsl(var(--dashboard-primary-strong) / 0.28);
-    background: hsl(var(--dashboard-primary-soft) / 0.46);
+    border: 1px solid hsl(var(--dashboard-primary-strong) / 0.34);
+    background: hsl(var(--dashboard-surface) / 0.96);
     color: hsl(var(--dashboard-primary-strong));
-    box-shadow: 0 8px 20px hsl(35 43% 20% / 0.08);
+    box-shadow: 0 8px 20px hsl(35 43% 20% / 0.07);
   }
 
   :root:not(.dark) .dashboard-luxury-action:hover {
     transform: translateY(-0.125rem);
     border-color: hsl(var(--dashboard-primary-strong) / 0.42);
-    background: hsl(var(--dashboard-primary-soft) / 0.72);
+    background: hsl(var(--dashboard-primary-soft) / 0.5);
     color: hsl(var(--dashboard-primary-strong));
     box-shadow: 0 12px 28px hsl(35 43% 20% / 0.12);
   }
@@ -920,8 +920,25 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   :root:not(.dark) .dashboard-floating-report-widget {
-    border-color: hsl(var(--dashboard-border-soft) / 0.82);
-    background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.42), hsl(var(--dashboard-surface) / 0.92));
+    border-color: hsl(var(--dashboard-primary-strong) / 0.3);
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary-hover)));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 14px 32px hsl(35 43% 20% / 0.16), inset 0 1px 0 hsl(0 0% 100% / 0.2);
+  }
+
+  :root:not(.dark) .dashboard-floating-report-widget button,
+  :root:not(.dark) .dashboard-floating-report-widget .text-primary,
+  :root:not(.dark) .dashboard-floating-report-widget [class*="text-primary"] {
+    color: hsl(var(--primary-foreground));
+  }
+
+  :root:not(.dark) .dashboard-floating-report-widget .bg-primary\/10 {
+    background-color: hsl(var(--primary-foreground) / 0.16);
+  }
+
+  :root:not(.dark) .dashboard-floating-report-widget button:hover {
+    background-color: hsl(var(--primary-foreground) / 0.12);
+    color: hsl(var(--primary-foreground));
   }
 
   .dark .dashboard-luxury-kicker,
