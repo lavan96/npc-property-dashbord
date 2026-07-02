@@ -30,7 +30,7 @@ function createChartPalette(primary: string, accent: string, isDark: boolean) {
 
 function createLightTokens(config: BrandConfig): BrandTokenMap {
   const primary = normalizeHslString(config.primaryColor, DEFAULT_PRIMARY);
-  const accent = normalizeHslString(config.accentColor, primary || DEFAULT_ACCENT);
+  const accent = normalizeHslString(config.accentColor, defaultLightTokenMap['--accent'] || DEFAULT_ACCENT);
 
   // Phase 2 contract: light mode starts from the luxury surface baseline and
   // brand colours are applied only to semantic emphasis tokens. Warm ivory,
