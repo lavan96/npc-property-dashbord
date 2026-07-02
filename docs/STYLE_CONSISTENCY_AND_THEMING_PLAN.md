@@ -1,6 +1,6 @@
 # Style Consistency & Dynamic White-Label Theming — Implementation Plan
 
-**Status:** In progress — Phases 0–4 landed
+**Status:** In progress — Phases 0–4 landed; Phase 5 underway
 **Owner:** Platform / UI
 
 > **Implementation status** — this doc lives in the plan PR; all _code_ lands in
@@ -30,8 +30,19 @@
 >   (migrated `AssignedTasksTab` onto it). The shadcn `ui/*` primitives were
 >   already token-based (audited — no palette leakage). Verified: build green,
 >   `tsc` clean, tests 17/17, ratchet holds.
-> - ⏭️ **Next — Phase 5** (staged feature migration of the ~10.9k palette classes /
->   ~891 hex, triaging each as brand vs semantic).
+> - 🚧 **Phase 5 — Feature migration (underway).** Added a **brand colour ramp**
+>   (`--brand-50…950`, derived from the brand hue) so art-directed gold can move
+>   off `amber-*` while keeping shade/contrast — and cascade. Built a reviewed
+>   per-file codemod (`scripts/migrate-style-batch.cjs`) that maps amber/yellow →
+>   brand ramp and green/red/orange/blue/purple → success/destructive/warning/
+>   info/accent **by role** (light→low-opacity/foreground, solid→solid) so
+>   contrast holds; neutrals → muted/foreground/border. Migrated ~51 decorative/
+>   status files across 3 batches. **Palette classes: 10,877 → 5,626 (~48%).**
+>   Verified each batch: build green, `tsc` clean, no same-token collisions.
+>   Remaining: the rest of the long tail, plus the art-directed `TokenBalanceBanner`,
+>   the PDF templates (need a `brandPalette.ts` — they can't read CSS vars), and
+>   chart-series files (bespoke). A visual QA pass is Phase 8.
+> - ⏭️ **Next** — continue Phase 5 batches, then Phases 6–8.
 **Related:** [`WHITE_LABEL_TOKEN_CONTRACT.md`](./WHITE_LABEL_TOKEN_CONTRACT.md),
 [`dashboard-theme-foundation.md`](./dashboard-theme-foundation.md),
 [`luxury-light-theme-phase2-token-foundation.md`](./luxury-light-theme-phase2-token-foundation.md)
