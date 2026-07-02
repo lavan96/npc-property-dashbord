@@ -466,12 +466,30 @@ export default function TemplateBuilder() {
       <ImportPdfDialog open={importOpen} onOpenChange={setImportOpen} />
       <ImportReviewDialog
         open={reviewOpen}
-        onOpenChange={setReviewOpen}
+        onOpenChange={(v) => {
+          setReviewOpen(v);
+          if (!v) resetPersistedReviewState();
+        }}
         draft={reviewDraft}
         recordedDecision={recordedDecision}
         reconciliationAvailable={!!reviewImportAsset && !!reviewRecord?.created_template_id}
         reconciliationBusy={reconcilingReview}
         onRunReconciliation={runPersistedPdfReconciliation}
+        onRunVisualQa={runPersistedVisualQa}
+        visualQaAvailable={Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount)}
+        visualQaBusy={visualQaBusy}
+        visualQaSummary={visualQaSummary}
+        visualQualitySignedUrls={persistedVisualQuality?.signedUrls ?? null}
+        visualQualityArtifactPaths={persistedVisualQuality?.artifactPaths ?? null}
+        onRunRepair={runPersistedRepair}
+        repairAvailable={Boolean(persistedReview?.renderArtifactManifest?.sourceRasterCount)}
+        repairBusy={repairBusy}
+        repairSummary={repairSummary}
+        repairAuditPath={persistedRepairAudit?.artifactPaths?.summary ?? null}
+        reviewDebug={reviewDebug}
+        onApplyRepair={applyPersistedRepair}
+        applyRepairAvailable={Boolean(repairDraftReady && repairSummary && persistedReview?.draft?.template && !repairApplied)}
+        applyRepairBusy={applyRepairBusy}
         onRecordDecision={reviewImportId ? async (decision: ImportReviewDecision, note?: string) => {
           try {
             const saved = await saveImportReviewDecision({ importId: reviewImportId, decision, note });
@@ -483,6 +501,7 @@ export default function TemplateBuilder() {
           }
         } : undefined}
       />
+
 
       {canEditTemplates && (importsLoading || recentImports.length > 0) && (
         <Card>
