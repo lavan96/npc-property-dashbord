@@ -7,23 +7,11 @@ import {
 import type { BrandConfig, BrandTokenMap, ResolvedBrandTokens } from './brand-types';
 import {
   getReadableForeground,
-  formatHsl,
   normalizeHslString,
-  parseHsl,
   rotateHue,
   shiftLightness,
   shiftSaturation,
 } from './color-utils';
-
-function createLightBrandWash(brandHsl: string) {
-  const { h, s } = parseHsl(brandHsl);
-
-  return formatHsl({
-    h,
-    s: Math.min(34, Math.max(18, Math.round(s * 0.32))),
-    l: 90,
-  });
-}
 
 function createChartPalette(primary: string, accent: string, isDark: boolean) {
   return {
@@ -43,13 +31,11 @@ function createChartPalette(primary: string, accent: string, isDark: boolean) {
 function createLightTokens(config: BrandConfig): BrandTokenMap {
   const primary = normalizeHslString(config.primaryColor, DEFAULT_PRIMARY);
   const accent = normalizeHslString(config.accentColor, defaultLightTokenMap['--accent'] || DEFAULT_ACCENT);
-  const hasCustomPrimary = Boolean(config.primaryColor);
 
-  // Phase 2 contract: light mode starts from the luxury surface baseline and
-  // brand colours are applied only to semantic emphasis tokens. Warm ivory,
-  // porcelain, champagne, and sidebar surface tokens intentionally remain from
-  // defaultLightTokenMap so a client's brand colour cannot wash out the entire
-  // dashboard.
+  // Light mode starts from the luxury surface baseline. Client brand colours
+  // remain editable and available for controlled previews/chart accents, but
+  // core dashboard active states intentionally stay on the approved antique
+  // gold/champagne system so a saved purple/blue brand cannot overpower the UI.
   return {
     ...defaultLightTokenMap,
     '--primary': primary,
@@ -60,14 +46,14 @@ function createLightTokens(config: BrandConfig): BrandTokenMap {
     '--info': defaultLightTokenMap['--info'],
     '--info-foreground': defaultLightTokenMap['--info-foreground'],
     '--info-light': defaultLightTokenMap['--info-light'],
-    '--ring': primary,
-    '--sidebar-primary': primary,
-    '--sidebar-primary-foreground': getReadableForeground(primary),
-    '--sidebar-accent': accent,
-    '--sidebar-accent-foreground': getReadableForeground(accent),
-    '--sidebar-ring': primary,
-    '--dashboard-primary-strong': primary,
-    '--dashboard-primary-soft': hasCustomPrimary ? createLightBrandWash(primary) : defaultLightTokenMap['--dashboard-primary-soft'],
+    '--ring': defaultLightTokenMap['--ring'],
+    '--sidebar-primary': defaultLightTokenMap['--sidebar-primary'],
+    '--sidebar-primary-foreground': defaultLightTokenMap['--sidebar-primary-foreground'],
+    '--sidebar-accent': defaultLightTokenMap['--sidebar-accent'],
+    '--sidebar-accent-foreground': defaultLightTokenMap['--sidebar-accent-foreground'],
+    '--sidebar-ring': defaultLightTokenMap['--sidebar-ring'],
+    '--dashboard-primary-strong': defaultLightTokenMap['--dashboard-primary-strong'],
+    '--dashboard-primary-soft': defaultLightTokenMap['--dashboard-primary-soft'],
     '--topbar-background': defaultLightTokenMap['--dashboard-surface'],
     '--sidebar-surface': defaultLightTokenMap['--sidebar-background'],
     '--mobile-nav-background': defaultLightTokenMap['--dashboard-surface'],
