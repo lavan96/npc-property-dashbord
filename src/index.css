@@ -4599,6 +4599,13 @@ html {
     backdrop-filter: blur(22px) saturate(1.08);
   }
 
+  :root:not(.dark) .dashboard-mobile-nav {
+    border-top-color: rgba(210, 190, 160, 0.82);
+    background: rgba(255, 252, 247, 0.94);
+    box-shadow: 0 -14px 34px rgba(80, 60, 20, 0.08);
+    backdrop-filter: blur(22px) saturate(1.08);
+  }
+
   :root:not(.dark) .dashboard-sidebar-surface,
   :root:not(.dark) .dashboard-mobile-sheet {
     border-color: hsl(var(--dashboard-border-soft) / 0.86);
@@ -4655,6 +4662,13 @@ html {
   :root:not(.dark) .dashboard-shell button[role="combobox"] {
     border-color: hsl(var(--dashboard-border-soft) / 0.82);
     background-color: hsl(var(--dashboard-surface) / 0.86);
+  }
+
+  :root:not(.dark) .dashboard-shell input:focus,
+  :root:not(.dark) .dashboard-shell textarea:focus,
+  :root:not(.dark) .dashboard-shell button[role="combobox"]:focus {
+    border-color: rgba(166, 120, 0, 0.46);
+    box-shadow: 0 0 0 3px rgba(231, 200, 115, 0.2);
   }
 
   :root:not(.dark) .dashboard-shell input:focus,
