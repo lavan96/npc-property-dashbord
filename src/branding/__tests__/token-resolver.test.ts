@@ -159,6 +159,23 @@ describe("resolveBrandTokens", () => {
     }
   });
 
+  it("uses a controlled light brand wash instead of a saturated dashboard surface wash", () => {
+    const config: BrandConfig = {
+      ...defaultBrandConfig,
+      primaryColor: "285 90% 45%",
+      accentColor: "205 95% 45%",
+    };
+    const tokens = resolveBrandTokens(config);
+
+    expect(tokens.light["--dashboard-primary-soft"]).toBe("285 29% 90%");
+    expect(tokens.light["--dashboard-primary-soft"]).not.toBe("285 90% 90%");
+    expect(tokens.light["--background"]).toBe(defaultLightTokenMap["--background"]);
+    expect(tokens.light["--card"]).toBe(defaultLightTokenMap["--card"]);
+    expect(tokens.light["--success"]).toBe(defaultLightTokenMap["--success"]);
+    expect(tokens.light["--warning"]).toBe(defaultLightTokenMap["--warning"]);
+    expect(tokens.light["--destructive"]).toBe(defaultLightTokenMap["--destructive"]);
+  });
+
   it("keeps dark surface defaults separate from the luxury light baseline", () => {
     const config: BrandConfig = {
       ...defaultBrandConfig,

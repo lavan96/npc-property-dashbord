@@ -584,7 +584,7 @@ export const userGuideKnowledge: GuideSection[] = [
       },
       {
         title: 'Client Branding Profiles',
-        description: 'Create white-label branding for different clients.',
+        description: 'Create branded profile variations for different clients.',
         features: [
           'Client-specific logos and colors',
           'Multiple saved profiles',
@@ -818,8 +818,8 @@ export const userGuideKnowledge: GuideSection[] = [
   },
   {
     id: 'white-label',
-    title: 'Branding (White Label)',
-    description: 'Customize dashboard and report branding',
+    title: 'Branding',
+    description: 'Manage dashboard logos, colours, browser identity, email signature, and theme defaults',
     items: [
       {
         title: 'Dashboard Branding',
@@ -831,7 +831,7 @@ export const userGuideKnowledge: GuideSection[] = [
           'Automatic background removal for logos',
         ],
         steps: [
-          'Navigate to "White Label" in the sidebar',
+          'Navigate to "Branding" in the sidebar',
           'Upload logos for each placement',
           'Use drag-and-drop or click to upload',
           'Preview changes in real-time',
