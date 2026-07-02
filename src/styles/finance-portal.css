@@ -1,0 +1,35 @@
+/* ──────────────────────────────────────────────
+   Batch 13 #66 — Finance partner theme variants.
+   Apply via <html class="finance-theme-midnight"> etc.
+   ────────────────────────────────────────────── */
+:root.finance-theme-midnight {
+  --background: 230 30% 6%;
+  --card: 230 28% 9%;
+  --popover: 230 28% 9%;
+  --muted: 230 20% 14%;
+  --border: 230 20% 18%;
+  --primary: 220 80% 62%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 220 60% 28%;
+}
+
+:root.finance-theme-graphite {
+  --background: 220 10% 8%;
+  --card: 220 10% 11%;
+  --popover: 220 10% 11%;
+  --muted: 220 8% 16%;
+  --border: 220 8% 20%;
+  --primary: 35 8% 78%;
+  --primary-foreground: 220 10% 8%;
+  --accent: 220 6% 24%;
+}
+
+/* Density toggle — tighter table/card paddings without rewriting components. */
+:root.finance-density-compact .finance-portal-shell table td,
+:root.finance-density-compact .finance-portal-shell table th {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+:root.finance-density-compact .finance-portal-shell [data-card-content] {
+  padding: 0.75rem 1rem;
+}
