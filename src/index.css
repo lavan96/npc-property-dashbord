@@ -482,7 +482,7 @@ Clean, modern admin dashboard with confidence-based color coding
     @apply relative min-h-screen bg-background text-foreground;
     background-image:
       radial-gradient(circle at 12% 0%, hsl(var(--dashboard-primary-soft) / 0.82), transparent 27rem),
-      radial-gradient(circle at 92% 6%, hsl(var(--primary) / 0.10), transparent 24rem),
+      radial-gradient(circle at 92% 6%, hsl(var(--dashboard-primary-strong) / 0.10), transparent 24rem),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--surface-2)) 52%, hsl(var(--surface-1)) 100%);
   }
 
@@ -555,7 +555,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .dashboard-main::before {
     content: "";
     @apply pointer-events-none absolute inset-x-0 top-0 h-48;
-    background: linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent);
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong) / 0.08), transparent);
   }
 
   .dashboard-content {
@@ -606,7 +606,7 @@ Clean, modern admin dashboard with confidence-based color coding
     inset-inline: 2rem;
     top: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.65), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--dashboard-primary-strong) / 0.65), transparent);
   }
 
   .dashboard-theme-hero::after {
@@ -623,7 +623,7 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-theme-section-accent::before {
-    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.72), transparent);
+    background: linear-gradient(90deg, transparent, hsl(var(--dashboard-primary-strong) / 0.72), transparent);
   }
 
   .dashboard-section {
@@ -672,7 +672,8 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary;
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em];
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-kpi-card {
@@ -802,7 +803,7 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-mobile-nav-item-active {
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-page-frame {
@@ -815,7 +816,7 @@ Clean, modern admin dashboard with confidence-based color coding
 
   .dashboard-chip-accent {
     background-color: hsl(var(--dashboard-primary-soft) / 0.9);
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-status-chip {
@@ -850,9 +851,9 @@ Clean, modern admin dashboard with confidence-based color coding
   }
 
   .dashboard-status-chip-accent {
-    border-color: hsl(var(--primary) / 0.28);
+    border-color: hsl(var(--dashboard-primary-strong) / 0.28);
     background-color: hsl(var(--dashboard-primary-soft) / 0.85);
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   .dashboard-status-chip-neutral {
@@ -881,7 +882,7 @@ Clean, modern admin dashboard with confidence-based color coding
   .dashboard-nav-item-active {
     background-color: hsl(var(--dashboard-primary-strong));
     color: hsl(var(--primary-foreground));
-    box-shadow: 0 16px 34px -22px hsl(var(--primary) / 0.9), inset 0 1px 0 hsl(0 0% 100% / 0.22);
+    box-shadow: 0 16px 34px -22px hsl(var(--dashboard-primary-strong) / 0.9), inset 0 1px 0 hsl(0 0% 100% / 0.22);
   }
 
   .dashboard-nav-indicator {
@@ -1526,10 +1527,10 @@ html {
 
   .dashboard-sidebar-menu-button-active {
     position: relative;
-    border-color: hsl(var(--primary) / 0.34);
-    background: linear-gradient(90deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary) / 0.86));
+    border-color: hsl(var(--sidebar-primary) / 0.34);
+    background: linear-gradient(90deg, hsl(var(--sidebar-primary)), hsl(var(--dashboard-primary-strong) / 0.86));
     color: hsl(var(--primary-foreground));
-    box-shadow: 0 16px 32px -22px hsl(var(--primary) / 0.95);
+    box-shadow: 0 16px 32px -22px hsl(var(--sidebar-primary) / 0.95);
   }
 
   .dashboard-sidebar-menu-button-active::before {
@@ -4797,15 +4798,15 @@ html {
 
   :root:not(.dark) .dashboard-sidebar-menu-button:hover svg,
   :root:not(.dark) .dashboard-sidebar-menu-button-admin:hover svg {
-    color: hsl(var(--primary));
+    color: hsl(var(--dashboard-primary-strong));
   }
 
   :root:not(.dark) .dashboard-sidebar-menu-button-active,
   :root:not(.dark) .dashboard-sidebar-menu-button-admin.dashboard-sidebar-menu-button-active {
-    border-color: hsl(var(--primary) / 0.34);
-    background: linear-gradient(90deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary) / 0.92));
-    color: hsl(var(--primary-foreground));
-    box-shadow: 0 16px 30px hsl(var(--primary) / 0.24);
+    border-color: hsl(var(--sidebar-primary) / 0.34);
+    background: linear-gradient(90deg, hsl(var(--sidebar-primary)), hsl(var(--dashboard-primary-strong) / 0.92));
+    color: hsl(var(--sidebar-primary-foreground));
+    box-shadow: 0 16px 30px hsl(var(--sidebar-primary) / 0.24);
   }
 
   :root:not(.dark) .dashboard-sidebar-menu-button-active svg,
@@ -4986,12 +4987,12 @@ html {
   }
 
   :root:not(.dark) .luxury-button:focus-visible {
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18), 0 12px 24px rgba(120, 85, 20, 0.12);
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18), 0 12px 24px rgba(120, 85, 20, 0.12);
   }
 
   :root:not(.dark) .luxury-button.bg-primary,
   :root:not(.dark) .luxury-button[class*="bg-primary"] {
-    background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--dashboard-primary-strong)));
+    background: linear-gradient(180deg, hsl(var(--dashboard-primary-strong)), hsl(var(--primary-hover)));
     box-shadow: 0 12px 24px rgba(120, 85, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   }
 
