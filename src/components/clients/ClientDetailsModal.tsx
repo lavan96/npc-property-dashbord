@@ -450,8 +450,8 @@ The Team`
           </TabsList>
         </div>
 
-        <ScrollArea className="min-h-0 w-full flex-1 overflow-hidden">
-          <div className="min-w-0 w-full overflow-x-hidden" {...(isMobile ? tabSwipeHandlers : {})}>
+        <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable]">
+          <div className="min-w-0 w-full" {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
               <div className="grid gap-4 md:grid-cols-2">
