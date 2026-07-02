@@ -149,17 +149,17 @@ describe("resolveBrandTokens", () => {
 
     expect(tokens.light["--primary"]).toBe("285 90% 45%");
     expect(tokens.light["--accent"]).toBe("205 95% 45%");
-    expect(tokens.light["--ring"]).toBe("285 90% 45%");
-    expect(tokens.light["--sidebar-primary"]).toBe("285 90% 45%");
-    expect(tokens.light["--sidebar-accent"]).toBe("205 95% 45%");
-    expect(tokens.light["--dashboard-primary-strong"]).toBe("285 90% 45%");
+    expect(tokens.light["--ring"]).toBe(defaultLightTokenMap["--ring"]);
+    expect(tokens.light["--sidebar-primary"]).toBe(defaultLightTokenMap["--sidebar-primary"]);
+    expect(tokens.light["--sidebar-accent"]).toBe(defaultLightTokenMap["--sidebar-accent"]);
+    expect(tokens.light["--dashboard-primary-strong"]).toBe(defaultLightTokenMap["--dashboard-primary-strong"]);
 
     for (const token of brandableLightTokens) {
       expect(tokens.light[token]).toBeTruthy();
     }
   });
 
-  it("uses a controlled light brand wash instead of a saturated dashboard surface wash", () => {
+  it("uses the luxury gold wash instead of a saturated dashboard surface wash", () => {
     const config: BrandConfig = {
       ...defaultBrandConfig,
       primaryColor: "285 90% 45%",
@@ -167,7 +167,7 @@ describe("resolveBrandTokens", () => {
     };
     const tokens = resolveBrandTokens(config);
 
-    expect(tokens.light["--dashboard-primary-soft"]).toBe("285 29% 90%");
+    expect(tokens.light["--dashboard-primary-soft"]).toBe(defaultLightTokenMap["--dashboard-primary-soft"]);
     expect(tokens.light["--dashboard-primary-soft"]).not.toBe("285 90% 90%");
     expect(tokens.light["--background"]).toBe(defaultLightTokenMap["--background"]);
     expect(tokens.light["--card"]).toBe(defaultLightTokenMap["--card"]);

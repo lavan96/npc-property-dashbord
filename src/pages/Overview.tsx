@@ -41,7 +41,7 @@ import {
 } from 'recharts';
 
 const COLORS = [
-  'hsl(var(--primary))',
+  'hsl(var(--dashboard-primary-strong))',
   'hsl(var(--success))',
   'hsl(173 80% 38%)',
   'hsl(215 16% 47%)',
@@ -54,13 +54,13 @@ const COLORS = [
 ];
 
 const OVERVIEW_CHART_COLORS = {
-  brand: 'hsl(var(--primary))',
+  brand: 'hsl(var(--dashboard-primary-strong))',
   positive: 'hsl(var(--success))',
   teal: 'hsl(173 80% 38%)',
   neutral: 'hsl(215 16% 47%)',
   grid: 'hsl(var(--border))',
   axis: 'hsl(var(--muted-foreground))',
-  tooltipBorder: 'hsl(var(--primary) / 0.24)',
+  tooltipBorder: 'hsl(var(--dashboard-primary-strong) / 0.24)',
   tooltipShadow: '0 18px 45px hsl(30 10% 15% / 0.14)',
 };
 
@@ -87,14 +87,14 @@ const chartGridProps = {
 
 const OVERVIEW_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
 const PREMIUM_CARD = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
-const EXECUTIVE_KPI_CARD = 'group relative min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-primary/20 [&_.dashboard-kpi-title+div]:bg-primary/10 [&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
+const EXECUTIVE_KPI_CARD = 'group relative min-w-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.32)_52%,hsl(var(--card))_100%)] shadow-[0_14px_38px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.55)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-300/70 before:to-transparent after:absolute after:inset-0 after:pointer-events-none after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.14),transparent_34%)] hover:-translate-y-1 hover:border-amber-300/70 hover:shadow-[0_22px_50px_rgba(15,23,42,0.14),0_0_0_1px_rgba(245,158,11,0.18),0_0_34px_rgba(245,158,11,0.15)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.96)_0%,rgba(30,41,59,0.72)_56%,rgba(15,23,42,0.94)_100%)] dark:ring-white/10 dark:shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] [&_.dashboard-kpi-title]:min-w-0 [&_.dashboard-kpi-title]:break-words [&_.dashboard-kpi-title]:text-[0.68rem] [&_.dashboard-kpi-title]:font-semibold [&_.dashboard-kpi-title]:uppercase [&_.dashboard-kpi-title]:tracking-[0.15em] sm:[&_.dashboard-kpi-title]:tracking-[0.18em] [&_.dashboard-kpi-title]:text-foreground/75 [&_.dashboard-kpi-value]:break-words [&_.dashboard-kpi-value]:text-2xl [&_.dashboard-kpi-value]:font-semibold [&_.dashboard-kpi-value]:tracking-[-0.045em] [&_.dashboard-kpi-value]:text-foreground min-[420px]:[&_.dashboard-kpi-value]:text-3xl sm:[&_.dashboard-kpi-value]:text-[2.35rem] [&_.dashboard-kpi-title+div]:flex [&_.dashboard-kpi-title+div]:h-11 [&_.dashboard-kpi-title+div]:w-11 [&_.dashboard-kpi-title+div]:shrink-0 [&_.dashboard-kpi-title+div]:items-center [&_.dashboard-kpi-title+div]:justify-center [&_.dashboard-kpi-title+div]:rounded-2xl [&_.dashboard-kpi-title+div]:border [&_.dashboard-kpi-title+div]:border-[hsl(var(--dashboard-primary-strong)/0.24)] [&_.dashboard-kpi-title+div]:bg-[hsl(var(--dashboard-primary-soft)/0.72)] [&_.dashboard-kpi-title+div]:text-[hsl(var(--dashboard-primary-strong))] dark:[&_.dashboard-kpi-title+div]:border-primary/20 dark:[&_.dashboard-kpi-title+div]:bg-primary/10 dark:[&_.dashboard-kpi-title+div]:text-primary [&_.dashboard-kpi-title+div]:shadow-inner [&_p]:mt-2 [&_p]:max-w-[16rem] [&_p]:text-[0.78rem] [&_p]:leading-5 [&_p]:text-muted-foreground/90';
 const EXECUTIVE_KPI_WARNING_CARD = 'border-amber-400/45 bg-[linear-gradient(145deg,rgba(245,158,11,0.13)_0%,hsl(var(--card))_45%,rgba(120,53,15,0.08)_100%)] ring-amber-200/45 after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.24),transparent_38%)] hover:border-amber-400/80 hover:shadow-[0_22px_52px_rgba(120,53,15,0.16),0_0_0_1px_rgba(245,158,11,0.26),0_0_38px_rgba(245,158,11,0.2)] dark:border-amber-400/30 dark:bg-[linear-gradient(145deg,rgba(69,39,8,0.48)_0%,rgba(15,23,42,0.94)_50%,rgba(30,41,59,0.82)_100%)] dark:ring-amber-300/15 [&_.dashboard-kpi-title]:text-amber-900/80 dark:[&_.dashboard-kpi-title]:text-amber-100/80 [&_.dashboard-kpi-title+div]:border-amber-400/35 [&_.dashboard-kpi-title+div]:bg-amber-500/15 [&_.dashboard-kpi-title+div]:text-amber-600 dark:[&_.dashboard-kpi-title+div]:text-amber-300';
-const EXECUTIVE_KPI_DATA_CARD = 'border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card))_0%,rgba(245,158,11,0.06)_48%,hsl(var(--card))_100%)] after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_36%)] hover:border-primary/35 dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.94)_0%,rgba(30,41,59,0.76)_54%,rgba(15,23,42,0.94)_100%)]';
-const CHART_CARD = `${PREMIUM_CARD} group min-w-0 overflow-visible bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
-const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-primary/8 via-transparent to-transparent px-4 py-4 md:px-5';
-const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-primary before:shadow-[0_0_14px_rgba(245,158,11,0.55)]';
+const EXECUTIVE_KPI_DATA_CARD = 'border-[hsl(var(--dashboard-primary-strong)/0.2)] bg-[linear-gradient(145deg,hsl(var(--card))_0%,rgba(245,158,11,0.06)_48%,hsl(var(--card))_100%)] after:bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_36%)] hover:border-[hsl(var(--dashboard-primary-strong)/0.35)] dark:border-white/10 dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.94)_0%,rgba(30,41,59,0.76)_54%,rgba(15,23,42,0.94)_100%)]';
+const CHART_CARD = `${PREMIUM_CARD} group min-w-0 overflow-visible bg-[linear-gradient(145deg,hsl(var(--card))_0%,hsl(var(--muted)/0.22)_100%)] ring-1 ring-border dark:ring-white/45 transition-all duration-300 hover:-translate-y-0.5 hover:border-[hsl(var(--dashboard-primary-strong)/0.35)] hover:shadow-[0_18px_44px_rgba(15,23,42,0.12),0_0_0_1px_rgba(245,158,11,0.12)] dark:ring-white/10`;
+const CHART_HEADER = 'border-b border-border/50 bg-gradient-to-r from-[hsl(var(--dashboard-primary-soft)/0.45)] via-transparent to-transparent px-4 py-4 md:px-5';
+const CHART_TITLE = 'flex items-center gap-2 text-sm font-semibold tracking-[-0.015em] text-foreground md:text-base before:h-2 before:w-2 before:rounded-full before:bg-[hsl(var(--dashboard-primary-strong))] before:shadow-[0_0_14px_rgba(245,158,11,0.55)]';
 const CHART_CONTENT = 'px-3 pb-5 pt-5 md:px-5';
-const OVERVIEW_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
+const OVERVIEW_SECONDARY_ACTION = 'dashboard-luxury-action min-h-10 rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
 
 type OverviewPieDatum = Record<string, unknown>;
 
@@ -226,12 +226,12 @@ function OverviewSection({
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:mb-5">
         <div className="max-w-3xl">
           <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/90">
-            <span className={`h-1.5 w-1.5 rounded-full ${accent ? 'bg-amber-500 shadow-[0_0_14px_rgba(245,158,11,0.65)]' : 'bg-primary'}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${accent ? 'bg-amber-500 shadow-[0_0_14px_rgba(245,158,11,0.65)]' : 'bg-[hsl(var(--dashboard-primary-strong))]'}`} />
             {eyebrow}
           </div>
           <div className="flex min-w-0 items-start gap-3 sm:items-center">
             {icon && (
-              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${accent ? 'border-amber-400/30 bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'border-primary/20 bg-primary/10 text-primary'}`}>
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${accent ? 'border-amber-400/30 bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'dashboard-luxury-icon-tile'}`}>
                 {icon}
               </div>
             )}
@@ -817,7 +817,7 @@ export default function Overview() {
 
         <div className="pt-1 md:pt-2">
           <div className="mb-4 flex items-center gap-2 border-t border-border/60 pt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/90">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl dashboard-luxury-icon-tile">
               <Database className="h-4 w-4" />
             </span>
             Source intelligence
@@ -899,7 +899,7 @@ export default function Overview() {
           <Button
             variant="outline"
             size="sm"
-            className="min-h-11 w-full rounded-full border-primary/25 bg-primary/5 px-4 font-semibold text-primary shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 sm:w-auto"
+            className="dashboard-luxury-action min-h-11 w-full rounded-full px-4 font-semibold transition-all duration-200 active:translate-y-0 sm:w-auto"
             onClick={() => navigate('/listings')}
           >
             View All Listings
@@ -909,7 +909,7 @@ export default function Overview() {
           <div className="space-y-3 md:space-y-4">
             {recentListings.length === 0 && (
               <div className="rounded-2xl border border-dashed border-border/70 bg-muted/25 p-8 text-center">
-                <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl dashboard-luxury-icon-tile">
                   <FileText className="h-5 w-5" />
                 </div>
                 <h4 className="text-sm font-semibold text-foreground">No recent listing activity</h4>
