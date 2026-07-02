@@ -310,11 +310,12 @@ The Team`
   // Shared content for both mobile and desktop
   const modalContent = (
     <>
-      {/* Header actions - stacked on mobile */}
+      {/* Header actions - always wrap cleanly to avoid overflow */}
       <div className={cn(
-        "flex items-center gap-2 px-1",
-        isMobile ? "flex-wrap pb-2 border-b border-border mb-2" : "mr-6"
+        "flex flex-wrap items-center gap-2 px-1",
+        isMobile ? "pb-2 border-b border-border mb-2" : "mr-8"
       )}>
+
         <VownetPDFGenerator
           data={{
             client: (fullClient || {
