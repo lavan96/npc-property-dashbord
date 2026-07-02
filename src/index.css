@@ -4613,13 +4613,29 @@ html {
     backdrop-filter: blur(22px) saturate(1.08);
   }
 
+  :root:not(.dark) .dashboard-mobile-nav {
+    border-top-color: rgba(210, 190, 160, 0.82);
+    background: rgba(255, 252, 247, 0.94);
+    box-shadow: 0 -14px 34px rgba(80, 60, 20, 0.08);
+    backdrop-filter: blur(22px) saturate(1.08);
+  }
+
   :root:not(.dark) .dashboard-sidebar-surface,
   :root:not(.dark) .dashboard-mobile-sheet {
-    border-color: hsl(var(--dashboard-border-soft) / 0.86);
+    border-color: rgba(210, 190, 160, 0.88);
     background:
-      linear-gradient(180deg, hsl(var(--dashboard-surface) / 0.96), hsl(var(--sidebar-surface) / 0.96)),
+      radial-gradient(circle at top left, rgba(231, 200, 115, 0.18), transparent 34%),
+      linear-gradient(180deg, rgba(255, 252, 247, 0.97), rgba(246, 237, 219, 0.96)),
       hsl(var(--sidebar-surface));
     box-shadow: 18px 0 42px hsl(35 43% 20% / 0.1);
+  }
+
+  :root:not(.dark) .dashboard-sidebar-content {
+    color: hsl(var(--sidebar-foreground));
+  }
+
+  :root:not(.dark) .dashboard-sidebar-content::-webkit-scrollbar-thumb {
+    background-color: rgba(166, 120, 0, 0.22);
   }
 
   :root:not(.dark) .dashboard-sidebar-header {
@@ -4627,19 +4643,42 @@ html {
     background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.6), hsl(var(--dashboard-surface) / 0));
   }
 
+  :root:not(.dark) .dashboard-sidebar-group {
+    color: hsl(var(--sidebar-foreground));
+  }
+
   :root:not(.dark) .dashboard-sidebar-group-trigger {
-    color: hsl(var(--sidebar-foreground) / 0.72);
+    color: rgba(111, 84, 43, 0.82);
+    letter-spacing: 0.18em;
+  }
+
+  :root:not(.dark) .dashboard-sidebar-group-trigger:hover {
+    background-color: rgba(231, 200, 115, 0.22);
+    color: #6f542b;
   }
 
   :root:not(.dark) .dashboard-sidebar-group-trigger-active,
   :root:not(.dark) .dashboard-sidebar-admin-trigger {
-    color: hsl(var(--dashboard-primary-strong));
+    color: #8f6500;
+  }
+
+  :root:not(.dark) .dashboard-sidebar-menu-button {
+    color: hsl(var(--sidebar-foreground) / 0.86);
+  }
+
+  :root:not(.dark) .dashboard-sidebar-menu-button svg {
+    color: hsl(var(--sidebar-foreground) / 0.72);
   }
 
   :root:not(.dark) .dashboard-sidebar-menu-button:hover,
   :root:not(.dark) .dashboard-sidebar-menu-button-admin:hover {
-    background-color: hsl(var(--dashboard-primary-soft) / 0.42);
+    background-color: rgba(231, 200, 115, 0.22);
     color: hsl(var(--foreground));
+  }
+
+  :root:not(.dark) .dashboard-sidebar-menu-button:hover svg,
+  :root:not(.dark) .dashboard-sidebar-menu-button-admin:hover svg {
+    color: hsl(var(--primary));
   }
 
   :root:not(.dark) .dashboard-sidebar-menu-button-active,
@@ -4650,10 +4689,21 @@ html {
     box-shadow: 0 16px 30px hsl(var(--primary) / 0.24);
   }
 
+  :root:not(.dark) .dashboard-sidebar-menu-button-active svg,
+  :root:not(.dark) .dashboard-sidebar-menu-button-admin.dashboard-sidebar-menu-button-active svg {
+    color: #fffaf1;
+  }
+
+  :root:not(.dark) .dashboard-sidebar-admin-divider {
+    border-top-color: rgba(210, 190, 160, 0.82);
+  }
+
   :root:not(.dark) .dashboard-sidebar-admin-group,
   :root:not(.dark) .dashboard-sidebar-admin-group-collapsed {
-    border-color: hsl(var(--dashboard-border-soft) / 0.74);
-    background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.38), hsl(var(--dashboard-surface) / 0.36));
+    border-color: rgba(210, 190, 160, 0.76);
+    background:
+      linear-gradient(180deg, rgba(244, 225, 181, 0.4), rgba(255, 252, 247, 0.4)),
+      rgba(255, 252, 247, 0.52);
   }
 
   :root:not(.dark) .dashboard-shell .border.bg-card,
@@ -4669,6 +4719,13 @@ html {
   :root:not(.dark) .dashboard-shell button[role="combobox"] {
     border-color: hsl(var(--dashboard-border-soft) / 0.82);
     background-color: hsl(var(--dashboard-surface) / 0.86);
+  }
+
+  :root:not(.dark) .dashboard-shell input:focus,
+  :root:not(.dark) .dashboard-shell textarea:focus,
+  :root:not(.dark) .dashboard-shell button[role="combobox"]:focus {
+    border-color: rgba(166, 120, 0, 0.46);
+    box-shadow: 0 0 0 3px rgba(231, 200, 115, 0.2);
   }
 
   :root:not(.dark) .dashboard-shell input:focus,
