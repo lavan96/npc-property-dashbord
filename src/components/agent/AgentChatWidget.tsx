@@ -22,11 +22,11 @@ const SENDER_COLORS = [
   'text-blue-600 dark:text-blue-400',
   'text-emerald-600 dark:text-emerald-400',
   'text-orange-600 dark:text-orange-400',
-  'text-amber-700 dark:text-amber-400',
+  'text-primary dark:text-purple-400',
   'text-rose-600 dark:text-rose-400',
   'text-cyan-600 dark:text-cyan-400',
   'text-amber-600 dark:text-amber-400',
-  'text-teal-700 dark:text-teal-400',
+  'text-primary/80 dark:text-indigo-400',
 ];
 
 function getSenderColor(senderId: string, senderMap: Map<string, number>): string {
@@ -636,7 +636,7 @@ export function AgentChatWidget() {
                     { icon: '⏰', label: 'Overdue Reminders', count: notifications.overdue_reminders, color: 'text-red-600 dark:text-red-400 bg-red-500/10', action: '⏰ Overdue reminders' },
                     { icon: '🚨', label: 'Urgent Deals', count: notifications.urgent_deals, color: 'text-orange-600 dark:text-orange-400 bg-orange-500/10', action: '🚨 Show urgent deals' },
                     { icon: '🏠', label: 'Settlements This Week', count: notifications.upcoming_settlements, color: 'text-blue-600 dark:text-blue-400 bg-blue-500/10', action: '🏠 Upcoming settlements' },
-                    { icon: '📞', label: 'Unread Call Alerts', count: notifications.unread_call_alerts, color: 'text-amber-700 dark:text-amber-400 bg-amber-500/10', action: '📞 Unread call alerts' },
+                    { icon: '📞', label: 'Unread Call Alerts', count: notifications.unread_call_alerts, color: 'text-primary dark:text-purple-400 bg-primary/10', action: '📞 Unread call alerts' },
                     { icon: '⚠️', label: 'Clawback Risk (90d)', count: notifications.clawback_risk_deals, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10', action: '⚠️ Clawback risk deals' },
                   ].map((item) => (
                     <button
