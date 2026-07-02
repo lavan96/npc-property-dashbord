@@ -12,6 +12,7 @@ import { drawBorrowingCapacitySections, transformAssessmentToSectionData } from 
 import { fetchLatestBorrowingCapacity } from '@/lib/fetchLatestBorrowingCapacity';
 import { fetchGlobalReportSettings, type ContactDetails, type ProfessionalDisclaimer } from '@/hooks/useGlobalReportSettings';
 import { getBrandPdfPalette } from '@/branding/brandPalette';
+import { useBrand } from '@/branding/BrandProvider';
 import { smartCapitalize } from '@/lib/nameUtils';
 import {
   buildHouseholdIncome,
@@ -376,6 +377,7 @@ export function VownetPDFGenerator({
   const [isSending, setIsSending] = useState(false);
   const [includeOwnerOccupied, setIncludeOwnerOccupied] = useState(true);
   const [includeBorrowingCapacity, setIncludeBorrowingCapacity] = useState(false);
+  const { settings: brand } = useBrand();
   const { contacts, defaultContact, hasContacts } = useFinanceContacts();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
@@ -453,6 +455,7 @@ export function VownetPDFGenerator({
 
   const generatePDF = async (forEmail: boolean = false): Promise<Blob | null> => {
     setIsGenerating(true);
+    applyBrandGold(brand.brandColor);
     let iframe: HTMLIFrameElement | null = null;
 
     try {
@@ -967,6 +970,20 @@ const NPC_COLORS = {
   danger: '#dc2626',
   dangerLight: '#fef2f2',
 };
+
+/**
+ * Re-resolve the gold ramp from the active White-Label brand colour just before
+ * a PDF is generated, so exported documents cascade with the brand. NPC_COLORS
+ * is a module singleton read by the HTML builders; PDF generation is sequential
+ * (user-triggered), so mutating it here is safe.
+ */
+function applyBrandGold(brandColorHsl?: string | null) {
+  const p = getBrandPdfPalette(brandColorHsl);
+  NPC_COLORS.gold = p.gold;
+  NPC_COLORS.goldLight = p.goldLight;
+  NPC_COLORS.goldDark = p.goldDeep;
+  NPC_COLORS.goldTint = p.cream;
+}
 
 // Generate the full HTML content for the PDF
 function generateHTMLContent(

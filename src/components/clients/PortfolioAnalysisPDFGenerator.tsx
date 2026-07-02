@@ -8,6 +8,7 @@ import { logActivityDirect } from '@/hooks/useActivityLogger';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from 'pdf-lib';
 import { getBrandPdfRgb } from '@/branding/brandPalette';
+import { useBrand } from '@/branding/BrandProvider';
 import fontkit from '@pdf-lib/fontkit';
 import { fetchGlobalReportSettings, type GlobalReportSettings } from '@/hooks/useGlobalReportSettings';
 import { drawPdfLibDisclaimerPage } from '@/utils/pdfDisclaimerPage';
@@ -223,12 +224,23 @@ const LIST_ITEM_SPACING = 8;       // Extra space between list items
 const BOX_PADDING = 10;            // Padding inside boxes
 
 // Brand colors — gold ramp centralised on the shared brand palette
-// (src/branding/brandPalette.ts) as pdf-lib rgb triplets.
-const NPC_RGB = getBrandPdfRgb();
-const NPC_GOLD = rgb(...NPC_RGB.gold);            // Primary brand gold
-const NPC_GOLD_LIGHT = rgb(...NPC_RGB.goldLight); // Light gold for accents
-const NPC_GOLD_DARK = rgb(...NPC_RGB.goldDark);   // Dark gold
-const NPC_GOLD_TINT = rgb(...NPC_RGB.goldTint);   // Very light gold tint
+// (src/branding/brandPalette.ts) as pdf-lib rgb triplets. Re-resolved from the
+// active White-Label brand colour before each generation by applyBrandRgb().
+// PDF generation is sequential (user-triggered), so mutating these module
+// singletons is safe.
+let NPC_RGB = getBrandPdfRgb();
+let NPC_GOLD = rgb(...NPC_RGB.gold);            // Primary brand gold
+let NPC_GOLD_LIGHT = rgb(...NPC_RGB.goldLight); // Light gold for accents
+let NPC_GOLD_DARK = rgb(...NPC_RGB.goldDark);   // Dark gold
+let NPC_GOLD_TINT = rgb(...NPC_RGB.goldTint);   // Very light gold tint
+
+function applyBrandRgb(brandColorHsl?: string | null) {
+  NPC_RGB = getBrandPdfRgb(brandColorHsl);
+  NPC_GOLD = rgb(...NPC_RGB.gold);
+  NPC_GOLD_LIGHT = rgb(...NPC_RGB.goldLight);
+  NPC_GOLD_DARK = rgb(...NPC_RGB.goldDark);
+  NPC_GOLD_TINT = rgb(...NPC_RGB.goldTint);
+}
 const NPC_NAVY = rgb(0.05, 0.15, 0.30);        // #0d264d - Dark navy
 const NPC_DARK_BLUE = rgb(0.07, 0.20, 0.38);   // #113361 - Dark blue
 const NPC_BLACK = rgb(0.04, 0.04, 0.04);       // #0a0a0a - Near black
@@ -403,6 +415,7 @@ export function PortfolioAnalysisPDFGenerator({
   const [showPreview, setShowPreview] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const { addNotification } = useNotifications();
+  const { settings: brand } = useBrand();
 
   const generateAnalysis = async () => {
     setIsGenerating(true);
@@ -452,7 +465,10 @@ export function PortfolioAnalysisPDFGenerator({
     
     try {
       console.log('📄 Starting Portfolio Analysis PDF generation with pdf-lib...');
-      
+
+      // Re-resolve the brand gold ramp from the active White-Label brand colour.
+      applyBrandRgb(brand.brandColor);
+
       // Fetch global settings for branding
       const globalSettings = await fetchGlobalReportSettings();
       console.log('✓ Global settings fetched');
