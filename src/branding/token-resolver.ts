@@ -1,6 +1,7 @@
 import {
   defaultDarkTokenMap,
   defaultLightTokenMap,
+  DEFAULT_ACCENT,
   DEFAULT_PRIMARY,
   LIGHT_DEFAULT_ACCENT,
   LIGHT_DEFAULT_PRIMARY,
