@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { DashboardThemeFrame } from './DashboardThemeFrame';
 import { cn } from '@/lib/utils';
-import { lightModeModuleVisuals, type LightModeModuleVisualKey } from '@/theme/lightModeVisuals';
+import { getLightModeModuleVisual, lightModeModuleVisuals, type LightModeModuleVisualKey } from '@/config/moduleVisuals';
 
 interface PageHeroProps {
   eyebrow?: string;
@@ -13,7 +13,7 @@ interface PageHeroProps {
 }
 
 export function PageHero({ eyebrow, title, subtitle, imageVariant = 'overview', actions, className }: PageHeroProps) {
-  const visual = lightModeModuleVisuals[imageVariant] ?? lightModeModuleVisuals.overview;
+  const visual = getLightModeModuleVisual(imageVariant) ?? lightModeModuleVisuals.overview;
   const overlayClass = visual.overlay === 'ivory' ? 'from-[#fffaf1]/95 via-[#fbf2e2]/82' : 'from-[#fff6e4]/95 via-[#f6e5bf]/80';
 
   return (
