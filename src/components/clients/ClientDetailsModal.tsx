@@ -402,7 +402,7 @@ The Team`
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden w-full">
         <div className="sticky top-0 z-10 min-w-0 max-w-full flex-shrink-0 overflow-hidden bg-background pb-1">
-          <TabsList className="flex h-auto w-full max-w-full flex-wrap justify-start gap-1 overflow-visible p-1">
+          <TabsList className="!flex h-auto w-full max-w-full flex-wrap justify-start gap-1.5 !overflow-visible !snap-none p-1.5">
 
             <TabsTrigger value="overview" className="min-h-9 px-3 py-1.5 text-sm font-medium">Overview</TabsTrigger>
             <TabsTrigger value="personal" className="min-h-9 px-3 py-1.5 text-sm font-medium">Personal</TabsTrigger>
