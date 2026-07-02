@@ -23,6 +23,7 @@ import {
   Clock,
   Activity,
   ShieldCheck,
+  Database as DatabaseZap,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
