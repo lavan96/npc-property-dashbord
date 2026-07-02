@@ -53,7 +53,12 @@ export default function Charts() {
       const { data: chartsResult, error: chartsError } = await invokeSecureFunction('manage-templates', {
         operation: 'list',
         table: 'charts',
-        listOptions: { orderBy: 'created_at', orderAsc: false, limit: 500 }
+        listOptions: {
+          select: 'id, chart_type, title, image_data, created_at, report_id',
+          orderBy: 'created_at',
+          orderAsc: false,
+          limit: 100,
+        },
       });
 
       if (chartsError) {
