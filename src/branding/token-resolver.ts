@@ -7,9 +7,7 @@ import {
 import type { BrandConfig, BrandTokenMap, ResolvedBrandTokens } from './brand-types';
 import {
   getReadableForeground,
-  formatHsl,
   normalizeHslString,
-  parseHsl,
   rotateHue,
   shiftLightness,
   shiftSaturation,
