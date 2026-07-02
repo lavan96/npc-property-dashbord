@@ -1499,37 +1499,37 @@ export default function UserGuide() {
   ];
 
   const statusGuide = [
-    { status: 'Active', color: 'bg-green-500', description: 'Property is currently listed and available' },
-    { status: 'Pending', color: 'bg-yellow-500', description: 'Property has an offer pending or under contract' },
-    { status: 'Sold', color: 'bg-blue-500', description: 'Property has been successfully sold' },
-    { status: 'Withdrawn', color: 'bg-gray-500', description: 'Property has been removed from the market' },
-    { status: 'Expired', color: 'bg-red-500', description: 'Listing has expired and needs renewal' },
+    { status: 'Active', color: 'bg-success', description: 'Property is currently listed and available' },
+    { status: 'Pending', color: 'bg-brand-500', description: 'Property has an offer pending or under contract' },
+    { status: 'Sold', color: 'bg-info', description: 'Property has been successfully sold' },
+    { status: 'Withdrawn', color: 'bg-muted0', description: 'Property has been removed from the market' },
+    { status: 'Expired', color: 'bg-destructive', description: 'Listing has expired and needs renewal' },
   ];
 
   const quickTipCardClasses = [
     'border-primary/25 bg-[linear-gradient(135deg,hsl(var(--primary)/0.12),hsl(var(--card)/0.92))] shadow-primary/5',
-    'border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),hsl(var(--card)/0.92))] shadow-amber-500/5',
-    'border-blue-400/25 bg-[linear-gradient(135deg,rgba(59,130,246,0.10),hsl(var(--card)/0.92))] shadow-blue-500/5',
-    'border-emerald-400/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.10),hsl(var(--card)/0.92))] shadow-emerald-500/5',
-    'border-purple-400/25 bg-[linear-gradient(135deg,rgba(168,85,247,0.10),hsl(var(--card)/0.92))] shadow-purple-500/5',
-    'border-cyan-400/25 bg-[linear-gradient(135deg,rgba(6,182,212,0.10),hsl(var(--card)/0.92))] shadow-cyan-500/5',
+    'border-brand-400/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.12),hsl(var(--card)/0.92))] shadow-brand-500/5',
+    'border-info/25 bg-[linear-gradient(135deg,rgba(59,130,246,0.10),hsl(var(--card)/0.92))] shadow-info/5',
+    'border-success/25 bg-[linear-gradient(135deg,rgba(16,185,129,0.10),hsl(var(--card)/0.92))] shadow-success/5',
+    'border-accent/25 bg-[linear-gradient(135deg,rgba(168,85,247,0.10),hsl(var(--card)/0.92))] shadow-accent/5',
+    'border-info/25 bg-[linear-gradient(135deg,rgba(6,182,212,0.10),hsl(var(--card)/0.92))] shadow-info/5',
   ];
 
   const statusGuideStyles = {
     Active: {
-      card: 'border-emerald-400/25 bg-emerald-500/8 shadow-emerald-500/5',
-      badge: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-      ring: 'ring-emerald-500/20',
+      card: 'border-success/25 bg-success/8 shadow-success/5',
+      badge: 'border-success/35 bg-success/10 text-success dark:text-success',
+      ring: 'ring-success/20',
     },
     Pending: {
-      card: 'border-amber-400/30 bg-amber-500/10 shadow-amber-500/5',
-      badge: 'border-amber-500/40 bg-amber-500/12 text-amber-700 dark:text-amber-300',
-      ring: 'ring-amber-500/25',
+      card: 'border-brand-400/30 bg-brand-500/10 shadow-brand-500/5',
+      badge: 'border-brand-500/40 bg-brand-500/12 text-brand-700 dark:text-brand-300',
+      ring: 'ring-brand-500/25',
     },
     Sold: {
-      card: 'border-blue-400/25 bg-blue-500/8 shadow-blue-500/5',
-      badge: 'border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300',
-      ring: 'ring-blue-500/20',
+      card: 'border-info/25 bg-info/8 shadow-info/5',
+      badge: 'border-info/35 bg-info/10 text-info dark:text-info',
+      ring: 'ring-info/20',
     },
     Withdrawn: {
       card: 'border-muted-foreground/20 bg-muted/30 shadow-black/0',
@@ -1537,9 +1537,9 @@ export default function UserGuide() {
       ring: 'ring-muted-foreground/15',
     },
     Expired: {
-      card: 'border-red-400/25 bg-red-500/8 shadow-red-500/5',
-      badge: 'border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300',
-      ring: 'ring-red-500/20',
+      card: 'border-destructive/25 bg-destructive/8 shadow-destructive/5',
+      badge: 'border-destructive/35 bg-destructive/10 text-destructive dark:text-destructive',
+      ring: 'ring-destructive/20',
     },
   } as const;
 
@@ -1592,7 +1592,7 @@ export default function UserGuide() {
     {
       icon: Settings,
       text: 'Check the Settings page for configuration options',
-      className: 'border-amber-400/25 bg-amber-500/8 text-amber-600 dark:text-amber-300',
+      className: 'border-brand-400/25 bg-brand-500/8 text-brand-600 dark:text-brand-300',
     },
     {
       icon: Bot,
@@ -1602,12 +1602,12 @@ export default function UserGuide() {
     {
       icon: AlertCircle,
       text: 'Review Error Logs for troubleshooting system issues',
-      className: 'border-red-400/25 bg-red-500/8 text-red-600 dark:text-red-300',
+      className: 'border-destructive/25 bg-destructive/8 text-destructive dark:text-destructive',
     },
     {
       icon: Headphones,
       text: 'Contact your system administrator for technical support',
-      className: 'border-amber-400/25 bg-amber-500/8 text-amber-600 dark:text-amber-300',
+      className: 'border-brand-400/25 bg-brand-500/8 text-brand-600 dark:text-brand-300',
     },
   ];
 
@@ -1657,14 +1657,14 @@ export default function UserGuide() {
         variant="toolbar"
         role="navigation"
         aria-label="User Guide quick navigation"
-        className="min-h-0 gap-2 overflow-x-auto overscroll-x-contain border-primary/15 bg-card/70 p-2 shadow-[0_12px_34px_rgba(15,23,42,0.06)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-slate-950/55"
+        className="min-h-0 gap-2 overflow-x-auto overscroll-x-contain border-primary/15 bg-card/70 p-2 shadow-[0_12px_34px_rgba(15,23,42,0.06)] [scrollbar-color:hsl(var(--primary)/0.35)_transparent] [scrollbar-width:thin] dark:bg-background/55"
       >
         {quickNavigationItems.map((item) => (
           <button
             key={item.label}
             type="button"
             onClick={() => handleQuickNavigation(item)}
-            className="min-h-10 min-w-max rounded-full border border-border/70 bg-background/85 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-foreground hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-slate-950/55"
+            className="min-h-10 min-w-max rounded-full border border-border/70 bg-background/85 px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/10 hover:text-foreground hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-background/55"
           >
             {item.label}
           </button>
@@ -1672,7 +1672,7 @@ export default function UserGuide() {
       </DashboardThemeFrame>
 
       {/* Quick Tips */}
-      <Card id="quick-tips" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="quick-tips" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.18))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
@@ -1692,7 +1692,7 @@ export default function UserGuide() {
                 className={`group relative min-w-0 overflow-hidden rounded-2xl border p-4 shadow-lg transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/65 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_20px_48px_rgba(15,23,42,0.12),0_0_0_1px_hsl(var(--primary)/0.10)] dark:hover:shadow-black/35 ${quickTipCardClasses[index]}`}
               >
                 <div className="relative z-10 flex min-w-0 items-start gap-3">
-                  <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-background/85 text-primary shadow-sm shadow-primary/5 transition-transform duration-300 group-hover:scale-105 dark:bg-slate-950/55">
+                  <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-background/85 text-primary shadow-sm shadow-primary/5 transition-transform duration-300 group-hover:scale-105 dark:bg-background/55">
                     <tip.icon className="h-5 w-5" />
                   </span>
                   <div className="min-w-0 space-y-2">
@@ -1713,11 +1713,11 @@ export default function UserGuide() {
       </Card>
 
       {/* Property Status Guide */}
-      <Card id="property-status-guide" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="property-status-guide" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.06),hsl(var(--muted)/0.16))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 shadow-inner shadow-blue-500/10">
-              <AlertCircle className="h-5 w-5 text-blue-500" />
+            <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-info/20 bg-info/10 shadow-inner shadow-info/10">
+              <AlertCircle className="h-5 w-5 text-info-foreground0" />
             </span>
             <span className="min-w-0">Property Status Guide</span>
           </CardTitle>
@@ -1737,7 +1737,7 @@ export default function UserGuide() {
                   className={`flex min-w-0 flex-col gap-3 rounded-2xl border p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_18px_44px_rgba(15,23,42,0.10),0_0_0_1px_hsl(var(--primary)/0.08)] dark:hover:shadow-black/30 ${style.card}`}
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-background/75 ring-4 dark:bg-slate-950/50 ${style.ring}`}>
+                    <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl bg-background/75 ring-4 dark:bg-background/50 ${style.ring}`}>
                       <span className={`h-3.5 w-3.5 rounded-full shadow-sm ${item.color}`} />
                     </span>
                     <Badge variant="outline" className={`min-w-0 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${style.badge}`}>
@@ -1753,7 +1753,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Main Sections with Accordion */}
-      <Card id="feature-documentation" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="feature-documentation" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/15 bg-card/95 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-4 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.08),hsl(var(--muted)/0.16))]">
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-2">
@@ -1782,7 +1782,7 @@ export default function UserGuide() {
                 value={documentationSearch}
                 onChange={(event) => setDocumentationSearch(event.target.value)}
                 placeholder="Search feature documentation"
-                className="h-11 w-full min-w-0 rounded-2xl border border-border/75 bg-background/90 pl-10 pr-10 text-sm text-foreground shadow-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/45 focus:ring-2 focus:ring-primary/25 dark:bg-slate-950/60"
+                className="h-11 w-full min-w-0 rounded-2xl border border-border/75 bg-background/90 pl-10 pr-10 text-sm text-foreground shadow-inner outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/45 focus:ring-2 focus:ring-primary/25 dark:bg-background/60"
               />
               {documentationSearch && (
                 <button
@@ -1795,13 +1795,13 @@ export default function UserGuide() {
                 </button>
               )}
             </label>
-            <div className="flex min-w-0 items-center rounded-2xl border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground dark:bg-slate-950/40">
+            <div className="flex min-w-0 items-center rounded-2xl border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground dark:bg-background/40">
               Full documentation list stays visible while search shows jump results.
             </div>
           </div>
 
           {normalizedDocumentationSearch && (
-            <div className="rounded-2xl border border-border/60 bg-background/60 p-3 dark:bg-slate-950/45">
+            <div className="rounded-2xl border border-border/60 bg-background/60 p-3 dark:bg-background/45">
               {documentationSearchResults.length > 0 ? (
                 <div className="space-y-2">
                   <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -1821,9 +1821,9 @@ export default function UserGuide() {
                   </div>
                 </div>
               ) : (
-                <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-brand-500/20 bg-brand-500/5 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
-                    <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                    <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-brand-500/25 bg-brand-500/10 text-brand-600 dark:text-brand-300">
                       <Search className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 break-words text-sm leading-6 text-muted-foreground">
@@ -1844,14 +1844,14 @@ export default function UserGuide() {
         </CardHeader>
         <CardContent className="min-h-0 bg-muted/10 p-3 sm:p-4">
           {sections.length === 0 ? (
-            <div className="rounded-2xl border border-border/60 bg-background/70 p-6 text-center shadow-sm dark:bg-slate-950/40">
+            <div className="rounded-2xl border border-border/60 bg-background/70 p-6 text-center shadow-sm dark:bg-background/40">
               <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
               <p className="mt-3 text-sm leading-6 text-muted-foreground">No documentation sections are available.</p>
             </div>
           ) : (
           <Accordion type="multiple" className="grid min-w-0 w-full gap-3">
             {sections.map((section) => (
-              <AccordionItem id={`section-${section.id}`} key={section.id} value={section.id} className="group/section scroll-mt-6 overflow-hidden rounded-2xl border border-border/65 bg-card/90 px-0 shadow-sm transition-all duration-200 hover:border-primary/25 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_18px_48px_rgba(15,23,42,0.10),0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-slate-950/60 dark:hover:shadow-black/20 dark:data-[state=open]:shadow-black/30">
+              <AccordionItem id={`section-${section.id}`} key={section.id} value={section.id} className="group/section scroll-mt-6 overflow-hidden rounded-2xl border border-border/65 bg-card/90 px-0 shadow-sm transition-all duration-200 hover:border-primary/25 hover:shadow-[0_12px_32px_rgba(15,23,42,0.08)] data-[state=open]:border-primary/35 data-[state=open]:shadow-[0_18px_48px_rgba(15,23,42,0.10),0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-background/60 dark:hover:shadow-black/20 dark:data-[state=open]:shadow-black/30">
                 <AccordionTrigger className="min-w-0 px-4 py-4 text-left transition-colors hover:bg-primary/5 hover:no-underline focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=open]:bg-primary/10 sm:min-h-16 sm:px-5 [&>svg]:ml-3 [&>svg]:flex-shrink-0 [&>svg]:text-primary [&>svg]:transition-transform [&>svg]:duration-200">
                   <div className="flex min-w-0 items-center gap-3 pr-2">
                     <div className="flex-shrink-0 rounded-xl border border-primary/15 bg-primary/10 p-2 transition-colors group-data-[state=open]/section:border-primary/30 group-data-[state=open]/section:bg-primary/15">
@@ -1871,7 +1871,7 @@ export default function UserGuide() {
                     {section.items.map((item, itemIndex) => (
                       <article
                         key={itemIndex}
-                        className="min-w-0 overflow-hidden rounded-2xl border border-border/65 bg-card/95 shadow-[0_12px_34px_rgba(15,23,42,0.06)] ring-1 ring-white/60 dark:border-white/10 dark:bg-slate-950/50 dark:ring-white/5"
+                        className="min-w-0 overflow-hidden rounded-2xl border border-border/65 bg-card/95 shadow-[0_12px_34px_rgba(15,23,42,0.06)] ring-1 ring-white/60 dark:border-white/10 dark:bg-background/50 dark:ring-white/5"
                       >
                         <div className="flex min-w-0 items-start gap-3 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.075),transparent_58%)] p-4 sm:p-5">
                           <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-xs font-semibold text-primary shadow-inner shadow-primary/10">
@@ -1885,12 +1885,12 @@ export default function UserGuide() {
 
                         <div className="min-w-0 space-y-4 p-4 sm:p-5">
                         {item.features && (
-                          <div className="min-w-0 space-y-3 rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-4">
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-success/15 bg-success/5 p-4">
                             <h5 className="text-sm font-semibold leading-6 text-foreground">Key Features:</h5>
                             <ul className="grid min-w-0 gap-2 sm:grid-cols-2">
                               {item.features.map((feature, featureIndex) => (
-                                <li key={featureIndex} className="flex min-w-0 items-start gap-2.5 rounded-xl bg-background/55 p-2.5 text-sm leading-6 text-foreground/90 dark:bg-slate-950/35">
-                                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-500" />
+                                <li key={featureIndex} className="flex min-w-0 items-start gap-2.5 rounded-xl bg-background/55 p-2.5 text-sm leading-6 text-foreground/90 dark:bg-background/35">
+                                  <CheckCircle className="mt-1 h-4 w-4 flex-shrink-0 text-success-foreground0" />
                                   <span className="min-w-0 break-words">{feature}</span>
                                 </li>
                               ))}
@@ -1903,7 +1903,7 @@ export default function UserGuide() {
                             <h5 className="text-sm font-semibold leading-6 text-foreground">Step-by-Step Guide:</h5>
                             <ol className="space-y-2.5">
                               {item.steps.map((step, stepIndex) => (
-                                <li key={stepIndex} className="flex min-w-0 items-start gap-3 rounded-xl bg-background/60 p-3 text-sm dark:bg-slate-950/35">
+                                <li key={stepIndex} className="flex min-w-0 items-start gap-3 rounded-xl bg-background/60 p-3 text-sm dark:bg-background/35">
                                   <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary text-xs font-semibold text-primary-foreground shadow-sm shadow-primary/25">
                                     {stepIndex + 1}
                                   </span>
@@ -1915,12 +1915,12 @@ export default function UserGuide() {
                         )}
 
                         {item.tips && (
-                          <div className="min-w-0 space-y-3 rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4">
+                          <div className="min-w-0 space-y-3 rounded-2xl border border-brand-500/15 bg-brand-500/5 p-4">
                             <h5 className="text-sm font-semibold leading-6 text-foreground">Tips:</h5>
                             <ul className="space-y-2">
                               {item.tips.map((tip, tipIndex) => (
-                                <li key={tipIndex} className="flex min-w-0 items-start gap-2.5 rounded-xl bg-background/55 p-2.5 text-sm leading-6 dark:bg-slate-950/35">
-                                  <Sparkles className="mt-1 h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+                                <li key={tipIndex} className="flex min-w-0 items-start gap-2.5 rounded-xl bg-background/55 p-2.5 text-sm leading-6 dark:bg-background/35">
+                                  <Sparkles className="mt-1 h-3.5 w-3.5 flex-shrink-0 text-brand-500" />
                                   <span className="min-w-0 break-words text-foreground/90">{tip}</span>
                                 </li>
                               ))}
@@ -1935,7 +1935,7 @@ export default function UserGuide() {
                               {item.shortcuts.map((shortcut, shortcutIndex) => (
                                 <div
                                   key={shortcutIndex}
-                                  className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-background/65 p-3 dark:bg-slate-950/35"
+                                  className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-background/65 p-3 dark:bg-background/35"
                                 >
                                   <span className="min-w-0 break-words text-sm leading-6 text-muted-foreground">
                                     {shortcut.description}
@@ -1944,7 +1944,7 @@ export default function UserGuide() {
                                     {shortcut.keys.map((key, keyIndex) => (
                                       <kbd
                                         key={keyIndex}
-                                        className="rounded-lg border border-primary/20 bg-background px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm shadow-primary/5 ring-1 ring-white/50 dark:bg-slate-950/60 dark:ring-white/10"
+                                        className="rounded-lg border border-primary/20 bg-background px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm shadow-primary/5 ring-1 ring-white/50 dark:bg-background/60 dark:ring-white/10"
                                       >
                                         {key}
                                       </kbd>
@@ -1971,7 +1971,7 @@ export default function UserGuide() {
       </Card>
 
       {/* Support Section */}
-      <Card id="need-help" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/20 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-primary/15 dark:bg-slate-950/75 dark:shadow-black/25">
+      <Card id="need-help" className="min-w-0 scroll-mt-6 overflow-hidden rounded-[1.5rem] border-primary/20 bg-card/90 shadow-[0_18px_55px_rgba(15,23,42,0.08)] dark:border-primary/15 dark:bg-background/75 dark:shadow-black/25">
         <CardHeader className="space-y-2 border-b border-border/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.10),hsl(var(--muted)/0.16))]">
           <CardTitle className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 shadow-inner shadow-primary/10">
@@ -1988,7 +1988,7 @@ export default function UserGuide() {
             {needHelpItems.map((item) => (
               <li
                 key={item.text}
-                className="group flex min-w-0 items-start gap-3 rounded-2xl border border-border/65 bg-background/80 p-4 text-sm shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-[0_14px_34px_rgba(15,23,42,0.08),0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-slate-950/40 dark:hover:shadow-black/25"
+                className="group flex min-w-0 items-start gap-3 rounded-2xl border border-border/65 bg-background/80 p-4 text-sm shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/5 hover:shadow-[0_14px_34px_rgba(15,23,42,0.08),0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-background/40 dark:hover:shadow-black/25"
               >
                 <span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border shadow-inner ${item.className}`}>
                   <item.icon className="h-5 w-5" />

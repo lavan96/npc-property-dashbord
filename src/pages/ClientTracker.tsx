@@ -162,10 +162,10 @@ const getOpportunityStatusBadgeClass = (status?: string | null, compact = false)
   return cn(
     base,
     "border shadow-inner",
-    normalizedStatus === 'won' && 'border-emerald-500/35 bg-emerald-500/10 text-emerald-400',
-    normalizedStatus === 'lost' && 'border-red-500/35 bg-red-500/10 text-red-400',
-    normalizedStatus === 'abandoned' && 'border-red-500/35 bg-red-500/10 text-red-400',
-    normalizedStatus === 'open' && 'border-sky-500/35 bg-sky-500/10 text-sky-300',
+    normalizedStatus === 'won' && 'border-success/35 bg-success/10 text-success',
+    normalizedStatus === 'lost' && 'border-destructive/35 bg-destructive/10 text-destructive',
+    normalizedStatus === 'abandoned' && 'border-destructive/35 bg-destructive/10 text-destructive',
+    normalizedStatus === 'open' && 'border-info/35 bg-info/10 text-info',
     normalizedStatus && !['won', 'lost', 'abandoned', 'open'].includes(normalizedStatus) && 'border-border/70 bg-background/70 text-muted-foreground'
   );
 };
@@ -776,15 +776,15 @@ export default function ClientTracker() {
     const effectiveStatus = appointmentStatus || status;
     switch (effectiveStatus?.toLowerCase()) {
       case 'confirmed':
-        return 'bg-green-500/10 text-green-600 border-green-500/20';
+        return 'bg-success/10 text-success border-success/20';
       case 'showed':
-        return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+        return 'bg-info/10 text-info border-info/20';
       case 'noshow':
-        return 'bg-red-500/10 text-red-600 border-red-500/20';
+        return 'bg-destructive/10 text-destructive border-destructive/20';
       case 'cancelled':
         return 'bg-muted text-muted-foreground border-muted';
       case 'pending':
-        return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+        return 'bg-brand-500/10 text-brand-600 border-brand-500/20';
       default:
         return 'bg-secondary text-secondary-foreground border-secondary';
     }
@@ -977,44 +977,44 @@ export default function ClientTracker() {
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-amber-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-amber-400/80 hover:-translate-y-1 hover:border-amber-400/45 hover:shadow-2xl hover:shadow-amber-500/15">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-amber-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-brand-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-brand-400/80 hover:-translate-y-1 hover:border-brand-400/45 hover:shadow-2xl hover:shadow-brand-500/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-brand-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">With Follow-ups</p>
-                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-amber-100 md:text-5xl">{stats.withFollowUp}</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-brand-100 md:text-5xl">{stats.withFollowUp}</p>
               </div>
-              <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-amber-400/45 group-hover:bg-amber-400/15">
-                <Clock className="h-5 w-5 text-amber-400" />
+              <div className="rounded-2xl border border-brand-400/25 bg-brand-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-brand-400/45 group-hover:bg-brand-400/15">
+                <Clock className="h-5 w-5 text-brand-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-red-500/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-red-500/80 hover:-translate-y-1 hover:border-red-500/45 hover:shadow-2xl hover:shadow-red-500/15">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-red-500/10 blur-3xl transition-opacity group-hover:opacity-100" />
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-destructive/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-destructive/80 hover:-translate-y-1 hover:border-destructive/45 hover:shadow-2xl hover:shadow-destructive/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-destructive/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overdue</p>
-                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-red-300 md:text-5xl">{stats.overdue}</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-destructive md:text-5xl">{stats.overdue}</p>
               </div>
-              <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-3 shadow-inner transition-all duration-300 group-hover:border-red-500/45 group-hover:bg-red-500/15">
-                <AlertCircle className="h-5 w-5 text-red-400" />
+              <div className="rounded-2xl border border-destructive/25 bg-destructive/10 p-3 shadow-inner transition-all duration-300 group-hover:border-destructive/45 group-hover:bg-destructive/15">
+                <AlertCircle className="h-5 w-5 text-destructive" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-emerald-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-emerald-400/80 hover:-translate-y-1 hover:border-emerald-400/45 hover:shadow-2xl hover:shadow-emerald-500/15">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-emerald-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
+        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-success/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-success/80 hover:-translate-y-1 hover:border-success/45 hover:shadow-2xl hover:shadow-success/15">
+          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-success/10 blur-3xl transition-opacity group-hover:opacity-100" />
           <CardContent className="relative p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">In Finance</p>
-                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-emerald-300 md:text-5xl">{stats.financeStage}</p>
+                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-success md:text-5xl">{stats.financeStage}</p>
               </div>
-              <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-emerald-400/45 group-hover:bg-emerald-400/15">
-                <TrendingUp className="h-5 w-5 text-emerald-400" />
+              <div className="rounded-2xl border border-success/25 bg-success/10 p-3 shadow-inner transition-all duration-300 group-hover:border-success/45 group-hover:bg-success/15">
+                <TrendingUp className="h-5 w-5 text-success" />
               </div>
             </div>
           </CardContent>
@@ -1521,7 +1521,7 @@ export default function ClientTracker() {
                                   {stageInfo.name}
                                 </Badge>
                                 {isOverdue && (
-                                  <Badge variant="destructive" className={cn(badgeBaseClass, "bg-red-500/15 text-red-100 shadow-red-500/15")}>Overdue</Badge>
+                                  <Badge variant="destructive" className={cn(badgeBaseClass, "bg-destructive/15 text-destructive-foreground shadow-destructive/15")}>Overdue</Badge>
                                 )}
                               </div>
                               <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -1541,7 +1541,7 @@ export default function ClientTracker() {
                               {client.follow_up_date && (
                                 <div className="mt-2 flex items-center gap-1.5 text-sm">
                                   <CalendarIcon className="h-3 w-3 shrink-0" />
-                                  <span className={isOverdue ? 'text-red-500' : 'text-muted-foreground'}>
+                                  <span className={isOverdue ? 'text-destructive-foreground0' : 'text-muted-foreground'}>
                                     Follow-up: {format(new Date(client.follow_up_date), 'MMM d, yyyy')}
                                   </span>
                                 </div>
@@ -1549,13 +1549,13 @@ export default function ClientTracker() {
                               {(client.borrowing_capacity || client.equity_release) && (
                                 <div className="flex items-center gap-4 mt-2 text-sm">
                                   {client.borrowing_capacity && (
-                                    <span className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-500">
+                                    <span className="flex items-center gap-1 rounded-full border border-success/20 bg-success/10 px-2 py-0.5 font-semibold text-success-foreground0">
                                       <DollarSign className="h-3 w-3" />
                                       BC: {formatCurrency(client.borrowing_capacity)}
                                     </span>
                                   )}
                                   {client.equity_release && (
-                                    <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 font-semibold text-blue-500">
+                                    <span className="rounded-full border border-info/20 bg-info/10 px-2 py-0.5 font-semibold text-info-foreground0">
                                       Equity: {formatCurrency(client.equity_release)}
                                     </span>
                                   )}
@@ -1693,14 +1693,14 @@ export default function ClientTracker() {
                               : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.borrowing_capacity ? "text-emerald-500" : "text-muted-foreground/55")}>{formatCurrency(client.borrowing_capacity)}</TableCell>
+                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.borrowing_capacity ? "text-success-foreground0" : "text-muted-foreground/55")}>{formatCurrency(client.borrowing_capacity)}</TableCell>
                           <TableCell className="whitespace-nowrap text-right text-sm tabular-nums">
                             {client.proposed_rental_income 
-                              ? <span className="font-semibold text-emerald-500">${client.proposed_rental_income}/wk</span>
+                              ? <span className="font-semibold text-success-foreground0">${client.proposed_rental_income}/wk</span>
                               : <span className="text-muted-foreground/55">-</span>
                             }
                           </TableCell>
-                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.equity_release ? "text-emerald-500" : "text-muted-foreground/55")}>{formatCurrency(client.equity_release)}</TableCell>
+                          <TableCell className={cn("whitespace-nowrap text-right text-sm font-semibold tabular-nums", client.equity_release ? "text-success-foreground0" : "text-muted-foreground/55")}>{formatCurrency(client.equity_release)}</TableCell>
                           <TableCell className="text-right">
                             <Dialog>
                               <DialogTrigger asChild>
@@ -1943,12 +1943,12 @@ function KanbanCard({
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {isOverdue && (
-            <Badge variant="destructive" className={cn(compactBadgeBaseClass, "bg-red-500/15 text-red-100 shadow-red-500/15")}>
+            <Badge variant="destructive" className={cn(compactBadgeBaseClass, "bg-destructive/15 text-destructive-foreground shadow-destructive/15")}>
               Overdue
             </Badge>
           )}
           {client.deal_status === 'closed' && (
-            <Badge variant="default" className={cn(compactBadgeBaseClass, "bg-emerald-500/15 text-emerald-100 shadow-emerald-500/15")}>
+            <Badge variant="default" className={cn(compactBadgeBaseClass, "bg-success/15 text-success-foreground shadow-success/15")}>
               🏆
             </Badge>
           )}
@@ -1999,14 +1999,14 @@ function KanbanCard({
         {client.follow_up_date && (
           <p className={cn(
             "flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-xs font-medium",
-            isOverdue ? 'text-red-500' : 'text-muted-foreground'
+            isOverdue ? 'text-destructive-foreground0' : 'text-muted-foreground'
           )}>
             <CalendarIcon className="h-3 w-3 shrink-0" />
             {format(new Date(client.follow_up_date), 'MMM d')}
           </p>
         )}
         {client.borrowing_capacity && (
-          <p className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold leading-5 text-emerald-400 shadow-inner">
+          <p className="rounded-full border border-success/25 bg-success/10 px-2 py-0.5 text-xs font-bold leading-5 text-success shadow-inner">
             {formatCurrency(client.borrowing_capacity)}
           </p>
         )}

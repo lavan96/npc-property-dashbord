@@ -40,18 +40,18 @@ import { cn } from '@/lib/utils';
 
 
 const LISTINGS_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
-const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-black/25';
+const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-background/35 dark:shadow-black/25';
 const LISTINGS_STATE_CARD = 'relative overflow-hidden rounded-[1.75rem] border border-border/60 bg-gradient-to-br from-card/95 via-card/85 to-primary/[0.045] px-6 py-12 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:from-slate-950/85 dark:via-slate-950/70 dark:to-primary/10 dark:shadow-black/35';
 const LISTINGS_STATE_ICON = 'mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-[0_14px_34px_rgba(245,158,11,0.14)]';
-const LISTINGS_CARD_SURFACE = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
+const LISTINGS_CARD_SURFACE = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-background/80 dark:shadow-black/30';
 const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
-const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-400/45 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60';
-const LISTINGS_CHIP_INACTIVE = 'border-border/70 bg-background/80 text-muted-foreground hover:-translate-y-0.5 hover:border-amber-400/45 hover:bg-amber-50/70 hover:text-amber-700 dark:border-white/10 dark:bg-slate-950/45 dark:hover:bg-amber-400/10 dark:hover:text-amber-200';
-const LISTINGS_CHIP_ACTIVE = 'border-amber-400/70 bg-gradient-to-r from-amber-500 to-yellow-500 text-foreground dark:text-white shadow-[0_10px_24px_rgba(245,158,11,0.28)] hover:-translate-y-0.5 hover:from-amber-500 hover:to-amber-400 hover:text-white dark:border-amber-300/60';
+const LISTINGS_CHIP_ACTION = 'h-9 rounded-full px-3.5 text-xs font-semibold shadow-sm transition-all duration-200 focus-visible:ring-2 focus-visible:ring-brand-400/45 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:opacity-60';
+const LISTINGS_CHIP_INACTIVE = 'border-border/70 bg-background/80 text-muted-foreground hover:-translate-y-0.5 hover:border-brand-400/45 hover:bg-brand-50/70 hover:text-brand-700 dark:border-white/10 dark:bg-background/45 dark:hover:bg-brand-400/10 dark:hover:text-brand-200';
+const LISTINGS_CHIP_ACTIVE = 'border-brand-400/70 bg-gradient-to-r from-brand-500 to-brand-500 text-foreground dark:text-white shadow-[0_10px_24px_rgba(245,158,11,0.28)] hover:-translate-y-0.5 hover:from-brand-500 hover:to-brand-400 hover:text-white dark:border-brand-300/60';
 const LISTINGS_HEADER_ICON_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-3 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
 const LISTINGS_VIEW_SWITCHER = 'inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/45 p-1 shadow-inner dark:border-white/10 dark:bg-white/[0.04]';
 const LISTINGS_VIEW_CONTROL = 'h-9 rounded-full px-3 text-xs font-bold tracking-[0.01em] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 disabled:cursor-default';
-const LISTINGS_VIEW_CONTROL_ACTIVE = 'border-primary/45 bg-background text-foreground shadow-[0_8px_22px_rgba(15,23,42,0.10)] ring-1 ring-primary/20 dark:bg-slate-900 dark:shadow-black/30';
+const LISTINGS_VIEW_CONTROL_ACTIVE = 'border-primary/45 bg-background text-foreground shadow-[0_8px_22px_rgba(15,23,42,0.10)] ring-1 ring-primary/20 dark:bg-background dark:shadow-black/30';
 const LISTINGS_VIEW_CONTROL_INACTIVE = 'border-transparent bg-transparent text-muted-foreground/75 hover:bg-background/70 hover:text-foreground dark:hover:bg-white/[0.06]';
 const LISTINGS_REFRESH_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 data-[refreshing=true]:border-primary/35 data-[refreshing=true]:bg-primary/10 data-[refreshing=true]:text-primary';
 const LISTING_MISSING_VALUE = 'inline-flex min-h-6 items-center rounded-full border border-dashed border-border/70 bg-muted/30 px-2.5 text-sm font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03]';
@@ -59,14 +59,14 @@ const LISTING_TABLE_HEAD = 'h-12 whitespace-nowrap px-4 text-[11px] font-bold up
 const LISTINGS_TABLE_CARD = 'overflow-hidden';
 const LISTING_SELECTION_CHECKBOX = 'h-5 w-5 rounded-md border-border/80 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2';
 const LISTING_BADGE_BASE = 'inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold leading-none tracking-[0.02em] shadow-sm';
-const LISTING_PROPERTY_TYPE_BADGE = 'max-w-full border-amber-200/70 bg-amber-50/75 text-amber-800 dark:border-amber-300/20 dark:bg-amber-400/10 dark:text-amber-100';
+const LISTING_PROPERTY_TYPE_BADGE = 'max-w-full border-brand-200/70 bg-brand-50/75 text-brand-800 dark:border-brand-300/20 dark:bg-brand-400/10 dark:text-brand-100';
 const LISTING_CONFIDENCE_BADGE = 'rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm';
 const getListingConfidenceBadgeTone = (confidence: number) =>
   confidence >= 0.7
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200'
+    ? 'border-success/30 bg-success/10 text-success dark:border-success/30 dark:bg-success/10 dark:text-success'
     : confidence >= 0.45
-      ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200'
-      : 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/30 dark:bg-rose-400/10 dark:text-rose-200';
+      ? 'border-brand-200 bg-brand-50 text-brand-800 dark:border-brand-400/30 dark:bg-brand-400/10 dark:text-brand-200'
+      : 'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/30 dark:bg-destructive/10 dark:text-destructive';
 
 
 // Lazy load heavy modal components
@@ -578,7 +578,7 @@ export default function Listings() {
             </div>
             <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
               <h1 className="text-4xl font-bold tracking-[-0.06em] text-foreground md:text-5xl">Listings</h1>
-              <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/45">
+              <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm backdrop-blur dark:border-white/10 dark:bg-background/45">
                 <Building2 className="h-4 w-4 text-primary" />
                 <span className="tabular-nums">{filteredListings.length} of {listings.length}</span>
                 <span className="font-medium text-muted-foreground">properties</span>
@@ -586,8 +586,8 @@ export default function Listings() {
             </div>
           </div>
           
-          <div className="flex w-full flex-wrap items-stretch justify-start gap-3 rounded-[1.35rem] sm:items-center lg:w-auto border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-slate-950/40 dark:shadow-black/20 lg:justify-end">
-            <div className="flex min-w-[min(100%,18rem)] flex-1 items-center gap-2 rounded-full sm:flex-none border border-border/50 bg-card/70 p-1.5 shadow-sm dark:border-white/10 dark:bg-slate-950/35">
+          <div className="flex w-full flex-wrap items-stretch justify-start gap-3 rounded-[1.35rem] sm:items-center lg:w-auto border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-background/40 dark:shadow-black/20 lg:justify-end">
+            <div className="flex min-w-[min(100%,18rem)] flex-1 items-center gap-2 rounded-full sm:flex-none border border-border/50 bg-card/70 p-1.5 shadow-sm dark:border-white/10 dark:bg-background/35">
               <span className="hidden pl-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70 sm:inline">Dataset</span>
               <AirtableTableSelector
                 value={selectedTable}
@@ -661,11 +661,11 @@ export default function Listings() {
       </section>
 
       {/* Search and Filters */}
-      <section className={`${LISTINGS_SECTION_SURFACE} space-y-6 bg-gradient-to-br from-card/95 via-card/80 to-amber-50/40 ring-1 ring-amber-400/10 dark:from-slate-950/70 dark:via-slate-950/50 dark:to-amber-950/10`}>
+      <section className={`${LISTINGS_SECTION_SURFACE} space-y-6 bg-gradient-to-br from-card/95 via-card/80 to-brand-50/40 ring-1 ring-brand-400/10 dark:from-slate-950/70 dark:via-slate-950/50 dark:to-brand-950/10`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
           <div className="group relative min-w-0 flex-1">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex w-14 items-center justify-center">
-              <Search className="h-5 w-5 text-muted-foreground transition-colors duration-200 group-focus-within:text-amber-600 dark:group-focus-within:text-amber-300" />
+              <Search className="h-5 w-5 text-muted-foreground transition-colors duration-200 group-focus-within:text-brand-600 dark:group-focus-within:text-brand-300" />
             </div>
             <Input
               placeholder="Search properties..."
@@ -675,7 +675,7 @@ export default function Listings() {
               type="search"
               aria-label="Search listings by address, suburb, agency, or agent"
               autoComplete="off"
-              className="h-14 rounded-full border-border/70 bg-background/95 pl-14 pr-5 text-[15px] font-medium shadow-[0_14px_36px_rgba(15,23,42,0.10)] transition-all duration-200 placeholder:text-muted-foreground/65 hover:border-amber-300/70 hover:bg-background focus-visible:border-amber-400 focus-visible:ring-4 focus-visible:ring-amber-400/20 dark:border-white/10 dark:bg-slate-950/70 dark:hover:border-amber-300/35 sm:h-16 sm:text-base"
+              className="h-14 rounded-full border-border/70 bg-background/95 pl-14 pr-5 text-[15px] font-medium shadow-[0_14px_36px_rgba(15,23,42,0.10)] transition-all duration-200 placeholder:text-muted-foreground/65 hover:border-brand-300/70 hover:bg-background focus-visible:border-brand-400 focus-visible:ring-4 focus-visible:ring-brand-400/20 dark:border-white/10 dark:bg-background/70 dark:hover:border-brand-300/35 sm:h-16 sm:text-base"
             />
           </div>
           
@@ -712,7 +712,7 @@ export default function Listings() {
             onClick={() => setFilters(prev => ({ ...prev, hasInspection: !prev.hasInspection }))}
             aria-pressed={filters.hasInspection}
             aria-label="Toggle listings with inspection times"
-            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.hasInspection ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.hasInspection && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
+            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.hasInspection ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.hasInspection && "ring-1 ring-brand-300/70 ring-offset-1 ring-offset-background")}
           >
             <CalendarCheck className="h-4 w-4" />
             Has Inspection
@@ -723,9 +723,9 @@ export default function Listings() {
             onClick={() => setFilters(prev => ({ ...prev, lowConfidence: !prev.lowConfidence }))}
             aria-pressed={filters.lowConfidence}
             aria-label="Toggle low confidence listings"
-            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.lowConfidence ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.lowConfidence && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
+            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.lowConfidence ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.lowConfidence && "ring-1 ring-brand-300/70 ring-offset-1 ring-offset-background")}
           >
-            <AlertTriangle className={cn("h-4 w-4", filters.lowConfidence ? "text-foreground dark:text-white" : "text-amber-600 dark:text-amber-300")} />
+            <AlertTriangle className={cn("h-4 w-4", filters.lowConfidence ? "text-foreground dark:text-white" : "text-brand-600 dark:text-brand-300")} />
             Low Confidence
           </Button>
           <Button
@@ -734,7 +734,7 @@ export default function Listings() {
             onClick={() => setFilters(prev => ({ ...prev, offMarket: !prev.offMarket }))}
             aria-pressed={filters.offMarket}
             aria-label="Toggle off-market listings"
-            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.offMarket ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.offMarket && "ring-1 ring-amber-300/70 ring-offset-1 ring-offset-background")}
+            className={cn(LISTINGS_CHIP_ACTION, "gap-1.5", filters.offMarket ? LISTINGS_CHIP_ACTIVE : LISTINGS_CHIP_INACTIVE, filters.offMarket && "ring-1 ring-brand-300/70 ring-offset-1 ring-offset-background")}
           >
             <EyeOff className="h-4 w-4" />
             Off-Market
@@ -796,7 +796,7 @@ export default function Listings() {
           <CardContent className="p-0">
             <div className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Listings table" tabIndex={0}>
             <Table className="min-w-[1180px] border-separate border-spacing-0 lg:min-w-[1240px]">
-            <TableHeader className="sticky top-0 z-10 bg-muted/55 backdrop-blur dark:bg-slate-950/80">
+            <TableHeader className="sticky top-0 z-10 bg-muted/55 backdrop-blur dark:bg-background/80">
               <TableRow className="border-border/70 hover:bg-transparent">
                 <TableHead className={cn(LISTING_TABLE_HEAD, "w-14 pl-5")}>
                   <Checkbox
@@ -834,7 +834,7 @@ export default function Listings() {
                 >
                   <TableRow
                     className={cn(
-                      "group relative border-b border-border/50 bg-card/80 transition-all duration-200 odd:bg-card/92 even:bg-muted/[0.22] hover:bg-gradient-to-r hover:from-primary/[0.095] hover:via-primary/[0.045] hover:to-transparent hover:shadow-[inset_0_1px_0_hsl(var(--primary)/0.12),inset_0_-1px_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/[0.06] dark:border-white/10 dark:odd:bg-slate-950/62 dark:even:bg-white/[0.025] dark:hover:from-primary/10 dark:hover:via-white/[0.04]",
+                      "group relative border-b border-border/50 bg-card/80 transition-all duration-200 odd:bg-card/92 even:bg-muted/[0.22] hover:bg-gradient-to-r hover:from-primary/[0.095] hover:via-primary/[0.045] hover:to-transparent hover:shadow-[inset_0_1px_0_hsl(var(--primary)/0.12),inset_0_-1px_0_hsl(var(--primary)/0.10)] focus-within:bg-primary/[0.06] dark:border-white/10 dark:odd:bg-background/62 dark:even:bg-white/[0.025] dark:hover:from-primary/10 dark:hover:via-white/[0.04]",
                       selectedListings.has(listing.id) && "bg-gradient-to-r from-primary/[0.13] via-primary/[0.075] to-card shadow-[inset_5px_0_0_hsl(var(--primary)),inset_0_1px_0_hsl(var(--primary)/0.18),0_10px_28px_rgba(245,158,11,0.10)] hover:from-primary/[0.16] hover:via-primary/[0.09] dark:from-primary/15 dark:via-primary/10 dark:to-slate-950/55"
                     )}
                   >
@@ -1047,7 +1047,7 @@ export default function Listings() {
       {/* Floating Action Bar */}
       {selectedListings.size > 0 && (
         <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md md:max-w-lg md:w-auto">
-          <Card className="rounded-2xl border border-primary/30 bg-card/95 shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-primary/10 backdrop-blur dark:border-primary/30 dark:bg-slate-950/90 dark:shadow-black/45">
+          <Card className="rounded-2xl border border-primary/30 bg-card/95 shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-primary/10 backdrop-blur dark:border-primary/30 dark:bg-background/90 dark:shadow-black/45">
             <CardContent className="py-2 px-3 md:py-3 md:px-6">
               <div className="flex items-center gap-2 md:gap-4">
                 <div className="flex items-center gap-2 min-w-0">
