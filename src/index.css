@@ -4534,10 +4534,34 @@ html {
   :root:not(.dark) .dashboard-kpi-card,
   :root:not(.dark) .dashboard-theme-card,
   :root:not(.dark) .dashboard-theme-premium-card,
-  :root:not(.dark) .dashboard-theme-chart-card {
+  :root:not(.dark) .dashboard-theme-chart-card,
+  :root:not(.dark) .dashboard-page-frame {
     border-color: #e5d8c4;
     background: linear-gradient(145deg, #fffcf7 0%, #fbf6ea 100%);
     box-shadow: 0 12px 30px rgba(80, 60, 20, 0.08);
+  }
+
+  :root:not(.dark) .dashboard-theme-hero {
+    border-color: rgba(214, 190, 149, 0.92);
+    background:
+      radial-gradient(circle at top right, rgba(231, 200, 115, 0.26), transparent 34%),
+      linear-gradient(135deg, #fffcf7 0%, #fbf6ea 58%, #f4ebdd 100%);
+    box-shadow: 0 18px 44px rgba(80, 60, 20, 0.1);
+  }
+
+  :root:not(.dark) .dashboard-theme-section,
+  :root:not(.dark) .dashboard-panel-muted {
+    border-color: rgba(229, 216, 196, 0.88);
+    background: linear-gradient(145deg, rgba(255, 252, 247, 0.9), rgba(247, 242, 232, 0.84));
+    box-shadow: 0 14px 34px rgba(80, 60, 20, 0.075);
+  }
+
+  :root:not(.dark) .dashboard-theme-section-accent {
+    border-color: rgba(166, 120, 0, 0.28);
+    background:
+      radial-gradient(circle at top left, rgba(231, 200, 115, 0.24), transparent 30%),
+      linear-gradient(145deg, rgba(255, 252, 247, 0.96), rgba(251, 246, 234, 0.9));
+    box-shadow: 0 16px 38px rgba(120, 85, 20, 0.1);
   }
 
   :root:not(.dark) .dashboard-surface-panel,
@@ -4545,16 +4569,33 @@ html {
   :root:not(.dark) .dashboard-surface-control,
   :root:not(.dark) .dashboard-empty-state,
   :root:not(.dark) .dashboard-icon-button,
-  :root:not(.dark) .dashboard-input-control {
+  :root:not(.dark) .dashboard-input-control,
+  :root:not(.dark) .dashboard-mobile-nav-toggle {
     border-color: rgba(210, 190, 160, 0.86);
     background: rgba(255, 252, 247, 0.78);
     box-shadow: 0 12px 28px rgba(80, 60, 20, 0.07);
+  }
+
+  :root:not(.dark) .dashboard-surface-control:hover,
+  :root:not(.dark) .dashboard-icon-button:hover,
+  :root:not(.dark) .dashboard-input-control:hover,
+  :root:not(.dark) .dashboard-mobile-nav-toggle:hover {
+    border-color: rgba(166, 120, 0, 0.32);
+    background: rgba(255, 252, 247, 0.94);
+    box-shadow: 0 14px 30px rgba(120, 85, 20, 0.11);
   }
 
   :root:not(.dark) .dashboard-topbar-surface {
     border-bottom: 1px solid rgba(210, 190, 160, 0.82);
     background: rgba(255, 252, 247, 0.82);
     box-shadow: 0 14px 34px rgba(80, 60, 20, 0.08);
+    backdrop-filter: blur(22px) saturate(1.08);
+  }
+
+  :root:not(.dark) .dashboard-mobile-nav {
+    border-top-color: rgba(210, 190, 160, 0.82);
+    background: rgba(255, 252, 247, 0.94);
+    box-shadow: 0 -14px 34px rgba(80, 60, 20, 0.08);
     backdrop-filter: blur(22px) saturate(1.08);
   }
 
@@ -4614,6 +4655,13 @@ html {
   :root:not(.dark) .dashboard-shell button[role="combobox"] {
     border-color: rgba(210, 190, 160, 0.82);
     background-color: rgba(255, 252, 247, 0.86);
+  }
+
+  :root:not(.dark) .dashboard-shell input:focus,
+  :root:not(.dark) .dashboard-shell textarea:focus,
+  :root:not(.dark) .dashboard-shell button[role="combobox"]:focus {
+    border-color: rgba(166, 120, 0, 0.46);
+    box-shadow: 0 0 0 3px rgba(231, 200, 115, 0.2);
   }
 }
 
