@@ -4000,8 +4000,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             <CashFlowChartsWorkspace>
             {/* Cash Flow Trends Chart */}
-            <Card className="overflow-hidden border-slate-200/80 bg-background/95 shadow-lg ring-1 ring-slate-900/5">
-              <CardHeader className="border-b bg-gradient-to-r from-slate-50 via-background to-slate-100/70 pb-4 dark:from-slate-950/40 dark:via-background dark:to-slate-900/30">
+            <Card className="overflow-hidden border-border/80 bg-background/95 shadow-lg ring-1 ring-border/5">
+              <CardHeader className="border-b bg-gradient-to-r from-muted via-background to-muted/70 pb-4 dark:from-background/40 dark:via-background dark:to-background/30">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -4128,7 +4128,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                           <span className="font-medium">
                                             ${Number(entry.value).toLocaleString()}
                                             {yoyVal !== null && yoyVal !== 0 && (
-                                              <span className={`ml-1.5 ${yoyVal > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                              <span className={`ml-1.5 ${yoyVal > 0 ? 'text-success-foreground0' : 'text-destructive-foreground0'}`}>
                                                 {yoyVal > 0 ? '↑' : '↓'}{Math.abs(yoyVal).toFixed(1)}%
                                               </span>
                                             )}
@@ -4305,7 +4305,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                   <div className="flex items-end justify-between">
                                     <div>
                                       <p className="text-xs font-bold">{kpi.yr10}</p>
-                                      <p className={`text-[10px] font-semibold ${kpi.positive ? 'text-green-500' : 'text-red-500'}`}>
+                                      <p className={`text-[10px] font-semibold ${kpi.positive ? 'text-success-foreground0' : 'text-destructive-foreground0'}`}>
                                         {kpi.change}
                                       </p>
                                     </div>
@@ -4337,20 +4337,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         return (
                           <Collapsible open={showCashFlowInsight} onOpenChange={setShowCashFlowInsight}>
                             <CollapsibleTrigger asChild>
-                              <button className="w-full flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors text-xs font-semibold text-amber-800 dark:text-amber-300">
+                              <button className="w-full flex items-center justify-between p-3 bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800/40 rounded-xl hover:bg-brand-100 dark:hover:bg-brand-950/50 transition-colors text-xs font-semibold text-brand-800 dark:text-brand-300">
                                 <span className="flex items-center gap-1.5">
                                   <TrendingUp className="h-3.5 w-3.5" />
                                   Cash Flow Trend Analysis
                                 </span>
-                                <span className="flex items-center gap-1 text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                                <span className="flex items-center gap-1 text-[10px] font-normal text-brand-600 dark:text-brand-400">
                                   {showCashFlowInsight ? 'Hide' : 'View'} Analysis
                                   {showCashFlowInsight ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                 </span>
                               </button>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
-                              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-t-0 border-amber-200 dark:border-amber-800/40 rounded-b-lg -mt-[1px]">
-                                <div className="text-xs text-amber-900/80 dark:text-amber-200/70 space-y-2 leading-relaxed">
+                              <div className="p-3 bg-brand-50 dark:bg-brand-950/30 border border-t-0 border-brand-200 dark:border-brand-800/40 rounded-b-lg -mt-[1px]">
+                                <div className="text-xs text-brand-900/80 dark:text-brand-200/70 space-y-2 leading-relaxed">
                                   <p><strong>Property Value Growth:</strong> Projected to appreciate by {propGrowth}% over 10 years (from ${baseFinancialData.purchasePrice.toLocaleString()} to ${yr10d.propertyMarketValue.toLocaleString()}), reflecting configured capital growth assumptions.</p>
                                   <p><strong>Equity Accumulation:</strong> Equity increases by {eqGrowth}% (${yr1d.equityInProperty.toLocaleString()} → ${yr10d.equityInProperty.toLocaleString()}), driven by capital appreciation and principal repayments reducing the loan by {loanRed}%.</p>
                                   <p><strong>Cash Flow:</strong> After-tax cash flow moves from ${yr1d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 1) to ${yr10d.afterTaxCashFlowPA.toLocaleString()}/yr (Year 10).
@@ -4370,8 +4370,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             </Card>
 
             {/* Yield Percentages Chart */}
-            <Card className="overflow-hidden border-slate-200/80 bg-background/95 shadow-lg ring-1 ring-slate-900/5">
-              <CardHeader className="border-b bg-gradient-to-r from-slate-50 via-background to-slate-100/70 pb-4 dark:from-slate-950/40 dark:via-background dark:to-slate-900/30">
+            <Card className="overflow-hidden border-border/80 bg-background/95 shadow-lg ring-1 ring-border/5">
+              <CardHeader className="border-b bg-gradient-to-r from-muted via-background to-muted/70 pb-4 dark:from-background/40 dark:via-background dark:to-background/30">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -4455,7 +4455,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                         <span className="font-medium">
                                           {Number(gross.value).toFixed(2)}%
                                           {yoyGross !== 0 && (
-                                            <span className={`ml-1.5 ${yoyGross > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                            <span className={`ml-1.5 ${yoyGross > 0 ? 'text-success-foreground0' : 'text-destructive-foreground0'}`}>
                                               {yoyGross > 0 ? '↑' : '↓'}{Math.abs(yoyGross).toFixed(2)}pp
                                             </span>
                                           )}
@@ -4471,7 +4471,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                         <span className="font-medium">
                                           {Number(net.value).toFixed(2)}%
                                           {yoyNet !== 0 && (
-                                            <span className={`ml-1.5 ${yoyNet > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                            <span className={`ml-1.5 ${yoyNet > 0 ? 'text-success-foreground0' : 'text-destructive-foreground0'}`}>
                                               {yoyNet > 0 ? '↑' : '↓'}{Math.abs(yoyNet).toFixed(2)}pp
                                             </span>
                                           )}
@@ -4483,7 +4483,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
                                         Expense Drag
                                       </span>
-                                      <span className="font-medium text-amber-500">{spread}pp</span>
+                                      <span className="font-medium text-brand-500">{spread}pp</span>
                                     </div>
                                   </div>
                                 );
@@ -4574,20 +4574,20 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                         return (
                           <Collapsible open={showYieldInsight} onOpenChange={setShowYieldInsight}>
                             <CollapsibleTrigger asChild>
-                              <button className="mt-3 w-full flex items-center justify-between p-2.5 bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-950/50 transition-colors text-xs font-semibold text-cyan-800 dark:text-cyan-300">
+                              <button className="mt-3 w-full flex items-center justify-between p-2.5 bg-info/10 dark:bg-info/30 border border-info/30 dark:border-info/40 rounded-lg hover:bg-info/15 dark:hover:bg-info/50 transition-colors text-xs font-semibold text-info dark:text-info">
                                 <span className="flex items-center gap-1.5">
                                   <Percent className="h-3.5 w-3.5" />
                                   Yield Analysis Insight
                                 </span>
-                                <span className="flex items-center gap-1 text-[10px] font-normal text-cyan-600 dark:text-cyan-400">
+                                <span className="flex items-center gap-1 text-[10px] font-normal text-info dark:text-info">
                                   {showYieldInsight ? 'Hide' : 'View'} Analysis
                                   {showYieldInsight ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                 </span>
                               </button>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
-                              <div className="p-3 bg-cyan-50 dark:bg-cyan-950/30 border border-t-0 border-cyan-200 dark:border-cyan-800/40 rounded-b-lg -mt-[1px]">
-                                <div className="text-xs text-cyan-900/80 dark:text-cyan-200/70 space-y-2 leading-relaxed">
+                              <div className="p-3 bg-info/10 dark:bg-info/30 border border-t-0 border-info/30 dark:border-info/40 rounded-b-lg -mt-[1px]">
+                                <div className="text-xs text-info/80 dark:text-info/70 space-y-2 leading-relaxed">
                                   <p><strong>Gross Yield:</strong> Moves from {yr1y.grossYield.toFixed(2)}% (Year 1) to {yr10y.grossYield.toFixed(2)}% (Year 10), a shift of {grossDelta}pp. This compression occurs because property value appreciates faster than rental income — a hallmark of growth-oriented assets.</p>
                                   <p><strong>Net Yield:</strong> Shifts from {yr1y.netYield.toFixed(2)}% to {yr10y.netYield.toFixed(2)}% ({netDelta}pp change). Net yield accounts for holding costs including council rates, insurance, maintenance, and management fees.</p>
                                   <p><strong>Expense Drag:</strong> Average spread between gross and net yield is {avgSprd}pp, representing the proportion of rental income consumed by holding costs. A narrowing spread indicates improving operational efficiency.</p>
@@ -4606,7 +4606,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             {/* Comparison Chart - Side by Side (Up to 5 Properties) */}
             {comparisonMode && comparisonReports.length > 0 && allComparisonProjections.length > 0 && (
               <Card className="overflow-hidden border-primary/30 bg-background/95 shadow-lg ring-1 ring-primary/10">
-                <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-background to-slate-100/70 pb-4 dark:to-slate-900/30">
+                <CardHeader className="border-b bg-gradient-to-r from-primary/10 via-background to-muted/70 pb-4 dark:to-background/30">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
                       <CardTitle className="text-base flex items-center gap-2">
@@ -4722,7 +4722,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             <div key={cat.label} className="bg-muted/40 rounded-lg p-2.5 text-center space-y-1">
                               <p className="text-[10px] text-muted-foreground font-medium">{cat.icon} {cat.label}</p>
                               <p className="text-xs font-bold truncate" style={{ color: winner.color }}>{winner.name}</p>
-                              <p className="text-[10px] font-semibold text-green-500">{cat.format(cat.getValue(winner))}</p>
+                              <p className="text-[10px] font-semibold text-success-foreground0">{cat.format(cat.getValue(winner))}</p>
                             </div>
                           );
                         })}
@@ -4795,11 +4795,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             return (
                               <TableRow key={key}>
                                 <TableCell className="font-medium sticky left-0 bg-background">{label}</TableCell>
-                                <TableCell className={`text-center ${(primaryMetrics as any)?.[key] === bestValue ? 'text-green-600 font-semibold' : ''}`}>
+                                <TableCell className={`text-center ${(primaryMetrics as any)?.[key] === bestValue ? 'text-success font-semibold' : ''}`}>
                                   {format((primaryMetrics as any)?.[key])}
                                 </TableCell>
                                 {allComparisonMetrics.map(({ report: compReport, metrics }) => (
-                                  <TableCell key={compReport.id} className={`text-center ${(metrics as any)?.[key] === bestValue ? 'text-green-600 font-semibold' : ''}`}>
+                                  <TableCell key={compReport.id} className={`text-center ${(metrics as any)?.[key] === bestValue ? 'text-success font-semibold' : ''}`}>
                                     {format((metrics as any)?.[key])}
                                   </TableCell>
                                 ))}
@@ -4838,11 +4838,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             {/* Property Recommendation Engine */}
             {comparisonMode && comparisonReports.length > 0 && propertyRecommendation && (
-              <Card className="border-amber-500/30 bg-amber-500/5">
+              <Card className="border-brand-500/30 bg-brand-500/5">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Target className="h-4 w-4 text-amber-600" />
+                      <Target className="h-4 w-4 text-brand-600" />
                       Investment Recommendation Engine
                     </CardTitle>
                     <Select value={investorProfile} onValueChange={(v) => setInvestorProfile(v as any)}>
@@ -4852,19 +4852,19 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <SelectContent>
                         <SelectItem value="growth">
                           <div className="flex items-center gap-2">
-                            <TrendingUp className="h-3 w-3 text-blue-500" />
+                            <TrendingUp className="h-3 w-3 text-info-foreground0" />
                             Growth Focused
                           </div>
                         </SelectItem>
                         <SelectItem value="income">
                           <div className="flex items-center gap-2">
-                            <DollarSign className="h-3 w-3 text-green-500" />
+                            <DollarSign className="h-3 w-3 text-success-foreground0" />
                             Income Focused
                           </div>
                         </SelectItem>
                         <SelectItem value="balanced">
                           <div className="flex items-center gap-2">
-                            <Zap className="h-3 w-3 text-purple-500" />
+                            <Zap className="h-3 w-3 text-accent-foreground0" />
                             Balanced
                           </div>
                         </SelectItem>
@@ -4887,8 +4887,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   </div>
 
                   {/* Winner Announcement */}
-                  <div className="flex items-start gap-4 p-4 rounded-lg border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 to-transparent">
-                    <Award className={`h-10 w-10 ${propertyRecommendation.confidence === 'high' ? 'text-amber-500' : propertyRecommendation.confidence === 'moderate' ? 'text-amber-400' : 'text-amber-300'}`} />
+                  <div className="flex items-start gap-4 p-4 rounded-lg border-2 border-brand-500/40 bg-gradient-to-r from-brand-500/10 to-transparent">
+                    <Award className={`h-10 w-10 ${propertyRecommendation.confidence === 'high' ? 'text-brand-500' : propertyRecommendation.confidence === 'moderate' ? 'text-brand-400' : 'text-brand-300'}`} />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-lg">
@@ -4898,10 +4898,10 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           variant="outline" 
                           className={`text-xs ${
                             propertyRecommendation.confidence === 'high' 
-                              ? 'border-green-500 text-green-600' 
+                              ? 'border-success/30 text-success' 
                               : propertyRecommendation.confidence === 'moderate'
-                              ? 'border-amber-500 text-amber-600'
-                              : 'border-gray-500 text-gray-600'
+                              ? 'border-brand-500 text-brand-600'
+                              : 'border-border text-muted-foreground'
                           }`}
                         >
                           {propertyRecommendation.confidence} confidence
@@ -4918,7 +4918,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           {propertyRecommendation.rankings.map((r, idx) => (
                             <div 
                               key={r.name}
-                              className={`text-center px-3 py-1 rounded ${idx === 0 ? 'bg-green-500/20 border border-green-500/40' : 'bg-muted/50'}`}
+                              className={`text-center px-3 py-1 rounded ${idx === 0 ? 'bg-success/20 border border-success/40' : 'bg-muted/50'}`}
                             >
                               <div className="text-[10px] text-muted-foreground">#{r.rank}</div>
                               <div className="text-xs font-medium">{r.name}</div>
@@ -4931,11 +4931,11 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       {/* Key Insights */}
                       {propertyRecommendation.insights.length > 0 && (
                         <div>
-                          <div className="text-xs font-semibold text-green-600 mb-1">Key Insights:</div>
+                          <div className="text-xs font-semibold text-success mb-1">Key Insights:</div>
                           <ul className="text-xs space-y-1">
                             {propertyRecommendation.insights.map((insight, i) => (
                               <li key={i} className="flex items-start gap-1">
-                                <span className="text-green-500 mt-0.5">✓</span>
+                                <span className="text-success-foreground0 mt-0.5">✓</span>
                                 <span>{insight}</span>
                               </li>
                             ))}
@@ -4959,12 +4959,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             <CashFlowAiPanel active={comparisonMode && comparisonReports.length > 0}>
             {/* AI-Powered Comparison Analysis */}
             {comparisonMode && comparisonReports.length > 0 && (
-              <Card className="overflow-hidden border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-background to-background shadow-sm">
-                <CardHeader className="border-b bg-blue-500/5 pb-4">
+              <Card className="overflow-hidden border-info/30 bg-gradient-to-br from-info/5 via-background to-background shadow-sm">
+                <CardHeader className="border-b bg-info/5 pb-4">
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="space-y-2">
                       <CardTitle className="text-base flex items-center gap-2">
-                        <span className="rounded-xl bg-blue-500/10 p-2 text-blue-600">
+                        <span className="rounded-xl bg-info/10 p-2 text-info">
                           <Zap className="h-4 w-4" />
                         </span>
                         AI Cash Flow Decision Support
@@ -4986,7 +4986,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             Saved analysis
                           </Badge>
                         ) : aiAnalysis ? (
-                          <Badge variant="outline" className="border-orange-300 text-orange-600 text-xs">Unsaved analysis</Badge>
+                          <Badge variant="outline" className="border-warning/30 text-warning text-xs">Unsaved analysis</Badge>
                         ) : null}
                       </div>
                     </div>
@@ -5042,7 +5042,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           size="sm"
                           onClick={generateAiAnalysis}
                           disabled={isGeneratingAiAnalysis || isLoadingAnalysis}
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-info hover:bg-info"
                         >
                           {isGeneratingAiAnalysis ? (
                             <>
@@ -5080,34 +5080,34 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                   {isGeneratingAiAnalysis && (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
-                        <RotateCcw className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-500" />
+                        <RotateCcw className="h-8 w-8 animate-spin mx-auto mb-2 text-info-foreground0" />
                         <p className="text-sm text-muted-foreground">Analyzing cash flow projections...</p>
                       </div>
                     </div>
                   )}
                   
                   {aiAnalysis && (
-                    <div className="max-h-[min(70vh,900px)] space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-amber-300/25 bg-background/95 dark:bg-slate-950/95 p-3 shadow-2xl shadow-slate-950/20 ring-1 ring-amber-400/15 sm:p-4 [scrollbar-gutter:stable]">
+                    <div className="max-h-[min(70vh,900px)] space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-brand-300/25 bg-background/95 dark:bg-background/95 p-3 shadow-2xl shadow-slate-950/20 ring-1 ring-brand-400/15 sm:p-4 [scrollbar-gutter:stable]">
                       {/* Executive Summary */}
                       {aiAnalysis.executiveSummary && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/30 bg-gradient-to-br from-card dark:from-slate-900 via-card dark:via-slate-950 to-card dark:to-slate-900 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
-                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Executive Summary</span></h4>
-                          <p className="whitespace-normal text-sm leading-7 text-foreground dark:text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.executiveSummary}</p>
+                        <div className="min-w-0 rounded-2xl border border-brand-300/30 bg-gradient-to-br from-card dark:from-background via-card dark:via-background to-card dark:to-background p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-brand-400/10 sm:p-5">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-100"><Zap className="h-4 w-4 shrink-0 text-brand-300" /><span>Executive Summary</span></h4>
+                          <p className="whitespace-normal text-sm leading-7 text-foreground dark:text-foreground [overflow-wrap:anywhere]">{aiAnalysis.executiveSummary}</p>
                         </div>
                       )}
                       
                       {/* Final Rankings */}
                       {aiAnalysis.finalRankings && aiAnalysis.finalRankings.length > 0 && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-card dark:from-slate-900 via-card dark:via-slate-950 to-blue-950/40 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
-                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Property Rankings</span></h4>
+                        <div className="min-w-0 rounded-2xl border border-brand-300/25 bg-gradient-to-br from-card dark:from-background via-card dark:via-background to-info/40 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-brand-400/10 sm:p-5">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-100"><Zap className="h-4 w-4 shrink-0 text-brand-300" /><span>Property Rankings</span></h4>
                           <div className="space-y-2">
                             {aiAnalysis.finalRankings.map((ranking: any, idx: number) => (
-                              <div key={idx} className={`min-w-0 rounded-xl p-3 ${idx === 0 ? 'bg-green-500/10 border border-green-500/30' : 'bg-slate-800/60 border border-slate-700/80'}`}>
+                              <div key={idx} className={`min-w-0 rounded-xl p-3 ${idx === 0 ? 'bg-success/10 border border-success/30' : 'bg-background/60 border border-border/80'}`}>
                                 <div className="mb-1 flex min-w-0 flex-wrap items-center gap-2">
                                   <Badge variant={idx === 0 ? 'default' : 'outline'} className="text-xs">
                                     #{ranking.rank}
                                   </Badge>
-                                  <span className="min-w-0 text-sm font-medium text-foreground dark:text-slate-100 [overflow-wrap:anywhere]">{ranking.address}</span>
+                                  <span className="min-w-0 text-sm font-medium text-foreground dark:text-foreground [overflow-wrap:anywhere]">{ranking.address}</span>
                                   {ranking.score && (
                                     <Badge variant="secondary" className="text-xs ml-auto">
                                       Score: {typeof ranking.score === 'number' ? ranking.score.toFixed(1) : ranking.score}
@@ -5115,12 +5115,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                                   )}
                                 </div>
                                 {ranking.verdict && (
-                                  <p className="mt-1 whitespace-normal text-xs leading-6 text-muted-foreground dark:text-slate-300 [overflow-wrap:anywhere]">{ranking.verdict}</p>
+                                  <p className="mt-1 whitespace-normal text-xs leading-6 text-muted-foreground dark:text-foreground [overflow-wrap:anywhere]">{ranking.verdict}</p>
                                 )}
                                 {ranking.strengths && ranking.strengths.length > 0 && (
                                   <div className="mt-2">
-                                    <span className="text-[10px] text-green-600 font-medium">Strengths: </span>
-                                    <span className="whitespace-normal text-[10px] leading-5 text-muted-foreground dark:text-slate-300 [overflow-wrap:anywhere]">{ranking.strengths.join(', ')}</span>
+                                    <span className="text-[10px] text-success font-medium">Strengths: </span>
+                                    <span className="whitespace-normal text-[10px] leading-5 text-muted-foreground dark:text-foreground [overflow-wrap:anywhere]">{ranking.strengths.join(', ')}</span>
                                   </div>
                                 )}
                               </div>
@@ -5131,31 +5131,31 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Investor Recommendations */}
                       {aiAnalysis.investorRecommendations && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/25 bg-gradient-to-br from-card dark:from-slate-900 via-card dark:via-slate-950 to-card dark:to-slate-900 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
-                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Investor Profile Recommendations</span></h4>
+                        <div className="min-w-0 rounded-2xl border border-brand-300/25 bg-gradient-to-br from-card dark:from-background via-card dark:via-background to-card dark:to-background p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-brand-400/10 sm:p-5">
+                          <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-100"><Zap className="h-4 w-4 shrink-0 text-brand-300" /><span>Investor Profile Recommendations</span></h4>
                           <div className="grid min-w-0 gap-3 text-xs md:grid-cols-2">
                             {aiAnalysis.investorRecommendations.growthFocused && (
-                              <div className="min-w-0 rounded-xl border border-blue-400/20 bg-blue-500/10 p-3">
-                                <span className="font-medium text-blue-600">Growth Focused:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.growthFocused.reason}</p>
+                              <div className="min-w-0 rounded-xl border border-info/20 bg-info/10 p-3">
+                                <span className="font-medium text-info">Growth Focused:</span>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-foreground [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.growthFocused.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.incomeFocused && (
-                              <div className="min-w-0 rounded-xl border border-green-400/20 bg-green-500/10 p-3">
-                                <span className="font-medium text-green-600">Income Focused:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.incomeFocused.reason}</p>
+                              <div className="min-w-0 rounded-xl border border-success/20 bg-success/10 p-3">
+                                <span className="font-medium text-success">Income Focused:</span>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-foreground [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.incomeFocused.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.balanced && (
-                              <div className="min-w-0 rounded-xl border border-purple-400/20 bg-purple-500/10 p-3">
-                                <span className="font-medium text-purple-600">Balanced:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.balanced.reason}</p>
+                              <div className="min-w-0 rounded-xl border border-accent/20 bg-accent/10 p-3">
+                                <span className="font-medium text-accent">Balanced:</span>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-foreground [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.balanced.reason}</p>
                               </div>
                             )}
                             {aiAnalysis.investorRecommendations.riskAverse && (
-                              <div className="min-w-0 rounded-xl border border-amber-400/20 bg-amber-500/10 p-3">
-                                <span className="font-medium text-amber-600">Risk Averse:</span>
-                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-slate-200 [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.riskAverse.reason}</p>
+                              <div className="min-w-0 rounded-xl border border-brand-400/20 bg-brand-500/10 p-3">
+                                <span className="font-medium text-brand-600">Risk Averse:</span>
+                                <p className="mt-2 whitespace-normal leading-6 text-foreground dark:text-foreground [overflow-wrap:anywhere]">{aiAnalysis.investorRecommendations.riskAverse.reason}</p>
                               </div>
                             )}
                           </div>
@@ -5164,9 +5164,9 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       
                       {/* Overall Recommendation */}
                       {aiAnalysis.overallRecommendation?.bestProperty && (
-                        <div className="min-w-0 rounded-2xl border border-amber-300/35 bg-gradient-to-br from-green-950/50 via-card dark:via-slate-950 to-card dark:to-slate-900 p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-amber-400/10 sm:p-5">
-                          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-100"><Zap className="h-4 w-4 shrink-0 text-amber-300" /><span>Best Overall Property</span></h4>
-                          <p className="whitespace-normal text-sm leading-7 text-foreground dark:text-slate-100 [overflow-wrap:anywhere]">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
+                        <div className="min-w-0 rounded-2xl border border-brand-300/35 bg-gradient-to-br from-success/50 via-card dark:via-background to-card dark:to-background p-4 shadow-lg shadow-sm dark:shadow-black/20 ring-1 ring-brand-400/10 sm:p-5">
+                          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-brand-100"><Zap className="h-4 w-4 shrink-0 text-brand-300" /><span>Best Overall Property</span></h4>
+                          <p className="whitespace-normal text-sm leading-7 text-foreground dark:text-foreground [overflow-wrap:anywhere]">{aiAnalysis.overallRecommendation.bestProperty.reason}</p>
                         </div>
                       )}
                     </div>
@@ -5295,7 +5295,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                           <TableCell className="text-right">{formatCurrency(baseFinancialData.landTax)}</TableCell>
                         </TableRow>
                         {baseFinancialData.lmiAmount > 0 && (
-                          <TableRow className="bg-amber-50 dark:bg-amber-950/30">
+                          <TableRow className="bg-brand-50 dark:bg-brand-950/30">
                             <TableCell className="font-medium">LMI (Lenders Mortgage Insurance)</TableCell>
                             <TableCell className="text-right font-semibold">{formatCurrency(baseFinancialData.lmiAmount)}</TableCell>
                           </TableRow>
@@ -5334,7 +5334,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                             <TableCell className="font-medium">Tax Rate (Marginal)</TableCell>
                             <TableCell className="text-right">{baseFinancialData.taxRate}%</TableCell>
                           </TableRow>
-                          <TableRow className={baseFinancialData.depreciation > 0 ? 'bg-yellow-50 dark:bg-yellow-950/30' : ''}>
+                          <TableRow className={baseFinancialData.depreciation > 0 ? 'bg-brand-50 dark:bg-brand-950/30' : ''}>
                             <TableCell className="font-medium">
                               Annual Depreciation (Year 1)
                               {baseFinancialData.includeDepreciationInCashFlow ? '' : ' (Excluded)'}
@@ -5459,12 +5459,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
             {/* Construction Progress Payment Schedule - Collapsible (New Builds Only) */}
             {isNewBuild && constructionProgressSchedule && constructionProgressSchedule.buildPrice > 0 && (
               <Collapsible open={constructionScheduleOpen} onOpenChange={setConstructionScheduleOpen}>
-                <Card className="overflow-hidden border-amber-200/70 bg-gradient-to-br from-amber-50/40 via-background to-background shadow-sm dark:border-amber-900/40 dark:from-amber-950/20">
+                <Card className="overflow-hidden border-brand-200/70 bg-gradient-to-br from-brand-50/40 via-background to-background shadow-sm dark:border-brand-900/40 dark:from-brand-950/20">
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer border-b bg-amber-50/50 transition-colors hover:bg-amber-50 dark:bg-amber-950/20 dark:hover:bg-amber-950/30">
+                    <CardHeader className="cursor-pointer border-b bg-brand-50/50 transition-colors hover:bg-brand-50 dark:bg-brand-950/20 dark:hover:bg-brand-950/30">
                       <CardTitle className="flex flex-col gap-3 text-base lg:flex-row lg:items-center lg:justify-between">
                         <span className="flex items-center gap-2">
-                          <span className="rounded-xl bg-amber-500/10 p-2 text-amber-600">
+                          <span className="rounded-xl bg-brand-500/10 p-2 text-brand-600">
                             {constructionScheduleOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </span>
                           <span>
@@ -5510,8 +5510,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
                       {/* Custom Stage Month Selection (only in custom mode) */}
                       {schedulePreset === 'custom' && (
-                        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/30">
-                          <h5 className="text-sm font-medium mb-3 text-blue-900 dark:text-blue-100">Custom Stage Positioning</h5>
+                        <div className="rounded-2xl border border-info/30 bg-info/10 p-4 dark:border-info/30 dark:bg-info/30">
+                          <h5 className="text-sm font-medium mb-3 text-info dark:text-info-foreground">Custom Stage Positioning</h5>
                           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
                             {[
                               { index: 0, label: 'Deposit' },
@@ -5576,7 +5576,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <div className="max-w-full overflow-x-auto rounded-2xl border bg-background [-webkit-overflow-scrolling:touch]">
                       <Table className="min-w-[980px]">
                         <TableHeader>
-                          <TableRow className="bg-card dark:bg-slate-900 hover:bg-slate-900">
+                          <TableRow className="bg-card dark:bg-background hover:bg-background">
                             <TableHead className="font-semibold text-foreground dark:text-white">Stage</TableHead>
                             <TableHead className="font-semibold text-foreground dark:text-white">Description</TableHead>
                             <TableHead className="text-center font-semibold text-foreground dark:text-white">Total Build Contract</TableHead>
@@ -5627,8 +5627,8 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
 
             <CashFlowProjectionTable>
             {/* 10-Year Projection Table with Inline Editing */}
-            <Card className="overflow-hidden border-slate-200/80 bg-background/95 shadow-lg ring-1 ring-slate-900/5">
-              <CardHeader className="border-b bg-gradient-to-r from-slate-50 via-background to-slate-100/70 pb-4 dark:from-slate-950/40 dark:via-background dark:to-slate-900/30">
+            <Card className="overflow-hidden border-border/80 bg-background/95 shadow-lg ring-1 ring-border/5">
+              <CardHeader className="border-b bg-gradient-to-r from-muted via-background to-muted/70 pb-4 dark:from-background/40 dark:via-background dark:to-background/30">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <CardTitle className="text-base">10-Year Projection Overview</CardTitle>
@@ -5644,12 +5644,12 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                 <div className="max-w-full overflow-x-auto rounded-b-2xl overscroll-x-contain border-t bg-background [-webkit-overflow-scrolling:touch]">
                   <Table className="min-w-[1280px] border-separate border-spacing-0 text-sm">
                     <TableHeader className="sticky top-0 z-30 shadow-sm">
-                      <TableRow className="bg-card dark:bg-slate-900 hover:bg-slate-900">
-                        <TableHead className="sticky left-0 z-30 min-w-[220px] bg-card dark:bg-slate-900 text-foreground dark:text-white shadow-[6px_0_12px_-12px_rgba(15,23,42,0.7)]">Overview</TableHead>
+                      <TableRow className="bg-card dark:bg-background hover:bg-background">
+                        <TableHead className="sticky left-0 z-30 min-w-[220px] bg-card dark:bg-background text-foreground dark:text-white shadow-[6px_0_12px_-12px_rgba(15,23,42,0.7)]">Overview</TableHead>
                         {projections.map(p => (
-                          <TableHead key={p.year} className="min-w-[105px] bg-card dark:bg-slate-900 text-center text-foreground dark:text-white">
+                          <TableHead key={p.year} className="min-w-[105px] bg-card dark:bg-background text-center text-foreground dark:text-white">
                             {p.year === 0 ? 'Today' : `Year ${p.year}`}
-                            {p.year >= 1 && <span className="block text-[10px] font-normal text-muted-foreground dark:text-slate-300">editable</span>}
+                            {p.year >= 1 && <span className="block text-[10px] font-normal text-muted-foreground dark:text-foreground">editable</span>}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -5714,7 +5714,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Equity $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center text-green-600">{p.equityInProperty.toLocaleString()}</TableCell>
+                          <TableCell key={p.year} className="text-center text-success">{p.equityInProperty.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
@@ -5838,7 +5838,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Pre-Tax Cash Flow p/a $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPA < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                          <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPA < 0 ? 'text-destructive-foreground0' : 'text-success'}`}>
                             {p.year === 0 ? '' : p.preTaxCashFlowPA.toLocaleString()}
                           </TableCell>
                         ))}
@@ -5847,7 +5847,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Pre-Tax Cash Flow p/w $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPW < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                          <TableCell key={p.year} className={`text-center ${p.preTaxCashFlowPW < 0 ? 'text-destructive-foreground0' : 'text-success'}`}>
                             {p.year === 0 ? '' : p.preTaxCashFlowPW.toLocaleString()}
                           </TableCell>
                         ))}
@@ -5886,7 +5886,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Net Profit/Loss $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className={`text-center ${p.netProfitLoss < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                          <TableCell key={p.year} className={`text-center ${p.netProfitLoss < 0 ? 'text-destructive-foreground0' : 'text-success'}`}>
                             {p.year === 0 ? '' : p.netProfitLoss.toLocaleString()}
                           </TableCell>
                         ))}
@@ -5895,14 +5895,14 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <TableRow className="transition-colors hover:bg-primary/5">
                         <TableCell className="sticky left-0 z-10 bg-background font-medium shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">Tax Refund $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className="text-center text-green-600">{p.year === 0 ? '' : p.taxRefund.toLocaleString()}</TableCell>
+                          <TableCell key={p.year} className="text-center text-success">{p.year === 0 ? '' : p.taxRefund.toLocaleString()}</TableCell>
                         ))}
                       </TableRow>
                       
                       <TableRow className="bg-primary/10">
                         <TableCell className="sticky left-0 z-10 bg-primary/10 font-bold shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">After-Tax Cash Flow p/a $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className={`text-center font-bold ${p.afterTaxCashFlowPA < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                          <TableCell key={p.year} className={`text-center font-bold ${p.afterTaxCashFlowPA < 0 ? 'text-destructive-foreground0' : 'text-success'}`}>
                             {p.year === 0 ? '' : p.afterTaxCashFlowPA.toLocaleString()}
                           </TableCell>
                         ))}
@@ -5911,7 +5911,7 @@ export function CashFlowAnalysisModal({ report, isOpen, onClose, onReportUpdated
                       <TableRow className="bg-primary/10">
                         <TableCell className="sticky left-0 z-10 bg-primary/10 font-bold shadow-[6px_0_12px_-12px_rgba(15,23,42,0.45)]">After-Tax Cash Flow p/w $</TableCell>
                         {projections.map(p => (
-                          <TableCell key={p.year} className={`text-center font-bold ${p.afterTaxCashFlowPW < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                          <TableCell key={p.year} className={`text-center font-bold ${p.afterTaxCashFlowPW < 0 ? 'text-destructive-foreground0' : 'text-success'}`}>
                             {p.year === 0 ? '' : p.afterTaxCashFlowPW.toLocaleString()}
                           </TableCell>
                         ))}
