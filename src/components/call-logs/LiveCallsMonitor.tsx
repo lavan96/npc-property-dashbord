@@ -39,14 +39,14 @@ interface LiveCall {
 const livePanel =
   'relative h-full overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
 const liveControl =
-  'rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/35 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-emerald-300/35 hover:bg-emerald-300/10 hover:text-emerald-100 focus-visible:ring-2 focus-visible:ring-emerald-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
+  'rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/35 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-success/35 hover:bg-success/10 hover:text-success-foreground focus-visible:ring-2 focus-visible:ring-success/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black';
 const liveCallCard =
-  'group relative cursor-default overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-emerald-300/0 before:to-transparent hover:-translate-y-0.5 hover:border-emerald-300/40 hover:bg-emerald-400/5 hover:shadow-xl hover:shadow-emerald-500/10 hover:before:via-emerald-300/90';
+  'group relative cursor-default overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card dark:from-zinc-950/95 via-card dark:via-zinc-900/80 to-background dark:to-black/90 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-success/0 before:to-transparent hover:-translate-y-0.5 hover:border-success/40 hover:bg-success/5 hover:shadow-xl hover:shadow-success/10 hover:before:via-success/90';
 
 const getLiveStatusTone = (status: string | null) => {
   if (status === 'in-progress') return 'border-l-emerald-400/70';
-  if (status === 'ringing') return 'border-l-amber-300/70 hover:border-amber-300/45 hover:shadow-amber-500/10 hover:before:via-amber-300/90';
-  if (status === 'queued') return 'border-l-sky-300/70 hover:border-sky-300/45 hover:shadow-sky-500/10 hover:before:via-sky-300/90';
+  if (status === 'ringing') return 'border-l-amber-300/70 hover:border-brand-300/45 hover:shadow-brand-500/10 hover:before:via-brand-300/90';
+  if (status === 'queued') return 'border-l-sky-300/70 hover:border-info/45 hover:shadow-info/10 hover:before:via-info/90';
   return 'border-l-zinc-500/60';
 };
 
@@ -143,30 +143,30 @@ export const LiveCallsMonitor = () => {
 
   return (
     <Card className={livePanel}>
-      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/55 to-transparent" />
-      <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-emerald-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-success/55 to-transparent" />
+      <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-success/10 blur-3xl" />
       <CardHeader className="relative border-b border-border dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.92),rgba(0,0,0,0.72),rgba(8,47,73,0.16))] pb-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)] animate-pulse" />
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-success-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-success/30 shadow-[0_0_10px_rgba(110,231,183,0.8)] animate-pulse" />
               Realtime Voice Ops
             </div>
             <CardTitle className="flex items-center gap-3 text-xl text-foreground dark:text-zinc-50 md:text-2xl">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-300/25 bg-emerald-500/10 text-emerald-200 shadow-inner shadow-emerald-950/30">
-                <Radio className="w-4 h-4 text-emerald-300 relative z-10" />
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-success/25 bg-success/10 text-success shadow-inner shadow-success/30">
+                <Radio className="w-4 h-4 text-success relative z-10" />
               {/* Outer pulse ring */}
-                <span className="absolute w-7 h-7 bg-emerald-500/20 rounded-full animate-ping" />
+                <span className="absolute w-7 h-7 bg-success/20 rounded-full animate-ping" />
               {/* Middle pulse ring */}
-                <span className="absolute w-6 h-6 bg-emerald-500/30 rounded-full animate-pulse" />
+                <span className="absolute w-6 h-6 bg-success/30 rounded-full animate-pulse" />
               {/* Inner glow */}
-                <span className="absolute w-5 h-5 bg-emerald-500/30 rounded-full" />
+                <span className="absolute w-5 h-5 bg-success/30 rounded-full" />
               {/* Dot indicator */}
-                <span className="absolute right-1.5 top-1.5 w-2 h-2 bg-emerald-300 rounded-full animate-pulse shadow-[0_0_8px_2px_rgba(16,185,129,0.6)]" />
+                <span className="absolute right-1.5 top-1.5 w-2 h-2 bg-success/30 rounded-full animate-pulse shadow-[0_0_8px_2px_rgba(16,185,129,0.6)]" />
               </div>
               Live Calls
             </CardTitle>
-            <p className="mt-2 text-sm text-muted-foreground dark:text-zinc-400">Monitor active, ringing, and queued voice-agent sessions in real time.</p>
+            <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground">Monitor active, ringing, and queued voice-agent sessions in real time.</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className={callLogBadgeTone('neutral', 'font-mono')}>
@@ -203,12 +203,12 @@ export const LiveCallsMonitor = () => {
                       <div className={cn(
                         'relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border shadow-inner',
                         call.call_direction === 'inbound'
-                          ? 'border-emerald-300/25 bg-emerald-500/10 text-emerald-300'
-                          : 'border-sky-300/25 bg-sky-500/10 text-sky-300'
+                          ? 'border-success/25 bg-success/10 text-success'
+                          : 'border-info/25 bg-info/10 text-info'
                       )}>
                         <span className={cn(
                           'absolute right-2 top-2 h-2 w-2 rounded-full shadow-[0_0_10px_currentColor]',
-                          call.call_status === 'in-progress' ? 'bg-emerald-300 animate-pulse' : call.call_status === 'ringing' ? 'bg-amber-300 animate-pulse' : 'bg-sky-300'
+                          call.call_status === 'in-progress' ? 'bg-success/30 animate-pulse' : call.call_status === 'ringing' ? 'bg-brand-300 animate-pulse' : 'bg-info/30'
                         )} />
                         {call.call_direction === 'inbound' ? (
                           <PhoneIncoming className="h-5 w-5" />
@@ -233,13 +233,13 @@ export const LiveCallsMonitor = () => {
                         )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground dark:text-zinc-400">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground">
                           <div className="flex items-center gap-1 rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/25 px-2.5 py-1">
-                            <User className="w-3 h-3 text-muted-foreground dark:text-zinc-500" />
+                            <User className="w-3 h-3 text-muted-foreground dark:text-muted-foreground" />
                             {call.agent_name || 'Unknown Agent'}
                           </div>
                           {call.squad_name && (
-                            <div className="flex items-center gap-1 rounded-full border border-purple-300/20 bg-purple-400/10 px-2.5 py-1 text-purple-200">
+                            <div className="flex items-center gap-1 rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-accent">
                               <Zap className="w-3 h-3" />
                               {call.squad_name}
                             </div>
@@ -256,14 +256,14 @@ export const LiveCallsMonitor = () => {
 
                       <div className="flex shrink-0 flex-row flex-wrap items-center gap-2 md:flex-col md:items-end">
                         {getStatusBadge(call.call_status)}
-                        <div className="flex items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 font-mono text-sm text-emerald-200 shadow-sm shadow-emerald-500/10">
-                          <Clock className="w-3 h-3 text-emerald-300" />
+                        <div className="flex items-center gap-1 rounded-full border border-success/20 bg-success/10 px-3 py-1.5 font-mono text-sm text-success shadow-sm shadow-success/10">
+                          <Clock className="w-3 h-3 text-success" />
                           <span className="font-semibold">
                             {getCallDuration(call.started_at)}
                           </span>
                         </div>
                         {call.started_at && (
-                          <span className="rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/25 px-2.5 py-1 text-xs text-muted-foreground dark:text-zinc-400">
+                          <span className="rounded-full border border-border dark:border-white/10 bg-background dark:bg-black/25 px-2.5 py-1 text-xs text-muted-foreground dark:text-muted-foreground">
                             Started {format(new Date(call.started_at), 'h:mm a')}
                           </span>
                         )}

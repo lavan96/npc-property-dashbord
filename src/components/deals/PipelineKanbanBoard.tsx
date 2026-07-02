@@ -113,7 +113,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
   return (
     <Card
       className={cn(
-        'group relative cursor-pointer overflow-hidden rounded-[1.1rem] border border-border dark:border-white/10 border-l-[5px] bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.16),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.09),rgba(24,24,27,0.94)_50%,rgba(0,0,0,0.76))] shadow-[0_14px_36px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.08)] outline-none transition-all duration-300 hover:-translate-y-1 hover:border-amber-200/55 hover:shadow-[0_24px_52px_rgba(0,0,0,0.38),0_0_0_1px_rgba(251,191,36,0.24),0_0_32px_rgba(245,158,11,0.18)] focus-visible:-translate-y-1 focus-visible:border-amber-200/70 focus-visible:ring-2 focus-visible:ring-amber-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        'group relative cursor-pointer overflow-hidden rounded-[1.1rem] border border-border dark:border-white/10 border-l-[5px] bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.16),transparent_30%),linear-gradient(145deg,rgba(255,255,255,0.09),rgba(24,24,27,0.94)_50%,rgba(0,0,0,0.76))] shadow-[0_14px_36px_rgba(0,0,0,0.30),inset_0_1px_0_rgba(255,255,255,0.08)] outline-none transition-all duration-300 hover:-translate-y-1 hover:border-brand-200/55 hover:shadow-[0_24px_52px_rgba(0,0,0,0.38),0_0_0_1px_rgba(251,191,36,0.24),0_0_32px_rgba(245,158,11,0.18)] focus-visible:-translate-y-1 focus-visible:border-brand-200/70 focus-visible:ring-2 focus-visible:ring-brand-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         deal.risk_status === 'urgent' && 'border-l-destructive',
         deal.risk_status === 'needs_follow_up' && 'border-l-warning',
         deal.risk_status === 'on_track' && 'border-l-success',
@@ -129,7 +129,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
         }
       }}
     >
-      <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/35 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/35 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       <CardContent className="space-y-3.5 p-3.5">
         {/* Header: Client name + type */}
         <div className="flex items-start justify-between gap-2.5">
@@ -137,7 +137,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
             <p className="line-clamp-2 break-words text-[15px] font-bold leading-snug tracking-[-0.01em] text-foreground dark:text-zinc-50 drop-shadow-sm">{deal.client_name}</p>
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               <Badge variant="outline" className={pipelineBadgeClass('neutral', true, 'h-5 text-foreground dark:text-zinc-200 dark:text-zinc-200')}>
-                <span className="shrink-0 text-amber-200">{getDealTypeIcon(deal.deal_type)}</span>
+                <span className="shrink-0 text-brand-200">{getDealTypeIcon(deal.deal_type)}</span>
                 <span className="truncate">{getDealTypeLabel(deal.deal_type)}</span>
               </Badge>
             </div>
@@ -149,7 +149,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
         </div>
 
         {/* Current stage */}
-        <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-amber-200/15 bg-amber-300/[0.055] px-2 py-1.5">
+        <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-brand-200/15 bg-brand-300/[0.055] px-2 py-1.5">
           <Badge variant="outline" className={pipelineBadgeClass('gold', true, 'h-5 shrink-0 rounded-md px-1.5 text-[9px]')}>
             S{deal.current_stage_number}
           </Badge>
@@ -159,10 +159,10 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
         {/* Progress bar */}
         <div className="space-y-1.5 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-black/20 p-2 shadow-inner">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-zinc-400">Progress</span>
-            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 font-mono text-[11px] font-black text-emerald-100">{progressPct}%</span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground dark:text-muted-foreground">Progress</span>
+            <span className="rounded-full border border-success/20 bg-success/10 px-2 py-0.5 font-mono text-[11px] font-black text-success-foreground">{progressPct}%</span>
           </div>
-          <Progress value={progressPct} className="h-2.5 overflow-hidden rounded-full bg-card dark:bg-zinc-900/95 shadow-[inset_0_1px_3px_rgba(0,0,0,0.55)] [&>div]:bg-gradient-to-r [&>div]:from-teal-400 [&>div]:via-emerald-400 [&>div]:to-amber-300 [&>div]:shadow-[0_0_14px_rgba(52,211,153,0.45)]" />
+          <Progress value={progressPct} className="h-2.5 overflow-hidden rounded-full bg-card dark:bg-background/95 shadow-[inset_0_1px_3px_rgba(0,0,0,0.55)] [&>div]:bg-gradient-to-r [&>div]:from-success [&>div]:via-success [&>div]:to-brand-300 [&>div]:shadow-[0_0_14px_rgba(52,211,153,0.45)]" />
           <span className="block text-[9px] text-muted-foreground">{completedStages}/{totalStages} stages</span>
         </div>
 
@@ -171,7 +171,7 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
           {deal.total_contract_price && (
             <div className="min-w-0 rounded-lg border border-border dark:border-white/10 bg-white/[0.045] px-2 py-1.5 text-[10px] text-muted-foreground">
               <div className="flex min-w-0 items-center gap-1">
-                <DollarSign className="h-3 w-3 shrink-0 text-amber-200" />
+                <DollarSign className="h-3 w-3 shrink-0 text-brand-200" />
                 <span className="truncate font-mono text-[12px] font-black text-foreground dark:text-zinc-50">{formatCurrency(deal.total_contract_price)}</span>
               </div>
             </div>
@@ -179,10 +179,10 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
           {settlementDays !== null && (
             <div className={cn(
               'flex items-center gap-0.5 text-[10px]',
-              settlementDays < 0 && 'text-red-300 font-semibold',
-              settlementDays >= 0 && settlementDays <= 7 && 'text-amber-300 font-medium',
-              settlementDays > 7 && settlementDays <= 14 && 'text-amber-200',
-              settlementDays > 14 && 'text-teal-300',
+              settlementDays < 0 && 'text-destructive font-semibold',
+              settlementDays >= 0 && settlementDays <= 7 && 'text-brand-300 font-medium',
+              settlementDays > 7 && settlementDays <= 14 && 'text-brand-200',
+              settlementDays > 14 && 'text-success',
             )}>
               <Clock className="h-2.5 w-2.5" />
               <span>
@@ -197,8 +197,8 @@ function DealCard({ deal, onClick }: { deal: DealWithClient; onClick?: () => voi
         {/* Lead source + Next action */}
         <div className="space-y-1.5 border-t border-border dark:border-white/10 pt-2">
           <div className="flex items-center gap-1 rounded-full border border-border dark:border-white/10 bg-white/[0.035] px-2 py-1">
-            <Megaphone className={cn("h-2.5 w-2.5 shrink-0", deal.leadSource ? "text-amber-200" : "text-muted-foreground dark:text-zinc-500")} />
-            <span className={cn("truncate text-[10px] font-medium", deal.leadSource ? "text-amber-100" : "text-muted-foreground dark:text-zinc-500")}>
+            <Megaphone className={cn("h-2.5 w-2.5 shrink-0", deal.leadSource ? "text-brand-200" : "text-muted-foreground dark:text-muted-foreground")} />
+            <span className={cn("truncate text-[10px] font-medium", deal.leadSource ? "text-brand-100" : "text-muted-foreground dark:text-muted-foreground")}>
               {deal.leadSource || "Source not recorded"}
             </span>
           </div>
@@ -252,7 +252,7 @@ function KanbanColumn({
   return (
     <div className="group/column flex min-h-0 min-w-[280px] max-w-[280px] shrink-0 snap-start flex-col transition-all duration-300 hover:-translate-y-0.5 xl:min-w-[320px] xl:max-w-[320px]">
       {/* Column header */}
-      <div className={cn('relative overflow-hidden rounded-t-[1.2rem] border border-b-0 transition-all duration-300 group-hover/column:border-amber-300/45 group-hover/column:shadow-[0_0_28px_rgba(245,158,11,0.13)] bg-[linear-gradient(145deg,rgba(255,255,255,0.095),rgba(39,39,42,0.88)_44%,rgba(0,0,0,0.72))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] border-t-4', column.color)}>
+      <div className={cn('relative overflow-hidden rounded-t-[1.2rem] border border-b-0 transition-all duration-300 group-hover/column:border-brand-300/45 group-hover/column:shadow-[0_0_28px_rgba(245,158,11,0.13)] bg-[linear-gradient(145deg,rgba(255,255,255,0.095),rgba(39,39,42,0.88)_44%,rgba(0,0,0,0.72))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] border-t-4', column.color)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="text-sm">{column.icon}</span>
@@ -287,11 +287,11 @@ function KanbanColumn({
       </div>
 
       {/* Cards container */}
-      <div className="min-h-0 flex-1 rounded-b-[1.2rem] border border-t-0 transition-all duration-300 group-hover/column:border-amber-300/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] shadow-[inset_0_18px_34px_rgba(0,0,0,0.18)]">
-        <div className="max-h-[min(58dvh,calc(100dvh-22rem))] min-h-[260px] overflow-y-auto overscroll-contain p-2.5 pr-2 [scrollbar-color:rgba(245,158,11,0.45)_rgba(24,24,27,0.75)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-300/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/70">
+      <div className="min-h-0 flex-1 rounded-b-[1.2rem] border border-t-0 transition-all duration-300 group-hover/column:border-brand-300/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] shadow-[inset_0_18px_34px_rgba(0,0,0,0.18)]">
+        <div className="max-h-[min(58dvh,calc(100dvh-22rem))] min-h-[260px] overflow-y-auto overscroll-contain p-2.5 pr-2 [scrollbar-color:rgba(245,158,11,0.45)_rgba(24,24,27,0.75)] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-brand-300/35 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/70">
           <div className="space-y-2.5">
             {deals.length === 0 ? (
-              <div className="flex h-32 flex-col items-center justify-center rounded-[1rem] border border-dashed border-amber-200/15 bg-white/[0.025] px-4 text-center text-[11px] text-muted-foreground dark:text-zinc-500">
+              <div className="flex h-32 flex-col items-center justify-center rounded-[1rem] border border-dashed border-brand-200/15 bg-white/[0.025] px-4 text-center text-[11px] text-muted-foreground dark:text-muted-foreground">
                 <span className="text-lg opacity-60">{column.icon}</span>
                 <span className="mt-1 font-semibold not-italic text-muted-foreground dark:text-zinc-300">Stage is empty</span>
                 <span className="mt-0.5 text-[10px]">No deals currently sit in this stage.</span>
@@ -361,7 +361,7 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
   return (
     <div className="min-h-0 min-w-0 space-y-3 overflow-hidden">
       {/* Board summary bar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-[1.1rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035)_42%,rgba(0,0,0,0.18))] px-4 py-3 text-xs text-muted-foreground dark:text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <div className="flex flex-wrap items-center gap-3 rounded-[1.1rem] border border-brand-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035)_42%,rgba(0,0,0,0.18))] px-4 py-3 text-xs text-muted-foreground dark:text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
         <span>{deals.length} deal{deals.length !== 1 ? 's' : ''} across {activeColumns.length} stages</span>
         <span className="text-border">|</span>
         <span className="font-mono">{formatCurrency(stats.totalValue)} pipeline value</span>
@@ -377,7 +377,7 @@ export function PipelineKanbanBoard({ deals, isLoading, onDealClick }: Props) {
       </div>
 
       {/* Kanban board - horizontal scroll */}
-      <div role="region" aria-label="Pipeline board, horizontally scrollable" tabIndex={0} className="-mx-3 min-w-0 overflow-x-auto overscroll-x-contain px-3 pb-5 [scrollbar-color:rgba(245,158,11,0.50)_rgba(24,24,27,0.85)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-zinc-950 [&::-webkit-scrollbar-thumb]:bg-gradient-to-r [&::-webkit-scrollbar-thumb]:from-amber-500/70 [&::-webkit-scrollbar-thumb]:to-amber-200/55 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-zinc-900/90 sm:-mx-6 sm:px-6">
+      <div role="region" aria-label="Pipeline board, horizontally scrollable" tabIndex={0} className="-mx-3 min-w-0 overflow-x-auto overscroll-x-contain px-3 pb-5 [scrollbar-color:rgba(245,158,11,0.50)_rgba(24,24,27,0.85)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-border [&::-webkit-scrollbar-thumb]:bg-gradient-to-r [&::-webkit-scrollbar-thumb]:from-brand-500/70 [&::-webkit-scrollbar-thumb]:to-brand-200/55 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-background/90 sm:-mx-6 sm:px-6">
         <div className="flex min-w-max snap-x snap-mandatory items-start gap-5 pr-6">
           {activeColumns.map(col => (
             <KanbanColumn

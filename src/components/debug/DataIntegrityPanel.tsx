@@ -53,11 +53,11 @@ export function DataIntegrityPanel({
       ? 'validating'
       : 'idle';
   const statusShellClasses = {
-    idle: 'border-slate-200/80 bg-slate-50/80 text-slate-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300',
-    validating: 'border-sky-200/80 bg-sky-50/80 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/40 dark:text-sky-300',
-    passed: 'border-emerald-200/80 bg-emerald-50/80 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300',
-    warning: 'border-amber-200/80 bg-amber-50/80 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300',
-    failed: 'border-rose-200/80 bg-rose-50/80 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300',
+    idle: 'border-border/80 bg-muted/80 text-foreground dark:border-border dark:bg-background/50 dark:text-slate-300',
+    validating: 'border-info/80 bg-info/80 text-info dark:border-info/70 dark:bg-info/40 dark:text-info',
+    passed: 'border-success/80 bg-success/80 text-success dark:border-success/70 dark:bg-success/40 dark:text-success',
+    warning: 'border-brand-200/80 bg-brand-50/80 text-brand-700 dark:border-brand-900/70 dark:bg-brand-950/40 dark:text-brand-300',
+    failed: 'border-destructive/80 bg-destructive/80 text-destructive dark:border-destructive/70 dark:bg-destructive/40 dark:text-destructive',
   }[statusTone];
 
   // Generate data quality report
@@ -134,8 +134,8 @@ export function DataIntegrityPanel({
         )}
 
         {!comparison && !isValidating && (
-          <Alert className="border-sky-200/70 bg-sky-50/70 text-sky-900 shadow-sm dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-100">
-            <Info className="h-4 w-4 text-sky-600 dark:text-sky-300" />
+          <Alert className="border-info/70 bg-info/70 text-info shadow-sm dark:border-info/60 dark:bg-info/30 dark:text-info-foreground">
+            <Info className="h-4 w-4 text-info dark:text-info" />
             <AlertDescription>
               Click "Validate" to run data integrity checks between dashboard and reports.
             </AlertDescription>
@@ -218,7 +218,7 @@ export function DataIntegrityPanel({
                             )}
                           </div>
                           {!result.match && remediationMap[field] && (
-                            <div className="flex items-start gap-1.5 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded p-2 mt-1">
+                            <div className="flex items-start gap-1.5 text-xs bg-brand-500/10 text-brand-700 dark:text-brand-400 rounded p-2 mt-1">
                               <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                               <span>{remediationMap[field]}</span>
                             </div>
@@ -270,7 +270,7 @@ export function DataIntegrityPanel({
                           <div className="space-y-2 mt-3">
                             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recommendations</span>
                             {dashboardQuality.recommendations.map((rec, i) => (
-                              <div key={i} className="flex items-start gap-1.5 text-xs bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded p-2">
+                              <div key={i} className="flex items-start gap-1.5 text-xs bg-brand-500/10 text-brand-700 dark:text-brand-400 rounded p-2">
                                 <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                                 <span>{rec}</span>
                               </div>

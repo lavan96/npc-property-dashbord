@@ -106,9 +106,9 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
 ];
 
 const CALENDAR_PAGE_SHELL = 'relative -m-4 space-y-6 bg-background p-4 font-sans text-foreground md:-m-6 md:p-6';
-const PREMIUM_CARD = 'dashboard-theme-premium-card border-border/70 bg-card/90 text-card-foreground shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-slate-950/80 dark:shadow-black/30';
-const PREMIUM_PANEL = 'dashboard-theme-section border-border/60 bg-card/80 text-card-foreground shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-slate-950/70 dark:shadow-black/30';
-const PREMIUM_BUTTON = 'border-border/70 bg-card/85 text-foreground transition-all duration-200 ease-out hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)] dark:border-white/10 dark:bg-slate-950/55';
+const PREMIUM_CARD = 'dashboard-theme-premium-card border-border/70 bg-card/90 text-card-foreground shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-background/80 dark:shadow-black/30';
+const PREMIUM_PANEL = 'dashboard-theme-section border-border/60 bg-card/80 text-card-foreground shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-background/70 dark:shadow-black/30';
+const PREMIUM_BUTTON = 'border-border/70 bg-card/85 text-foreground transition-all duration-200 ease-out hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)] dark:border-white/10 dark:bg-background/55';
 
 export default function Calendar() {
   const { canEdit: canEditCalendar } = useModulePermissions('calendar');
@@ -538,12 +538,12 @@ export default function Calendar() {
   const getStatusColor = (status: string, appointmentStatus?: string) => {
     const effectiveStatus = appointmentStatus || status;
     switch (effectiveStatus?.toLowerCase()) {
-      case 'confirmed': return 'rounded-full border-emerald-400/25 bg-emerald-500/15 text-emerald-300';
-      case 'booked': return 'rounded-full border-blue-400/25 bg-blue-500/15 text-blue-300';
-      case 'showed': return 'rounded-full border-teal-400/25 bg-teal-500/15 text-teal-300';
-      case 'noshow': return 'rounded-full border-red-400/25 bg-red-500/15 text-red-300';
+      case 'confirmed': return 'rounded-full border-success/25 bg-success/15 text-success';
+      case 'booked': return 'rounded-full border-info/25 bg-info/15 text-info';
+      case 'showed': return 'rounded-full border-success/25 bg-success/15 text-success';
+      case 'noshow': return 'rounded-full border-destructive/25 bg-destructive/15 text-destructive';
       case 'cancelled': return 'rounded-full border-border bg-muted text-muted-foreground';
-      case 'pending': return 'rounded-full border-amber-400/25 bg-amber-500/15 text-amber-300';
+      case 'pending': return 'rounded-full border-brand-400/25 bg-brand-500/15 text-brand-300';
       default: return 'rounded-full border-border bg-card/85 text-muted-foreground';
     }
   };
@@ -646,20 +646,20 @@ export default function Calendar() {
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Calendar</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">GoHighLevel Calendar Integration</p>
         </DashboardThemeFrame>
-        <Card className={cn(PREMIUM_CARD, "overflow-hidden rounded-2xl border-red-400/25 bg-red-500/5")}>
+        <Card className={cn(PREMIUM_CARD, "overflow-hidden rounded-2xl border-destructive/25 bg-destructive/5")}>
           <CardContent className="flex flex-col items-center justify-center px-6 py-12 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-red-400/25 bg-red-500/10 text-red-300">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive">
               <AlertTriangle className="h-6 w-6" />
             </div>
-            <p className="mb-2 text-sm font-semibold text-red-200">Calendar sync error</p>
-            <p className="mb-5 max-w-xl text-sm text-red-100/75">{error}</p>
+            <p className="mb-2 text-sm font-semibold text-destructive">Calendar sync error</p>
+            <p className="mb-5 max-w-xl text-sm text-destructive-foreground/75">{error}</p>
             <Button
               onClick={() => {
                 const { start, end } = getVisibleRange();
                 fetchCalendarData(start.toISOString(), end.toISOString());
               }}
               variant="outline"
-              className="rounded-xl border-red-400/25 bg-red-500/10 text-red-100 transition-all hover:border-red-300/40 hover:bg-red-500/15 hover:text-red-50 focus-visible:ring-2 focus-visible:ring-red-300/40"
+              className="rounded-xl border-destructive/25 bg-destructive/10 text-destructive-foreground transition-all hover:border-destructive/40 hover:bg-destructive/15 hover:text-destructive-foreground focus-visible:ring-2 focus-visible:ring-destructive/40"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
@@ -1042,15 +1042,15 @@ export default function Calendar() {
               </div>
             </CardContent>
           </Card>
-          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/35 hover:bg-emerald-950/10 hover:shadow-[0_22px_70px_hsl(160_84%_20%/0.16)]")}>
+          <Card className={cn(PREMIUM_CARD, "group py-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-success/35 hover:bg-success/10 hover:shadow-[0_22px_70px_hsl(160_84%_20%/0.16)]")}>
             <CardContent className="flex items-start justify-between gap-4 px-5 py-4">
               <div>
-                <div className="text-3xl font-bold leading-none tracking-tight text-emerald-400">
+                <div className="text-3xl font-bold leading-none tracking-tight text-success">
                   {filteredEvents.filter(e => e.appointmentStatus === 'confirmed' || e.appointmentStatus === 'showed').length}
                 </div>
-                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200/70">Confirmed</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-success/70">Confirmed</p>
               </div>
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-emerald-400 transition-all group-hover:border-emerald-300/40 group-hover:bg-emerald-400/15">
+              <div className="rounded-2xl border border-success/20 bg-success/10 p-3 text-success transition-all group-hover:border-success/40 group-hover:bg-success/15">
                 <Users className="h-5 w-5" />
               </div>
             </CardContent>
@@ -1843,7 +1843,7 @@ export default function Calendar() {
                         {calendar.calendarType.replace('_', ' ')}
                       </Badge>
                       {calendar.isActive && (
-                        <Badge className="rounded-full border-emerald-400/25 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                        <Badge className="rounded-full border-success/25 bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
                           Active
                         </Badge>
                       )}

@@ -122,7 +122,7 @@ function InlineEditField({
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="min-h-[84px] resize-none rounded-xl border-amber-200/15 bg-background/55 dark:bg-zinc-950/55 text-xs leading-5 text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
+        className="min-h-[84px] resize-none rounded-xl border-brand-200/15 bg-background/55 dark:bg-background/55 text-xs leading-5 text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-300/35 focus-visible:ring-offset-0"
       />
     );
   }
@@ -134,7 +134,7 @@ function InlineEditField({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
-      className="h-9 rounded-xl border-amber-200/15 bg-background/55 dark:bg-zinc-950/55 text-xs text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-amber-300/70 focus-visible:ring-2 focus-visible:ring-amber-300/35 focus-visible:ring-offset-0"
+      className="h-9 rounded-xl border-brand-200/15 bg-background/55 dark:bg-background/55 text-xs text-foreground shadow-inner transition-all placeholder:text-muted-foreground/55 focus-visible:border-brand-300/70 focus-visible:ring-2 focus-visible:ring-brand-300/35 focus-visible:ring-offset-0"
     />
   );
 }
@@ -176,7 +176,7 @@ function StageActions({
               <Button
                 variant={a.variant}
                 size="sm"
-                className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-background/30 dark:bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
+                className="h-7 rounded-full px-2 text-[10px] gap-1 border-brand-200/20 bg-background/30 dark:bg-black/30 hover:border-brand-300/45 hover:bg-brand-400/10 focus-visible:ring-brand-300/50"
                 onClick={() => {
                   const data: any = { status: a.status };
                   if (a.status === 'complete') data.completed_at = new Date().toISOString();
@@ -215,14 +215,14 @@ function DealExpandedRow({
   }, [deal.id, deal.client_id, onUpdateDeal]);
 
   return (
-    <TableRow className="border-amber-200/10">
+    <TableRow className="border-brand-200/10">
       <TableCell colSpan={8} className="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.82))] p-0">
         <div className="space-y-5 p-4 sm:p-5">
           {/* Stage timeline */}
-          <section className="rounded-2xl border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <section className="rounded-2xl border border-brand-200/15 bg-background/25 dark:bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
+                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-brand-200/85">
                   <Settings2 className="h-3 w-3" /> Stage Management
                 </p>
                 <p className="mt-1 text-[11px] leading-4 text-muted-foreground">Advance, skip or reopen milestones without leaving the management console.</p>
@@ -263,8 +263,8 @@ function DealExpandedRow({
 
           {/* Inline notes editor */}
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4">
-              <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
+            <div className="rounded-2xl border border-brand-200/15 bg-background/25 dark:bg-black/25 p-4">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-brand-200/85">
                 <MessageSquare className="h-3 w-3" /> Deal Notes
               </p>
               <p className="mb-3 text-[11px] leading-4 text-muted-foreground">Internal comments save on blur and wrap for long handover notes.</p>
@@ -276,9 +276,9 @@ function DealExpandedRow({
                 type="textarea"
               />
             </div>
-            <div className="space-y-4 rounded-2xl border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4">
+            <div className="space-y-4 rounded-2xl border border-brand-200/15 bg-background/25 dark:bg-black/25 p-4">
               <div>
-                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-200/85">
+                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-brand-200/85">
                   <User className="h-3 w-3" /> Responsible Person
                 </p>
                 <p className="mb-3 text-[11px] leading-4 text-muted-foreground">Assign ownership for follow-up and operational accountability.</p>
@@ -339,10 +339,10 @@ function DealManageRow({
 
   return (
     <>
-      <TableRow className="group border-amber-100/10 transition-colors hover:bg-amber-400/[0.045]">
+      <TableRow className="group border-brand-100/10 transition-colors hover:bg-brand-400/[0.045]">
         {/* Expand */}
         <TableCell className="w-8 px-2">
-          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 text-muted-foreground hover:border-amber-200/30 hover:bg-amber-400/10 hover:text-amber-100 focus-visible:ring-amber-300/50" onClick={() => setExpanded(!expanded)}>
+          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 text-muted-foreground hover:border-brand-200/30 hover:bg-brand-400/10 hover:text-brand-100 focus-visible:ring-brand-300/50" onClick={() => setExpanded(!expanded)}>
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </Button>
         </TableCell>
@@ -359,7 +359,7 @@ function DealManageRow({
         {/* Current Stage */}
         <TableCell>
           <div className="flex max-w-[190px] items-start gap-1.5">
-            <Badge variant="outline" className="h-5 shrink-0 border-amber-200/25 bg-amber-400/10 px-1.5 text-[9px] text-amber-100">S{deal.current_stage_number}</Badge>
+            <Badge variant="outline" className="h-5 shrink-0 border-brand-200/25 bg-brand-400/10 px-1.5 text-[9px] text-brand-100">S{deal.current_stage_number}</Badge>
             <span className="break-words text-[10px] leading-4 text-muted-foreground">{deal.current_stage}</span>
           </div>
         </TableCell>
@@ -379,10 +379,10 @@ function DealManageRow({
             defaultValue={deal.responsible_person || UNASSIGNED_SENTINEL}
             onValueChange={(v) => handleUpdateField('responsible_person', v === UNASSIGNED_SENTINEL ? null : v)}
           >
-            <SelectTrigger className="h-8 w-full rounded-xl border-amber-200/15 bg-background/60 dark:bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40">
+            <SelectTrigger className="h-8 w-full rounded-xl border-brand-200/15 bg-background/60 dark:bg-background/60 text-[10px] shadow-inner focus:ring-brand-300/40">
               <SelectValue placeholder="Assign..." />
             </SelectTrigger>
-            <SelectContent className="border-amber-200/15 bg-background dark:bg-zinc-950">
+            <SelectContent className="border-brand-200/15 bg-background dark:bg-background">
               <SelectItem value={UNASSIGNED_SENTINEL} className="text-xs italic">Unassigned</SelectItem>
               {responsiblePersons.map(p => (
                 <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
@@ -398,10 +398,10 @@ function DealManageRow({
             defaultValue={deal.risk_status}
             onValueChange={(v) => handleUpdateField('risk_status', v)}
           >
-            <SelectTrigger className={cn('h-8 w-full rounded-xl border bg-background/60 dark:bg-zinc-950/60 text-[10px] shadow-inner focus:ring-amber-300/40', riskCfg?.color)}>
+            <SelectTrigger className={cn('h-8 w-full rounded-xl border bg-background/60 dark:bg-background/60 text-[10px] shadow-inner focus:ring-brand-300/40', riskCfg?.color)}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-amber-200/15 bg-background dark:bg-zinc-950">
+            <SelectContent className="border-brand-200/15 bg-background dark:bg-background">
               {Object.entries(RISK_STATUS_CONFIG).map(([key, cfg]) => (
                 <SelectItem key={key} value={key} className="text-xs">
                   {cfg.emoji} {cfg.label}
@@ -415,7 +415,7 @@ function DealManageRow({
         <TableCell className="hidden xl:table-cell">
           {nextStage ? (
             <div className="flex max-w-[220px] items-start gap-1.5">
-              <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-amber-300" />
+              <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-brand-300" />
               <span className="break-words text-[10px] leading-4 text-muted-foreground">
                 {nextStage.internal_action || nextStage.stage_name}
               </span>
@@ -435,7 +435,7 @@ function DealManageRow({
                     <Button
                       variant="default"
                       size="sm"
-                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-background/30 dark:bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
+                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-brand-200/20 bg-background/30 dark:bg-black/30 hover:border-brand-300/45 hover:bg-brand-400/10 focus-visible:ring-brand-300/50"
                       onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'complete', completed_at: new Date().toISOString() }, deal.id, stages)}
                     >
                       <CheckCircle2 className="h-2.5 w-2.5" />
@@ -453,7 +453,7 @@ function DealManageRow({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-amber-200/20 bg-background/30 dark:bg-black/30 hover:border-amber-300/45 hover:bg-amber-400/10 focus-visible:ring-amber-300/50"
+                      className="h-7 rounded-full px-2 text-[10px] gap-1 border-brand-200/20 bg-background/30 dark:bg-black/30 hover:border-brand-300/45 hover:bg-brand-400/10 focus-visible:ring-brand-300/50"
                       onClick={() => onUpdateStage?.(nextStage.id, deal.client_id, { status: 'in_progress' }, deal.id, stages)}
                     >
                       <Play className="h-2.5 w-2.5" />
@@ -464,7 +464,7 @@ function DealManageRow({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 opacity-100 hover:border-amber-200/30 hover:bg-amber-400/10 md:opacity-0 md:group-hover:opacity-100" onClick={onDealClick}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 rounded-full border border-transparent p-0 opacity-100 hover:border-brand-200/30 hover:bg-brand-400/10 md:opacity-0 md:group-hover:opacity-100" onClick={onDealClick}>
               <Eye className="h-3 w-3 text-primary" />
             </Button>
           </div>
@@ -507,11 +507,11 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   if (isLoading) {
     return (
-      <div className="space-y-4 rounded-[1.5rem] border border-amber-200/15 bg-background/25 dark:bg-black/25 p-4">
+      <div className="space-y-4 rounded-[1.5rem] border border-brand-200/15 bg-background/25 dark:bg-black/25 p-4">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-11 w-11 rounded-2xl bg-amber-200/10" />
+          <Skeleton className="h-11 w-11 rounded-2xl bg-brand-200/10" />
           <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-48 bg-amber-200/10" />
+            <Skeleton className="h-4 w-48 bg-brand-200/10" />
             <Skeleton className="h-3 w-72 max-w-full bg-card/10 dark:bg-white/10" />
           </div>
         </div>
@@ -522,10 +522,10 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   if (deals.length === 0) {
     return (
-      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_42%),rgba(9,9,11,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
+      <Card className="overflow-hidden rounded-[1.5rem] border-brand-200/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_42%),rgba(9,9,11,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
         <CardContent className="py-16 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-200/25 bg-amber-400/10">
-            <Edit3 className="h-7 w-7 text-amber-200" />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-200/25 bg-brand-400/10">
+            <Edit3 className="h-7 w-7 text-brand-200" />
           </div>
           <p className="text-sm font-semibold text-foreground">No deals to manage</p>
           <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-muted-foreground">Create or filter in deals to start managing ownership, stage movement, notes and risk controls.</p>
@@ -536,11 +536,11 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(24,24,27,0.76)_44%,rgba(0,0,0,0.72))] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
+      <Card className="overflow-hidden rounded-[1.5rem] border-brand-200/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(24,24,27,0.76)_44%,rgba(0,0,0,0.72))] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
         <CardHeader className="p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-200/85">
+              <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.28em] text-brand-200/85">
                 <Sparkles className="h-3.5 w-3.5" /> Transaction control room
               </p>
               <CardTitle className="mt-2 break-words text-xl font-semibold tracking-[-0.02em] text-foreground">Manage deal execution</CardTitle>
@@ -568,18 +568,18 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
         </CardHeader>
       </Card>
 
-      <div className="flex items-center gap-2 rounded-2xl border border-amber-200/10 bg-background/25 dark:bg-black/25 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
-        <ShieldCheck className="h-4 w-4 shrink-0 text-amber-200" />
+      <div className="flex items-center gap-2 rounded-2xl border border-brand-200/10 bg-background/25 dark:bg-black/25 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+        <ShieldCheck className="h-4 w-4 shrink-0 text-brand-200" />
         <span className="break-words">Click a row to expand stage management · Edits save on blur · Destructive deal actions remain governed in the existing client deal workflow.</span>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-amber-200/15 bg-background/60 dark:bg-zinc-950/60 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+      <Card className="overflow-hidden rounded-[1.5rem] border-brand-200/15 bg-background/60 dark:bg-background/60 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
         <CardContent className="p-0">
           <div className="max-w-full overflow-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-amber-200/10 bg-white/[0.035] hover:bg-white/[0.035]">
+                <TableRow className="border-brand-200/10 bg-white/[0.035] hover:bg-white/[0.035]">
                   <TableHead className="w-8 px-2" />
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Client</TableHead>
                   <TableHead className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage</TableHead>

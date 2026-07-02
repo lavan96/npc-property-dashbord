@@ -71,12 +71,12 @@ interface AgentAssignment {
 }
 
 const PROVIDER_BRAND: Record<string, { name: string; color: string; docs: string }> = {
-  openai:     { name: 'OpenAI',          color: 'text-emerald-700 dark:text-emerald-300', docs: 'https://platform.openai.com/docs/models' },
-  anthropic:  { name: 'Anthropic Claude', color: 'text-orange-700 dark:text-orange-300', docs: 'https://docs.anthropic.com/en/docs/about-claude/models' },
-  gemini:     { name: 'Google Gemini',   color: 'text-sky-700 dark:text-sky-300',     docs: 'https://ai.google.dev/gemini-api/docs/models' },
-  perplexity: { name: 'Perplexity',      color: 'text-violet-700 dark:text-violet-300',  docs: 'https://docs.perplexity.ai/guides/model-cards' },
+  openai:     { name: 'OpenAI',          color: 'text-success dark:text-success', docs: 'https://platform.openai.com/docs/models' },
+  anthropic:  { name: 'Anthropic Claude', color: 'text-warning dark:text-warning', docs: 'https://docs.anthropic.com/en/docs/about-claude/models' },
+  gemini:     { name: 'Google Gemini',   color: 'text-info dark:text-info',     docs: 'https://ai.google.dev/gemini-api/docs/models' },
+  perplexity: { name: 'Perplexity',      color: 'text-accent dark:text-accent',  docs: 'https://docs.perplexity.ai/guides/model-cards' },
   gateway:    { name: 'Lovable Gateway', color: 'text-primary',     docs: 'https://docs.lovable.dev' },
-  openrouter: { name: 'OpenRouter',      color: 'text-pink-700 dark:text-pink-300',    docs: 'https://openrouter.ai/docs' },
+  openrouter: { name: 'OpenRouter',      color: 'text-accent dark:text-accent',    docs: 'https://openrouter.ai/docs' },
 };
 
 const capabilityIcon: Record<string, React.ReactNode> = {
@@ -108,9 +108,9 @@ function MetricTile({
 }) {
   const toneClasses = {
     primary: 'border-primary/30 bg-primary/[0.08] text-primary shadow-primary/10',
-    info: 'border-info/25 bg-info/[0.08] text-info shadow-sky-500/10 dark:text-sky-300',
-    warning: 'border-warning/30 bg-warning/10 text-warning shadow-amber-500/10 dark:text-amber-300',
-    success: 'border-success/30 bg-success/10 text-success shadow-emerald-500/10 dark:text-emerald-300',
+    info: 'border-info/25 bg-info/[0.08] text-info shadow-info/10 dark:text-info',
+    warning: 'border-warning/30 bg-warning/10 text-warning shadow-brand-500/10 dark:text-brand-300',
+    success: 'border-success/30 bg-success/10 text-success shadow-success/10 dark:text-success',
   }[tone];
 
   return (
@@ -135,17 +135,17 @@ function MetricTile({
 
 function statusBadge(status: Status) {
   switch (status) {
-    case 'available':   return 'border-success/30 bg-success/10 text-success dark:text-emerald-300';
-    case 'preview':     return 'border-info/30 bg-info/10 text-info dark:text-sky-300';
-    case 'deprecated':  return 'border-warning/35 bg-warning/10 text-warning dark:text-amber-300';
-    case 'unavailable': return 'border-destructive/30 bg-destructive/10 text-destructive dark:text-rose-300';
+    case 'available':   return 'border-success/30 bg-success/10 text-success dark:text-success';
+    case 'preview':     return 'border-info/30 bg-info/10 text-info dark:text-info';
+    case 'deprecated':  return 'border-warning/35 bg-warning/10 text-warning dark:text-brand-300';
+    case 'unavailable': return 'border-destructive/30 bg-destructive/10 text-destructive dark:text-destructive';
   }
 }
 
 function ModelCard({ model }: { model: CatalogModel }) {
   const brand = PROVIDER_BRAND[model.provider] ?? PROVIDER_BRAND.gateway;
   return (
-    <Card className="group min-w-0 overflow-hidden border-border/60 bg-card/85 shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+    <Card className="group min-w-0 overflow-hidden border-border/60 bg-card/85 shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-xl hover:shadow-primary/10 dark:border-white/10 dark:bg-background/55 dark:shadow-black/25">
       <CardHeader className="border-b border-border/50 bg-muted/20 pb-3 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex min-w-0 items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-1">
@@ -181,12 +181,12 @@ function ModelCard({ model }: { model: CatalogModel }) {
 function ProviderHeader({ providerId, route, ok, keyConfigured, modelCount, error }: { providerId: string; route: Route; ok: boolean; keyConfigured: boolean; modelCount: number; error?: string }) {
   const brand = PROVIDER_BRAND[providerId] ?? PROVIDER_BRAND.gateway;
   const statusClass = ok && keyConfigured
-    ? 'border-success/30 bg-success/10 text-success dark:text-emerald-300'
+    ? 'border-success/30 bg-success/10 text-success dark:text-success'
     : keyConfigured
-      ? 'border-warning/30 bg-warning/10 text-warning dark:text-amber-300'
-      : 'border-destructive/30 bg-destructive/10 text-destructive dark:text-rose-300';
+      ? 'border-warning/30 bg-warning/10 text-warning dark:text-brand-300'
+      : 'border-destructive/30 bg-destructive/10 text-destructive dark:text-destructive';
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-slate-950/50">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-background/50">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
           {route === 'native' ? <KeyRound className="h-5 w-5" /> : route === 'gateway' ? <Globe className="h-5 w-5" /> : <Network className="h-5 w-5" />}
@@ -198,7 +198,7 @@ function ProviderHeader({ providerId, route, ok, keyConfigured, modelCount, erro
         <Badge variant="outline" className={`${statusClass} rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]`}>
           {ok && keyConfigured ? <><CheckCircle2 className="mr-1 h-3 w-3" /> Live ({modelCount})</> : keyConfigured ? <><AlertTriangle className="mr-1 h-3 w-3" /> Probe failed</> : <><KeyRound className="mr-1 h-3 w-3" /> Key missing</>}
         </Badge>
-        {error && <span className="max-w-[360px] truncate rounded-full border border-destructive/20 bg-destructive/10 px-2 py-1 text-xs text-destructive dark:text-rose-300" title={error}>{error.slice(0, 60)}</span>}
+        {error && <span className="max-w-[360px] truncate rounded-full border border-destructive/20 bg-destructive/10 px-2 py-1 text-xs text-destructive dark:text-destructive" title={error}>{error.slice(0, 60)}</span>}
       </div>
       <Button variant="ghost" size="sm" asChild className="rounded-xl border border-border/60 bg-background/60 hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:ring-ring">
         <a href={brand.docs} target="_blank" rel="noopener noreferrer" aria-label={`Open ${brand.name} documentation`}>Docs <ExternalLink className="ml-1 h-3 w-3" /></a>
@@ -317,7 +317,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
       </Alert>
 
       {Object.entries(grouped).map(([category, agents]) => (
-        <Card key={category} className="overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/25">
+        <Card key={category} className="overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-sm dark:shadow-black/5 dark:border-white/10 dark:bg-background/55 dark:shadow-black/25">
           <CardHeader className="border-b border-border/60 bg-muted/30 pb-4 dark:border-white/10 dark:bg-white/[0.03]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="space-y-1">
@@ -357,7 +357,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                             <div className="flex min-w-0 items-center gap-2">
                               <div className="truncate text-sm font-semibold text-foreground" title={a.agent_label}>{a.agent_label}</div>
                               {deprecated && (
-                                <Badge variant="outline" className="shrink-0 border-warning/40 bg-warning/10 text-[10px] text-warning dark:text-amber-300">
+                                <Badge variant="outline" className="shrink-0 border-warning/40 bg-warning/10 text-[10px] text-warning dark:text-brand-300">
                                   <AlertTriangle className="mr-1 h-2.5 w-2.5" /> deprecated
                                 </Badge>
                               )}
@@ -383,7 +383,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
-                              {!currentExists && <SelectItem value={a.model_id} className="text-warning dark:text-amber-300">{a.model_id} (not in catalog)</SelectItem>}
+                              {!currentExists && <SelectItem value={a.model_id} className="text-warning dark:text-brand-300">{a.model_id} (not in catalog)</SelectItem>}
                               {modelsForRoute.map((m) => (
                                 <SelectItem key={m.model_id} value={m.model_id}>
                                   <span className="font-mono text-xs">{m.model_id}</span>
@@ -392,7 +392,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                               ))}
                             </SelectContent>
                           </Select>
-                          {a.last_error && <p className="mt-2 max-w-[340px] truncate rounded-lg border border-destructive/20 bg-destructive/10 px-2 py-1 text-[10px] text-destructive dark:text-rose-300" title={a.last_error}>⚠ {a.last_error.slice(0, 80)}</p>}
+                          {a.last_error && <p className="mt-2 max-w-[340px] truncate rounded-lg border border-destructive/20 bg-destructive/10 px-2 py-1 text-[10px] text-destructive dark:text-destructive" title={a.last_error}>⚠ {a.last_error.slice(0, 80)}</p>}
                           {showUpgrade && recommended && (
                             <TooltipProvider delayDuration={150}>
                               <Tooltip>
@@ -401,7 +401,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                                     type="button"
                                     disabled={savingKey === a.agent_key}
                                     onClick={() => updateAssignment(a.agent_key, recommended.route, recommended.model_id)}
-                                    className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-1 text-[10px] font-medium text-success transition hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 dark:text-emerald-300"
+                                    className="mt-2 inline-flex max-w-full items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-1 text-[10px] font-medium text-success transition hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 dark:text-success"
                                     aria-label={`Apply recommended model ${recommended.model_id} to ${a.agent_label}`}
                                   >
                                     <ArrowUpCircle className="h-3 w-3" />
@@ -416,7 +416,7 @@ function AgentBindings({ catalog, onRefresh }: { catalog: CatalogModel[]; onRefr
                             </TooltipProvider>
                           )}
                           {isOnRecommended && (
-                            <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-success dark:text-emerald-300">
+                            <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-success dark:text-success">
                               <CheckCircle2 className="h-2.5 w-2.5" /> on recommended model
                             </p>
                           )}
@@ -477,9 +477,9 @@ function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
 
   if (orModels.length === 0) {
     return (
-      <Alert className="relative overflow-hidden border-warning/30 bg-[linear-gradient(135deg,hsl(var(--warning)/0.14),hsl(var(--card)/0.92)_48%,hsl(var(--background)/0.78))] p-6 shadow-lg shadow-amber-500/10 dark:border-warning/25">
+      <Alert className="relative overflow-hidden border-warning/30 bg-[linear-gradient(135deg,hsl(var(--warning)/0.14),hsl(var(--card)/0.92)_48%,hsl(var(--background)/0.78))] p-6 shadow-lg shadow-brand-500/10 dark:border-warning/25">
         <div className="absolute inset-y-0 left-0 w-1 bg-warning/80" />
-        <KeyRound className="h-5 w-5 text-warning dark:text-amber-300" />
+        <KeyRound className="h-5 w-5 text-warning dark:text-brand-300" />
         <AlertTitle className="text-base font-semibold text-foreground">OpenRouter not configured</AlertTitle>
         <AlertDescription className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
           Add <code className="rounded bg-background/70 px-1.5 py-0.5 font-mono text-foreground">OPENROUTER_API_KEY</code> in the <strong>Integrations</strong> page → OpenRouter card.
@@ -491,8 +491,8 @@ function OpenRouterCatalog({ models }: { models: CatalogModel[] }) {
 
   return (
     <div className="space-y-5">
-      <Alert className="border-pink-500/25 bg-pink-500/10 p-5 shadow-lg shadow-pink-500/5">
-        <Network className="h-5 w-5 text-pink-700 dark:text-pink-300" />
+      <Alert className="border-accent/25 bg-accent/10 p-5 shadow-lg shadow-accent/5">
+        <Network className="h-5 w-5 text-accent dark:text-accent" />
         <AlertTitle className="text-base font-semibold text-foreground">OpenRouter unified gateway active</AlertTitle>
         <AlertDescription className="mt-1 text-sm leading-6 text-muted-foreground">
           {orModels.length} models available. Per-model pricing shown where published. Any agent in the <strong>Agent Bindings</strong> tab can be pointed at any model here.
@@ -585,7 +585,7 @@ export default function ModelHub() {
                 </p>
               </div>
             </div>
-            <div className="flex w-full flex-col gap-3 rounded-2xl border border-border/60 bg-background/55 p-3 shadow-sm backdrop-blur sm:w-auto sm:min-w-[320px] dark:border-white/10 dark:bg-slate-950/40">
+            <div className="flex w-full flex-col gap-3 rounded-2xl border border-border/60 bg-background/55 p-3 shadow-sm backdrop-blur sm:w-auto sm:min-w-[320px] dark:border-white/10 dark:bg-background/40">
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
@@ -625,7 +625,7 @@ export default function ModelHub() {
               <TabsTrigger value="bindings" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Workflow className="h-4 w-4" /> Agent Bindings</TabsTrigger>
               <TabsTrigger value="gateway" className="min-w-[125px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Globe className="h-4 w-4" /> Gateway</TabsTrigger>
               <TabsTrigger value="native" className="min-w-[115px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><KeyRound className="h-4 w-4" /> Native</TabsTrigger>
-              <TabsTrigger value="openrouter" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 border-pink-500/30 px-1 text-[9px] text-pink-700 dark:text-pink-300">on</Badge>}</TabsTrigger>
+              <TabsTrigger value="openrouter" className="min-w-[145px] flex-1 gap-2 rounded-lg px-3 py-2 text-xs font-semibold focus-visible:ring-ring data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20 sm:text-sm"><Network className="h-4 w-4" /> OpenRouter {data?.openrouterKey && <Badge variant="outline" className="ml-1 h-4 border-accent/30 px-1 text-[9px] text-accent dark:text-accent">on</Badge>}</TabsTrigger>
             </TabsList>
           </DashboardThemeFrame>
 
@@ -634,9 +634,9 @@ export default function ModelHub() {
         </TabsContent>
 
         <TabsContent value="gateway" className="space-y-6">
-          <Alert className="relative overflow-hidden border-success/25 bg-[linear-gradient(135deg,hsl(var(--success)/0.12),hsl(var(--card)/0.90)_46%,hsl(var(--background)/0.75))] p-5 shadow-lg shadow-emerald-500/5">
+          <Alert className="relative overflow-hidden border-success/25 bg-[linear-gradient(135deg,hsl(var(--success)/0.12),hsl(var(--card)/0.90)_46%,hsl(var(--background)/0.75))] p-5 shadow-lg shadow-success/5">
             <div className="absolute inset-y-0 left-0 w-1 bg-success/80" />
-            <ShieldCheck className="h-5 w-5 text-success dark:text-emerald-300" />
+            <ShieldCheck className="h-5 w-5 text-success dark:text-success" />
             <AlertTitle className="text-base font-semibold text-foreground">Lovable Gateway</AlertTitle>
             <AlertDescription className="mt-1 text-sm leading-6 text-muted-foreground">
               Billed via workspace credits. No per-provider keys required.
