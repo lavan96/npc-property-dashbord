@@ -50,9 +50,10 @@
 >   neutral/semantic fixed). The three client report templates (Client/Strict/
 >   Hybrid) now **cascade dynamically** via `useBrand()` — gold hexes and rgba
 >   washes routed through the palette by `scripts/migrate-pdf-gold.cjs`. The
->   Vownet (HTML) and Portfolio (pdf-lib) generators are centralised on the
->   palette (dynamic per-generation re-resolution is a small follow-up). Build
->   green, `tsc` clean.
+>   Vownet (HTML) and Portfolio (pdf-lib) generators **also cascade dynamically**:
+>   they re-resolve the gold ramp from the live brand colour per generation
+>   (`applyBrandGold` / `applyBrandRgb`, driven by `useBrand()`). Build green,
+>   `tsc` clean.
 > - ⏭️ **Next** — Phases 6–8
 >   (typography adoption, density, visual-regression + cascade tests).
 **Related:** [`WHITE_LABEL_TOKEN_CONTRACT.md`](./WHITE_LABEL_TOKEN_CONTRACT.md),
