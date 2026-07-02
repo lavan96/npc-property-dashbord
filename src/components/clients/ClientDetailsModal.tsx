@@ -450,8 +450,8 @@ The Team`
           </TabsList>
         </div>
 
-        <ScrollArea className="min-h-0 w-full flex-1 overflow-hidden">
-          <div className="min-w-0 w-full overflow-x-hidden" {...(isMobile ? tabSwipeHandlers : {})}>
+        <div className="min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable]">
+          <div className="min-w-0 w-full" {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -966,7 +966,7 @@ The Team`
               <ClientAIInsights clientId={client.id} />
             </TabsContent>
           </div>
-        </ScrollArea>
+        </div>
       </Tabs>
       </>
   );
@@ -1003,7 +1003,7 @@ The Team`
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="flex h-[min(90vh,900px)] max-h-[90vh] w-[min(95vw,1400px)] max-w-[1400px] flex-col overflow-hidden p-4 sm:p-6">
+          <DialogContent className="flex flex-col overflow-hidden p-4 sm:p-6 h-[min(90vh,900px)] max-h-[90vh] w-[min(95vw,1400px)] max-w-[1400px] sm:h-[min(90vh,900px)] sm:max-h-[90vh] sm:w-[min(95vw,1400px)] sm:max-w-[1400px]">
             <DialogHeader className="min-w-0 shrink-0 pr-12">
               <DialogTitle className="flex min-w-0 items-start gap-3">
                 <User className="h-5 w-5 shrink-0" />
