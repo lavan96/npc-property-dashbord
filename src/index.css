@@ -4586,31 +4586,51 @@ html {
   }
 
   :root:not(.dark) .dashboard-topbar-surface {
-    border-bottom: 1px solid hsl(var(--dashboard-border-soft) / 0.82);
-    background: hsl(var(--topbar-background) / 0.82);
-    box-shadow: 0 14px 34px hsl(35 43% 20% / 0.08);
+    border-bottom: 1px solid rgba(210, 190, 160, 0.82);
+    background:
+      linear-gradient(180deg, rgba(255, 252, 247, 0.9), rgba(255, 250, 241, 0.76)),
+      hsl(var(--topbar-background) / 0.82);
+    box-shadow: 0 14px 34px rgba(80, 60, 20, 0.08);
     backdrop-filter: blur(22px) saturate(1.08);
   }
 
-  :root:not(.dark) .dashboard-mobile-nav {
-    border-top-color: rgba(210, 190, 160, 0.82);
-    background: rgba(255, 252, 247, 0.94);
-    box-shadow: 0 -14px 34px rgba(80, 60, 20, 0.08);
-    backdrop-filter: blur(22px) saturate(1.08);
+  :root:not(.dark) .dashboard-topbar-inner {
+    color: hsl(var(--foreground));
   }
 
-  :root:not(.dark) .dashboard-mobile-nav {
-    border-top-color: rgba(210, 190, 160, 0.82);
-    background: rgba(255, 252, 247, 0.94);
-    box-shadow: 0 -14px 34px rgba(80, 60, 20, 0.08);
-    backdrop-filter: blur(22px) saturate(1.08);
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-icon-button,
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-input-control {
+    border-color: rgba(210, 190, 160, 0.78);
+    background: rgba(255, 252, 247, 0.84);
+    box-shadow: 0 10px 24px rgba(80, 60, 20, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 
-  :root:not(.dark) .dashboard-mobile-nav {
-    border-top-color: rgba(210, 190, 160, 0.82);
-    background: rgba(255, 252, 247, 0.94);
-    box-shadow: 0 -14px 34px rgba(80, 60, 20, 0.08);
-    backdrop-filter: blur(22px) saturate(1.08);
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-icon-button svg,
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-input-control svg {
+    color: hsl(var(--foreground) / 0.72);
+  }
+
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-icon-button:hover,
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-input-control:hover {
+    border-color: rgba(166, 120, 0, 0.34);
+    background: rgba(255, 252, 247, 0.96);
+    box-shadow: 0 12px 28px rgba(120, 85, 20, 0.1);
+  }
+
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-icon-button:hover svg {
+    color: hsl(var(--primary));
+  }
+
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-input-control:focus-within,
+  :root:not(.dark) .dashboard-topbar-surface input.dashboard-input-control:focus-visible {
+    border-color: rgba(166, 120, 0, 0.48);
+    box-shadow: 0 0 0 3px rgba(231, 200, 115, 0.2), 0 12px 28px rgba(120, 85, 20, 0.08);
+  }
+
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-input-control [data-radix-avatar-fallback],
+  :root:not(.dark) .dashboard-topbar-surface .dashboard-input-control .bg-primary\/10 {
+    background-color: rgba(231, 200, 115, 0.18);
+    color: hsl(var(--primary));
   }
 
   :root:not(.dark) .dashboard-mobile-nav {
@@ -4638,9 +4658,21 @@ html {
     background-color: rgba(166, 120, 0, 0.22);
   }
 
+  :root:not(.dark) .dashboard-sidebar-content {
+    color: hsl(var(--sidebar-foreground));
+  }
+
+  :root:not(.dark) .dashboard-sidebar-content::-webkit-scrollbar-thumb {
+    background-color: rgba(166, 120, 0, 0.22);
+  }
+
   :root:not(.dark) .dashboard-sidebar-header {
     border-color: hsl(var(--dashboard-border-soft) / 0.82);
     background: linear-gradient(180deg, hsl(var(--dashboard-primary-soft) / 0.6), hsl(var(--dashboard-surface) / 0));
+  }
+
+  :root:not(.dark) .dashboard-sidebar-group {
+    color: hsl(var(--sidebar-foreground));
   }
 
   :root:not(.dark) .dashboard-sidebar-group {
@@ -4698,6 +4730,15 @@ html {
     border-top-color: rgba(210, 190, 160, 0.82);
   }
 
+  :root:not(.dark) .dashboard-sidebar-menu-button-active svg,
+  :root:not(.dark) .dashboard-sidebar-menu-button-admin.dashboard-sidebar-menu-button-active svg {
+    color: #fffaf1;
+  }
+
+  :root:not(.dark) .dashboard-sidebar-admin-divider {
+    border-top-color: rgba(210, 190, 160, 0.82);
+  }
+
   :root:not(.dark) .dashboard-sidebar-admin-group,
   :root:not(.dark) .dashboard-sidebar-admin-group-collapsed {
     border-color: rgba(210, 190, 160, 0.76);
@@ -4719,6 +4760,13 @@ html {
   :root:not(.dark) .dashboard-shell button[role="combobox"] {
     border-color: hsl(var(--dashboard-border-soft) / 0.82);
     background-color: hsl(var(--dashboard-surface) / 0.86);
+  }
+
+  :root:not(.dark) .dashboard-shell input:focus,
+  :root:not(.dark) .dashboard-shell textarea:focus,
+  :root:not(.dark) .dashboard-shell button[role="combobox"]:focus {
+    border-color: rgba(166, 120, 0, 0.46);
+    box-shadow: 0 0 0 3px rgba(231, 200, 115, 0.2);
   }
 
   :root:not(.dark) .dashboard-shell input:focus,
