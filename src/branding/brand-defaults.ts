@@ -3,6 +3,8 @@ import type { BrandConfig, BrandLogoConfig, BrandThemeConfig, BrandTokenMap, Ema
 export const BRAND_THEME_STORAGE_KEY = 'theme';
 
 export const DEFAULT_PRIMARY = '43 74% 49%';
+export const LIGHT_DEFAULT_PRIMARY = '262 66% 46%';
+export const LIGHT_DEFAULT_ACCENT = '268 58% 54%';
 export const DEFAULT_ACCENT = '43 74% 49%';
 export const DEFAULT_WARNING = '43 74% 49%';
 export const DEFAULT_SUCCESS = '142 71% 45%';
@@ -56,15 +58,15 @@ export const defaultLightTokenMap: BrandTokenMap = {
   '--card-foreground': '34 17% 17%',
   '--popover': '42 82% 99%',
   '--popover-foreground': '34 17% 17%',
-  '--primary': DEFAULT_PRIMARY,
+  '--primary': LIGHT_DEFAULT_PRIMARY,
   '--primary-foreground': '0 0% 100%',
-  '--primary-hover': '43 74% 42%',
+  '--primary-hover': '262 66% 38%',
   '--secondary': '40 54% 93%',
   '--secondary-foreground': '34 17% 17%',
   '--secondary-hover': '39 48% 89%',
   '--muted': '39 44% 91%',
   '--muted-foreground': '33 14% 38%',
-  '--accent': '38 58% 56%',
+  '--accent': LIGHT_DEFAULT_ACCENT,
   '--accent-foreground': '0 0% 100%',
   '--success': DEFAULT_SUCCESS,
   '--success-foreground': '0 0% 100%',
@@ -90,22 +92,22 @@ export const defaultLightTokenMap: BrandTokenMap = {
   '--chart-10': '88 44% 43%',
   '--border': '36 30% 81%',
   '--input': '36 30% 81%',
-  '--ring': DEFAULT_PRIMARY,
+  '--ring': LIGHT_DEFAULT_PRIMARY,
   '--sidebar-background': '39 52% 94%',
   '--sidebar-foreground': '34 20% 22%',
-  '--sidebar-primary': DEFAULT_PRIMARY,
+  '--sidebar-primary': LIGHT_DEFAULT_PRIMARY,
   '--sidebar-primary-foreground': '0 0% 100%',
-  '--sidebar-accent': '38 58% 56%',
+  '--sidebar-accent': LIGHT_DEFAULT_ACCENT,
   '--sidebar-accent-foreground': '0 0% 100%',
   '--sidebar-border': '36 30% 83%',
-  '--sidebar-ring': DEFAULT_PRIMARY,
+  '--sidebar-ring': LIGHT_DEFAULT_PRIMARY,
   '--dashboard-surface': '42 82% 99%',
   '--dashboard-surface-elevated': '41 62% 97%',
   '--dashboard-surface-muted': '39 44% 91%',
   '--dashboard-border-soft': '36 30% 81%',
   '--dashboard-border-strong': '37 32% 72%',
-  '--dashboard-primary-soft': '43 70% 91%',
-  '--dashboard-primary-strong': DEFAULT_PRIMARY,
+  '--dashboard-primary-soft': '262 42% 91%',
+  '--dashboard-primary-strong': LIGHT_DEFAULT_PRIMARY,
   '--surface-1': '42 82% 99%',
   '--surface-2': '41 62% 97%',
   '--surface-3': '39 44% 91%',

@@ -1,8 +1,9 @@
 import {
   defaultDarkTokenMap,
   defaultLightTokenMap,
-  DEFAULT_ACCENT,
   DEFAULT_PRIMARY,
+  LIGHT_DEFAULT_ACCENT,
+  LIGHT_DEFAULT_PRIMARY,
 } from './brand-defaults';
 import type { BrandConfig, BrandTokenMap, ResolvedBrandTokens } from './brand-types';
 import {
@@ -42,8 +43,8 @@ function createChartPalette(primary: string, accent: string, isDark: boolean) {
 }
 
 function createLightTokens(config: BrandConfig): BrandTokenMap {
-  const primary = normalizeHslString(config.primaryColor, DEFAULT_PRIMARY);
-  const accent = normalizeHslString(config.accentColor, defaultLightTokenMap['--accent'] || DEFAULT_ACCENT);
+  const primary = normalizeHslString(config.primaryColor, LIGHT_DEFAULT_PRIMARY);
+  const accent = normalizeHslString(config.accentColor, defaultLightTokenMap['--accent'] || LIGHT_DEFAULT_ACCENT);
 
   // Light mode keeps the luxury surface baseline while letting the saved
   // brand primary drive dashboard accent semantics. Warm ivory, porcelain,
@@ -70,7 +71,6 @@ function createLightTokens(config: BrandConfig): BrandTokenMap {
     '--topbar-background': defaultLightTokenMap['--dashboard-surface'],
     '--sidebar-surface': defaultLightTokenMap['--sidebar-background'],
     '--mobile-nav-background': defaultLightTokenMap['--dashboard-surface'],
-    ...createChartPalette(primary, accent, false),
   };
 }
 
