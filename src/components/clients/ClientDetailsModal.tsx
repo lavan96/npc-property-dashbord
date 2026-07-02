@@ -312,8 +312,8 @@ The Team`
     <>
       {/* Header actions - always wrap cleanly to avoid overflow */}
       <div className={cn(
-        "flex flex-wrap items-center gap-2 px-1",
-        isMobile ? "pb-2 border-b border-border mb-2" : "mr-8"
+        "flex min-w-0 flex-wrap items-center gap-2 overflow-visible px-1 [&>button]:max-w-full [&>button]:whitespace-normal sm:[&>button]:whitespace-nowrap",
+        isMobile ? "pb-2 border-b border-border mb-2" : "mr-10 pr-2"
       )}>
 
         <VownetPDFGenerator
@@ -400,9 +400,9 @@ The Team`
       </div>
       <Separator className="my-1" />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex-shrink-0 sticky top-0 z-10 bg-background pb-1 overflow-x-auto scrollbar-hide max-w-full">
-          <TabsList className="h-auto gap-0.5 p-0.5 inline-flex w-auto min-w-max">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden w-full">
+        <div className="sticky top-0 z-10 min-w-0 max-w-full flex-shrink-0 overflow-x-auto overscroll-x-contain bg-background pb-1">
+          <TabsList className="inline-flex h-auto w-max min-w-max max-w-none justify-start gap-0.5 p-0.5">
 
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
             <TabsTrigger value="personal" className="text-xs sm:text-sm">Personal</TabsTrigger>
@@ -450,8 +450,8 @@ The Team`
           </TabsList>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 w-full">
-          <div className="w-0 min-w-full" {...(isMobile ? tabSwipeHandlers : {})}>
+        <ScrollArea className="min-h-0 w-full flex-1 overflow-hidden">
+          <div className="min-w-0 w-full overflow-x-hidden" {...(isMobile ? tabSwipeHandlers : {})}>
             <TabsContent value="overview" className="space-y-4 mt-4">
               {/* Contact Info */}
               <div className="grid gap-4 md:grid-cols-2">
@@ -1003,22 +1003,22 @@ The Team`
         </Sheet>
       ) : (
         <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="w-[96vw] max-w-[1200px] h-[90vh] max-h-[90vh] flex flex-col overflow-hidden p-4 sm:p-6">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-3">
+          <DialogContent className="flex h-[min(90vh,900px)] max-h-[90vh] w-[min(95vw,1100px)] max-w-[1100px] flex-col overflow-hidden p-4 sm:p-6">
+            <DialogHeader className="min-w-0 shrink-0 pr-12">
+              <DialogTitle className="flex min-w-0 items-start gap-3">
                 <User className="h-5 w-5 shrink-0" />
-                <div className="flex flex-col gap-0.5">
-                  <span>{client.primary_first_name} {client.primary_surname}</span>
-                  <div className="flex items-center gap-3 text-xs font-normal text-muted-foreground">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="break-words leading-tight">{client.primary_first_name} {client.primary_surname}</span>
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-muted-foreground">
                     {client.primary_email && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
+                      <span className="flex min-w-0 items-center gap-1 break-all">
+                        <Mail className="h-3 w-3 shrink-0" />
                         {client.primary_email}
                       </span>
                     )}
                     {client.primary_mobile && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
+                      <span className="flex min-w-0 items-center gap-1 break-words">
+                        <Phone className="h-3 w-3 shrink-0" />
                         {client.primary_mobile}
                       </span>
                     )}
@@ -1029,7 +1029,7 @@ The Team`
                 View and manage client details, properties, and reports
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               {modalContent}
             </div>
           </DialogContent>
