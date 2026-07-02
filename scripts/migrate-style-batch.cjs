@@ -31,10 +31,14 @@
 'use strict';
 const fs = require('fs');
 
+// When AMBER_TARGET=warning, amber/yellow are treated as the SEMANTIC warning
+// tone (fixed) rather than decorative brand gold. Use this for files where
+// amber means "pending/caution" (e.g. Report Q&A status chips), not brand.
+const AMBER_TO_WARNING = process.env.AMBER_TARGET === 'warning';
 const SEMANTIC = {
   'green|emerald|lime|teal': 'success',
   'red|rose': 'destructive',
-  orange: 'warning',
+  [AMBER_TO_WARNING ? 'orange|amber|yellow' : 'orange']: 'warning',
   'blue|sky|cyan': 'info',
   'indigo|violet|purple|fuchsia|pink': 'accent',
 };
@@ -46,8 +50,11 @@ function migrate(src) {
   let s = src;
 
   // ── Brand gold: preserve shade + opacity, swap family only ──────────────
-  s = s.replace(/\b(bg|text|border|ring-offset|ring|from|to|via|divide|fill|stroke|outline|decoration|placeholder|caret|shadow)-(?:amber|yellow)-(\d{2,3})(\/\d{1,3})?/g,
-    (_m, u, shade, op) => `${u}-brand-${shade}${op || ''}`);
+  // (skipped when amber is being treated as the semantic warning tone)
+  if (!AMBER_TO_WARNING) {
+    s = s.replace(/\b(bg|text|border|ring-offset|ring|from|to|via|divide|fill|stroke|outline|decoration|placeholder|caret|shadow)-(?:amber|yellow)-(\d{2,3})(\/\d{1,3})?/g,
+      (_m, u, shade, op) => `${u}-brand-${shade}${op || ''}`);
+  }
 
   // ── Semantic families: collapse by role to preserve contrast ────────────
   for (const [families, token] of Object.entries(SEMANTIC)) {
@@ -74,10 +81,18 @@ function migrate(src) {
   // ring-offset colour follows the surface it sits on
   s = s.replace(new RegExp(`\\bring-offset-(?:${NEUTRAL})-\\d{2,3}(\\/\\d{1,3})?`, 'g'),
     (_m, op) => `ring-offset-background${op || ''}`);
-  s = s.replace(new RegExp(`\\bbg-(?:${NEUTRAL})-(?:50|100|200|300)(\\/\\d{1,3})?`, 'g'),
+  s = s.replace(new RegExp(`\\bbg-(?:${NEUTRAL})-(?:50|100|200|300|400|500|600|700)(\\/\\d{1,3})?`, 'g'),
     (_m, op) => `bg-muted${op || ''}`);
   s = s.replace(new RegExp(`\\bbg-(?:${NEUTRAL})-(?:800|900|950)(\\/\\d{1,3})?`, 'g'),
     (_m, op) => `bg-background${op || ''}`);
+  // SVG fill neutrals mirror the text neutral roles
+  s = s.replace(new RegExp(`\\bfill-(?:${NEUTRAL})-(?:400|500|600)(\\/\\d{1,3})?`, 'g'),
+    (_m, op) => `fill-muted-foreground${op || ''}`);
+  s = s.replace(new RegExp(`\\bfill-(?:${NEUTRAL})-(?:700|800|900|950)(\\/\\d{1,3})?`, 'g'),
+    (_m, op) => `fill-foreground${op || ''}`);
+  // light neutral body text (bare, non-solid) → muted foreground
+  s = s.replace(new RegExp(`\\btext-(?:${NEUTRAL})-(?:200|300)(\\/\\d{1,3})?`, 'g'),
+    (_m, op) => `text-muted-foreground${op || ''}`);
   // neutral gradient stops → flatten to a surface token (keeps opacity)
   s = s.replace(new RegExp(`\\b(from|to|via)-(?:${NEUTRAL})-(?:700|800|900|950)(\\/\\d{1,3})?`, 'g'),
     (_m, u, op) => `${u}-background${op || ''}`);

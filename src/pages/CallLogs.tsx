@@ -652,7 +652,7 @@ const CallLogs = () => {
           <CardContent className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <span className={premiumMetricLabel}>Avg</span>
-              <div className={cn(premiumMetricIcon, "border-border/25 bg-zinc-400/10 text-muted-foreground dark:text-foreground")}>
+              <div className={cn(premiumMetricIcon, "border-border/25 bg-muted/10 text-muted-foreground dark:text-foreground")}>
                 <Clock className="h-4 w-4" />
               </div>
             </div>
@@ -1332,7 +1332,7 @@ const CallLogs = () => {
                   <TabsTrigger value="transcript" className={cn(detailTabTrigger, "data-[state=active]:bg-brand-300/15 data-[state=active]:text-brand-100", isMobile ? "text-xs" : "")}>Transcript</TabsTrigger>
                   <TabsTrigger value="tool-calls" className={cn(detailTabTrigger, "data-[state=active]:bg-info/15 data-[state=active]:text-info-foreground", isMobile ? "text-xs" : "")}>{isMobile ? "Tools" : "Tool Calls"}</TabsTrigger>
                   <TabsTrigger value="analysis" className={cn(detailTabTrigger, "data-[state=active]:bg-success/15 data-[state=active]:text-success-foreground", isMobile ? "text-xs" : "")}>Analysis</TabsTrigger>
-                  <TabsTrigger value="metadata" className={cn(detailTabTrigger, "data-[state=active]:bg-zinc-700/70 data-[state=active]:text-zinc-100", isMobile ? "text-xs" : "")}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
+                  <TabsTrigger value="metadata" className={cn(detailTabTrigger, "data-[state=active]:bg-muted/70 data-[state=active]:text-zinc-100", isMobile ? "text-xs" : "")}>{isMobile ? "Meta" : "Metadata"}</TabsTrigger>
                 </TabsList>
               </div>
 

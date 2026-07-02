@@ -583,7 +583,7 @@ function EditorialCanvasImpl({
             {guides.v.map((v, i) => (
               <div key={`v${i}`} className="absolute top-0 bottom-0 pointer-events-none" style={{ left: v * zoom, width: 1, background: 'hsl(330 90% 55%)' }}>
                 <span
-                  className="absolute -translate-x-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-foreground dark:text-white shadow"
+                  className="absolute -translate-x-1/2 rounded bg-accent px-1 py-0.5 text-[9px] font-medium text-foreground dark:text-white shadow"
                   style={{ left: 0, top: 4 }}
                 >
                   x {Math.round(v)}
@@ -593,7 +593,7 @@ function EditorialCanvasImpl({
             {guides.h.map((h, i) => (
               <div key={`h${i}`} className="absolute left-0 right-0 pointer-events-none" style={{ top: h * zoom, height: 1, background: 'hsl(330 90% 55%)' }}>
                 <span
-                  className="absolute -translate-y-1/2 rounded bg-[hsl(330_90%_55%)] px-1 py-0.5 text-[9px] font-medium text-foreground dark:text-white shadow"
+                  className="absolute -translate-y-1/2 rounded bg-accent px-1 py-0.5 text-[9px] font-medium text-foreground dark:text-white shadow"
                   style={{ top: 0, left: 4 }}
                 >
                   y {Math.round(h)}
@@ -678,7 +678,7 @@ function EditorialCanvasImpl({
                         <div
                           key={k}
                           onPointerDown={(e) => beginInteraction(e, o, k)}
-                          className="absolute bg-white border border-[hsl(45_95%_45%)] shadow-sm"
+                          className="absolute bg-white border border-brand shadow-sm"
                           style={{
                             width: 9, height: 9,
                             left: k.includes('w') ? -5 : k.includes('e') ? '100%' : '50%',
@@ -696,7 +696,7 @@ function EditorialCanvasImpl({
                       {/* Rotation handle */}
                       <div
                         onPointerDown={(e) => beginInteraction(e, o, 'rotate')}
-                        className="absolute bg-[hsl(45_95%_50%)] rounded-full border border-white shadow"
+                        className="absolute bg-brand rounded-full border border-white shadow"
                         style={{
                           width: 11, height: 11,
                           left: '50%', top: -22,
@@ -706,12 +706,12 @@ function EditorialCanvasImpl({
                         title="Rotate"
                       />
                       <div
-                        className="absolute bg-[hsl(45_95%_45%)]"
+                        className="absolute bg-brand"
                         style={{ left: '50%', top: -12, width: 1, height: 12, marginLeft: -0.5 }}
                       />
                       {/* Size pill */}
                       <div
-                        className="absolute -bottom-5 left-0 px-1.5 py-0.5 rounded text-[10px] font-mono bg-[hsl(45_95%_45%)] text-black"
+                        className="absolute -bottom-5 left-0 px-1.5 py-0.5 rounded text-[10px] font-mono bg-brand text-black"
                         style={{ pointerEvents: 'none' }}
                       >
                         {Math.round(o.width)} × {Math.round(o.height)}

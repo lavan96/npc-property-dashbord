@@ -133,7 +133,7 @@ export function MultiCalendarOverlay({
             'w-full p-3 rounded-lg border text-left transition-all',
             'hover:bg-muted/50',
             outlookVisible
-              ? 'border-[hsl(207,89%,41%)]/30 bg-[hsl(207,89%,41%)]/5'
+              ? 'border-info/30 bg-info/5'
               : 'border-border/50 opacity-60 hover:opacity-100'
           )}
         >

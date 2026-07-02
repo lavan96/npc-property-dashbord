@@ -75,7 +75,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
             </aside>
 
             <section className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/95 shadow-[0_18px_44px_hsl(35_43%_20%/0.10)] ring-1 ring-primary/5">
-              <div className="flex min-w-0 flex-col gap-3 border-b border-border/70 bg-[rgba(255,252,247,0.82)] px-4 py-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-col gap-3 border-b border-border/70 bg-card px-4 py-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">Executive workspace</p>
                   <p className="break-words text-xs text-muted-foreground">Porcelain topbar, champagne surfaces, and antique-gold actions.</p>

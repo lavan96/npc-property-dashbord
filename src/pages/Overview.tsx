@@ -141,7 +141,7 @@ function PremiumPieTooltip({ active, payload, unit = 'properties' }: any) {
   if (!label && value === null && !percent) return null;
 
   return (
-    <div className="premium-chart-tooltip min-w-[150px] rounded-xl border border-primary/30 bg-white/95 px-3.5 py-3 text-foreground shadow-[0_16px_38px_rgba(15,23,42,0.18)] backdrop-blur-md dark:border-brand-300/35 dark:bg-[rgba(15,15,20,0.96)] dark:text-white dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
+    <div className="premium-chart-tooltip min-w-[150px] rounded-xl border border-primary/30 bg-white/95 px-3.5 py-3 text-foreground shadow-[0_16px_38px_rgba(15,23,42,0.18)] backdrop-blur-md dark:border-brand-300/35 dark:bg-background dark:text-white dark:shadow-[0_12px_32px_rgba(0,0,0,0.45)]">
       {label && (
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white">
           <span className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[0_0_12px_rgba(245,158,11,0.45)]" style={{ backgroundColor: colour }} />

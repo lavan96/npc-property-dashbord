@@ -312,7 +312,7 @@ export function OutlookCalendarPanel({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div
-              className={cn('w-3 h-3 rounded-full', microsoftEmail ? 'bg-[hsl(207,89%,41%)]' : 'bg-muted-foreground/30')}
+              className={cn('w-3 h-3 rounded-full', microsoftEmail ? 'bg-info' : 'bg-muted-foreground/30')}
             />
             <span className="text-xs">
               {microsoftEmail ? (
@@ -676,7 +676,7 @@ export function OutlookCalendarPanel({
               dayEvents.map(event => (
                 <div
                   key={event.id}
-                  className="p-2 rounded-md border bg-[hsl(207,89%,41%)]/5 border-[hsl(207,89%,41%)]/20 hover:bg-[hsl(207,89%,41%)]/10 transition-colors group"
+                  className="p-2 rounded-md border bg-info/5 border-info/20 hover:bg-info/10 transition-colors group"
                 >
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">

@@ -85,10 +85,10 @@ const metricCardStyles: Record<
   },
   operations: {
     card: "border-border/20 bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.18),transparent_38%),linear-gradient(145deg,rgba(51,65,85,0.38),rgba(24,24,27,0.95))]",
-    iconWrap: "border-border/20 bg-muted/10 text-slate-200",
-    icon: "text-slate-200",
+    iconWrap: "border-border/20 bg-muted/10 text-muted-foreground",
+    icon: "text-muted-foreground",
     value: "text-slate-50",
-    label: "text-slate-200/72",
+    label: "text-muted-foreground/72",
   },
 };
 
