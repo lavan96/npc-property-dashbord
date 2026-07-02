@@ -152,7 +152,7 @@ export function ChartCard({ chart, isSelected, onToggleSelect, onExpand, onExpor
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   return (
-    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex h-full min-h-[410px] sm:min-h-[430px] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25 hover:ring-amber-300/45' : ''} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-b from-amber-500/12 via-card/95 to-card/85 ring-2 ring-amber-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
+    <Card className={`${PREMIUM_CHART_CARD_CLASS} flex flex-col h-full min-h-[410px] sm:min-h-[430px] ${selectionMode ? 'border-amber-300/45 ring-1 ring-amber-300/25 hover:ring-amber-300/45' : ''} ${selectionMode && isSelected ? 'border-amber-300/90 bg-gradient-to-b from-amber-500/12 via-card/95 to-card/85 ring-2 ring-amber-400/85 shadow-[0_24px_56px_hsl(43_74%_49%/0.24),0_0_0_1px_hsl(43_96%_56%/0.24),0_0_40px_hsl(43_96%_56%/0.18)]' : ''}`}>
       {selectionMode && (
         <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full border border-amber-200/60 bg-background/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 shadow-lg shadow-amber-950/10 backdrop-blur-md dark:text-amber-200">
           {isSelected ? 'Selected' : 'Selectable'}
