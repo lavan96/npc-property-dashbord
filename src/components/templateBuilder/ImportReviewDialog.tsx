@@ -106,8 +106,8 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-4 overflow-hidden sm:max-h-[85vh] sm:max-w-4xl sm:overflow-hidden">
+        <DialogHeader className="shrink-0 pr-8">
           <DialogTitle className="flex items-center gap-2">
             <FileCode2 className="h-5 w-5 text-primary" /> Import review
           </DialogTitle>
@@ -116,6 +116,7 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
           </DialogDescription>
         </DialogHeader>
 
+        <div className="-mr-2 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2">
         {!draft || !decision ? (
           <Card className="p-4 text-sm text-muted-foreground">No import review data is available for this result.</Card>
         ) : (
@@ -380,8 +381,9 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
             Visual QA requires source raster artifacts. Open debug details for artifact status.
           </div>
         )}
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 flex-wrap items-center gap-2 border-t pt-4 sm:space-x-0">
           {onRecordDecision && draft && (
             <div className="flex flex-wrap gap-2 mr-auto">
               {(['accept', 'accept_with_trace', 'manual_edit', 'retry'] as ImportReviewDecision[]).map((value) => (
