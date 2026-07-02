@@ -14,11 +14,20 @@ interface PageHeroProps {
 
 export function PageHero({ eyebrow, title, subtitle, imageVariant = 'overview', actions, className }: PageHeroProps) {
   const visual = getLightModeModuleVisual(imageVariant) ?? lightModeModuleVisuals.overview;
-  const overlayClass = visual.overlay === 'ivory' ? 'from-[#fffaf1]/95 via-[#fbf2e2]/82' : 'from-[#fff6e4]/95 via-[#f6e5bf]/80';
+  const overlayClass =
+    visual.overlay === 'ivory'
+      ? 'from-[hsl(var(--card)/0.96)] via-[hsl(var(--dashboard-surface-elevated)/0.84)]'
+      : 'from-[hsl(var(--card)/0.96)] via-[hsl(var(--dashboard-primary-soft)/0.82)]';
+  const fallbackGradientClass =
+    visual.fallbackGradient === 'brand-studio'
+      ? 'bg-[radial-gradient(circle_at_18%_0%,hsl(var(--dashboard-primary-soft)/0.86),transparent_26rem),radial-gradient(circle_at_88%_12%,hsl(var(--accent)/0.18),transparent_22rem),linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--dashboard-surface-elevated))_54%,hsl(var(--dashboard-primary-soft))_100%)]'
+      : visual.fallbackGradient === 'ivory'
+        ? 'bg-[radial-gradient(circle_at_18%_0%,hsl(var(--card)/0.92),transparent_24rem),linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--dashboard-surface-elevated))_58%,hsl(var(--background))_100%)]'
+        : 'bg-[radial-gradient(circle_at_18%_0%,hsl(var(--dashboard-primary-soft)/0.86),transparent_24rem),linear-gradient(135deg,hsl(var(--card))_0%,hsl(var(--dashboard-surface-elevated))_54%,hsl(var(--dashboard-primary-soft))_100%)]';
 
   return (
     <DashboardThemeFrame as="header" variant="hero" className={cn('page-hero', className)}>
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,#fffcf7_0%,#fbf1de_54%,#ead5a7_100%)] dark:hidden" />
+      <div className={cn('absolute inset-0 dark:hidden', fallbackGradientClass)} aria-hidden="true" />
       <img
         src={visual.image}
         alt={visual.alt}
