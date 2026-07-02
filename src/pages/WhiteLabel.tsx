@@ -975,7 +975,7 @@ export default function WhiteLabel() {
         eyebrow="BRAND STUDIO"
         title="Branding"
         subtitle="Control logos, colours, browser identity, email signature, and theme defaults across the dashboard."
-        imageVariant="branding-studio"
+        imageVariant="branding"
         actions={brandingDraftActions}
       />
 
