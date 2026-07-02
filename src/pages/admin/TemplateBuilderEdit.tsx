@@ -214,18 +214,16 @@ export default function TemplateBuilderEdit() {
     queryKey: ['template-imports', 'linked-template', id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('template_imports')
-        .select('id,source_filename,updated_at,created_at')
-        .eq('created_template_id', id!)
-        .eq('status', 'completed')
-        .not('meta->>cdir_artifact_path', 'is', null)
-        .order('updated_at', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      // Read through the secure edge function: the browser Supabase client is
+      // anonymous under this app's custom-auth flow, so a direct query against
+      // RLS-protected template_imports always returns null. The function runs
+      // as service role after verifying the custom session.
+      const { data, error } = await invokeSecureFunction('template-import-pdf', {
+        operation: 'get_linked_import',
+        template_id: id,
+      });
+      if (error) throw new Error(error.message);
+      return ((data as any)?.record ?? null) as { id: string; source_filename: string | null } | null;
     },
   });
 
