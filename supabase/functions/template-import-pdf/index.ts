@@ -1,5 +1,5 @@
 // Template PDF importer.
-// Operations: create_import | upload_asset | stage_artifacts | start_finalize | retry_finalize | get_status | finalize | resync | get_artifacts | record_review_decision | fail | save_visual_quality | get_visual_quality | save_visual_repair_audit | get_visual_repair_audit
+// Operations: create_import | upload_asset | stage_artifacts | start_finalize | retry_finalize | get_status | finalize | resync | get_artifacts | record_review_decision | list_recent_imports | get_linked_import | fail | save_visual_quality | get_visual_quality | save_visual_repair_audit | get_visual_repair_audit
 //
 // upload_asset accepts base64 PNG/JPG, stores in `template-import-assets`
 // (creates the bucket on first use) and returns the public URL. finalize
@@ -563,6 +563,27 @@ function normalizeFinalizeMode(raw: unknown): 'finalize' | 'resync' {
   return raw === 'resync' ? 'resync' : 'finalize';
 }
 
+/**
+ * Does this custom_users account carry an admin-tier role? Used to scope the
+ * import-review discovery reads (list_recent_imports): admins see every recent
+ * import, non-admins see only their own — matching the template_imports RLS
+ * intent ("users read their imports or admins read all"). The browser client
+ * is anonymous under this app's custom-auth flow, so these reads must run here
+ * (service role) rather than directly against RLS-protected tables.
+ */
+async function userHasAdminRole(admin: any, userId: string | null): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const { data: cu } = await admin.from('custom_users').select('role').eq('id', userId).maybeSingle();
+    const role = String((cu as any)?.role ?? '').toLowerCase();
+    if (['super_admin', 'superadmin', 'admin', 'sub_admin'].includes(role)) return true;
+    const { data: roles } = await admin.from('user_roles').select('role').eq('user_id', userId);
+    return (roles ?? []).some((r: any) => ['admin', 'superadmin'].includes(String(r?.role ?? '').toLowerCase()));
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   const cors = createTokenAuthCorsHeaders();
   const json = (body: unknown, status = 200) =>
@@ -1101,6 +1122,43 @@ Deno.serve(async (req) => {
         .single();
       if (upErr) return json({ error: upErr.message }, 400);
       return json({ record: updated, decision: reviewDecision });
+    }
+
+    // ---------- Import-review discovery reads (browser client is anon under
+    // custom auth, so RLS-protected template_imports must be read here). ----------
+    if (operation === 'list_recent_imports') {
+      if (!authedUserId) return json({ error: 'unauthorized' }, 401);
+      const limit = Math.min(Math.max(Number(body.limit ?? 10) || 10, 1), 50);
+      const isAdmin = await userHasAdminRole(admin, authedUserId);
+      let query = admin
+        .from('template_imports')
+        .select('id,source_filename,page_count,status,created_template_id,created_at,meta')
+        .eq('status', 'completed')
+        .not('meta->>cdir_artifact_path', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (!isAdmin) query = query.eq('user_id', authedUserId);
+      const { data, error } = await query;
+      if (error) return json({ error: error.message }, 400);
+      return json({ records: data ?? [] });
+    }
+
+    if (operation === 'get_linked_import') {
+      if (!authedUserId) return json({ error: 'unauthorized' }, 401);
+      const templateId = body.template_id as string;
+      if (!templateId) return json({ error: 'template_id required' }, 400);
+      const { data, error } = await admin
+        .from('template_imports')
+        .select('id,source_filename,updated_at,created_at')
+        .eq('created_template_id', templateId)
+        .eq('status', 'completed')
+        .not('meta->>cdir_artifact_path', 'is', null)
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) return json({ error: error.message }, 400);
+      return json({ record: data ?? null });
     }
 
     if (operation === 'fail') {

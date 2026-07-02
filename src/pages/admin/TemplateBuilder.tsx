@@ -125,16 +125,17 @@ export default function TemplateBuilder() {
     queryKey: ['template-imports', 'recent', user?.id],
     enabled: !!user?.id && canEditTemplates,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('template_imports')
-        .select('id,source_filename,page_count,status,created_template_id,created_at,meta')
-        .eq('user_id', user!.id)
-        .eq('status', 'completed')
-        .not('meta->>cdir_artifact_path', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return data ?? [];
+      // Read through the secure edge function: the browser Supabase client is
+      // anonymous under this app's custom-auth flow, so a direct query against
+      // RLS-protected template_imports always returns 0 rows. The function runs
+      // as service role after verifying the custom session (admins see all
+      // recent imports, non-admins their own).
+      const { data, error } = await invokeSecureFunction('template-import-pdf', {
+        operation: 'list_recent_imports',
+        limit: 10,
+      });
+      if (error) throw new Error(error.message);
+      return ((data as any)?.records ?? []) as any[];
     },
   });
   const importReview = usePersistedImportReviewController({ onDecisionSaved: () => { void refetchRecentImports(); } });

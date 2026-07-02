@@ -5,7 +5,7 @@
  * (Track B) fidelity, or Hybrid (both), and shows real-time per-page
  * progress + a fidelity report card when finished.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, FileText, CheckCircle2, AlertCircle, Loader2, Zap, Sparkles, ShieldCheck } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -22,7 +22,7 @@ import { type FidelityMode, type ImportProgress, type ImportResult } from '@/lib
 import { useAuth } from '@/hooks/useAuth';
 import { buildImportReviewDraft, type ImportReviewDecision } from '@/lib/reportTemplate/ingestion/review';
 import { loadImportReviewDraft, saveImportReviewDecision, type ImportReviewDecisionRecord, type LoadImportReviewDraftResult } from '@/lib/reportTemplate/ingestion/importArtifacts';
-import { applyRepairedTemplateToRecord, buildVisualRepairAuditPayload, loadVisualQuality, loadVisualRepairAudit, persistedVisualQualityToReviewSummary, runImportReviewVisualQualityPipeline, runVisualRepairOrchestrationPipeline, saveVisualRepairAudit, shouldAutoRunVisualQa, type PersistedVisualQuality, type PersistedVisualRepairAudit, type VisualQaReviewSummary, type VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
+import { applyRepairedTemplateToRecord, buildVisualRepairAuditPayload, loadVisualQuality, loadVisualRepairAudit, persistedVisualQualityToReviewSummary, runImportReviewVisualQualityPipeline, runVisualRepairOrchestrationPipeline, saveVisualRepairAudit, type PersistedVisualQuality, type PersistedVisualRepairAudit, type VisualQaReviewSummary, type VisualRepairOrchestrationSummary } from '@/lib/reportTemplate/ingestion/visualQuality';
 import { ImportReviewDialog } from './ImportReviewDialog';
 import { importAssetToReviewArtifacts, summarizeImportAsset } from '@/lib/reportTemplate/ingestion/reconciliation';
 import { cn } from '@/lib/utils';
@@ -77,11 +77,6 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
   const [persistedReview, setPersistedReview] = useState<LoadImportReviewDraftResult | null>(null);
   const [visualQaBusy, setVisualQaBusy] = useState(false);
   const [visualQaSummary, setVisualQaSummary] = useState<VisualQaReviewSummary | null>(null);
-  // Phase 6C — tracks the most recent import so a superseded auto visual-QA run
-  // (e.g. the user imports a second file before the first QA finishes) bails out
-  // instead of writing stale state. Also doubles as the "already kicked off"
-  // guard so the auto-run effect fires once per import.
-  const latestImportIdRef = useRef<string | null>(null);
   const [persistedVisualQuality, setPersistedVisualQuality] = useState<PersistedVisualQuality | null>(null);
   const [repairBusy, setRepairBusy] = useState(false);
   const [repairSummary, setRepairSummary] = useState<VisualRepairOrchestrationSummary | null>(null);
@@ -219,77 +214,14 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
     return null;
   }, []);
 
-  // Phase 6C — automatic, non-blocking visual QA on import completion. Previously
-  // the SSIM diff + persist only ran when the user clicked "Visual QA" inside the
-  // review dialog, so `visual_quality_summary` was null on every import. This runs
-  // the SAME pipeline automatically (reusing loadImportReviewDraft +
-  // runImportReviewVisualQualityPipeline) so the score is populated and surfaced.
-  // When QA flags the import for manual review it also runs the (non-applying)
-  // repair orchestration so a one-click "Apply repair" is ready — applying the
-  // repaired template stays an explicit user action (it mutates the saved template).
-  const autoVisualQa = useCallback(async (importId: string, importedTemplateId: string | null) => {
-    setVisualQaBusy(true);
-    try {
-      const loaded = await loadImportReviewDraft({ importId });
-      if (latestImportIdRef.current !== importId) return; // superseded by a newer import
-      setPersistedReview(loaded);
-      if (!shouldAutoRunVisualQa(loaded)) return; // no source rasters → diff impossible
-
-      const finalMode = mode === 'pixel' ? 'pixel-perfect' : mode === 'semantic' ? 'semantic' : 'hybrid';
-      const qa = await runImportReviewVisualQualityPipeline({
-        loaded,
-        templateId: importedTemplateId ?? loaded.record.created_template_id ?? null,
-        finalMode,
-        persist: true,
-        maxRasterDim: 768,
-      });
-      if (latestImportIdRef.current !== importId) return;
-      setPersistedReview((prev) => (prev ? { ...prev, draft: qa.draft } : { ...loaded, draft: qa.draft }));
-
-      if (qa.visualQa.persistResult.kind === 'ok') {
-        const persisted = await hydratePersistedVisualQuality(importId);
-        if (latestImportIdRef.current !== importId) return;
-        if (!persisted) setVisualQaSummary(qa.visualQa.summary);
-      } else {
-        setVisualQaSummary(qa.visualQa.summary);
-      }
-
-      if (qa.visualQa.summary.manualReviewRequired) {
-        try {
-          const repair = await runVisualRepairOrchestrationPipeline({
-            loaded,
-            templateId: importedTemplateId ?? loaded.record.created_template_id ?? null,
-            finalMode,
-            persistVisualQa: true,
-            maxRasterDim: 768,
-            maxRepairPasses: 2,
-          });
-          if (latestImportIdRef.current !== importId) return;
-          await saveVisualRepairAudit(repair.importId, buildVisualRepairAuditPayload(repair));
-          if (latestImportIdRef.current !== importId) return;
-          setPersistedReview((prev) => (prev ? { ...prev, draft: repair.draft } : prev));
-          setRepairSummary(repair.summary);
-          setRepairApplied(false);
-          setRepairDraftReady(Boolean(repair.draft?.template));
-          setVisualQaSummary(repair.visualQa.visualQa.summary);
-        } catch (repairErr) {
-          console.warn('[pdfImportReview] auto repair failed', (repairErr as Error).message);
-        }
-      }
-    } catch (err) {
-      console.warn('[pdfImportReview] auto visual QA failed', (err as Error).message);
-    } finally {
-      if (latestImportIdRef.current === importId) setVisualQaBusy(false);
-    }
-  }, [mode, hydratePersistedVisualQuality]);
-
-  // Fire the auto visual-QA pass once per completed import (non-blocking).
-  useEffect(() => {
-    const importId = result?.importId;
-    if (!importId || latestImportIdRef.current === importId) return;
-    latestImportIdRef.current = importId;
-    void autoVisualQa(importId, result?.template?.id ?? null);
-  }, [result?.importId, result?.template?.id, autoVisualQa]);
+  // Visual QA is now strictly user-initiated. The previous build auto-ran the
+  // full SSIM/raster diff (and, when flagged, the repair orchestration) the
+  // instant an import completed. That heavy client-side work fired before the
+  // user could interact — on large imports it could jank/OOM the tab, which
+  // presented as the import dialog "reloading" and made "Review quality"
+  // unclickable. The manual flow is unchanged: clicking "Review quality" runs
+  // openReview(), which loads the artifacts and lets the user run Visual QA /
+  // Repair on demand.
 
   const openReview = useCallback(async () => {
     if (!result?.importId) return;
