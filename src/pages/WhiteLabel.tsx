@@ -807,7 +807,6 @@ export default function WhiteLabel() {
   );
   const canSaveBranding = hasChanges && canEditWhiteLabel && !hasCriticalChecks && !hasInvalidAssets && !isValidatingAssets;
   const canUndoLastChange = draftHistoryRef.current.length > 0;
-
   const handleSaveDraft = useCallback(() => {
     const savedDraft = savePersistedDraft(draftSettings);
     setLastDraftSavedAt(savedDraft.savedAt);
@@ -934,6 +933,31 @@ export default function WhiteLabel() {
     });
   };
 
+  const brandingDraftActions = (
+    <>
+      <Badge variant="outline" className="min-h-10 max-w-full gap-2 rounded-full border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-sm shadow-primary/10 ring-1 ring-primary/10">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+          <Palette className="h-3.5 w-3.5" />
+        </span>
+        <span className="truncate">Global Brand System</span>
+      </Badge>
+      <Badge
+        variant="outline"
+        className={hasChanges ? 'min-h-10 rounded-full border-warning/35 bg-warning/10 px-4 py-2 text-warning shadow-sm shadow-warning/10' : 'min-h-10 rounded-full border-success/35 bg-success/10 px-4 py-2 text-success shadow-sm shadow-success/10'}
+      >
+        {hasChanges ? 'Draft changes pending' : 'Live brand in sync'}
+      </Badge>
+      <Badge variant="outline" className="min-h-10 rounded-full border-border/70 bg-card/75 px-4 py-2 text-muted-foreground shadow-sm">
+        Theme preview: <span className="ml-1 font-semibold capitalize text-foreground">{currentTheme}</span>
+      </Badge>
+      <Button className="min-h-10 bg-primary px-4 text-primary-foreground shadow-lg shadow-primary/25 ring-1 ring-primary/30 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 focus-visible:ring-primary/50 disabled:hover:translate-y-0 disabled:shadow-none" onClick={handleSaveBranding} disabled={!canSaveBranding}>
+        <Check className="mr-2 h-4 w-4" />
+        Save brand changes
+      </Button>
+    </>
+  );
+
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -950,16 +974,9 @@ export default function WhiteLabel() {
       <PageHero
         eyebrow="BRAND STUDIO"
         title="Branding"
-        subtitle="Control logos, colours, browser identity, email signature, and theme defaults across the dashboard."
+        subtitle="Manage logos, colours, browser identity, email signature, and dashboard theme defaults."
         imageVariant="branding"
-        actions={(
-          <Badge variant="outline" className="min-h-10 max-w-full gap-2 self-start rounded-full border-primary/30 bg-primary/10 px-4 py-2 text-primary shadow-sm shadow-primary/10 ring-1 ring-primary/10 sm:self-auto">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-              <Palette className="h-3.5 w-3.5" />
-            </span>
-            <span className="truncate">Global Brand System</span>
-          </Badge>
-        )}
+        actions={brandingDraftActions}
       />
 
       <AlertDialog open={showLeavePrompt} onOpenChange={(open) => {
@@ -973,7 +990,7 @@ export default function WhiteLabel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Discard unsaved brand changes?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your draft differs from the saved white-label settings. Leave now to discard the current draft, or stay and keep editing.
+              Your draft differs from the saved brand settings. Leave now to discard the current draft, or stay and keep editing.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1030,7 +1047,7 @@ export default function WhiteLabel() {
         </DialogContent>
       </Dialog>
 
-      <Card className="dashboard-panel overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card to-muted/20 shadow-xl shadow-primary/5">
+      <Card className="dashboard-theme-section overflow-hidden border-primary/20 bg-gradient-to-br from-card via-card to-muted/20 shadow-xl shadow-primary/5">
         <CardContent className="relative flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary/5 via-primary/35 to-primary/5" />
           <div className="min-w-0 space-y-2">
@@ -1045,7 +1062,7 @@ export default function WhiteLabel() {
               {hasCriticalChecks && <Badge variant="outline" className="rounded-full border-destructive/40 bg-destructive/10 px-3 py-1 text-destructive shadow-sm shadow-destructive/10">Critical issues</Badge>}
               {hasInvalidAssets && <Badge variant="outline" className="rounded-full border-warning/40 bg-warning/10 px-3 py-1 text-warning shadow-sm shadow-warning/10">Asset validation required</Badge>}
             </div>
-            <p className="max-w-2xl break-words text-sm text-muted-foreground">All branding inputs now flow through a single brand resolver before they are committed globally.</p>
+            <p className="max-w-2xl break-words text-sm text-muted-foreground">Review the draft control centre before publishing. Logos, colours, browser identity, email signature, and theme defaults continue to flow through the existing brand resolver.</p>
             {lastDraftSavedAt ? (
               <p className="mt-1 w-fit max-w-full rounded-full border border-success/25 bg-success/5 px-3 py-1 text-xs text-success shadow-sm shadow-success/10">Draft saved locally at {new Date(lastDraftSavedAt).toLocaleString()}.</p>
             ) : null}
@@ -1124,8 +1141,8 @@ export default function WhiteLabel() {
               <Monitor className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg">Company Name</CardTitle>
-              <CardDescription className="break-words">This will appear in the browser tab and sidebar</CardDescription>
+              <CardTitle className="text-lg">Brand name</CardTitle>
+              <CardDescription className="break-words">This appears in the browser tab and dashboard shell.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1154,8 +1171,8 @@ export default function WhiteLabel() {
               <Palette className="h-5 w-5" />
             </div>
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg">Color Theme</CardTitle>
-              <CardDescription className="break-words">Customize the primary and accent colors of the dashboard</CardDescription>
+              <CardTitle className="text-lg">Brand colours</CardTitle>
+              <CardDescription className="break-words">Choose primary actions and accent highlights without changing the approved dashboard surfaces.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1164,9 +1181,9 @@ export default function WhiteLabel() {
             {/* Primary Color */}
             <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
               <div className="min-w-0 space-y-1">
-                <Label className="text-sm font-medium">Primary Color</Label>
+                <Label className="text-sm font-medium">Primary colour</Label>
                 <p className="text-xs text-muted-foreground">
-                  Used for buttons, links, and key UI elements
+                  Used for primary buttons, focus rings, active navigation, and chart emphasis
                 </p>
               </div>
               <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
@@ -1232,9 +1249,9 @@ export default function WhiteLabel() {
             {/* Accent Color */}
             <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-background/60 p-4 shadow-inner">
               <div className="min-w-0 space-y-1">
-                <Label className="text-sm font-medium">Accent Color</Label>
+                <Label className="text-sm font-medium">Accent colour</Label>
                 <p className="text-xs text-muted-foreground">
-                  Used for highlights and secondary emphasis
+                  Used for secondary emphasis, preview accents, and supporting chart colours
                 </p>
               </div>
               <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
@@ -1308,8 +1325,8 @@ export default function WhiteLabel() {
               {currentTheme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </div>
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg">Dark Mode</CardTitle>
-              <CardDescription className="break-words">Choose the default theme for your dashboard</CardDescription>
+              <CardTitle className="text-lg">Theme default</CardTitle>
+              <CardDescription className="break-words">Choose the default dashboard theme while preserving the existing theme toggle behaviour.</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -1397,8 +1414,8 @@ export default function WhiteLabel() {
 
       <Card className="border-border/70 bg-card/95 shadow-lg shadow-background/5">
         <CardHeader>
-          <CardTitle>Live Multi-Surface Preview</CardTitle>
-          <CardDescription>Review all surfaces together, then isolate auth, sidebar, or browser-tab styling before saving.</CardDescription>
+          <CardTitle>Live brand preview</CardTitle>
+          <CardDescription>Review dashboard, portal, browser identity, and email signature surfaces before saving.</CardDescription>
         </CardHeader>
         <CardContent>
           <BrandPreviewShowcase settings={draftSettings} />
