@@ -209,7 +209,7 @@ export default function TemplateBuilderEdit() {
   const { update, create } = useReportTemplateMutations();
   const { data: versions = [] } = useReportTemplateVersions(id);
   const qc = useQueryClient();
-  const importReview = usePersistedImportReviewController({ onRepairApplied: () => { if (id) void qc.invalidateQueries({ queryKey: ['report-template', id] }); } });
+  const importReview = usePersistedImportReviewController({ onRepairApplied: () => { if (id) void qc.invalidateQueries({ queryKey: ['report-templates', id] }); } });
   const { data: linkedImport, isLoading: linkedImportLoading } = useQuery({
     queryKey: ['template-imports', 'linked-template', id],
     enabled: !!id,

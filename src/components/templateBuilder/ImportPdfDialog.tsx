@@ -819,6 +819,9 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                 </div>
                 <Badge variant="default" className="text-[10px]"><Zap className="h-3 w-3 mr-1" />Docling</Badge>
               </div>
+              <div className="mt-3 rounded-md border border-success/30 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                {visualQaSummary?.persisted ? 'Visual QA saved.' : 'Import complete. Review quality is ready.'}
+              </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <Stat label="Pages" value={result.pageCount} />
                 <Stat label="Text overlays" value={result.fidelityReport.textBlocks} />

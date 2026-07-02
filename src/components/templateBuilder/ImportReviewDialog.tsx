@@ -375,6 +375,12 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
           </div>
         )}
 
+        {onRunVisualQa && !visualQaAvailable && (
+          <div className="rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            Visual QA requires source raster artifacts. Open debug details for artifact status.
+          </div>
+        )}
+
         <DialogFooter>
           {onRecordDecision && draft && (
             <div className="flex flex-wrap gap-2 mr-auto">
