@@ -1,7 +1,26 @@
 # Style Consistency & Dynamic White-Label Theming — Implementation Plan
 
-**Status:** Proposed
+**Status:** In progress — Phases 0–2 landed
 **Owner:** Platform / UI
+
+> **Implementation status**
+> - ✅ **Phase 0 — Guardrails.** `scripts/audit-style-tokens.cjs` ratchet +
+>   baseline (`npm run audit:style`); ESLint `no-restricted-syntax` warns on raw
+>   palette classes / hex / `fontFamily`. Stylelint folded into the audit script
+>   (CSS hex scan) to avoid new tooling deps. Baseline: 10,877 palette classes,
+>   891 hex, 315 inline colour styles, 84 hardcoded fonts, 15 CSS hex.
+> - ✅ **Phase 1 — Split `index.css`.** Decomposed into `src/styles/*` partials +
+>   `@import` manifest. Verified **md5-identical** built CSS.
+> - ✅ **Phase 2 — Token set.** Added `--brand*`, typography (`--font-*`) and logo
+>   sizing tokens; registered `brand`/`info` colours + `fontFamily` in Tailwind;
+>   applied fonts in `base.css`; labelled semantic tokens as fixed. Build green.
+> - ⏭️ **Next — Phase 3** (widen the White-Label cascade: resolver + branding-page
+>   colour/font UI + DB fields).
+>
+> _Known pre-existing issue (not introduced here):_
+> `BrandProvider.persistence.test.tsx` asserts `--background: 42 52% 96%` but the
+> branch's committed default is `42 54% 96%`; stale assertion, unrelated to this
+> work.
 **Related:** [`WHITE_LABEL_TOKEN_CONTRACT.md`](./WHITE_LABEL_TOKEN_CONTRACT.md),
 [`dashboard-theme-foundation.md`](./dashboard-theme-foundation.md),
 [`luxury-light-theme-phase2-token-foundation.md`](./luxury-light-theme-phase2-token-foundation.md)
