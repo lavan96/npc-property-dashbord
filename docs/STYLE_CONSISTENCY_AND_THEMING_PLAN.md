@@ -1,26 +1,30 @@
 # Style Consistency & Dynamic White-Label Theming — Implementation Plan
 
-**Status:** In progress — Phases 0–2 landed
+**Status:** In progress — Phases 0–3 landed
 **Owner:** Platform / UI
 
-> **Implementation status**
+> **Implementation status** — this doc lives in the plan PR; all _code_ lands in
+> the implementation PR (`claude/style-system-implementation-kkmctj`).
 > - ✅ **Phase 0 — Guardrails.** `scripts/audit-style-tokens.cjs` ratchet +
 >   baseline (`npm run audit:style`); ESLint `no-restricted-syntax` warns on raw
 >   palette classes / hex / `fontFamily`. Stylelint folded into the audit script
->   (CSS hex scan) to avoid new tooling deps. Baseline: 10,877 palette classes,
->   891 hex, 315 inline colour styles, 84 hardcoded fonts, 15 CSS hex.
+>   (CSS hex scan) to avoid new tooling deps.
 > - ✅ **Phase 1 — Split `index.css`.** Decomposed into `src/styles/*` partials +
 >   `@import` manifest. Verified **md5-identical** built CSS.
 > - ✅ **Phase 2 — Token set.** Added `--brand*`, typography (`--font-*`) and logo
 >   sizing tokens; registered `brand`/`info` colours + `fontFamily` in Tailwind;
->   applied fonts in `base.css`; labelled semantic tokens as fixed. Build green.
-> - ⏭️ **Next — Phase 3** (widen the White-Label cascade: resolver + branding-page
->   colour/font UI + DB fields).
->
-> _Known pre-existing issue (not introduced here):_
-> `BrandProvider.persistence.test.tsx` asserts `--background: 42 52% 96%` but the
-> branch's committed default is `42 54% 96%`; stale assertion, unrelated to this
-> work.
+>   applied fonts in `base.css`; labelled semantic tokens as fixed.
+> - ✅ **Phase 3 — White-Label cascade.** `token-resolver` derives `--brand*` from
+>   a `brandColor` input in both themes and keeps semantic tokens (warning/
+>   success/error/info) fixed; `resolveBrandFontVars` cascades the chosen font to
+>   all text via `--font-sans/-heading/--base-font-size`. New `brandColor` +
+>   font/scale inputs persist in the `theme_config` JSONB (no DB migration). The
+>   branding page gains a **Brand accent** picker and a **Typography** card with a
+>   live light+dark preview. Verified: build green, `tsc` clean, branding tests
+>   17/17, ratchet holds. (Light-mode charts intentionally stay on the curated
+>   default palette per `token-resolver.test.ts`.)
+> - ⏭️ **Next — Phase 4** (migrate shared primitives: buttons/cards/tables/modals/
+>   forms/search/logo onto the tokens).
 **Related:** [`WHITE_LABEL_TOKEN_CONTRACT.md`](./WHITE_LABEL_TOKEN_CONTRACT.md),
 [`dashboard-theme-foundation.md`](./dashboard-theme-foundation.md),
 [`luxury-light-theme-phase2-token-foundation.md`](./luxury-light-theme-phase2-token-foundation.md)
