@@ -113,11 +113,13 @@ Deno.serve(async (req) => {
     // Multiple reports fetch by IDs
     if (reportIds && reportIds.length > 0) {
       const selectFields = listOptions.select || DEFAULT_SELECTS[table];
-      
+      const safeIds = reportIds.slice(0, 200);
+
       const { data: reports, error: reportsError } = await supabase
         .from(table)
         .select(selectFields)
-        .in('id', reportIds);
+        .in('id', safeIds);
+
 
       if (reportsError) {
         console.error(`[get-investment-reports] Error fetching ${table}:`, reportsError);
