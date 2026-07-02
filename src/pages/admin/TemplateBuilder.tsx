@@ -179,7 +179,7 @@ export default function TemplateBuilder() {
         .eq('status', 'completed')
         .not('meta->>cdir_artifact_path', 'is', null)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(10);
       if (error) throw error;
       return data ?? [];
     },
@@ -450,13 +450,13 @@ export default function TemplateBuilder() {
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           {canEditTemplates && (
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Button type="button" variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />
               Import PDF
             </Button>
           )}
           {canEditTemplates && (
-            <Button onClick={handleCreate} disabled={create.isPending}>
+            <Button type="button" onClick={handleCreate} disabled={create.isPending}>
               <Plus className="h-4 w-4 mr-1" />
               New template
             </Button>
@@ -517,8 +517,11 @@ export default function TemplateBuilder() {
             {importsLoading ? (
               <Skeleton className="h-10" />
             ) : recentImports.map((imp: any) => {
-              const summary = (imp.meta as any)?.cdir_fidelity_summary ?? {};
-              const savedDecision = readImportReviewDecision(imp.meta as any);
+              const meta = (imp.meta as any) ?? {};
+              const summary = meta.cdir_fidelity_summary ?? {};
+              const savedDecision = readImportReviewDecision(meta);
+              const hasVisualQa = Boolean(meta.visual_quality_artifact_path);
+              const hasRepair = Boolean(meta.visual_repair_artifact_path);
               return (
                 <div key={imp.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm">
                   <div className="min-w-0">
@@ -528,15 +531,20 @@ export default function TemplateBuilder() {
                       {savedDecision ? ` · ${savedDecision.decision.replace(/_/g, ' ')}` : ''}
                     </div>
                     {savedDecision?.note && <div className="text-[11px] text-muted-foreground line-clamp-1">Note: {savedDecision.note}</div>}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {hasVisualQa ? <Badge variant="default" className="text-[10px]">Visual QA saved</Badge> : <Badge variant="outline" className="text-[10px]">Needs QA</Badge>}
+                      {hasRepair && <Badge variant="secondary" className="text-[10px]">Repair audit saved</Badge>}
+                    </div>
                   </div>
                   <Button
+                    type="button"
                     size="sm"
                     variant="secondary"
                     onClick={() => openPersistedReview(imp.id)}
                     disabled={reviewLoadingId === imp.id}
                   >
                     {reviewLoadingId === imp.id ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <History className="h-3.5 w-3.5 mr-1" />}
-                    Review
+                    Review / Visual QA
                   </Button>
                 </div>
               );
@@ -662,7 +670,7 @@ export default function TemplateBuilder() {
               Create your first template to start designing report layouts visually.
             </CardDescription>
             {canEditTemplates && (
-              <Button onClick={handleCreate} className="mt-6" disabled={create.isPending}>
+              <Button type="button" onClick={handleCreate} className="mt-6" disabled={create.isPending}>
                 <Plus className="h-4 w-4 mr-1" /> Create first template
               </Button>
             )}

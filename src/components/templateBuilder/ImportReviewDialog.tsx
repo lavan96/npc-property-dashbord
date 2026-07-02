@@ -380,6 +380,7 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
             <div className="flex flex-wrap gap-2 mr-auto">
               {(['accept', 'accept_with_trace', 'manual_edit', 'retry'] as ImportReviewDecision[]).map((value) => (
                 <Button
+                  type="button"
                   key={value}
                   size="sm"
                   variant={value === draft.recommendedDecision ? 'default' : 'outline'}
@@ -393,36 +394,36 @@ export function ImportReviewDialog({ open, onOpenChange, draft, onOpenTemplate, 
             </div>
           )}
           {draft?.recommendedDecision === 'retry' && onRetry && (
-            <Button variant="secondary" onClick={onRetry}>
+            <Button type="button" variant="secondary" onClick={onRetry}>
               <RotateCw className="h-4 w-4 mr-1" /> Retry import
             </Button>
           )}
           {onRunVisualQa && (
-            <Button variant="secondary" onClick={onRunVisualQa} disabled={!visualQaAvailable || !!visualQaBusy}>
+            <Button type="button" variant="secondary" onClick={onRunVisualQa} disabled={!visualQaAvailable || !!visualQaBusy}>
               {visualQaBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Activity className="h-4 w-4 mr-1" />}
               Run visual QA
             </Button>
           )}
           {onRunRepair && (
-            <Button variant="secondary" onClick={onRunRepair} disabled={!repairAvailable || !!repairBusy}>
+            <Button type="button" variant="secondary" onClick={onRunRepair} disabled={!repairAvailable || !!repairBusy}>
               {repairBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wrench className="h-4 w-4 mr-1" />}
               Run repair
             </Button>
           )}
           {onApplyRepair && (
-            <Button variant="default" onClick={onApplyRepair} disabled={!applyRepairAvailable || !!applyRepairBusy}>
+            <Button type="button" variant="default" onClick={onApplyRepair} disabled={!applyRepairAvailable || !!applyRepairBusy}>
               {applyRepairBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
               Apply repair
             </Button>
           )}
           {onRunReconciliation && (
-            <Button variant="secondary" onClick={onRunReconciliation} disabled={!reconciliationAvailable || !!reconciliationBusy}>
+            <Button type="button" variant="secondary" onClick={onRunReconciliation} disabled={!reconciliationAvailable || !!reconciliationBusy}>
               {reconciliationBusy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wand2 className="h-4 w-4 mr-1" />}
               AI reconcile references
             </Button>
           )}
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
-          {onOpenTemplate && <Button onClick={onOpenTemplate}>Open template</Button>}
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+          {onOpenTemplate && <Button type="button" onClick={onOpenTemplate}>Open template</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
