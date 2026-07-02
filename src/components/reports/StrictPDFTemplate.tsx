@@ -1,5 +1,7 @@
 import { forwardRef } from 'react';
 import { useGlobalReportSettings } from '@/hooks/useGlobalReportSettings';
+import { useBrand } from '@/branding/BrandProvider';
+import { getBrandPdfPalette } from '@/branding/brandPalette';
 
 interface StrictPDFTemplateProps {
   suburb: string;
@@ -21,6 +23,8 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
   ({ suburb, state, profileContent, marketData, performanceContent, demographicsContent, infrastructureContent, investmentInsights, investmentScore }, ref) => {
     const { settings } = useGlobalReportSettings();
     const { contactDetails, disclaimer } = settings;
+    const { settings: brand } = useBrand();
+    const palette = getBrandPdfPalette(brand.brandColor);
 
     const cleanText = (text: string) => {
       return text
@@ -66,14 +70,14 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               fontSize: '18pt',
               fontWeight: 'bold',
               letterSpacing: '3pt',
-              color: '#C5A572',
+              color: palette.goldSoft,
               fontFamily: 'Arial, sans-serif'
             }}>
               {(contactDetails.company_name || 'Property Consulting').toUpperCase()}
             </div>
             <div style={{
               fontSize: '10pt',
-              color: '#C5A572',
+              color: palette.goldSoft,
               marginTop: '8pt',
               letterSpacing: '2pt',
               fontFamily: 'Arial, sans-serif'
@@ -99,7 +103,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             <div style={{
               fontSize: '42pt',
               fontWeight: 'bold',
-              color: '#C5A572',
+              color: palette.goldSoft,
               marginBottom: '25pt',
               fontFamily: 'Arial, sans-serif'
             }}>
@@ -136,7 +140,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
         }}>
           {/* Header with brand colors */}
           <div style={{ 
-            borderBottom: '2pt solid #C5A572', 
+            borderBottom: `2pt solid ${palette.goldSoft}`, 
             paddingBottom: '12pt',
             marginBottom: '15pt',
             display: 'flex',
@@ -177,7 +181,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
                 fontSize: '12pt', 
                 color: '#1E3A5F', 
                 marginBottom: '10pt', 
-                borderLeft: '3pt solid #C5A572', 
+                borderLeft: `3pt solid ${palette.goldSoft}`, 
                 paddingLeft: '8pt',
                 fontWeight: 'bold'
               }}>
@@ -212,7 +216,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
                   border: '1pt solid #E0E0E0'
                 }}>
                   <div style={{ fontSize: '7pt', color: '#666', marginBottom: '4pt', letterSpacing: '0.5pt' }}>RENTAL YIELD</div>
-                  <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#C5A572' }}>{marketData.rentalYield}</div>
+                  <div style={{ fontSize: '16pt', fontWeight: 'bold', color: palette.goldSoft }}>{marketData.rentalYield}</div>
                 </div>
               </div>
             </div>
@@ -241,7 +245,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           position: 'relative'
         }}>
           <div style={{ 
-            borderBottom: '2pt solid #C5A572', 
+            borderBottom: `2pt solid ${palette.goldSoft}`, 
             paddingBottom: '12pt',
             marginBottom: '15pt',
             display: 'flex',
@@ -289,7 +293,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           position: 'relative'
         }}>
           <div style={{ 
-            borderBottom: '2pt solid #C5A572', 
+            borderBottom: `2pt solid ${palette.goldSoft}`, 
             paddingBottom: '12pt',
             marginBottom: '15pt',
             display: 'flex',
@@ -337,7 +341,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           position: 'relative'
         }}>
           <div style={{ 
-            borderBottom: '2pt solid #C5A572', 
+            borderBottom: `2pt solid ${palette.goldSoft}`, 
             paddingBottom: '12pt',
             marginBottom: '15pt',
             display: 'flex',
@@ -385,7 +389,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
           position: 'relative'
         }}>
           <div style={{ 
-            borderBottom: '2pt solid #C5A572', 
+            borderBottom: `2pt solid ${palette.goldSoft}`, 
             paddingBottom: '12pt',
             marginBottom: '15pt',
             display: 'flex',
@@ -414,7 +418,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               color: 'white',
               textAlign: 'center'
             }}>
-              <div style={{ fontSize: '10pt', marginBottom: '8pt', color: '#C5A572', letterSpacing: '1pt' }}>
+              <div style={{ fontSize: '10pt', marginBottom: '8pt', color: palette.goldSoft, letterSpacing: '1pt' }}>
                 OVERALL INVESTMENT SCORE
               </div>
               <div style={{ fontSize: '36pt', fontWeight: 'bold', color: '#FFFFFF' }}>
@@ -457,14 +461,14 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
               fontSize: '28pt',
               fontWeight: 'bold',
               letterSpacing: '4pt',
-              color: '#C5A572',
+              color: palette.goldSoft,
               marginBottom: '12pt'
             }}>
               {contactDetails.company_name || 'Property Consulting'}
             </div>
             <div style={{
               fontSize: '13pt',
-              color: '#C5A572',
+              color: palette.goldSoft,
               letterSpacing: '2pt'
             }}>
               PROPERTY INTELLIGENCE & ADVISORY
@@ -476,7 +480,7 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             <h2 style={{ 
               fontSize: '32pt', 
               marginBottom: '30pt',
-              color: '#C5A572',
+              color: palette.goldSoft,
               fontWeight: 'bold'
             }}>
               Contact Us
@@ -485,17 +489,17 @@ export const StrictPDFTemplate = forwardRef<HTMLDivElement, StrictPDFTemplatePro
             <div style={{ fontSize: '14pt', lineHeight: '2.2', color: 'rgba(255,255,255,0.9)' }}>
               {contactDetails.email && (
                 <div style={{ marginBottom: '18pt' }}>
-                  <strong style={{ color: '#C5A572' }}>Email:</strong> {contactDetails.email}
+                  <strong style={{ color: palette.goldSoft }}>Email:</strong> {contactDetails.email}
                 </div>
               )}
               {contactDetails.phone && (
                 <div style={{ marginBottom: '18pt' }}>
-                  <strong style={{ color: '#C5A572' }}>Phone:</strong> {contactDetails.phone}
+                  <strong style={{ color: palette.goldSoft }}>Phone:</strong> {contactDetails.phone}
                 </div>
               )}
               {contactDetails.website && (
                 <div style={{ marginBottom: '18pt' }}>
-                  <strong style={{ color: '#C5A572' }}>Website:</strong> {contactDetails.website}
+                  <strong style={{ color: palette.goldSoft }}>Website:</strong> {contactDetails.website}
                 </div>
               )}
             </div>
