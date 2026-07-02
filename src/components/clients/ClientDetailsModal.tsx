@@ -966,7 +966,7 @@ The Team`
               <ClientAIInsights clientId={client.id} />
             </TabsContent>
           </div>
-        </ScrollArea>
+        </div>
       </Tabs>
       </>
   );
