@@ -44,7 +44,7 @@ import {
 } from '@/lib/reportTemplate/templateListControls';
 import { ImportPdfDialog } from '@/components/templateBuilder/ImportPdfDialog';
 import { ImportReviewDialog } from '@/components/templateBuilder/ImportReviewDialog';
-import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
+import { loadImportReviewDraft, readImportReviewDecision, saveImportReviewDecision, type ImportReviewDecisionRecord, type LoadImportReviewDraftResult, type PersistedImportRecord } from '@/lib/reportTemplate/ingestion/importArtifacts';
 import type { ImportReviewDecision, ImportReviewDraft } from '@/lib/reportTemplate/ingestion/review';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -52,6 +52,22 @@ import { toast } from 'sonner';
 import { invokeSecureFunction } from '@/lib/secureInvoke';
 import { ensureCatalogFontFaces } from '@/lib/reportTemplate/fontCatalog';
 import { applyTemplateImportPlan, reconcilePdfImportAsset, TemplateDesignAgentReconciliationClient, type ImportAsset, type RawImportManifest } from '@/lib/reportTemplate/ingestion/reconciliation';
+import {
+  applyRepairedTemplateToRecord,
+  buildVisualRepairAuditPayload,
+  loadVisualQuality,
+  loadVisualRepairAudit,
+  persistedVisualQualityToReviewSummary,
+  runImportReviewVisualQualityPipeline,
+  runVisualRepairOrchestrationPipeline,
+  saveVisualRepairAudit,
+  type PersistedVisualQuality,
+  type PersistedVisualRepairAudit,
+  type VisualQaReviewSummary,
+  type VisualRepairOrchestrationSummary,
+} from '@/lib/reportTemplate/ingestion/visualQuality';
+
+type ImportReviewDebugSnapshot = Record<string, string | number | boolean | null>;
 
 const REPORT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   listAdapters().map((adapter) => [adapter.reportType, adapter.label]),
