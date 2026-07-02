@@ -1,6 +1,6 @@
 # Style Consistency & Dynamic White-Label Theming — Implementation Plan
 
-**Status:** In progress — Phases 0–3 landed
+**Status:** In progress — Phases 0–4 landed
 **Owner:** Platform / UI
 
 > **Implementation status** — this doc lives in the plan PR; all _code_ lands in
@@ -23,8 +23,15 @@
 >   live light+dark preview. Verified: build green, `tsc` clean, branding tests
 >   17/17, ratchet holds. (Light-mode charts intentionally stay on the curated
 >   default palette per `token-resolver.test.ts`.)
-> - ⏭️ **Next — Phase 4** (migrate shared primitives: buttons/cards/tables/modals/
->   forms/search/logo onto the tokens).
+> - ✅ **Phase 4 — Shared primitives.** Added a `brand` variant to Button + Badge;
+>   new `src/styles/primitives.css` with token-driven `.brand-logo-*` classes
+>   (unified the three divergent sidebar/mobile/header logo sizings via `--logo-*`
+>   tokens) and a `.field-search` primitive; new `<SearchField>` component
+>   (migrated `AssignedTasksTab` onto it). The shadcn `ui/*` primitives were
+>   already token-based (audited — no palette leakage). Verified: build green,
+>   `tsc` clean, tests 17/17, ratchet holds.
+> - ⏭️ **Next — Phase 5** (staged feature migration of the ~10.9k palette classes /
+>   ~891 hex, triaging each as brand vs semantic).
 **Related:** [`WHITE_LABEL_TOKEN_CONTRACT.md`](./WHITE_LABEL_TOKEN_CONTRACT.md),
 [`dashboard-theme-foundation.md`](./dashboard-theme-foundation.md),
 [`luxury-light-theme-phase2-token-foundation.md`](./luxury-light-theme-phase2-token-foundation.md)
