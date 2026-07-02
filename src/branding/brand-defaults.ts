@@ -6,6 +6,10 @@ export const DEFAULT_PRIMARY = '43 74% 49%';
 export const LIGHT_DEFAULT_PRIMARY = '262 66% 46%';
 export const LIGHT_DEFAULT_ACCENT = '268 58% 54%';
 export const DEFAULT_ACCENT = '43 74% 49%';
+/** Category A — the brand "gold" accent. Named so components stop hardcoding
+ *  amber utilities or raw hex. Stays gold in both themes until wired to a
+ *  White-Label input. */
+export const DEFAULT_BRAND = '43 74% 49%';
 export const DEFAULT_WARNING = '43 74% 49%';
 export const DEFAULT_SUCCESS = '142 71% 45%';
 export const DEFAULT_DESTRUCTIVE = '0 84% 60%';
@@ -68,6 +72,9 @@ export const defaultLightTokenMap: BrandTokenMap = {
   '--muted-foreground': '33 14% 38%',
   '--accent': LIGHT_DEFAULT_ACCENT,
   '--accent-foreground': '0 0% 100%',
+  '--brand': DEFAULT_BRAND,
+  '--brand-foreground': '0 0% 10%',
+  '--brand-light': '43 80% 94%',
   '--success': DEFAULT_SUCCESS,
   '--success-foreground': '0 0% 100%',
   '--success-light': '142 69% 95%',
@@ -137,6 +144,9 @@ export const defaultDarkTokenMap: BrandTokenMap = {
   '--muted-foreground': '0 0% 55%',
   '--accent': DEFAULT_ACCENT,
   '--accent-foreground': '0 0% 5%',
+  '--brand': DEFAULT_BRAND,
+  '--brand-foreground': '0 0% 8%',
+  '--brand-light': '43 70% 14%',
   '--success': DEFAULT_SUCCESS,
   '--success-foreground': '0 0% 100%',
   '--success-light': '142 69% 12%',

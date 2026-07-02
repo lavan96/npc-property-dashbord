@@ -24,6 +24,12 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* Headings inherit the brand heading font token (defaults to the sans
+     token, so appearance is unchanged until a brand heading font is set). */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
   }
 }

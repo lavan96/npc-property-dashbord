@@ -32,6 +32,10 @@ Clean, modern admin dashboard with confidence-based color coding
     --accent: 268 58% 54%;
     --accent-foreground: 0 0% 100%;
 
+    /* ── Category B — semantic / functional colours ──────────────────
+       FIXED by design. These convey meaning (success/caution/error/info),
+       not brand, and must NOT follow the White-Label colour. Warning stays
+       amber, error stays red, success stays green, info stays blue. */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --success-light: 142 69% 95%;
@@ -90,6 +94,26 @@ Clean, modern admin dashboard with confidence-based color coding
     --topbar-background: 42 82% 99%;
     --sidebar-surface: 39 52% 94%;
     --mobile-nav-background: 42 82% 99%;
+
+    /* Category A — Brand accent (the "gold"). A named token so components
+       stop reaching for amber utilities or raw hex. Wired to a White-Label
+       input in Phase 3; stays gold in light mode by default (does NOT inherit
+       the purple primary). */
+    --brand: 43 74% 49%;
+    --brand-foreground: 0 0% 10%;
+    --brand-light: 43 80% 94%;
+
+    /* Typography — global font tokens. Populated from the White-Label page
+       (Phase 3); defaults mirror the previous system stack so appearance is
+       unchanged. No component should declare its own font-family. */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-heading: var(--font-sans);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+    /* Sizing — brand logo dimensions (consumed by <BrandLogo> in Phase 4). */
+    --logo-height-sidebar: 2.5rem;
+    --logo-height-mobile: 1.75rem;
+    --logo-max-width: 120px;
   }
 
   .dark {
@@ -117,6 +141,7 @@ Clean, modern admin dashboard with confidence-based color coding
     --accent: 43 74% 49%;
     --accent-foreground: 0 0% 5%;
 
+    /* ── Category B — semantic / functional colours (FIXED, never brand) ── */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --success-light: 142 69% 12%;
@@ -161,5 +186,20 @@ Clean, modern admin dashboard with confidence-based color coding
     --topbar-background: 0 0% 7%;
     --sidebar-surface: 0 0% 6%;
     --mobile-nav-background: 0 0% 7%;
+
+    /* Category A — Brand accent (gold). Wired to White-Label input in Phase 3. */
+    --brand: 43 74% 49%;
+    --brand-foreground: 0 0% 8%;
+    --brand-light: 43 70% 14%;
+
+    /* Typography — dark inherits the same font tokens (fonts are theme-agnostic). */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-heading: var(--font-sans);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+    /* Sizing — logo dimensions. */
+    --logo-height-sidebar: 2.5rem;
+    --logo-height-mobile: 1.75rem;
+    --logo-max-width: 120px;
   }
 }
