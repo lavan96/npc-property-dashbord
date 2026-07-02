@@ -142,7 +142,7 @@ export function MobileHeader({ theme, isDark, onCycleTheme }: MobileHeaderProps)
               slot="sidebar-icon"
               meta="Command centre"
               className="dashboard-brand-lockup"
-              logoClassName="h-7 w-7 object-contain"
+              logoClassName="brand-logo-compact"
               fallbackClassName="h-7 w-7"
               companyClassName="max-w-[132px] text-sm"
               metaClassName="tracking-[0.16em]"

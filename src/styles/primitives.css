@@ -1,0 +1,42 @@
+/* ────────────────────────────────────────────────────────────────
+   Shared, token-driven component primitives.
+
+   These give feature code a single, brand-aware building block instead
+   of ad-hoc utility stacks. Everything here consumes design tokens — no
+   raw palette colours, no hardcoded font-family, no magic pixel sizes.
+   ──────────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Brand logo — one source of truth for logo dimensions. Change the
+     --logo-* tokens (or the White-Label page) and every logo updates. */
+  .brand-logo {
+    width: auto;
+    object-fit: contain;
+  }
+  .brand-logo-sidebar {
+    height: var(--logo-height-sidebar);
+    max-width: var(--logo-max-width);
+  }
+  .brand-logo-mobile {
+    height: var(--logo-height-mobile);
+    max-width: var(--logo-max-width);
+  }
+  .brand-logo-compact {
+    height: var(--logo-height-compact);
+    width: var(--logo-height-compact);
+    object-fit: contain;
+  }
+
+  /* Search field — consistent search input across the app. Wrap an <input>
+     and a leading <svg> icon; the icon is positioned and muted, the input
+     is padded to clear it. Used by <SearchField>. */
+  .field-search {
+    @apply relative flex items-center;
+  }
+  .field-search > svg {
+    @apply pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground;
+  }
+  .field-search > input {
+    @apply pl-9;
+  }
+}

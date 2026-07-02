@@ -139,7 +139,7 @@ export function MobileSidebar({ onNavigate }: MobileSidebarProps) {
           slot="sidebar"
           meta="Internal dashboard"
           className="dashboard-brand-lockup"
-          logoClassName="h-8 max-w-[100px] object-contain"
+          logoClassName="brand-logo brand-logo-mobile"
           fallbackClassName="h-8 w-8"
           companyClassName="text-sm"
           metaClassName="tracking-[0.16em]"

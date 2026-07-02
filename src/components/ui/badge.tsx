@@ -20,6 +20,8 @@ const badgeVariants = cva(
           "border-transparent bg-warning/12 text-[hsl(var(--warning))] hover:bg-warning/18 dark:text-warning-foreground",
         info:
           "border-transparent bg-info/12 text-[hsl(var(--info))] hover:bg-info/18 dark:text-info-foreground",
+        brand:
+          "border-transparent bg-brand text-brand-foreground hover:bg-brand/85",
         outline: "text-foreground",
       },
     },

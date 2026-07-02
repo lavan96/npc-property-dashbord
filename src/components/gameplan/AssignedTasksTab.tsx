@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useGamePlanMutations } from '@/hooks/useGamePlans';
@@ -196,16 +197,14 @@ export function AssignedTasksTab() {
 
       {/* Filters */}
       <DashboardThemeFrame variant="toolbar" className="flex-col gap-2 border-primary/10 bg-card/55 p-2 dark:bg-slate-950/35 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search tasks..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search assigned tasks"
-            className="h-10 rounded-xl bg-background/70 pl-9 focus-visible:ring-primary/35"
-          />
-        </div>
+        <SearchField
+          wrapperClassName="flex-1"
+          placeholder="Search tasks..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search assigned tasks"
+          className="h-10 rounded-xl bg-background/70 focus-visible:ring-primary/35"
+        />
         <Select value={statusFilter} onValueChange={(v: StatusFilter) => setStatusFilter(v)}>
           <SelectTrigger className="h-10 w-full rounded-xl bg-background/70 focus:ring-primary/35 sm:w-[150px]" aria-label="Filter assigned tasks by status">
             <Filter className="mr-1.5 h-3.5 w-3.5" />

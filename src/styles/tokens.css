@@ -113,7 +113,8 @@ Clean, modern admin dashboard with confidence-based color coding
 
     /* Sizing — brand logo dimensions (consumed by <BrandLogo> in Phase 4). */
     --logo-height-sidebar: 2.5rem;
-    --logo-height-mobile: 1.75rem;
+    --logo-height-mobile: 2rem;
+    --logo-height-compact: 1.75rem;
     --logo-max-width: 120px;
   }
 
@@ -201,7 +202,8 @@ Clean, modern admin dashboard with confidence-based color coding
 
     /* Sizing — logo dimensions. */
     --logo-height-sidebar: 2.5rem;
-    --logo-height-mobile: 1.75rem;
+    --logo-height-mobile: 2rem;
+    --logo-height-compact: 1.75rem;
     --logo-max-width: 120px;
   }
 }
