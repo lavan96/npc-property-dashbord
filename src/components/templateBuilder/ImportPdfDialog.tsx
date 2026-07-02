@@ -840,6 +840,7 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
                       )}
                     </div>
                     <Button
+                      type="button"
                       size="sm"
                       variant="outline"
                       className="h-7 text-[11px] whitespace-nowrap"
@@ -911,16 +912,16 @@ export function ImportPdfDialog({ open, onOpenChange }: Props) {
         <DialogFooter className="mt-5 border-t border-border/60 pt-4 sm:gap-2">
           {!result ? (
             <>
-              <Button variant="ghost" onClick={() => handleClose(false)} disabled={busy} className="rounded-xl">Cancel</Button>
-              <Button onClick={() => start()} disabled={!file || busy} className="rounded-xl px-5 font-semibold shadow-lg shadow-primary/20">
+              <Button type="button" variant="ghost" onClick={() => handleClose(false)} disabled={busy} className="rounded-xl">Cancel</Button>
+              <Button type="button" onClick={() => start()} disabled={!file || busy} className="rounded-xl px-5 font-semibold shadow-lg shadow-primary/20">
                 {busy ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Importing…</> : 'Import'}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="ghost" onClick={() => handleClose(false)} className="rounded-xl">Close</Button>
-              {reviewDraft && <Button variant="secondary" onClick={openReview} className="rounded-xl">Review quality</Button>}
-              <Button onClick={() => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); }} className="rounded-xl px-5 font-semibold shadow-lg shadow-primary/20">
+              <Button type="button" variant="ghost" onClick={() => handleClose(false)} className="rounded-xl">Close</Button>
+              {reviewDraft && <Button type="button" variant="secondary" onClick={openReview} className="rounded-xl">Review quality</Button>}
+              <Button type="button" onClick={() => { onOpenChange(false); navigate(`/admin/template-builder/${result.template.id}`); }} className="rounded-xl px-5 font-semibold shadow-lg shadow-primary/20">
                 Open in editor
               </Button>
             </>
