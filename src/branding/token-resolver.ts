@@ -20,6 +20,38 @@ import {
 } from './color-utils';
 
 
+/**
+ * Brand colour ramp (brand-50 … brand-950), derived from the brand hue at a
+ * fixed lightness ladder (modelled on Tailwind's amber ramp). This lets
+ * art-directed "gold" components migrate off amber-* / yellow-* while KEEPING
+ * their shade structure (and contrast) — and the whole ramp now cascades from
+ * the White-Label brand colour. Theme-agnostic: same absolute colours in light
+ * and dark; the component picks the shade.
+ */
+const BRAND_RAMP_LIGHTNESS: Record<string, number> = {
+  '--brand-50': 96,
+  '--brand-100': 90,
+  '--brand-200': 82,
+  '--brand-300': 72,
+  '--brand-400': 62,
+  '--brand-500': 52,
+  '--brand-600': 45,
+  '--brand-700': 38,
+  '--brand-800': 32,
+  '--brand-900': 28,
+  '--brand-950': 17,
+};
+
+function createBrandRamp(brand: string): BrandTokenMap {
+  const { h, s } = parseHsl(brand);
+  const sat = Math.min(96, Math.max(55, s));
+  const ramp: Record<string, string> = {};
+  for (const [token, l] of Object.entries(BRAND_RAMP_LIGHTNESS)) {
+    ramp[token] = formatHsl({ h, s: sat, l });
+  }
+  return ramp as BrandTokenMap;
+}
+
 function createLightBrandWash(brandHsl: string) {
   const { h, s } = parseHsl(brandHsl);
 
@@ -55,6 +87,7 @@ function createBrandTokens(brand: string, isDark: boolean): BrandTokenMap {
     '--brand': brand,
     '--brand-foreground': getReadableForeground(brand),
     '--brand-light': isDark ? shiftLightness(brand, -35) : createLightBrandWash(brand),
+    ...createBrandRamp(brand),
   };
 }
 

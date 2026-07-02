@@ -102,6 +102,18 @@ Clean, modern admin dashboard with confidence-based color coding
     --brand: 43 74% 49%;
     --brand-foreground: 0 0% 10%;
     --brand-light: 43 80% 94%;
+    /* Brand ramp (shade-preserving gold). Cascades from the brand hue. */
+    --brand-50: 43 74% 96%;
+    --brand-100: 43 74% 90%;
+    --brand-200: 43 74% 82%;
+    --brand-300: 43 74% 72%;
+    --brand-400: 43 74% 62%;
+    --brand-500: 43 74% 52%;
+    --brand-600: 43 74% 45%;
+    --brand-700: 43 74% 38%;
+    --brand-800: 43 74% 32%;
+    --brand-900: 43 74% 28%;
+    --brand-950: 43 74% 17%;
 
     /* Typography — global font tokens. Populated from the White-Label page
        (Phase 3); defaults mirror the previous system stack so appearance is

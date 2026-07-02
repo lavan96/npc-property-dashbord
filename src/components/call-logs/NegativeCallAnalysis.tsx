@@ -80,31 +80,31 @@ interface NegativeCallAnalysisProps {
 }
 
 const ROOT_CAUSE_LABELS: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  pricing_objection: { label: 'Pricing Objection', icon: TrendingDown, color: 'text-amber-500' },
-  service_complaint: { label: 'Service Complaint', icon: AlertCircle, color: 'text-red-500' },
-  agent_confusion: { label: 'Agent Confusion', icon: Users, color: 'text-orange-500' },
-  long_hold_time: { label: 'Long Hold Time', icon: Clock, color: 'text-yellow-500' },
-  unresolved_query: { label: 'Unresolved Query', icon: MessageSquare, color: 'text-purple-500' },
-  technical_issue: { label: 'Technical Issue', icon: Zap, color: 'text-blue-500' },
-  miscommunication: { label: 'Miscommunication', icon: Phone, color: 'text-pink-500' },
-  customer_frustration: { label: 'Customer Frustration', icon: AlertTriangle, color: 'text-red-600' },
-  wrong_transfer: { label: 'Wrong Transfer', icon: ArrowUpRight, color: 'text-indigo-500' },
-  information_gap: { label: 'Information Gap', icon: FileText, color: 'text-cyan-500' },
+  pricing_objection: { label: 'Pricing Objection', icon: TrendingDown, color: 'text-brand-500' },
+  service_complaint: { label: 'Service Complaint', icon: AlertCircle, color: 'text-destructive-foreground0' },
+  agent_confusion: { label: 'Agent Confusion', icon: Users, color: 'text-warning-foreground0' },
+  long_hold_time: { label: 'Long Hold Time', icon: Clock, color: 'text-brand-500' },
+  unresolved_query: { label: 'Unresolved Query', icon: MessageSquare, color: 'text-accent-foreground0' },
+  technical_issue: { label: 'Technical Issue', icon: Zap, color: 'text-info-foreground0' },
+  miscommunication: { label: 'Miscommunication', icon: Phone, color: 'text-accent-foreground0' },
+  customer_frustration: { label: 'Customer Frustration', icon: AlertTriangle, color: 'text-destructive' },
+  wrong_transfer: { label: 'Wrong Transfer', icon: ArrowUpRight, color: 'text-accent-foreground0' },
+  information_gap: { label: 'Information Gap', icon: FileText, color: 'text-info-foreground0' },
 };
 
 const RESOLUTION_STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-  needs_review: { label: 'Needs Review', color: 'text-amber-400', bgColor: 'bg-amber-500/20' },
-  reviewed: { label: 'Reviewed', color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
-  resolved: { label: 'Resolved', color: 'text-emerald-400', bgColor: 'bg-emerald-500/20' },
-  escalated: { label: 'Escalated', color: 'text-red-400', bgColor: 'bg-red-500/20' },
+  needs_review: { label: 'Needs Review', color: 'text-brand-400', bgColor: 'bg-brand-500/20' },
+  reviewed: { label: 'Reviewed', color: 'text-info', bgColor: 'bg-info/20' },
+  resolved: { label: 'Resolved', color: 'text-success', bgColor: 'bg-success/20' },
+  escalated: { label: 'Escalated', color: 'text-destructive', bgColor: 'bg-destructive/20' },
 };
 
 const getSeverityColor = (severity: number | null) => {
-  if (!severity) return 'border-zinc-500/30 bg-zinc-500/15 text-muted-foreground dark:text-zinc-300';
-  if (severity <= 2) return 'border-amber-300/30 bg-amber-500/15 text-amber-300';
-  if (severity <= 3) return 'border-orange-300/30 bg-orange-500/15 text-orange-300';
-  if (severity <= 4) return 'border-red-400/35 bg-red-500/15 text-red-300';
-  return 'border-red-400/45 bg-red-600/20 text-red-200';
+  if (!severity) return 'border-border/30 bg-muted0/15 text-muted-foreground dark:text-zinc-300';
+  if (severity <= 2) return 'border-brand-300/30 bg-brand-500/15 text-brand-300';
+  if (severity <= 3) return 'border-warning/30 bg-warning/15 text-warning';
+  if (severity <= 4) return 'border-destructive/35 bg-destructive/15 text-destructive';
+  return 'border-destructive/45 bg-destructive/20 text-destructive';
 };
 
 const getSeverityLabel = (severity: number | null) => {
@@ -119,11 +119,11 @@ const getSeverityLabel = (severity: number | null) => {
 const issuePanel =
   'relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br from-card/95 dark:from-zinc-950/95 via-card/80 dark:via-zinc-900/80 to-background/90 dark:to-black/90 shadow-2xl shadow-sm dark:shadow-black/30';
 const issueStatCard =
-  'group relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/35 hover:shadow-amber-500/10';
+  'group relative overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-br shadow-lg shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-200/40 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/35 hover:shadow-brand-500/10';
 const issueControl =
-  'rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-amber-300/35 hover:bg-amber-300/10 focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-black';
+  'rounded-2xl border-border dark:border-white/10 bg-background/45 dark:bg-black/45 text-foreground dark:text-zinc-100 shadow-inner shadow-sm dark:shadow-black/25 transition-all hover:border-brand-300/35 hover:bg-brand-300/10 focus:ring-2 focus:ring-brand-300/70 focus:ring-offset-2 focus:ring-offset-black';
 const issueRow =
-  'group relative cursor-pointer overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card/90 dark:from-zinc-950/90 via-card/75 dark:via-zinc-900/75 to-background/85 dark:to-black/85 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-amber-300/0 before:to-transparent hover:-translate-y-0.5 hover:border-amber-300/40 hover:bg-amber-400/5 hover:shadow-xl hover:shadow-amber-500/10 hover:before:via-amber-300/90';
+  'group relative cursor-pointer overflow-hidden rounded-3xl border border-border dark:border-white/10 bg-gradient-to-r from-card/90 dark:from-zinc-950/90 via-card/75 dark:via-zinc-900/75 to-background/85 dark:to-black/85 p-4 shadow-sm shadow-sm dark:shadow-black/25 transition-all duration-300 before:pointer-events-none before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-gradient-to-b before:from-transparent before:via-brand-300/0 before:to-transparent hover:-translate-y-0.5 hover:border-brand-300/40 hover:bg-brand-400/5 hover:shadow-xl hover:shadow-brand-500/10 hover:before:via-brand-300/90';
 
 export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisProps) => {
   const { toast } = useToast();
@@ -243,22 +243,22 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
   return (
     <div className="space-y-6">
       <Card className={issuePanel}>
-        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/60 to-transparent" />
-        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-red-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-destructive/10 blur-3xl" />
         <CardHeader className="relative border-b border-border dark:border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.14),transparent_34%),linear-gradient(90deg,rgba(24,24,27,0.92),rgba(0,0,0,0.72),rgba(127,29,29,0.16))]">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-brand-300/20 bg-brand-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-100">
                 <AlertTriangle className="h-3 w-3" />
                 Exception Management
               </div>
               <CardTitle className="flex items-center gap-3 text-2xl text-foreground dark:text-zinc-50">
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-red-300/25 bg-red-500/10 text-red-200 shadow-inner shadow-red-950/40">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive shadow-inner shadow-destructive/40">
                   <AlertCircle className="h-5 w-5" />
                 </span>
                 Call Quality Issues
               </CardTitle>
-              <CardDescription className="mt-2 text-muted-foreground dark:text-zinc-400">
+              <CardDescription className="mt-2 text-muted-foreground dark:text-muted-foreground">
                 Prioritize negative or mixed-sentiment calls, recovery queues, root causes, and coaching signals.
               </CardDescription>
             </div>
@@ -275,56 +275,56 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
         <Card className={cn(issueStatCard, 'from-card/95 dark:from-zinc-900/95 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="rounded-xl border border-zinc-400/20 bg-zinc-400/10 p-2">
+              <div className="rounded-xl border border-border/20 bg-zinc-400/10 p-2">
                 <AlertTriangle className="h-4 w-4 text-muted-foreground dark:text-zinc-300" />
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-400">Total Issues</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Total Issues</span>
             </div>
             <p className="text-2xl font-bold text-foreground dark:text-zinc-50">{stats.total}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-amber-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95')}>
+        <Card className={cn(issueStatCard, 'from-brand-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="rounded-xl border border-amber-300/25 bg-amber-500/10 p-2">
-                <Clock className="h-4 w-4 text-amber-300" />
+              <div className="rounded-xl border border-brand-300/25 bg-brand-500/10 p-2">
+                <Clock className="h-4 w-4 text-brand-300" />
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-400">Needs Review</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Needs Review</span>
             </div>
-            <p className="text-2xl font-bold text-amber-300">{stats.needsReview}</p>
+            <p className="text-2xl font-bold text-brand-300">{stats.needsReview}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-red-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-red-300/40 hover:shadow-red-500/10')}>
+        <Card className={cn(issueStatCard, 'from-destructive/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-destructive/40 hover:shadow-destructive/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-2">
-                <ArrowUpRight className="h-4 w-4 text-red-300" />
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-2">
+                <ArrowUpRight className="h-4 w-4 text-destructive" />
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-400">Escalated</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Escalated</span>
             </div>
-            <p className="text-2xl font-bold text-red-300">{stats.escalated}</p>
+            <p className="text-2xl font-bold text-destructive">{stats.escalated}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-emerald-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-emerald-300/40 hover:shadow-emerald-500/10')}>
+        <Card className={cn(issueStatCard, 'from-success/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-success/40 hover:shadow-success/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 p-2">
-                <CheckCircle className="h-4 w-4 text-emerald-300" />
+              <div className="rounded-xl border border-success/25 bg-success/10 p-2">
+                <CheckCircle className="h-4 w-4 text-success" />
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-400">Resolved</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">Resolved</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-300">{stats.resolved}</p>
+            <p className="text-2xl font-bold text-success">{stats.resolved}</p>
           </CardContent>
         </Card>
-        <Card className={cn(issueStatCard, 'from-purple-500/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-purple-300/40 hover:shadow-purple-500/10')}>
+        <Card className={cn(issueStatCard, 'from-accent/15 via-card/85 dark:via-zinc-950/85 to-background/95 dark:to-black/95 hover:border-accent/40 hover:shadow-accent/10')}>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center gap-2">
-              <div className="rounded-xl border border-purple-300/25 bg-purple-500/10 p-2">
-                <Target className="h-4 w-4 text-purple-300" />
+              <div className="rounded-xl border border-accent/25 bg-accent/10 p-2">
+                <Target className="h-4 w-4 text-accent" />
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-zinc-400">High Priority</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground dark:text-muted-foreground">High Priority</span>
             </div>
-            <p className="text-2xl font-bold text-purple-300">{stats.highPriority}</p>
+            <p className="text-2xl font-bold text-accent">{stats.highPriority}</p>
           </CardContent>
         </Card>
       </div>
@@ -332,15 +332,15 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
       <Tabs defaultValue="issues" className="w-full">
         <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)] [scrollbar-width:thin] md:mx-0 md:px-0">
           <TabsList className="inline-flex h-auto w-auto min-w-max gap-1.5 rounded-[1.35rem] border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-1.5 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl">
-            <TabsTrigger value="issues" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-50 md:text-sm">
+            <TabsTrigger value="issues" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">All</span> Issues
             </TabsTrigger>
-            <TabsTrigger value="critical-moments" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-50 md:text-sm">
+            <TabsTrigger value="critical-moments" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <Zap className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Critical</span> Moments
             </TabsTrigger>
-            <TabsTrigger value="recovery" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-50 md:text-sm">
+            <TabsTrigger value="recovery" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <PhoneCall className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Recovery
               {recoveryQueue.length > 0 && (
@@ -349,19 +349,19 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="agents" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-50 md:text-sm">
+            <TabsTrigger value="agents" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Agent</span> Flags
             </TabsTrigger>
-            <TabsTrigger value="trends" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-50 md:text-sm">
+            <TabsTrigger value="trends" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Trend</span> Alerts
             </TabsTrigger>
-            <TabsTrigger value="coaching" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-50 md:text-sm">
+            <TabsTrigger value="coaching" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <Lightbulb className="w-3.5 h-3.5 md:w-4 md:h-4" />
               Coaching
             </TabsTrigger>
-            <TabsTrigger value="breakdown" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-zinc-400 transition-all hover:bg-amber-300/10 hover:text-amber-100 data-[state=active]:bg-amber-400/20 data-[state=active]:text-amber-50 md:text-sm">
+            <TabsTrigger value="breakdown" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <Target className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">Root Cause</span> Breakdown
             </TabsTrigger>
@@ -416,7 +416,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="rounded-full text-muted-foreground dark:text-zinc-300 hover:bg-amber-300/10 hover:text-amber-100"
+                    className="rounded-full text-muted-foreground dark:text-zinc-300 hover:bg-brand-300/10 hover:text-brand-100"
                     onClick={() => {
                       setFilterStatus('all');
                       setFilterRootCause('all');
@@ -436,12 +436,12 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
           {/* Call List */}
           <Card className={issuePanel}>
-            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-red-500/10 via-transparent to-amber-500/10 pb-4">
+            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-destructive/10 via-transparent to-brand-500/10 pb-4">
               <CardTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
-                <AlertCircle className="w-5 h-5 text-amber-300" />
+                <AlertCircle className="w-5 h-5 text-brand-300" />
                 Negative Sentiment Calls
               </CardTitle>
-              <CardDescription className="text-muted-foreground dark:text-zinc-400">
+              <CardDescription className="text-muted-foreground dark:text-muted-foreground">
                 Calls requiring attention based on AI analysis
               </CardDescription>
             </CardHeader>
@@ -479,10 +479,10 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                                 </Badge>
                               )}
                             </div>
-                            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground dark:text-zinc-400">
+                            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground">
                               <span className="rounded-full border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-2.5 py-1">{call.agent_name || 'Unknown Agent'}</span>
                               <span className="rounded-full border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-2.5 py-1">{call.started_at ? format(new Date(call.started_at), 'MMM d, h:mm a') : '-'}</span>
-                              <span className="rounded-full border border-zinc-400/15 bg-zinc-400/10 px-2.5 py-1 font-mono text-xs text-foreground dark:text-zinc-100">{formatDuration(call.duration_seconds)}</span>
+                              <span className="rounded-full border border-border/15 bg-zinc-400/10 px-2.5 py-1 font-mono text-xs text-foreground dark:text-zinc-100">{formatDuration(call.duration_seconds)}</span>
                             </div>
                             {call.root_cause_category && ROOT_CAUSE_LABELS[call.root_cause_category] && (
                               <div className="mb-2 flex items-center gap-1.5 rounded-full border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 px-2.5 py-1 w-fit">
@@ -499,7 +499,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                               </div>
                             )}
                             {call.summary && (
-                              <p className="line-clamp-2 rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-3 text-sm text-muted-foreground dark:text-zinc-400">{call.summary}</p>
+                              <p className="line-clamp-2 rounded-2xl border border-border dark:border-white/10 bg-background/20 dark:bg-black/20 p-3 text-sm text-muted-foreground dark:text-muted-foreground">{call.summary}</p>
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-2">
@@ -508,7 +508,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                                 {RESOLUTION_STATUS_CONFIG[call.resolution_status].label}
                               </Badge>
                             )}
-                            <ChevronRight className="w-5 h-5 text-muted-foreground dark:text-zinc-500 transition-transform group-hover:translate-x-1 group-hover:text-amber-200" />
+                            <ChevronRight className="w-5 h-5 text-muted-foreground dark:text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-brand-200" />
                           </div>
                         </div>
                       </div>
@@ -522,12 +522,12 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
         <TabsContent value="recovery" className="mt-4">
           <Card className={issuePanel}>
-            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-amber-500/10 via-transparent to-red-500/10">
+            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-brand-500/10 via-transparent to-destructive/10">
               <CardTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
-                <PhoneCall className="w-5 h-5 text-amber-300" />
+                <PhoneCall className="w-5 h-5 text-brand-300" />
                 Customer Recovery Queue
               </CardTitle>
-              <CardDescription className="text-muted-foreground dark:text-zinc-400">
+              <CardDescription className="text-muted-foreground dark:text-muted-foreground">
                 Prioritized list of customers needing follow-up based on urgency and issue severity
               </CardDescription>
             </CardHeader>
@@ -548,7 +548,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                       onClick={() => openCallDetail(call)}
                     >
                       <div className="relative z-10 flex items-center gap-4">
-                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-amber-300/25 bg-amber-300/10 font-bold text-amber-200 shadow-inner shadow-amber-950/30">
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-brand-300/25 bg-brand-300/10 font-bold text-brand-200 shadow-inner shadow-brand-950/30">
                           {index + 1}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -560,7 +560,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                               Priority {call.recovery_priority}
                             </Badge>
                           </div>
-                          <div className="text-sm text-muted-foreground dark:text-zinc-400">
+                          <div className="text-sm text-muted-foreground dark:text-muted-foreground">
                             {call.root_cause_category && ROOT_CAUSE_LABELS[call.root_cause_category]?.label}
                             {' • '}
                             {call.started_at ? format(new Date(call.started_at), 'MMM d, h:mm a') : '-'}
@@ -568,14 +568,14 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                         </div>
                         {call.ai_recommendations && call.ai_recommendations.length > 0 && (
                           <div className="hidden md:block max-w-xs">
-                            <div className="mb-1 flex items-center gap-1 text-xs text-amber-200">
+                            <div className="mb-1 flex items-center gap-1 text-xs text-brand-200">
                               <Lightbulb className="w-3 h-3" />
                               Recommendation
                             </div>
                             <p className="line-clamp-1 text-sm text-muted-foreground dark:text-zinc-300">{call.ai_recommendations[0]}</p>
                           </div>
                         )}
-                        <ChevronRight className="w-5 h-5 text-muted-foreground dark:text-zinc-500 transition-transform group-hover:translate-x-1 group-hover:text-amber-200" />
+                        <ChevronRight className="w-5 h-5 text-muted-foreground dark:text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-brand-200" />
                       </div>
                     </div>
                   ))}
@@ -607,12 +607,12 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
         <TabsContent value="breakdown" className="mt-4">
           <Card className={issuePanel}>
-            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-purple-500/10 via-transparent to-amber-500/10">
+            <CardHeader className="border-b border-border dark:border-white/10 bg-gradient-to-r from-accent/10 via-transparent to-brand-500/10">
               <CardTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
-                <TrendingDown className="w-5 h-5 text-purple-300" />
+                <TrendingDown className="w-5 h-5 text-accent" />
                 Root Cause Breakdown
               </CardTitle>
-              <CardDescription className="text-muted-foreground dark:text-zinc-400">
+              <CardDescription className="text-muted-foreground dark:text-muted-foreground">
                 Distribution of issues by root cause category
               </CardDescription>
             </CardHeader>
@@ -640,7 +640,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                               <Icon className={`w-4 h-4 ${config?.color || 'text-muted-foreground'}`} />
                               <span className="font-medium text-foreground dark:text-zinc-100">{config?.label || cause}</span>
                             </div>
-                            <span className="text-sm text-muted-foreground dark:text-zinc-400">
+                            <span className="text-sm text-muted-foreground dark:text-muted-foreground">
                               {count} ({percentage.toFixed(0)}%)
                             </span>
                           </div>
@@ -657,10 +657,10 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
       {/* Call Detail Dialog */}
       <Dialog open={!!selectedCall} onOpenChange={(open) => !open && setSelectedCall(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] border-border dark:border-white/10 bg-background/95 dark:bg-zinc-950/95 shadow-2xl shadow-amber-950/20 backdrop-blur-xl sm:w-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] border-border dark:border-white/10 bg-background/95 dark:bg-background/95 shadow-2xl shadow-brand-950/20 backdrop-blur-xl sm:w-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground dark:text-zinc-50">
-              <AlertTriangle className="w-5 h-5 text-amber-300" />
+              <AlertTriangle className="w-5 h-5 text-brand-300" />
               Call Analysis
             </DialogTitle>
           </DialogHeader>
@@ -670,21 +670,21 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               {/* Call Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
-                  <label className="text-xs text-muted-foreground dark:text-zinc-500">Customer</label>
+                  <label className="text-xs text-muted-foreground dark:text-muted-foreground">Customer</label>
                   <p className="font-medium text-foreground dark:text-zinc-100">{selectedCall.customer_name || selectedCall.phone_number || 'Unknown'}</p>
                 </div>
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
-                  <label className="text-xs text-muted-foreground dark:text-zinc-500">Agent</label>
+                  <label className="text-xs text-muted-foreground dark:text-muted-foreground">Agent</label>
                   <p className="font-medium text-foreground dark:text-zinc-100">{selectedCall.agent_name || 'Unknown'}</p>
                 </div>
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
-                  <label className="text-xs text-muted-foreground dark:text-zinc-500">Date & Time</label>
+                  <label className="text-xs text-muted-foreground dark:text-muted-foreground">Date & Time</label>
                   <p className="font-medium text-foreground dark:text-zinc-100">
                     {selectedCall.started_at ? format(new Date(selectedCall.started_at), 'MMM d, yyyy h:mm a') : '-'}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
-                  <label className="text-xs text-muted-foreground dark:text-zinc-500">Duration</label>
+                  <label className="text-xs text-muted-foreground dark:text-muted-foreground">Duration</label>
                   <p className="font-medium text-foreground dark:text-zinc-100">{formatDuration(selectedCall.duration_seconds)}</p>
                 </div>
               </div>
@@ -719,19 +719,19 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
               {/* Negative Moment */}
               {selectedCall.negative_sentiment_moment && (
-                <div className="rounded-3xl border border-red-400/25 bg-red-500/10 p-4 shadow-inner shadow-red-950/20">
+                <div className="rounded-3xl border border-destructive/25 bg-destructive/10 p-4 shadow-inner shadow-destructive/20">
                   <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="w-4 h-4 text-red-300" />
-                    <span className="font-medium text-red-200">Critical Moment</span>
+                    <AlertCircle className="w-4 h-4 text-destructive" />
+                    <span className="font-medium text-destructive">Critical Moment</span>
                   </div>
                   {selectedCall.negative_sentiment_moment.triggerPhrase && (
                     <p className="text-sm mb-2">
-                      <span className="text-muted-foreground dark:text-zinc-500">Trigger: </span>
+                      <span className="text-muted-foreground dark:text-muted-foreground">Trigger: </span>
                       <span className="italic">"{selectedCall.negative_sentiment_moment.triggerPhrase}"</span>
                     </p>
                   )}
                   {selectedCall.negative_sentiment_moment.transcriptSegment && (
-                    <p className="text-sm text-muted-foreground dark:text-zinc-400">
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                       "{selectedCall.negative_sentiment_moment.transcriptSegment}"
                     </p>
                   )}
@@ -742,13 +742,13 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               {selectedCall.ai_recommendations && selectedCall.ai_recommendations.length > 0 && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <Lightbulb className="w-4 h-4 text-amber-300" />
+                    <Lightbulb className="w-4 h-4 text-brand-300" />
                     <span className="font-medium text-foreground dark:text-zinc-100">AI Recommendations</span>
                   </div>
                   <div className="space-y-2">
                     {selectedCall.ai_recommendations.map((rec, idx) => (
                       <div key={idx} className="flex items-start gap-2 rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3">
-                        <span className="font-medium text-amber-200">{idx + 1}.</span>
+                        <span className="font-medium text-brand-200">{idx + 1}.</span>
                         <span className="text-sm text-muted-foreground dark:text-zinc-300">{rec}</span>
                       </div>
                     ))}
@@ -759,7 +759,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               {/* Summary */}
               {selectedCall.summary && (
                 <div>
-                  <label className="text-xs text-muted-foreground dark:text-zinc-500 mb-1 block">Summary</label>
+                  <label className="text-xs text-muted-foreground dark:text-muted-foreground mb-1 block">Summary</label>
                   <p className="rounded-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-3 text-sm text-muted-foreground dark:text-zinc-300">{selectedCall.summary}</p>
                 </div>
               )}
@@ -767,7 +767,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
               {/* Resolution Status */}
               <div className="space-y-4 border-t border-border dark:border-white/10 pt-4">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-300" />
+                  <CheckCircle className="w-4 h-4 text-success" />
                   <span className="font-medium text-foreground dark:text-zinc-100">Resolution Status</span>
                 </div>
                 <Select value={newStatus} onValueChange={setNewStatus}>
@@ -786,7 +786,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
                   rows={3}
-                  className="rounded-2xl border-border dark:border-white/10 bg-background/35 dark:bg-black/35 text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-zinc-500 focus-visible:ring-amber-300"
+                  className="rounded-2xl border-border dark:border-white/10 bg-background/35 dark:bg-black/35 text-foreground dark:text-zinc-100 placeholder:text-muted-foreground dark:placeholder:text-muted-foreground focus-visible:ring-brand-300"
                 />
               </div>
             </div>
@@ -796,7 +796,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
             <Button variant="outline" className={issueControl} onClick={() => setSelectedCall(null)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateResolution} disabled={saving || !newStatus} className="rounded-full bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 shadow-lg shadow-amber-500/20 hover:from-amber-200 hover:to-yellow-400">
+            <Button onClick={handleUpdateResolution} disabled={saving || !newStatus} className="rounded-full bg-gradient-to-r from-brand-300 to-brand-500 text-brand-950 shadow-lg shadow-brand-500/20 hover:from-brand-200 hover:to-brand-400">
               {saving ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />

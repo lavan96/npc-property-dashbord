@@ -31,40 +31,40 @@ type SourceFilter = 'all' | 'game_plan' | 'reminder';
 const STATUS_CONFIG: Record<string, { icon: typeof Clock; color: string; badgeClass: string; label: string }> = {
   pending: {
     icon: Clock,
-    color: 'text-amber-500',
-    badgeClass: 'border-amber-400/35 bg-amber-500/10 text-amber-700 dark:text-amber-200',
+    color: 'text-warning',
+    badgeClass: 'border-warning/35 bg-warning/10 text-warning',
     label: 'Pending',
   },
   in_progress: {
     icon: Clock,
-    color: 'text-blue-500',
-    badgeClass: 'border-blue-400/35 bg-blue-500/10 text-blue-700 dark:text-blue-200',
+    color: 'text-info',
+    badgeClass: 'border-info/35 bg-info/10 text-info',
     label: 'In Progress',
   },
   overdue: {
     icon: AlertTriangle,
-    color: 'text-red-500',
-    badgeClass: 'border-red-400/35 bg-red-500/10 text-red-700 dark:text-red-200',
+    color: 'text-destructive',
+    badgeClass: 'border-destructive/35 bg-destructive/10 text-destructive',
     label: 'Overdue',
   },
   completed: {
     icon: CheckCircle2,
-    color: 'text-emerald-500',
-    badgeClass: 'border-emerald-400/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200',
+    color: 'text-success',
+    badgeClass: 'border-success/35 bg-success/10 text-success',
     label: 'Completed',
   },
 };
 
 const SOURCE_CONFIG: Record<string, { icon: typeof Map; color: string; label: string }> = {
-  game_plan: { icon: Map, color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-200', label: 'Game Plan' },
-  reminder: { icon: Bell, color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-200', label: 'Reminder' },
+  game_plan: { icon: Map, color: 'bg-primary/10 text-primary border-primary/20', label: 'Game Plan' },
+  reminder: { icon: Bell, color: 'bg-warning/10 text-warning border-warning/20', label: 'Reminder' },
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  urgent: 'bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-200',
-  high: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-200',
-  medium: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-200',
-  low: 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:text-slate-300',
+  urgent: 'bg-destructive/10 text-destructive border-destructive/20',
+  high: 'bg-warning/10 text-warning border-warning/20',
+  medium: 'bg-info/10 text-info border-info/20',
+  low: 'bg-muted text-muted-foreground border-border',
 };
 
 function formatDueDate(date: string | null) {
@@ -154,7 +154,7 @@ export function AssignedTasksTab() {
     return (
       <div className="space-y-3" aria-busy="true" aria-label="Loading assigned tasks">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-slate-950/40 dark:shadow-black/20" aria-hidden="true">
+          <Card key={i} className="overflow-hidden border-primary/10 bg-card/70 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-background/40 dark:shadow-black/20" aria-hidden="true">
             <CardContent className="flex items-start gap-3 p-4">
               <div className="h-5 w-5 rounded-md bg-muted" />
               <div className="flex-1 space-y-3">
@@ -177,13 +177,13 @@ export function AssignedTasksTab() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
           { label: 'Total Assigned', value: counts.total, icon: ListChecks, color: 'text-foreground' },
-          { label: 'Pending', value: counts.pending, icon: Clock, color: 'text-amber-500' },
-          { label: 'Overdue', value: counts.overdue, icon: AlertTriangle, color: 'text-red-500' },
-          { label: 'Completed', value: counts.completed, icon: CheckCircle2, color: 'text-emerald-500' },
+          { label: 'Pending', value: counts.pending, icon: Clock, color: 'text-warning' },
+          { label: 'Overdue', value: counts.overdue, icon: AlertTriangle, color: 'text-destructive' },
+          { label: 'Completed', value: counts.completed, icon: CheckCircle2, color: 'text-success' },
         ].map((stat) => (
           <DashboardThemeFrame key={stat.label} variant="card" className="p-3 shadow-lg shadow-sm dark:shadow-black/5 dark:shadow-black/20">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/70 dark:border-white/10 dark:bg-slate-950/45">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background/70 dark:border-white/10 dark:bg-background/45">
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
               <div>
@@ -196,7 +196,7 @@ export function AssignedTasksTab() {
       </div>
 
       {/* Filters */}
-      <DashboardThemeFrame variant="toolbar" className="flex-col gap-2 border-primary/10 bg-card/55 p-2 dark:bg-slate-950/35 sm:flex-row">
+      <DashboardThemeFrame variant="toolbar" className="flex-col gap-2 border-primary/10 bg-card/55 p-2 dark:bg-background/35 sm:flex-row">
         <SearchField
           wrapperClassName="flex-1"
           placeholder="Search tasks..."
@@ -231,7 +231,7 @@ export function AssignedTasksTab() {
 
       {/* Task List */}
       {filtered.length === 0 ? (
-        <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-slate-950/35 dark:shadow-black/20" role="status">
+        <Card className="border-dashed border-primary/20 bg-card/60 shadow-lg shadow-sm dark:shadow-black/5 dark:bg-background/35 dark:shadow-black/20" role="status">
           <CardContent className="flex flex-col items-center justify-center space-y-3 py-12">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner shadow-primary/10">
               <ListChecks className="h-7 w-7 text-primary" />
@@ -261,13 +261,13 @@ export function AssignedTasksTab() {
                 key={task.id}
                 role="listitem"
                 className={cn(
-                  'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950/55 dark:shadow-black/20',
-                  task.status === 'overdue' && 'border-red-500/30 bg-red-500/5',
+                  'group overflow-hidden border-border/60 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--muted)/0.14))] shadow-md shadow-sm dark:shadow-black/5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/10 focus-within:border-primary/25 focus-within:shadow-xl focus-within:shadow-primary/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-background/55 dark:shadow-black/20',
+                  task.status === 'overdue' && 'border-destructive/30 bg-destructive/5',
                   task.status === 'completed' && 'opacity-70'
                 )}
               >
                 <CardContent className="relative flex items-start gap-3 p-3 sm:p-4">
-                  <div className={cn('absolute inset-y-3 left-0 w-1 rounded-r-full bg-primary/30 opacity-0 transition-opacity group-hover:opacity-100', task.status === 'overdue' && 'bg-red-500/60 opacity-100')} />
+                  <div className={cn('absolute inset-y-3 left-0 w-1 rounded-r-full bg-primary/30 opacity-0 transition-opacity group-hover:opacity-100', task.status === 'overdue' && 'bg-destructive/60 opacity-100')} />
 
                   {/* Completion toggle */}
                   <div className="pt-1">
@@ -323,7 +323,7 @@ export function AssignedTasksTab() {
                         <span
                           className={cn(
                             'text-[11px] text-muted-foreground',
-                            task.status === 'overdue' && 'font-semibold text-red-500'
+                            task.status === 'overdue' && 'font-semibold text-destructive'
                           )}
                         >
                           {dueDateLabel}
