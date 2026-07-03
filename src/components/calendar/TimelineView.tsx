@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { format, isSameDay, getHours, getMinutes, differenceInMinutes, parseISO } from 'date-fns';
 import { Clock } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
 import { DraggableEvent } from './DraggableEvent';
 import { DropZone } from './DropZone';
@@ -98,8 +97,8 @@ export function TimelineView({
     : null;
 
   return (
-    <ScrollArea className="h-[600px]">
-      <div className="relative min-w-[400px]">
+    <div className="overflow-x-auto overflow-y-visible">
+      <div className="relative min-w-[400px] pb-4">
         {/* Header */}
         <div className="sticky top-0 bg-background z-20 pb-2 border-b border-border mb-2">
           <div className="flex items-center gap-2 px-4 py-2">
@@ -208,6 +207,6 @@ export function TimelineView({
           </div>
         )}
       </div>
-    </ScrollArea>
+    </div>
   );
 }

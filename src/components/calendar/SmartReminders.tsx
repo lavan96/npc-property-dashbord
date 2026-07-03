@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -190,8 +189,7 @@ export function SmartReminders({ calendars, onSaveRules }: SmartRemindersProps) 
           </Card>
 
           {/* Rules list */}
-          <ScrollArea className="h-[280px]">
-            <div className="space-y-2 pr-2">
+          <div className="space-y-2">
               {rules.map(rule => (
                 <Card
                   key={rule.id}
@@ -289,8 +287,7 @@ export function SmartReminders({ calendars, onSaveRules }: SmartRemindersProps) 
                   </div>
                 </Card>
               ))}
-            </div>
-          </ScrollArea>
+          </div>
 
           {/* Save button */}
           {hasChanges && (

@@ -3,7 +3,6 @@ import { format, parseISO, areIntervalsOverlapping } from 'date-fns';
 import { AlertTriangle, Clock, Calendar, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 interface ConflictDetectionProps {
@@ -142,8 +141,7 @@ export function ConflictDetection({ events, onEventClick, selectedDate }: Confli
           <p className="text-xs text-muted-foreground mt-1">All appointments are properly scheduled</p>
         </Card>
       ) : (
-        <ScrollArea className="h-[350px]">
-          <div className="space-y-3 pr-2">
+        <div className="space-y-3">
             {conflicts.map((conflict, idx) => {
               const start1 = safeParseISO(conflict.event1.startTime);
               const start2 = safeParseISO(conflict.event2.startTime);
@@ -219,8 +217,7 @@ export function ConflictDetection({ events, onEventClick, selectedDate }: Confli
                 </Card>
               );
             })}
-          </div>
-        </ScrollArea>
+        </div>
       )}
 
       {/* Legend */}

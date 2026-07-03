@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -609,8 +608,7 @@ export function OutlookCalendarPanel({
 
           {showTeam && teamAvailability.length > 0 && (
             <Card className="p-3 mt-2 bg-muted/30">
-              <ScrollArea className="h-[180px]">
-                <div className="space-y-2">
+              <div className="space-y-2">
                   {teamAvailability.map(member => (
                     <div key={member.userId} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
@@ -647,8 +645,7 @@ export function OutlookCalendarPanel({
                       )}
                     </div>
                   ))}
-                </div>
-              </ScrollArea>
+              </div>
             </Card>
           )}
         </div>
@@ -666,8 +663,7 @@ export function OutlookCalendarPanel({
 
       {/* Event List */}
       {outlookVisible && microsoftEmail && (
-        <ScrollArea className="h-[250px]">
-          <div className="space-y-1.5 pr-2">
+        <div className="space-y-1.5">
             {dayEvents.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">
                 {isLoading ? 'Loading Outlook events...' : 'No Outlook events'}
@@ -725,8 +721,7 @@ export function OutlookCalendarPanel({
                 </div>
               ))
             )}
-          </div>
-        </ScrollArea>
+        </div>
       )}
     </div>
   );

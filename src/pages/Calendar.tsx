@@ -19,7 +19,7 @@ import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
@@ -103,7 +103,7 @@ const SIDEBAR_TABS: { id: SidebarTab; icon: React.ReactNode; label: string; shor
   { id: 'reminders', icon: <Bell className="h-4 w-4" />, label: 'Reminders', shortcut: '' },
 ];
 
-const CALENDAR_PAGE_SHELL = 'calendar-page-shell relative -m-4 space-y-6 bg-background p-4 font-sans text-foreground md:-m-6 md:p-6';
+const CALENDAR_PAGE_SHELL = 'relative -m-4 space-y-6 bg-background p-4 font-sans text-foreground md:-m-6 md:p-6';
 const PREMIUM_CARD = 'dashboard-theme-premium-card border-border/70 bg-card/90 text-card-foreground shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-background/80 dark:shadow-black/30';
 const PREMIUM_PANEL = 'dashboard-theme-section border-border/60 bg-card/80 text-card-foreground shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-200 ease-out dark:border-white/10 dark:bg-background/70 dark:shadow-black/30';
 const PREMIUM_BUTTON = 'border-border/70 bg-card/85 text-foreground transition-all duration-200 ease-out hover:border-primary/40 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_hsl(var(--primary)/0.12)] dark:border-white/10 dark:bg-background/55';
@@ -139,46 +139,6 @@ export default function Calendar() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const scrollbarClass = 'calendar-page-scrollbar-clean';
-    const styleId = 'calendar-page-scrollbar-clean-style';
-    const previousHtmlScrollbarWidth = document.documentElement.style.getPropertyValue('scrollbar-width');
-    const previousBodyScrollbarWidth = document.body.style.getPropertyValue('scrollbar-width');
-    const previousHtmlMsOverflowStyle = document.documentElement.style.getPropertyValue('-ms-overflow-style');
-    const previousBodyMsOverflowStyle = document.body.style.getPropertyValue('-ms-overflow-style');
-
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement | null;
-
-    if (!styleElement) {
-      styleElement = document.createElement('style');
-      styleElement.id = styleId;
-      styleElement.textContent = `
-        html.${scrollbarClass}::-webkit-scrollbar,
-        body.${scrollbarClass}::-webkit-scrollbar {
-          display: none;
-        }
-      `;
-      document.head.appendChild(styleElement);
-    }
-
-    document.documentElement.classList.add(scrollbarClass);
-    document.body.classList.add(scrollbarClass);
-    document.documentElement.style.setProperty('scrollbar-width', 'none');
-    document.body.style.setProperty('scrollbar-width', 'none');
-    document.documentElement.style.setProperty('-ms-overflow-style', 'none');
-    document.body.style.setProperty('-ms-overflow-style', 'none');
-
-    return () => {
-      document.documentElement.classList.remove(scrollbarClass);
-      document.body.classList.remove(scrollbarClass);
-      document.documentElement.style.setProperty('scrollbar-width', previousHtmlScrollbarWidth);
-      document.body.style.setProperty('scrollbar-width', previousBodyScrollbarWidth);
-      document.documentElement.style.setProperty('-ms-overflow-style', previousHtmlMsOverflowStyle);
-      document.body.style.setProperty('-ms-overflow-style', previousBodyMsOverflowStyle);
-      document.getElementById(styleId)?.remove();
-    };
-  }, []);
 
   // Keyboard navigation hook
   const { TAB_SHORTCUTS } = useCalendarKeyboard({

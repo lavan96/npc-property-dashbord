@@ -4,7 +4,6 @@ import { Clock, Plus, CheckCircle2 } from 'lucide-react';
 import { GHLEvent } from '@/hooks/useGHLCalendar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 interface AvailabilitySlotsProps {
@@ -149,8 +148,7 @@ export function AvailabilitySlots({
       </div>
 
       {/* Time Slots Grid */}
-      <ScrollArea className="h-[280px]">
-        <div className="space-y-1.5 pr-3">
+      <div className="space-y-1.5">
           {timeSlots.map((slot, index) => (
             <div
               key={index}
@@ -194,8 +192,7 @@ export function AvailabilitySlots({
               )}
             </div>
           ))}
-        </div>
-      </ScrollArea>
+      </div>
 
       {/* Working Hours Note */}
       <p className="text-xs text-muted-foreground text-center">
