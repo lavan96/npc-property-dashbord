@@ -20,14 +20,16 @@ export function DashboardLayout() {
   // Desktop sidebar shell only mounts at >= 1024px.
   if (breakpoint !== 'desktop') {
     return (
-      <div className="dashboard-shell flex min-h-screen flex-col">
+      <div className="dashboard-shell flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden">
         <MobileHeader
           theme={theme}
           isDark={isDark}
           onCycleTheme={cycleTheme}
         />
 
-        <main className="dashboard-main flex-1 overflow-visible">
+        <main
+          className="dashboard-main flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch]"
+        >
           <div className="dashboard-content">
             <ErrorBoundary>
               <DashboardPageShell>
