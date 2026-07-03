@@ -16,17 +16,6 @@
     background-clip: padding-box;
   }
 
-  html.calendar-page-scrollbar-clean,
-  body.calendar-page-scrollbar-clean {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  html.calendar-page-scrollbar-clean::-webkit-scrollbar,
-  body.calendar-page-scrollbar-clean::-webkit-scrollbar {
-    display: none;
-  }
-
   .dashboard-sidebar-nav {
     @apply flex min-h-0 flex-1 flex-col gap-2 pb-4;
   }
