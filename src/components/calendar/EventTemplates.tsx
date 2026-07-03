@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Dialog, 
   DialogContent, 
@@ -225,8 +224,7 @@ export function EventTemplates({
       </div>
 
       {/* Templates Grid */}
-      <ScrollArea className="h-[320px]">
-        <div className="space-y-4 pr-3">
+      <div className="space-y-4">
           {/* Calls */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
@@ -280,8 +278,7 @@ export function EventTemplates({
               ))}
             </div>
           </div>
-        </div>
-      </ScrollArea>
+      </div>
 
       {/* Confirmation Modal */}
       <Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
