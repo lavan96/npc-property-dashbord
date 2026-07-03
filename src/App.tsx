@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import Overview from "./pages/Overview";
 import Listings from "./pages/Listings";
 import Calendar from "./pages/Calendar";
+import MarketUpdates from "./pages/MarketUpdates";
 import Sources from "./pages/Sources";
 import Reports from "./pages/Reports";
 import Charts from "./pages/Charts";
@@ -291,6 +292,7 @@ const App = () => (
                 <Route index element={<Overview />} />
                 <Route path="dashboard" element={<Overview />} />
                 <Route path="listings" element={<ModuleGuard moduleKey="listings"><Listings /></ModuleGuard>} />
+                <Route path="market-updates" element={<MarketUpdates />} />
                 <Route
                   path="calendar"
                   element={

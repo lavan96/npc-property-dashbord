@@ -33,6 +33,7 @@ import {
   ClipboardList,
   FileSignature,
   Globe,
+  Newspaper,
   Send,
   Map as MapIcon,
   Cpu,
@@ -57,6 +58,7 @@ import { cn } from '@/lib/utils';
 
 const navigationItems = [
   { title: 'Overview', url: '/', icon: Home, moduleKey: 'overview' },
+  { title: 'Market Updates', url: '/market-updates', icon: Newspaper, moduleKey: '__always__' },
   { title: 'Listings', url: '/listings', icon: Building2, moduleKey: 'listings' },
   { title: 'Commercial / Industrial', url: '/commercial', icon: Building2, moduleKey: '__always__' },
   { title: 'Calendar', url: '/calendar', icon: Calendar, moduleKey: 'calendar' },
@@ -87,7 +89,7 @@ const navigationItems = [
 const navigationGroups = [
   {
     title: 'Main Dashboard',
-    itemTitles: ['Overview', 'Listings', 'Commercial / Industrial', 'Calendar'],
+    itemTitles: ['Overview', 'Market Updates', 'Listings', 'Commercial / Industrial', 'Calendar'],
   },
   {
     title: 'Reports & Analysis',
