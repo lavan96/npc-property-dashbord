@@ -2,18 +2,12 @@
 -- Templates remain reusable blueprints; instances are dated occurrences.
 ALTER TABLE public.checklist_instances
   ADD COLUMN IF NOT EXISTS due_date DATE,
-  ADD COLUMN IF NOT EXISTS recurrence_key TEXT,
-  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+  ADD COLUMN IF NOT EXISTS recurrence_key TEXT;
 
 -- Backfill existing instance dates so old checklist history is preserved and remains queryable.
 UPDATE public.checklist_instances
 SET due_date = created_at::date
 WHERE due_date IS NULL;
-
-UPDATE public.checklist_instances
-SET archived_at = COALESCE(archived_at, updated_at)
-WHERE status = 'archived'
-  AND archived_at IS NULL;
 
 -- Preserve every existing row even if historical duplicates already exist for the same template/date/owner.
 -- The first historical occurrence gets the canonical template:date:owner key used by recurrence checks;
