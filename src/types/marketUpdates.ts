@@ -1,74 +1,18 @@
 export type MarketSourceType = 'rss' | 'api' | 'manual' | 'partner_feed';
-export type MarketUpdateCategory = 'finance' | 'property_market' | 'construction' | 'policy_regulation' | 'rental_market' | 'economy' | 'planning_supply' | 'political';
-export type MarketGeography = 'Australia' | 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT';
+export type MarketUpdateCategory = 'finance' | 'property_market' | 'construction' | 'policy_regulation' | 'rental_market' | 'economy' | 'planning_supply' | 'political' | 'other';
+export type MarketGeography = 'Australia' | 'NSW' | 'VIC' | 'QLD' | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT' | 'Multi';
 export type MarketImpactLevel = 'low' | 'medium' | 'high';
-export type MarketAudienceTag = 'investors' | 'owner_occupiers' | 'first_home_buyers' | 'smsf' | 'developers' | 'buyers_agents' | 'mortgage_brokers';
-export type MarketUpdateStatus = 'draft' | 'published' | 'ignored';
+export type MarketAudienceTag = 'investors' | 'owner_occupiers' | 'first_home_buyers' | 'smsf' | 'developers' | 'buyers_agents' | 'mortgage_brokers' | 'property_managers' | 'builders' | 'finance_brokers';
+export type MarketUpdateStatus = 'candidate' | 'published' | 'ignored' | 'failed';
+export type MarketSourceReliabilityTier = 'official' | 'tier_1_media' | 'industry' | 'partner' | 'manual' | 'watchlist';
 
-export interface MarketSource {
-  id: string;
-  name: string;
-  source_type: MarketSourceType;
-  url: string;
-  category: MarketUpdateCategory;
-  geography: MarketGeography;
-  reliability_tier: 'primary' | 'verified' | 'partner' | 'watchlist';
-  enabled: boolean;
-  refresh_frequency_hours: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MarketUpdate {
-  id: string;
-  title: string;
-  slug: string;
-  source_id: string;
-  source_name: string;
-  source_url?: string;
-  source_published_at?: string;
-  ingested_at: string;
-  category: MarketUpdateCategory;
-  geography: MarketGeography[];
-  impact_level: MarketImpactLevel;
-  audience_tags: MarketAudienceTag[];
-  raw_excerpt?: string;
-  ai_summary?: string;
-  key_points: string[];
-  why_it_matters?: string;
-  property_implications?: string;
-  finance_implications?: string;
-  policy_implications?: string;
-  risk_flags: string[];
-  confidence_score?: number;
-  citation_urls: string[];
-  status: MarketUpdateStatus;
-  dedupe_hash?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MarketDigest24h {
-  id: string;
-  generated_at: string;
-  period_start: string;
-  period_end: string;
-  executive_summary: string;
-  top_update_ids: string[];
-  finance_lending_highlights: string[];
-  property_market_highlights: string[];
-  construction_supply_highlights: string[];
-  policy_regulation_highlights: string[];
-  political_economic_watchpoints: string[];
-  client_advisory_implications: string[];
-  recommended_watchlist_for_tomorrow: string[];
-  source_urls: string[];
-}
-
-export interface MarketQAMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  citations: string[];
-  created_at: string;
-}
+export interface MarketSource { id: string; name: string; description?: string | null; source_type: MarketSourceType; url: string; category: MarketUpdateCategory; geography: MarketGeography; reliability_tier: MarketSourceReliabilityTier; enabled: boolean; refresh_frequency_hours: number; last_fetched_at?: string | null; last_success_at?: string | null; last_error?: string | null; created_at: string; updated_at: string; }
+export interface MarketUpdate { id: string; source_id?: string | null; source_name: string; source_url: string; source_published_at?: string | null; ingested_at: string; title: string; slug?: string | null; category: MarketUpdateCategory; geography: MarketGeography[]; impact_level: MarketImpactLevel; audience_tags: MarketAudienceTag[]; raw_excerpt?: string | null; raw_content_hash?: string | null; ai_summary?: string | null; key_points: string[]; why_it_matters?: string | null; property_implications?: string | null; finance_implications?: string | null; policy_implications?: string | null; risk_flags: string[]; confidence_score?: number | null; citation_urls: string[]; relevance_score: number; status: MarketUpdateStatus; failure_reason?: string | null; dedupe_hash: string; created_at: string; updated_at: string; }
+export interface MarketDigest24h { id: string; generated_at: string; period_start: string; period_end: string; executive_summary: string; top_update_ids: string[]; finance_lending_highlights: string[]; property_market_highlights: string[]; construction_supply_highlights: string[]; policy_regulation_highlights: string[]; political_economic_watchpoints: string[]; buyer_implications?: string | null; investor_implications?: string | null; broker_adviser_implications?: string | null; client_advisory_implications: string[]; recommended_watchlist_for_tomorrow: string[]; source_urls: string[]; confidence_score?: number | null; status: 'published' | 'draft' | 'failed' | 'no_data'; }
+export interface MarketQAMessage { id: string; role: 'user' | 'assistant'; content: string; citations: string[]; source_update_ids: string[]; confidence_score?: number | null; limitations: string[]; created_at: string; }
+export interface MarketUpdateFilters { category?: MarketUpdateCategory | 'all'; geography?: MarketGeography | 'all'; impact?: MarketImpactLevel | 'all'; audience?: MarketAudienceTag | 'all'; search?: string; dateRange?: { from?: string; to?: string }; status?: MarketUpdateStatus; limit?: number; }
+export interface MarketIngestionSummary { ingested: number; published: number; candidates: number; ignored: number; failed: number; skippedDuplicates: number; sourceErrors: Array<{ sourceId: string; message: string }>; message?: string; }
+export interface NormalisedMarketSourceItem { source_id?: string | null; source_name: string; source_url: string; source_published_at?: string | null; title: string; excerpt?: string | null; content?: string | null; category?: MarketUpdateCategory; geography?: MarketGeography[]; audience_tags?: MarketAudienceTag[]; }
+export interface MarketSourceHealth { totalSources: number; enabledSources: number; failedSources: number; lastFetchedAt?: string | null; lastSuccessAt?: string | null; lastError?: string | null; }
+export interface MarketQASourceContext { update_id: string; title: string; summary: string; citations: string[]; source_url: string; }
+export interface MarketDigestGenerationResult { digest: MarketDigest24h | null; message: string; noData: boolean; }
