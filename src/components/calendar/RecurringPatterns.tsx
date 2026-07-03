@@ -3,7 +3,6 @@ import { format, getDay, getHours, differenceInDays, startOfWeek, isSameDay } fr
 import { Repeat, Calendar, Clock, TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
@@ -205,8 +204,7 @@ export function RecurringPatterns({ events, onPatternClick }: RecurringPatternsP
           </p>
         </Card>
       ) : (
-        <ScrollArea className="h-[380px]">
-          <div className="space-y-3 pr-2">
+        <div className="space-y-3">
             {patterns.map((pattern, idx) => (
               <Card
                 key={idx}
@@ -257,8 +255,7 @@ export function RecurringPatterns({ events, onPatternClick }: RecurringPatternsP
                 </div>
               </Card>
             ))}
-          </div>
-        </ScrollArea>
+        </div>
       )}
 
       {/* Pattern types legend */}
