@@ -21,6 +21,10 @@
    docs/STYLE_CONSISTENCY_AND_THEMING_PLAN.md.
    ──────────────────────────────────────────────────────────────── */
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/primitives.css";
