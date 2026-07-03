@@ -1069,7 +1069,32 @@ export function TokenBalanceBanner() {
     );
   }
 
-  if (isOverviewPage || isListingsPage) {
+  if (isOverviewPage) {
+    return (
+      <Alert className="relative overflow-hidden rounded-2xl border-[hsl(var(--brand-highlight,45_90%_56%)/0.42)] bg-[linear-gradient(135deg,hsl(var(--brand-highlight,45_90%_56%)/0.12),rgba(15,13,22,0.92))] px-4 py-3 shadow-[0_18px_44px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[hsl(var(--brand-highlight,45_90%_56%)/0.80)] to-transparent" />
+        <Sparkles className="h-4 w-4 text-[hsl(var(--brand-highlight,45_90%_56%))]" />
+        <AlertTitle className="text-sm font-semibold text-[#F5F2FA]">Token balance low</AlertTitle>
+        <AlertDescription className="flex flex-col gap-3 pt-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="max-w-3xl text-[#B4ADBF]">
+            <span className="font-semibold tabular-nums text-[#F5F2FA]">{balance.available.toLocaleString()} tokens remaining ({pct}% of allowance).</span>{' '}
+            Top up to avoid interrupted report generation.
+          </span>
+          <Button
+            aria-label="Top up token balance"
+            variant="outline"
+            size="sm"
+            onClick={() => openMissionControl(MISSION_CONTROL_TOPUP_URL)}
+            className="w-full shrink-0 rounded-full border-[hsl(var(--brand-highlight,45_90%_56%)/0.55)] bg-[hsl(var(--brand-highlight,45_90%_56%))] px-4 font-semibold text-[#0B0910] shadow-[0_10px_28px_hsl(var(--brand-highlight,45_90%_56%)/0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[hsl(var(--brand-highlight,45_90%_56%)/0.70)] hover:bg-[hsl(var(--brand-highlight,45_90%_56%)/0.92)] hover:text-[#0B0910] focus-visible:ring-[hsl(var(--brand-highlight,45_90%_56%))] active:translate-y-0 sm:w-auto"
+          >
+            Top up
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (isListingsPage) {
     return (
       <Alert className="relative overflow-hidden rounded-2xl border-brand-300/55 bg-gradient-to-r from-brand-50/85 via-card/90 to-card/85 px-4 py-3 shadow-[0_10px_30px_rgba(146,64,14,0.07)] backdrop-blur dark:border-brand-400/25 dark:from-brand-500/10 dark:via-background/80 dark:to-background/70">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/80 to-transparent" />
@@ -1093,7 +1118,6 @@ export function TokenBalanceBanner() {
       </Alert>
     );
   }
-
   if (isReportsPage) {
     return (
       <Alert className="relative overflow-hidden rounded-3xl border-brand-300/50 bg-gradient-to-r from-brand-50/85 via-card/95 to-card/90 px-4 py-3 shadow-lg shadow-brand-950/5 backdrop-blur dark:border-brand-400/25 dark:from-brand-500/10 dark:via-background/85 dark:to-background/70">
