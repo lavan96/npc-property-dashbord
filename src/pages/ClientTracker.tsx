@@ -962,59 +962,59 @@ export default function ClientTracker() {
       </DashboardThemeFrame>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-primary/75 hover:-translate-y-1 hover:border-primary/45 hover:shadow-2xl hover:shadow-primary/15">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-primary/10 blur-3xl transition-opacity group-hover:opacity-100" />
-          <CardContent className="relative p-5">
-            <div className="flex items-start justify-between gap-4">
+      <div className="client-tracker-kpi-row grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="client-tracker-kpi-card client-tracker-gold-interaction group relative min-h-[100px] overflow-hidden rounded-[1.15rem] border-primary/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.92),hsl(var(--background)/0.76))] shadow-lg shadow-sm dark:shadow-black/12 transition-all duration-200 before:absolute before:inset-y-4 before:left-0 before:w-0.5 before:rounded-r-full before:bg-primary/70 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/[0.035] hover:shadow-xl hover:shadow-primary/15">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-primary/10 blur-3xl opacity-70 transition-opacity duration-200 group-hover:opacity-100" />
+          <CardContent className="relative px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total Clients</p>
-                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-foreground md:text-5xl">{stats.total}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Clients</p>
+                <p className="mt-2 text-[clamp(2rem,2.4vw,2.625rem)] font-bold leading-none tracking-tight text-foreground">{stats.total}</p>
               </div>
-              <div className="rounded-2xl border border-primary/25 bg-primary/10 p-3 shadow-inner transition-all duration-300 group-hover:border-primary/45 group-hover:bg-primary/15">
-                <Users className="h-5 w-5 text-primary" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 shadow-inner transition-all duration-200 group-hover:border-primary/45 group-hover:bg-primary/15">
+                <Users className="h-4.5 w-4.5 text-primary" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-brand-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-brand-400/80 hover:-translate-y-1 hover:border-brand-400/45 hover:shadow-2xl hover:shadow-brand-500/15">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-brand-400/10 blur-3xl transition-opacity group-hover:opacity-100" />
-          <CardContent className="relative p-5">
-            <div className="flex items-start justify-between gap-4">
+        <Card className="client-tracker-kpi-card client-tracker-gold-interaction group relative min-h-[100px] overflow-hidden rounded-[1.15rem] border-brand-400/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.92),hsl(var(--background)/0.76))] shadow-lg shadow-sm dark:shadow-black/12 transition-all duration-200 before:absolute before:inset-y-4 before:left-0 before:w-0.5 before:rounded-r-full before:bg-brand-400/75 hover:-translate-y-0.5 hover:border-brand-400/40 hover:bg-brand-400/[0.035] hover:shadow-xl hover:shadow-brand-500/15">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-brand-400/10 blur-3xl opacity-70 transition-opacity duration-200 group-hover:opacity-100" />
+          <CardContent className="relative px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">With Follow-ups</p>
-                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-brand-100 md:text-5xl">{stats.withFollowUp}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">With Follow-ups</p>
+                <p className="mt-2 text-[clamp(2rem,2.4vw,2.625rem)] font-bold leading-none tracking-tight text-brand-100">{stats.withFollowUp}</p>
               </div>
-              <div className="rounded-2xl border border-brand-400/25 bg-brand-400/10 p-3 shadow-inner transition-all duration-300 group-hover:border-brand-400/45 group-hover:bg-brand-400/15">
-                <Clock className="h-5 w-5 text-brand-400" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-400/25 bg-brand-400/10 shadow-inner transition-all duration-200 group-hover:border-brand-400/45 group-hover:bg-brand-400/15">
+                <Clock className="h-4.5 w-4.5 text-brand-400" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-destructive/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-destructive/80 hover:-translate-y-1 hover:border-destructive/45 hover:shadow-2xl hover:shadow-destructive/15">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-destructive/10 blur-3xl transition-opacity group-hover:opacity-100" />
-          <CardContent className="relative p-5">
-            <div className="flex items-start justify-between gap-4">
+        <Card className="client-tracker-kpi-card client-tracker-gold-interaction group relative min-h-[100px] overflow-hidden rounded-[1.15rem] border-destructive/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.92),hsl(var(--background)/0.76))] shadow-lg shadow-sm dark:shadow-black/12 transition-all duration-200 before:absolute before:inset-y-4 before:left-0 before:w-0.5 before:rounded-r-full before:bg-destructive/75 hover:-translate-y-0.5 hover:border-destructive/40 hover:bg-destructive/[0.035] hover:shadow-xl hover:shadow-destructive/15">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-destructive/10 blur-3xl opacity-70 transition-opacity duration-200 group-hover:opacity-100" />
+          <CardContent className="relative px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Overdue</p>
-                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-destructive md:text-5xl">{stats.overdue}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Overdue</p>
+                <p className="mt-2 text-[clamp(2rem,2.4vw,2.625rem)] font-bold leading-none tracking-tight text-destructive">{stats.overdue}</p>
               </div>
-              <div className="rounded-2xl border border-destructive/25 bg-destructive/10 p-3 shadow-inner transition-all duration-300 group-hover:border-destructive/45 group-hover:bg-destructive/15">
-                <AlertCircle className="h-5 w-5 text-destructive" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-destructive/25 bg-destructive/10 shadow-inner transition-all duration-200 group-hover:border-destructive/45 group-hover:bg-destructive/15">
+                <AlertCircle className="h-4.5 w-4.5 text-destructive" />
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="client-tracker-gold-interaction group relative overflow-hidden rounded-2xl border-success/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.94),hsl(var(--background)/0.78))] shadow-xl shadow-sm dark:shadow-black/15 transition-all duration-300 before:absolute before:inset-y-4 before:left-0 before:w-1 before:rounded-r-full before:bg-success/80 hover:-translate-y-1 hover:border-success/45 hover:shadow-2xl hover:shadow-success/15">
-          <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-success/10 blur-3xl transition-opacity group-hover:opacity-100" />
-          <CardContent className="relative p-5">
-            <div className="flex items-start justify-between gap-4">
+        <Card className="client-tracker-kpi-card client-tracker-gold-interaction group relative min-h-[100px] overflow-hidden rounded-[1.15rem] border-success/20 bg-[linear-gradient(145deg,hsl(var(--card)/0.92),hsl(var(--background)/0.76))] shadow-lg shadow-sm dark:shadow-black/12 transition-all duration-200 before:absolute before:inset-y-4 before:left-0 before:w-0.5 before:rounded-r-full before:bg-success/75 hover:-translate-y-0.5 hover:border-success/40 hover:bg-success/[0.035] hover:shadow-xl hover:shadow-success/15">
+          <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-success/10 blur-3xl opacity-70 transition-opacity duration-200 group-hover:opacity-100" />
+          <CardContent className="relative px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">In Finance</p>
-                <p className="mt-3 text-4xl font-bold leading-none tracking-tight text-success md:text-5xl">{stats.financeStage}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">In Finance</p>
+                <p className="mt-2 text-[clamp(2rem,2.4vw,2.625rem)] font-bold leading-none tracking-tight text-success">{stats.financeStage}</p>
               </div>
-              <div className="rounded-2xl border border-success/25 bg-success/10 p-3 shadow-inner transition-all duration-300 group-hover:border-success/45 group-hover:bg-success/15">
-                <TrendingUp className="h-5 w-5 text-success" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-success/25 bg-success/10 shadow-inner transition-all duration-200 group-hover:border-success/45 group-hover:bg-success/15">
+                <TrendingUp className="h-4.5 w-4.5 text-success" />
               </div>
             </div>
           </CardContent>
