@@ -93,22 +93,37 @@ export default function Checklists() {
   };
 
   const completeChecklists = async (ids: string[], message: string) => {
-    await mutations.bulkUpdateInstances.mutateAsync({ ids, data: { status: 'completed', completed_at: new Date().toISOString() } });
-    setSelectedChecklistIds(new Set());
-    toast.success(message);
+    try {
+      await mutations.bulkUpdateInstances.mutateAsync({ ids, data: { status: 'completed', completed_at: new Date().toISOString(), updated_at: new Date().toISOString() } });
+      setSelectedChecklistIds(new Set());
+      toast.success(message);
+    } catch (error) {
+      console.error('Complete checklist error:', error);
+      toast.error('Could not complete checklist. Please try again.');
+    }
   };
 
   const archiveChecklists = async (ids: string[], message: string) => {
-    await mutations.bulkUpdateInstances.mutateAsync({ ids, data: { status: 'archived', archived_at: new Date().toISOString() } });
-    setSelectedChecklistIds(new Set());
-    toast.success(message);
+    try {
+      await mutations.bulkUpdateInstances.mutateAsync({ ids, data: { status: 'archived', updated_at: new Date().toISOString() } });
+      setSelectedChecklistIds(new Set());
+      toast.success(message);
+    } catch (error) {
+      console.error('Archive checklist error:', error);
+      toast.error('Could not archive checklist. Please try again.');
+    }
   };
 
   const deleteSelectedChecklists = async () => {
     const count = selectedVisibleIds.length;
-    await mutations.bulkDeleteInstances.mutateAsync(selectedVisibleIds);
-    setSelectedChecklistIds(new Set());
-    toast.success(`${count} ${count === 1 ? 'checklist' : 'checklists'} deleted.`);
+    try {
+      await mutations.bulkDeleteInstances.mutateAsync(selectedVisibleIds);
+      setSelectedChecklistIds(new Set());
+      toast.success(`${count} ${count === 1 ? 'checklist' : 'checklists'} deleted.`);
+    } catch (error) {
+      console.error('Delete checklist error:', error);
+      toast.error('Could not delete checklist. Please try again.');
+    }
   };
 
   // If viewing a template builder

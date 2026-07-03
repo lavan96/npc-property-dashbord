@@ -47,7 +47,6 @@ export interface ChecklistInstance {
   generated_by: string | null;
   status: 'in_progress' | 'completed' | 'archived';
   completed_at: string | null;
-  archived_at: string | null;
   progress_percent: number;
   due_date: string | null;
   recurrence_key: string | null;
@@ -283,7 +282,7 @@ export function useChecklistMutations() {
       );
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['checklist-instances'] }); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => console.error('Checklist bulk update failed:', e),
   });
 
   const deleteInstance = useMutation({
