@@ -3,7 +3,6 @@ import { Layers, Eye, EyeOff, Check } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -165,8 +164,7 @@ export function MultiCalendarOverlay({
       )}
 
       {/* Calendar list */}
-      <ScrollArea className="h-[280px]">
-        <div className="space-y-2 pr-2">
+      <div className="space-y-2">
           {calendars.map(calendar => {
             const isVisible = visibleCalendars.has(calendar.id);
             const eventCount = eventCounts[calendar.id] || 0;
@@ -213,8 +211,7 @@ export function MultiCalendarOverlay({
               </button>
             );
           })}
-        </div>
-      </ScrollArea>
+      </div>
 
       {/* Color legend */}
       <div className="pt-2 border-t">
