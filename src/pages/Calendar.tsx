@@ -140,6 +140,45 @@ export default function Calendar() {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    const bodyClass = 'calendar-page-active';
+    const styleId = 'calendar-page-scrollbar-fix-style';
+    document.body.classList.add(bodyClass);
+
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      styleEl.textContent = `
+        body.${bodyClass} .dashboard-main,
+        body.${bodyClass} .dashboard-content,
+        body.${bodyClass} .dashboard-page-shell,
+        body.${bodyClass} .dashboard-sidebar-content,
+        body.${bodyClass} .calendar-page-scrollbar-fix {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          scrollbar-gutter: auto;
+        }
+
+        body.${bodyClass} .dashboard-main::-webkit-scrollbar,
+        body.${bodyClass} .dashboard-content::-webkit-scrollbar,
+        body.${bodyClass} .dashboard-page-shell::-webkit-scrollbar,
+        body.${bodyClass} .dashboard-sidebar-content::-webkit-scrollbar,
+        body.${bodyClass} .calendar-page-scrollbar-fix::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+          display: none;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
+    return () => {
+      document.body.classList.remove(bodyClass);
+      document.getElementById(styleId)?.remove();
+    };
+  }, []);
+
   // Keyboard navigation hook
   const { TAB_SHORTCUTS } = useCalendarKeyboard({
     view,
@@ -669,7 +708,7 @@ export default function Calendar() {
   }
 
   return (
-    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "max-w-none")}>
+    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "calendar-page-scrollbar-fix max-w-none [scrollbar-gutter:auto]")}>
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
