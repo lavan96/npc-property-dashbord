@@ -640,7 +640,7 @@ export default function Calendar() {
 
   if (error) {
     return (
-      <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "calendar-scroll-container max-w-none")}>
+      <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "max-w-none")}>
         <DashboardThemeFrame variant="hero" className="p-5 md:p-7">
           <h1 className="text-3xl font-semibold tracking-[-0.035em] text-foreground md:text-5xl">Calendar</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground/90 md:text-base">GoHighLevel Calendar Integration</p>
@@ -670,7 +670,7 @@ export default function Calendar() {
   }
 
   return (
-    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "calendar-scroll-container max-w-none")}>
+    <DashboardThemeFrame variant="page" className={cn(CALENDAR_PAGE_SHELL, "max-w-none")}>
       <GHLExportDialog
         open={showExportDialog}
         onOpenChange={setShowExportDialog}
