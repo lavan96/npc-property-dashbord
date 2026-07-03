@@ -132,7 +132,7 @@ export default function DealPipeline() {
   }
 
   return (
-    <DashboardThemeFrame variant="page" className={cn("deal-pipeline-polish relative flex flex-col space-y-5 rounded-[2rem] border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
+    <DashboardThemeFrame variant="page" className={cn("deal-pipeline-polish relative flex flex-col space-y-5 rounded-card-2xl border-primary/15 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,hsl(var(--background)/0.96),hsl(var(--card)/0.92)_42%,hsl(var(--background)/0.98))] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.34)] sm:space-y-6 sm:p-6", premiumScrollbarClass)}>
       <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/70 to-transparent" />
       <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-400/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 top-40 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
@@ -186,7 +186,7 @@ export default function DealPipeline() {
       </DashboardThemeFrame>
 
       {/* Global Pipeline Toolbar */}
-      <DashboardThemeFrame as="section" variant="toolbar" className="overflow-hidden rounded-[1.35rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.75),hsl(var(--background)/0.82)_48%,hsl(var(--background)/0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)]">
+      <DashboardThemeFrame as="section" variant="toolbar" className="overflow-hidden rounded-card border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.75),hsl(var(--background)/0.82)_48%,hsl(var(--background)/0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)]">
         <PipelineToolbar
           deals={deals}
           filters={filters}
@@ -200,9 +200,9 @@ export default function DealPipeline() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="relative flex flex-col rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] dark:shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
+        className="relative flex flex-col rounded-card-lg border border-border dark:border-white/10 bg-[linear-gradient(180deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] dark:shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
       >
-        <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-brand-300/30 dark:border-brand-100/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55)_40%,hsl(var(--background)/0.85))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_18px_46px_rgba(15,23,42,0.10)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
+        <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-card border border-brand-300/30 dark:border-brand-100/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55)_40%,hsl(var(--background)/0.85))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_18px_46px_rgba(15,23,42,0.10)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
             <LayoutDashboard className={pipelineTabIconClass} />
             <span className="hidden sm:inline">Executive </span>Summary

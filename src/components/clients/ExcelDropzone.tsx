@@ -378,7 +378,7 @@ export function ExcelDropzone({ onImportComplete }: ExcelDropzoneProps) {
             No file selected
           </div>
           <div className="flex min-h-[220px] flex-col items-center justify-center">
-            <div className={`mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border shadow-2xl transition-all duration-300 ${isDragActive ? 'border-brand-200/60 bg-brand-300 text-black shadow-brand-500/35 scale-105' : 'border-brand-300/25 bg-brand-300/10 text-brand-100 shadow-brand-950/25 group-hover:border-brand-200/50 group-hover:bg-brand-300/15'}`}>
+            <div className={`mb-5 flex h-20 w-20 items-center justify-center rounded-card-xl border shadow-2xl transition-all duration-300 ${isDragActive ? 'border-brand-200/60 bg-brand-300 text-black shadow-brand-500/35 scale-105' : 'border-brand-300/25 bg-brand-300/10 text-brand-100 shadow-brand-950/25 group-hover:border-brand-200/50 group-hover:bg-brand-300/15'}`}>
               <FileSpreadsheet className="h-10 w-10" />
             </div>
             <div className="max-w-xl space-y-2">

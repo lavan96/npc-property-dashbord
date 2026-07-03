@@ -24,7 +24,7 @@ const toneClass = {
 
 export function DealStatePanel({ icon, eyebrow, title, description, tone = 'neutral', action, className, compact }: StatePanelProps) {
   return (
-    <div className={cn('relative overflow-hidden rounded-[1.35rem] border p-6 text-center shadow-[0_18px_55px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.08)]', toneClass[tone], compact ? 'py-5' : 'py-10 sm:py-12', className)}>
+    <div className={cn('relative overflow-hidden rounded-card border p-6 text-center shadow-[0_18px_55px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(255,255,255,0.08)]', toneClass[tone], compact ? 'py-5' : 'py-10 sm:py-12', className)}>
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border dark:border-white/15 bg-white/[0.07] shadow-inner">
         {icon ?? <Sparkles className="h-7 w-7 text-brand-200" />}

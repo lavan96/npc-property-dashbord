@@ -304,8 +304,8 @@ export default function Messages() {
           </DashboardThemeFrame>
 
           <TabsContent value="client" className="mt-0 min-h-0">
-            <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-2 shadow-2xl shadow-sm dark:shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
-              <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0">
+            <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-card-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-2 shadow-2xl shadow-sm dark:shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
+              <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-card-lg border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-primary/10 bg-gradient-to-r from-brand-300/12 via-success/[0.04] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -366,7 +366,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-card-lg border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
                 <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain">
@@ -376,7 +376,7 @@ export default function Messages() {
                   <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground lg:min-h-0">
                     <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-brand-300/25 to-transparent" />
                     <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-brand-300/10 blur-3xl" />
-                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-brand-300/25 bg-gradient-to-br from-brand-300/15 to-white/[0.03] text-brand-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-card-xl border border-brand-300/25 bg-gradient-to-br from-brand-300/15 to-white/[0.03] text-brand-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
                       <MessageSquare className="h-9 w-9 opacity-90" />
                     </div>
                     <div className="relative max-w-sm rounded-3xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-6 py-5 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur">
@@ -397,8 +397,8 @@ export default function Messages() {
         </TabsContent>
 
         <TabsContent value="finance" className="mt-0 min-h-0">
-          <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-[2rem] border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-2 shadow-2xl shadow-sm dark:shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0">
+          <div className="grid min-h-[560px] grid-cols-1 gap-3 rounded-card-2xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 p-2 shadow-2xl shadow-sm dark:shadow-black/25 lg:h-[calc(100vh-282px)] lg:min-h-0 lg:grid-cols-[330px_1fr]">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-card-lg border-primary/15 bg-[linear-gradient(180deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0">
               <CardHeader className="border-b border-primary/10 bg-gradient-to-r from-brand-300/10 via-info/[0.05] to-transparent px-4 py-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
@@ -467,7 +467,7 @@ export default function Messages() {
               </CardContent>
             </Card>
 
-            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-[1.5rem] border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
+            <Card className="flex min-h-[520px] flex-col overflow-hidden rounded-card-lg border-primary/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.06),transparent_34%),linear-gradient(180deg,rgba(9,9,11,0.96),rgba(3,3,4,0.98))] shadow-xl shadow-sm dark:shadow-black/25 lg:h-full lg:min-h-0 lg:border-l-amber-300/25">
               <CardContent className="min-h-0 flex-1 p-0 overflow-hidden">
                 {selectedFinanceClientId ? (
                   <div className="h-full min-h-0 overflow-hidden overscroll-contain p-4">
@@ -477,7 +477,7 @@ export default function Messages() {
                   <div className="relative flex h-full min-h-[520px] flex-col items-center justify-center overflow-hidden p-8 text-center text-sm text-muted-foreground lg:min-h-0">
                     <div className="pointer-events-none absolute inset-x-12 top-1/2 h-px -translate-y-24 bg-gradient-to-r from-transparent via-brand-300/25 to-transparent" />
                     <div className="pointer-events-none absolute h-56 w-56 rounded-full bg-brand-300/10 blur-3xl" />
-                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-brand-300/25 bg-gradient-to-br from-brand-300/15 to-white/[0.03] text-brand-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
+                    <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-card-xl border border-brand-300/25 bg-gradient-to-br from-brand-300/15 to-white/[0.03] text-brand-200 shadow-[0_18px_45px_rgba(0,0,0,0.28)]">
                       <ShieldCheck className="h-9 w-9 opacity-90" />
                     </div>
                     <div className="relative max-w-sm rounded-3xl border border-border dark:border-white/10 bg-background/25 dark:bg-black/25 px-6 py-5 shadow-xl shadow-sm dark:shadow-black/20 backdrop-blur">
@@ -498,7 +498,7 @@ export default function Messages() {
       </Tabs>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
-        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] border-brand-300/20 sm:rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-sm dark:shadow-black/50">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl overflow-hidden rounded-[1.25rem] border-brand-300/20 sm:rounded-card-xl bg-[linear-gradient(135deg,rgba(24,24,27,0.98),rgba(5,5,6,0.98))] p-0 shadow-2xl shadow-sm dark:shadow-black/50">
           <DialogHeader className="border-b border-primary/10 bg-gradient-to-r from-brand-300/10 via-white/[0.03] to-transparent px-6 py-5">
             <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">New portal message</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">

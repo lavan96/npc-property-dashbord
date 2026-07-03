@@ -203,7 +203,7 @@ export default function RemindersHub() {
     return (
       <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.06),transparent_28%),linear-gradient(180deg,#030303_0%,#0f1117_48%,#050507_100%)] p-3 scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
         <div className="mx-auto min-w-0 max-w-7xl space-y-5 sm:space-y-6">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-brand-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(0,0,0,0.72)_34%,rgba(15,23,42,0.58))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.42)] sm:p-6">
+          <div className="relative overflow-hidden rounded-card-xl border border-brand-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(0,0,0,0.72)_34%,rgba(15,23,42,0.58))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.42)] sm:p-6">
             <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/70 to-transparent" />
             <div className="pointer-events-none absolute -right-16 -top-24 h-44 w-44 rounded-full bg-brand-300/10 blur-3xl" />
             <div className="flex items-center gap-4">
@@ -216,7 +216,7 @@ export default function RemindersHub() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-brand-300/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.36)]">
+          <div className="relative overflow-hidden rounded-card-lg border border-brand-300/15 bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(2,6,23,0.94))] p-4 shadow-[0_18px_55px_rgba(0,0,0,0.36)]">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-brand-300/20 bg-brand-400/10">
                 <Loader2 className="h-5 w-5 animate-spin text-brand-200" />
@@ -235,7 +235,7 @@ export default function RemindersHub() {
           </div>
           <div className="space-y-3">
             <Skeleton className="h-14 rounded-2xl border border-brand-300/10 bg-background dark:bg-background/70" />
-            <Skeleton className="h-72 rounded-[1.5rem] border border-brand-300/10 bg-background dark:bg-background/70" />
+            <Skeleton className="h-72 rounded-card-lg border border-brand-300/10 bg-background dark:bg-background/70" />
           </div>
         </div>
       </div>
@@ -246,7 +246,7 @@ export default function RemindersHub() {
     <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_32%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,0.06),transparent_28%),linear-gradient(180deg,#030303_0%,#0f1117_48%,#050507_100%)] p-3 text-foreground dark:text-foreground scrollbar-thin scrollbar-track-slate-950 scrollbar-thumb-amber-500/30 sm:p-6">
       <div className="mx-auto min-w-0 max-w-7xl space-y-5 sm:space-y-6">
         {/* Page Header */}
-        <div className="relative overflow-hidden rounded-[1.75rem] border border-brand-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(0,0,0,0.72)_34%,rgba(15,23,42,0.58))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.42)] backdrop-blur sm:p-6">
+        <div className="relative overflow-hidden rounded-card-xl border border-brand-400/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(0,0,0,0.72)_34%,rgba(15,23,42,0.58))] p-4 shadow-[0_26px_80px_rgba(0,0,0,0.42)] backdrop-blur sm:p-6">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/80 to-transparent" />
           <div className="pointer-events-none absolute -right-16 -top-24 h-44 w-44 rounded-full bg-brand-300/10 blur-3xl" />
           <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center sm:gap-4">
@@ -270,7 +270,7 @@ export default function RemindersHub() {
         <Card
           className={cn(
             premiumPanel,
-            'relative overflow-hidden rounded-[1.5rem] ring-1 ring-border dark:ring-white/[0.03] transition-all duration-200 hover:border-brand-300/25 hover:shadow-[0_20px_60px_rgba(245,158,11,0.10),0_18px_45px_rgba(0,0,0,0.30)]',
+            'relative overflow-hidden rounded-card-lg ring-1 ring-border dark:ring-white/[0.03] transition-all duration-200 hover:border-brand-300/25 hover:shadow-[0_20px_60px_rgba(245,158,11,0.10),0_18px_45px_rgba(0,0,0,0.30)]',
             stats.overdue > 0
               ? 'border-destructive/35 bg-[linear-gradient(135deg,rgba(127,29,29,0.32),rgba(5,5,5,0.92)_48%,rgba(69,10,10,0.20))]'
               : stats.today > 0
@@ -486,7 +486,7 @@ export default function RemindersHub() {
             <Card
               className={cn(
                 premiumPanel,
-                "relative overflow-hidden rounded-[1.5rem] border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.88)_46%,rgba(0,0,0,0.70))] shadow-[0_24px_76px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.04)]",
+                "relative overflow-hidden rounded-card-lg border-dashed bg-[linear-gradient(135deg,rgba(245,158,11,0.10),rgba(2,6,23,0.88)_46%,rgba(0,0,0,0.70))] shadow-[0_24px_76px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.04)]",
                 timeFilter === 'overdue' || timeFilter === 'today' || timeFilter === 'week' || timeFilter === 'month' ? 'border-success/25' : 'border-brand-300/25'
               )}
             >

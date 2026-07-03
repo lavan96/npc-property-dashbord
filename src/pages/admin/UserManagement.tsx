@@ -563,7 +563,7 @@ export default function UserManagement() {
       />
 
       {/* Users List */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-border/70 bg-card/90 shadow-lg shadow-primary/5 ring-1 ring-primary/5 dark:border-white/10">
+      <Card className="overflow-hidden rounded-card-lg border-border/70 bg-card/90 shadow-lg shadow-primary/5 ring-1 ring-primary/5 dark:border-white/10">
         <CardHeader className="border-b border-border/60 bg-muted/25 px-5 py-5 dark:border-white/10 sm:px-6">
           <CardTitle className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">All Users</CardTitle>
           <CardDescription className="text-sm leading-6">Manage user accounts and their access levels</CardDescription>

@@ -40,8 +40,8 @@ import { cn } from '@/lib/utils';
 
 
 const LISTINGS_SHELL = 'mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 pb-28 pt-2 sm:px-5 md:pb-10 lg:px-8';
-const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-[1.5rem] border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-background/35 dark:shadow-black/25';
-const LISTINGS_STATE_CARD = 'relative overflow-hidden rounded-[1.75rem] border border-border/60 bg-gradient-to-br from-card/95 via-card/85 to-primary/[0.045] px-6 py-12 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:from-background/85 dark:via-background/70 dark:to-primary/10 dark:shadow-black/35';
+const LISTINGS_SECTION_SURFACE = 'min-w-0 rounded-card-lg border border-border/60 bg-card/65 p-4 shadow-[0_14px_40px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-card/55 sm:rounded-[1.85rem] sm:p-5 md:p-6 dark:border-white/10 dark:bg-background/35 dark:shadow-black/25';
+const LISTINGS_STATE_CARD = 'relative overflow-hidden rounded-card-xl border border-border/60 bg-gradient-to-br from-card/95 via-card/85 to-primary/[0.045] px-6 py-12 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:from-background/85 dark:via-background/70 dark:to-primary/10 dark:shadow-black/35';
 const LISTINGS_STATE_ICON = 'mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-[0_14px_34px_rgba(245,158,11,0.14)]';
 const LISTINGS_CARD_SURFACE = 'rounded-2xl border border-border/70 bg-card/90 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-background/80 dark:shadow-black/30';
 const LISTINGS_SECONDARY_ACTION = 'min-h-10 rounded-full border-border/70 bg-card/85 px-4 font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary/10 hover:text-primary hover:shadow-[0_10px_28px_rgba(245,158,11,0.16)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60';
@@ -135,7 +135,7 @@ const ListingsLoadingSkeleton = ({ isMobile }: { isMobile: boolean }) => (
           <Skeleton className="h-11 w-44 rounded-xl" />
           <Skeleton className="mt-3 h-5 w-72 rounded-full" />
         </div>
-        <div className="flex items-center gap-3 rounded-[1.35rem] border border-border/60 bg-background/65 p-2">
+        <div className="flex items-center gap-3 rounded-card border border-border/60 bg-background/65 p-2">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <span className="pr-2 text-sm font-semibold text-muted-foreground">Preparing listings</span>
         </div>
@@ -586,7 +586,7 @@ export default function Listings() {
             </div>
           </div>
           
-          <div className="flex w-full flex-wrap items-stretch justify-start gap-3 rounded-[1.35rem] sm:items-center lg:w-auto border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-background/40 dark:shadow-black/20 lg:justify-end">
+          <div className="flex w-full flex-wrap items-stretch justify-start gap-3 rounded-card sm:items-center lg:w-auto border border-border/60 bg-background/65 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur dark:border-white/10 dark:bg-background/40 dark:shadow-black/20 lg:justify-end">
             <div className="flex min-w-[min(100%,18rem)] flex-1 items-center gap-2 rounded-full sm:flex-none border border-border/50 bg-card/70 p-1.5 shadow-sm dark:border-white/10 dark:bg-background/35">
               <span className="hidden pl-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70 sm:inline">Dataset</span>
               <AirtableTableSelector

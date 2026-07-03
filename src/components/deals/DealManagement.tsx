@@ -507,7 +507,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   if (isLoading) {
     return (
-      <div className="space-y-4 rounded-[1.5rem] border border-brand-200/15 bg-background/25 dark:bg-black/25 p-4">
+      <div className="space-y-4 rounded-card-lg border border-brand-200/15 bg-background/25 dark:bg-black/25 p-4">
         <div className="flex items-center gap-3">
           <Skeleton className="h-11 w-11 rounded-2xl bg-brand-200/10" />
           <div className="flex-1 space-y-2">
@@ -522,7 +522,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   if (deals.length === 0) {
     return (
-      <Card className="overflow-hidden rounded-[1.5rem] border-brand-200/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_42%),rgba(9,9,11,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
+      <Card className="overflow-hidden rounded-card-lg border-brand-200/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.12),transparent_42%),rgba(9,9,11,0.72)] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
         <CardContent className="py-16 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-brand-200/25 bg-brand-400/10">
             <Edit3 className="h-7 w-7 text-brand-200" />
@@ -536,7 +536,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
 
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden rounded-[1.5rem] border-brand-200/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(24,24,27,0.76)_44%,rgba(0,0,0,0.72))] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
+      <Card className="overflow-hidden rounded-card-lg border-brand-200/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.14),rgba(24,24,27,0.76)_44%,rgba(0,0,0,0.72))] shadow-[0_20px_60px_rgba(0,0,0,0.24)]">
         <CardHeader className="p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
@@ -574,7 +574,7 @@ export function DealManagement({ deals, isLoading, onDealClick, onUpdateDeal, on
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden rounded-[1.5rem] border-brand-200/15 bg-background/60 dark:bg-background/60 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+      <Card className="overflow-hidden rounded-card-lg border-brand-200/15 bg-background/60 dark:bg-background/60 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
         <CardContent className="p-0">
           <div className="max-w-full overflow-auto">
             <Table>

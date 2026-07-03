@@ -25,7 +25,7 @@ export function LinkedFinanceFilesPanel({ deals }: { deals: DealWithClient[] }) 
   const unlinked = useMemo(() => deals.filter(d => !d.financeFile), [deals]);
 
   return (
-    <Card className="overflow-hidden rounded-[1.35rem] border-brand-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.88)_44%,rgba(0,0,0,0.70))] shadow-[0_22px_60px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.07)]">
+    <Card className="overflow-hidden rounded-card border-brand-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.065),rgba(24,24,27,0.88)_44%,rgba(0,0,0,0.70))] shadow-[0_22px_60px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.07)]">
       <CardHeader className="space-y-4 border-b border-brand-100/10 px-4 pb-4 pt-4 sm:px-5">
         <div className="flex items-start gap-3">
           <div className="rounded-2xl border border-brand-200/25 bg-brand-300/10 p-2.5 text-brand-100 shadow-[0_0_24px_rgba(245,158,11,0.14)]">

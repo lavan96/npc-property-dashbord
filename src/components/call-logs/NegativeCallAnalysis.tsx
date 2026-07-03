@@ -331,7 +331,7 @@ export const NegativeCallAnalysis = ({ calls, onRefresh }: NegativeCallAnalysisP
 
       <Tabs defaultValue="issues" className="w-full">
         <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-color:rgba(251,191,36,0.45)_rgba(0,0,0,0.25)] [scrollbar-width:thin] md:mx-0 md:px-0">
-          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1.5 rounded-[1.35rem] border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-1.5 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl">
+          <TabsList className="inline-flex h-auto w-auto min-w-max gap-1.5 rounded-card border border-border dark:border-white/10 bg-background/45 dark:bg-black/45 p-1.5 shadow-2xl shadow-sm dark:shadow-black/30 backdrop-blur-xl">
             <TabsTrigger value="issues" className="flex min-h-10 items-center gap-2 rounded-2xl px-3 text-xs text-muted-foreground dark:text-muted-foreground transition-all hover:bg-brand-300/10 hover:text-brand-100 data-[state=active]:bg-brand-400/20 data-[state=active]:text-brand-50 md:text-sm">
               <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
               <span className="hidden sm:inline">All</span> Issues

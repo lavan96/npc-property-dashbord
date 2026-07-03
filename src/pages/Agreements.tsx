@@ -482,7 +482,7 @@ export default function Agreements() {
   );
 
   const renderAgreementsLoading = () => (
-    <div className="overflow-hidden rounded-[1.35rem] border border-border/70 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.12),transparent_36%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_18px_44px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
+    <div className="overflow-hidden rounded-card border border-border/70 bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.12),transparent_36%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.82))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_18px_44px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,hsl(var(--primary)/0.14),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-brand-300/35 bg-brand-500/10 text-brand-700 shadow-sm dark:border-brand-200/25 dark:text-brand-100">
@@ -509,7 +509,7 @@ export default function Agreements() {
   );
 
   const renderAgreementsError = () => (
-    <div className="mx-4 my-5 overflow-hidden rounded-[1.35rem] border border-destructive/35 bg-[radial-gradient(circle_at_top,hsl(var(--destructive)/0.08),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] px-5 py-10 text-center shadow-sm dark:border-destructive/25 dark:bg-[radial-gradient(circle_at_top,rgba(248,113,113,0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
+    <div className="mx-4 my-5 overflow-hidden rounded-card border border-destructive/35 bg-[radial-gradient(circle_at_top,hsl(var(--destructive)/0.08),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] px-5 py-10 text-center shadow-sm dark:border-destructive/25 dark:bg-[radial-gradient(circle_at_top,rgba(248,113,113,0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.56))]">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-destructive/40 bg-destructive/10 text-destructive dark:border-destructive/25 dark:text-destructive-foreground">
         <AlertTriangle className="h-5 w-5" aria-hidden="true" />
       </div>
@@ -532,7 +532,7 @@ export default function Agreements() {
         className="isolate flex flex-col gap-5 overflow-hidden border-primary/20 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.18),transparent_34%),radial-gradient(circle_at_14%_12%,hsl(43_84%_52%/0.18),transparent_28%),linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.9)_52%,hsl(var(--muted)/0.45))] py-7 shadow-[0_24px_70px_rgba(15,23,42,0.11)] shadow-primary/5 before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-brand-300/70 before:to-transparent dark:bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.20),transparent_36%),radial-gradient(circle_at_14%_12%,hsl(43_84%_52%/0.14),transparent_30%),linear-gradient(135deg,hsl(var(--card)/0.88),hsl(var(--background)/0.76)_52%,hsl(var(--muted)/0.18))] sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex min-w-0 flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center">
-          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.35rem] border border-brand-300/40 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.20),hsl(var(--primary)/0.14))] text-primary shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35),0_16px_36px_hsl(43_74%_28%/0.16)] dark:border-brand-200/25 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(var(--primary)/0.16))]">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-card border border-brand-300/40 bg-[linear-gradient(135deg,hsl(43_84%_52%/0.20),hsl(var(--primary)/0.14))] text-primary shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35),0_16px_36px_hsl(43_74%_28%/0.16)] dark:border-brand-200/25 dark:bg-[linear-gradient(135deg,hsl(43_84%_52%/0.16),hsl(var(--primary)/0.16))]">
             <span className="absolute inset-2 rounded-2xl border border-border dark:border-white/30 dark:border-white/10" />
             <FileSignature className="relative h-7 w-7 drop-shadow-sm" />
           </div>
@@ -706,7 +706,7 @@ export default function Agreements() {
           ) : isError ? (
             renderAgreementsError()
           ) : filteredAgreements.length === 0 ? (
-            <div className="mx-4 my-5 overflow-hidden rounded-[1.35rem] border border-dashed border-brand-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.14),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.24))] px-5 py-12 text-center text-sm text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35),0_18px_48px_rgba(15,23,42,0.08)] dark:border-brand-200/25 dark:bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.48))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <div className="mx-4 my-5 overflow-hidden rounded-card border border-dashed border-brand-300/45 bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.14),transparent_38%),linear-gradient(180deg,hsl(var(--card)/0.92),hsl(var(--muted)/0.24))] px-5 py-12 text-center text-sm text-muted-foreground shadow-[inset_0_1px_0_hsl(0_0%_100%/0.35),0_18px_48px_rgba(15,23,42,0.08)] dark:border-brand-200/25 dark:bg-[radial-gradient(circle_at_top,hsl(43_84%_52%/0.10),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.78),rgba(2,6,23,0.48))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-300/40 bg-brand-400/12 text-brand-700 shadow-[0_14px_34px_hsl(43_84%_32%/0.14)] dark:border-brand-200/25 dark:bg-brand-200/10 dark:text-brand-100">
                 {searchTerm ? (
                   <Search className="h-5 w-5" aria-hidden="true" />

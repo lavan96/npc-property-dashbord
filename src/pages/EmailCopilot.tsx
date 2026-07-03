@@ -2091,7 +2091,7 @@ export default function EmailCopilot() {
               // Inbox view
               <>
                 {isLoading ? (
-                  <div className="m-4 overflow-hidden rounded-[1.75rem] border border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.62))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
+                  <div className="m-4 overflow-hidden rounded-card-xl border border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.82),hsl(var(--background)/0.62))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
                     <span className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10">
                       <span className="absolute inset-2 animate-ping rounded-2xl bg-primary/10" />
                       <RefreshCw className="relative h-6 w-6 animate-spin text-primary/70" />
@@ -2100,7 +2100,7 @@ export default function EmailCopilot() {
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">Checking the selected mailbox for the latest messages.</p>
                   </div>
                 ) : filteredEmails.length === 0 ? (
-                  <div className="m-4 rounded-[1.75rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
+                  <div className="m-4 rounded-card-xl border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
                     <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10">
                       <Inbox className="h-7 w-7 text-primary/45" />
                     </span>
@@ -2310,7 +2310,7 @@ export default function EmailCopilot() {
               // Sent view - shows both synced sent emails AND manually sent replies
               <>
                 {filteredEmails.length === 0 && sentReplies.length === 0 ? (
-                  <div className="m-4 rounded-[1.75rem] border border-dashed border-success/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
+                  <div className="m-4 rounded-card-xl border border-dashed border-success/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.76),hsl(var(--background)/0.58))] p-8 text-center shadow-inner shadow-sm dark:shadow-black/10">
                     <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-success/20 bg-success/10">
                       <Send className="h-7 w-7 text-success-foreground0/55" />
                     </span>
@@ -2699,7 +2699,7 @@ export default function EmailCopilot() {
                   />
 
                   {/* Email Body */}
-                  <div className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.18)]">
+                  <div className="min-w-0 overflow-hidden rounded-card-xl border border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.96),hsl(var(--background)/0.88))] shadow-[0_18px_48px_hsl(var(--background)/0.18)]">
                     <div className="border-b border-border/55 bg-muted/20 px-5 py-3">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                         <Mail className="h-3.5 w-3.5 text-primary/70" />
@@ -2722,7 +2722,7 @@ export default function EmailCopilot() {
 
                   {/* AI Summary */}
                   {selectedEmail.summary && (
-                    <div className="overflow-hidden rounded-[1.75rem] border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(var(--primary)/0.045))] shadow-[0_18px_48px_hsl(var(--primary)/0.08)] transition-all hover:border-primary/35">
+                    <div className="overflow-hidden rounded-card-xl border border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(var(--primary)/0.045))] shadow-[0_18px_48px_hsl(var(--primary)/0.08)] transition-all hover:border-primary/35">
                       <div className="flex items-center justify-between gap-3 border-b border-primary/15 bg-primary/10 px-5 py-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-inner">
@@ -2774,7 +2774,7 @@ export default function EmailCopilot() {
 
                   {/* Draft Reply Preview */}
                   {selectedEmail.draft_reply && (
-                    <div className="overflow-hidden rounded-[1.75rem] border border-brand-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(43_74%_49%/0.055))] shadow-[0_18px_48px_hsl(43_74%_49%/0.10)] transition-all hover:border-brand-500/40">
+                    <div className="overflow-hidden rounded-card-xl border border-brand-500/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.97),hsl(43_74%_49%/0.055))] shadow-[0_18px_48px_hsl(43_74%_49%/0.10)] transition-all hover:border-brand-500/40">
                       <div className="flex items-center justify-between gap-3 border-b border-brand-500/20 bg-brand-500/10 px-5 py-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-brand-500/25 bg-brand-500/10 shadow-inner">
@@ -2911,8 +2911,8 @@ export default function EmailCopilot() {
                 Inbox
               </div>
               <div className="relative max-w-md text-center" aria-live="polite">
-                <div className="rounded-[2rem] border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.055))] px-8 py-10 shadow-[0_24px_70px_hsl(var(--primary)/0.11)] ring-1 ring-primary/10 sm:px-12 sm:py-14">
-                  <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-[1.75rem] border border-primary/20 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.24),hsl(var(--primary)/0.10)_58%,hsl(var(--card)/0.92))] shadow-[inset_0_1px_0_hsl(var(--background)/0.5),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/15">
+                <div className="rounded-card-2xl border border-dashed border-primary/25 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.72)_58%,hsl(var(--primary)/0.055))] px-8 py-10 shadow-[0_24px_70px_hsl(var(--primary)/0.11)] ring-1 ring-primary/10 sm:px-12 sm:py-14">
+                  <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-card-xl border border-primary/20 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.24),hsl(var(--primary)/0.10)_58%,hsl(var(--card)/0.92))] shadow-[inset_0_1px_0_hsl(var(--background)/0.5),0_18px_40px_hsl(var(--primary)/0.13)] ring-1 ring-primary/15">
                     <Mail className="h-11 w-11 text-primary/60 drop-shadow-sm" />
                   </div>
                   <p className="text-xl font-bold tracking-[-0.02em] text-foreground">
@@ -2992,7 +2992,7 @@ export default function EmailCopilot() {
           setReplyBcc('');
         }
       }}>
-        <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-3 overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(43_74%_49%/0.045))] p-3 shadow-[0_24px_80px_hsl(var(--background)/0.35)] sm:max-h-[90vh] sm:w-full sm:p-6 lg:max-w-4xl lg:p-7 xl:max-w-5xl">
+        <DialogContent className="flex max-h-[92vh] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-3 overflow-hidden rounded-card-xl border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(43_74%_49%/0.045))] p-3 shadow-[0_24px_80px_hsl(var(--background)/0.35)] sm:max-h-[90vh] sm:w-full sm:p-6 lg:max-w-4xl lg:p-7 xl:max-w-5xl">
           <DialogHeader className="border-b border-primary/10 pb-3 pr-10">
             <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
               <div className="flex-1 min-w-0">
@@ -3433,7 +3433,7 @@ export default function EmailCopilot() {
           setComposeEmail({ to: '', subject: '', body: '', cc: '', bcc: '' });
         }
       }}>
-        <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] shadow-[0_24px_80px_hsl(var(--background)/0.35)]">
+        <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-card-xl border-primary/20 bg-[linear-gradient(135deg,hsl(var(--card)/0.98),hsl(var(--background)/0.92)_58%,hsl(var(--primary)/0.045))] shadow-[0_24px_80px_hsl(var(--background)/0.35)]">
           <DialogHeader className="border-b border-primary/10 pb-3">
             <DialogTitle className="flex items-center gap-2">
               <span className="flex h-9 w-9 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">

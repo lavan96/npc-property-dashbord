@@ -284,7 +284,7 @@ export function ClientComparison({ clients }: ClientComparisonProps) {
         <Card className="relative overflow-hidden rounded-3xl border-brand-300/15 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(45,212,191,0.08),transparent_30%),linear-gradient(145deg,hsl(var(--card)),hsl(var(--muted)/0.22))] shadow-2xl shadow-[0_16px_44px_rgba(15,23,42,0.10)] dark:shadow-black/25">
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent" />
           <CardContent className="px-6 py-12 text-center sm:py-16">
-            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[1.75rem] border border-brand-300/25 bg-brand-300/10 text-brand-700 dark:text-brand-100 shadow-2xl shadow-brand-950/30">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-card-xl border border-brand-300/25 bg-brand-300/10 text-brand-700 dark:text-brand-100 shadow-2xl shadow-brand-950/30">
               <Scale className="h-9 w-9" />
             </div>
             <div className="mx-auto max-w-xl space-y-3">

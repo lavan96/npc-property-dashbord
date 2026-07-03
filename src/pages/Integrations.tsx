@@ -634,7 +634,7 @@ export default function Integrations() {
       <DashboardThemeFrame
         as="main"
         variant="page"
-        className="flex min-h-[50vh] items-center justify-center rounded-[2rem] bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-6"
+        className="flex min-h-[50vh] items-center justify-center rounded-card-2xl bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.10),transparent_34%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-6"
       >
         <div className="flex items-center gap-3 rounded-2xl border border-primary/15 bg-card/80 px-5 py-4 text-sm font-medium text-muted-foreground shadow-xl shadow-sm dark:shadow-black/25" aria-live="polite">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -785,7 +785,7 @@ export default function Integrations() {
     <DashboardThemeFrame
       as="main"
       variant="page"
-      className="space-y-5 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-3 text-foreground sm:space-y-6 sm:p-5 lg:p-6"
+      className="space-y-5 rounded-card-2xl bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.94))] p-3 text-foreground sm:space-y-6 sm:p-5 lg:p-6"
     >
       <DashboardThemeFrame
         as="header"

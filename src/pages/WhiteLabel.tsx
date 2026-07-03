@@ -1713,7 +1713,7 @@ export default function WhiteLabel() {
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Tabs value={activeSurfacePreview} onValueChange={(value) => setActiveSurfacePreview(value as SurfacePreview)} className="min-w-0 space-y-5">
-            <TabsList className="grid h-auto w-full min-w-0 grid-cols-1 gap-2 rounded-[1.35rem] border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-3">
+            <TabsList className="grid h-auto w-full min-w-0 grid-cols-1 gap-2 rounded-card border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-3">
               <TabsTrigger className="min-h-10 min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="auth">Auth</TabsTrigger>
               <TabsTrigger className="min-h-10 min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="sidebar">Sidebar</TabsTrigger>
               <TabsTrigger className="min-h-10 min-w-0 rounded-2xl px-3 py-2.5 font-semibold text-muted-foreground transition-all hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40 data-[state=active]:border data-[state=active]:border-primary/30 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/25" value="browser"><span className="block min-w-0 truncate">Browser tab</span></TabsTrigger>
@@ -1721,8 +1721,8 @@ export default function WhiteLabel() {
 
             <TabsContent value="auth" className="space-y-3">
               <Label className="text-sm font-medium">Authentication surfaces</Label>
-              <div className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-lg shadow-background/10 sm:p-6">
-                <div className="mx-auto flex max-w-md min-w-0 flex-col items-center gap-4 rounded-[1.5rem] border border-border/60 bg-background px-5 py-10 text-center shadow-xl ring-1 ring-primary/5 sm:px-6">
+              <div className="overflow-hidden rounded-card-xl border border-border/60 bg-card p-4 shadow-lg shadow-background/10 sm:p-6">
+                <div className="mx-auto flex max-w-md min-w-0 flex-col items-center gap-4 rounded-card-lg border border-border/60 bg-background px-5 py-10 text-center shadow-xl ring-1 ring-primary/5 sm:px-6">
                   {getBrandAssetSrc(draftSettings, 'auth') ? (
                     <img src={getBrandAssetSrc(draftSettings, 'auth') || ''} alt="Auth logo preview" className="h-14 max-w-full object-contain drop-shadow-sm sm:max-w-[220px]" />
                   ) : (
@@ -1745,7 +1745,7 @@ export default function WhiteLabel() {
             <TabsContent value="sidebar" className="space-y-3">
               <Label className="text-sm font-medium">Sidebar shell surfaces</Label>
               <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1fr)_96px]">
-                <div className="overflow-hidden rounded-[1.5rem] border border-border/60 bg-card shadow-xl shadow-background/10 ring-1 ring-primary/5">
+                <div className="overflow-hidden rounded-card-lg border border-border/60 bg-card shadow-xl shadow-background/10 ring-1 ring-primary/5">
                   <div className="flex min-w-0 items-center gap-3 border-b border-border/60 bg-sidebar/95 p-4 text-sidebar-foreground">
                     {getBrandAssetSrc(draftSettings, 'sidebar') ? (
                       <img src={getBrandAssetSrc(draftSettings, 'sidebar') || ''} alt="Sidebar logo preview" className="h-10 max-w-[140px] object-contain drop-shadow-sm" />
@@ -1767,7 +1767,7 @@ export default function WhiteLabel() {
                     ))}
                   </div>
                 </div>
-                <div className="overflow-hidden rounded-[1.5rem] border border-border/60 bg-card shadow-xl shadow-background/10 ring-1 ring-primary/5">
+                <div className="overflow-hidden rounded-card-lg border border-border/60 bg-card shadow-xl shadow-background/10 ring-1 ring-primary/5">
                   <div className="flex items-center justify-center border-b border-border/60 bg-sidebar/95 p-4 text-sidebar-foreground">
                     {getBrandAssetSrc(draftSettings, 'sidebar-icon') ? (
                       <img src={getBrandAssetSrc(draftSettings, 'sidebar-icon') || ''} alt="Sidebar icon preview" className="h-10 w-10 object-contain" />
@@ -1788,7 +1788,7 @@ export default function WhiteLabel() {
 
             <TabsContent value="browser" className="space-y-3">
               <Label className="text-sm font-medium">Browser tab + favicon surface</Label>
-              <div className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-lg shadow-background/10 ring-1 ring-primary/5">
+              <div className="overflow-hidden rounded-card-xl border border-border/60 bg-card p-4 shadow-lg shadow-background/10 ring-1 ring-primary/5">
                 <div className="rounded-2xl border border-border/60 bg-background p-4 shadow-inner">
                   <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 shadow-sm">
                     {getBrandAssetSrc(draftSettings, 'favicon') ? (
@@ -1813,7 +1813,7 @@ export default function WhiteLabel() {
       <Separator />
 
       {/* Email Signature Configuration */}
-      <div className="min-w-0 space-y-2 rounded-[1.75rem] border border-border/70 bg-card/80 p-5 shadow-lg shadow-background/5 ring-1 ring-primary/5">
+      <div className="min-w-0 space-y-2 rounded-card-xl border border-border/70 bg-card/80 p-5 shadow-lg shadow-background/5 ring-1 ring-primary/5">
         <h2 className="flex min-w-0 flex-wrap items-center gap-2 text-2xl font-bold tracking-tight">
           <Mail className="h-6 w-6 text-primary" />
           Email Copilot Signature

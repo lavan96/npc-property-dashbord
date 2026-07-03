@@ -474,7 +474,7 @@ export function DepreciationCompsAdmin() {
       aria-labelledby="depreciation-comps-title"
       className="min-h-[calc(100dvh-5rem)] space-y-5 px-1 pb-6 sm:space-y-6 sm:px-0"
     >
-      <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/90 shadow-sm ring-1 ring-border/40 dark:border-white/10 dark:bg-background/80 dark:ring-white/10">
+      <Card className="min-w-0 overflow-hidden rounded-card-xl border-border/70 bg-card/90 shadow-sm ring-1 ring-border/40 dark:border-white/10 dark:bg-background/80 dark:ring-white/10">
         <CardHeader className="relative overflow-hidden border-b border-border/60 bg-card/70 px-4 py-5 dark:border-white/10 sm:px-6 lg:px-7">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,hsl(var(--primary)/0.10),transparent_36%,hsl(var(--background)/0.22))]" />
           <div className="relative flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -664,7 +664,7 @@ export function DepreciationCompsAdmin() {
               <DashboardThemeFrame variant="sectionAccent" className="group border-dashed p-1 transition-all duration-200 hover:border-primary/50 motion-reduce:transition-none">
                 <Label
                   htmlFor="csv-upload"
-                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-[1.35rem] border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-background/35 motion-reduce:transition-none sm:px-6"
+                  className="flex min-h-[14rem] cursor-pointer flex-col items-center justify-center rounded-card border border-white/35 bg-background/55 px-4 py-8 text-center transition-colors duration-200 group-hover:bg-primary/5 dark:border-white/10 dark:bg-background/35 motion-reduce:transition-none sm:px-6"
                 >
                   <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary shadow-inner shadow-primary/10">
                     <FileSpreadsheet className="h-8 w-8" />

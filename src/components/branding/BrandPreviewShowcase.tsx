@@ -21,7 +21,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
 
   return (
     <Tabs defaultValue="dashboard-light" className="min-w-0 space-y-5">
-      <TabsList className="grid h-auto w-full min-w-0 grid-cols-2 gap-2 rounded-[1.35rem] border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-3 xl:grid-cols-6">
+      <TabsList className="grid h-auto w-full min-w-0 grid-cols-2 gap-2 rounded-card border border-border/70 bg-background/70 p-1.5 shadow-inner shadow-background/10 sm:grid-cols-3 xl:grid-cols-6">
         {[
           ['dashboard-light', 'Dashboard Light'],
           ['dashboard-dark', 'Dashboard Dark'],
@@ -41,7 +41,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
       </TabsList>
 
       <TabsContent value="dashboard-light" className="space-y-4">
-        <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-[2rem] border border-border/70 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--dashboard-primary-soft)/0.62),transparent_30%),radial-gradient(circle_at_90%_20%,hsl(var(--primary)/0.12),transparent_26%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--dashboard-surface-elevated))_48%,hsl(var(--dashboard-surface-muted))_100%)] p-3 shadow-2xl shadow-background/15 ring-1 ring-primary/10 sm:p-4">
+        <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-card-2xl border border-border/70 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--dashboard-primary-soft)/0.62),transparent_30%),radial-gradient(circle_at_90%_20%,hsl(var(--primary)/0.12),transparent_26%),linear-gradient(180deg,hsl(var(--background))_0%,hsl(var(--dashboard-surface-elevated))_48%,hsl(var(--dashboard-surface-muted))_100%)] p-3 shadow-2xl shadow-background/15 ring-1 ring-primary/10 sm:p-4">
           <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-2 px-1">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Dashboard Light</p>
@@ -51,7 +51,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
           </div>
 
           <div className="grid min-w-0 gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
-            <aside className="min-w-0 overflow-hidden rounded-[1.75rem] border border-sidebar-border/70 bg-[linear-gradient(180deg,hsl(var(--dashboard-surface)/0.96),hsl(var(--sidebar-surface)/0.96))] p-4 text-sidebar-foreground shadow-[18px_0_42px_hsl(35_43%_20%/0.10)] ring-1 ring-primary/5">
+            <aside className="min-w-0 overflow-hidden rounded-card-xl border border-sidebar-border/70 bg-[linear-gradient(180deg,hsl(var(--dashboard-surface)/0.96),hsl(var(--sidebar-surface)/0.96))] p-4 text-sidebar-foreground shadow-[18px_0_42px_hsl(35_43%_20%/0.10)] ring-1 ring-primary/5">
               <div className="flex min-w-0 items-center gap-3 border-b border-sidebar-border/70 pb-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-sidebar-border/60 bg-sidebar-accent/10 p-1 shadow-inner">
                   <BrandLogo settings={settings} slot="sidebar" className="max-h-10 max-w-[120px] object-contain" fallbackClassName="h-10 w-10" />
@@ -74,7 +74,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
               </div>
             </aside>
 
-            <section className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/95 shadow-[0_18px_44px_hsl(35_43%_20%/0.10)] ring-1 ring-primary/5">
+            <section className="min-w-0 overflow-hidden rounded-card-xl border border-border/70 bg-card/95 shadow-[0_18px_44px_hsl(35_43%_20%/0.10)] ring-1 ring-primary/5">
               <div className="flex min-w-0 flex-col gap-3 border-b border-border/70 bg-card px-4 py-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">Executive workspace</p>
@@ -114,7 +114,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
 
 
       <TabsContent value="dashboard-dark" className="space-y-4">
-        <div style={tokenStyle(tokens.dark)} className="grid min-w-0 gap-4 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-4 shadow-2xl shadow-background/15 md:grid-cols-[260px_minmax(0,1fr)]">
+        <div style={tokenStyle(tokens.dark)} className="grid min-w-0 gap-4 overflow-hidden rounded-card-xl border border-border/60 bg-background p-4 shadow-2xl shadow-background/15 md:grid-cols-[260px_minmax(0,1fr)]">
           <div className="rounded-2xl border border-sidebar-border/70 bg-sidebar p-4 text-sidebar-foreground">
             <p className="text-xs uppercase tracking-[0.18em] text-sidebar-foreground/60">Dark dashboard</p>
             <div className="mt-4 rounded-xl bg-sidebar-primary px-3 py-2 text-sm font-semibold text-sidebar-primary-foreground">Active navigation</div>
@@ -127,7 +127,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
       </TabsContent>
 
       <TabsContent value="client">
-        <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
+        <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-card-xl border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
           <div className="min-w-0 rounded-[28px] border border-border/70 bg-card/95 p-4 shadow-xl ring-1 ring-primary/5">
             <div className="flex min-w-0 items-center justify-between gap-3 border-b border-border/60 pb-4">
               <div className="flex min-w-0 items-center gap-3">
@@ -156,7 +156,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
       </TabsContent>
 
       <TabsContent value="finance">
-        <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
+        <div style={tokenStyle(tokens.light)} className="min-w-0 overflow-hidden rounded-card-xl border border-border/60 bg-background p-3 shadow-2xl shadow-background/15 sm:p-4">
           <div className="min-w-0 rounded-[28px] border border-border/70 bg-card/95 p-5 shadow-xl ring-1 ring-primary/5">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -176,7 +176,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
       </TabsContent>
 
       <TabsContent value="browser">
-        <div style={tokenStyle(tokens.light)} className="min-w-0 rounded-[1.75rem] border border-border/60 bg-card p-3 shadow-xl shadow-background/10 ring-1 ring-primary/5 sm:p-4">
+        <div style={tokenStyle(tokens.light)} className="min-w-0 rounded-card-xl border border-border/60 bg-card p-3 shadow-xl shadow-background/10 ring-1 ring-primary/5 sm:p-4">
           <div className="min-w-0 rounded-2xl border border-border/60 bg-background p-4">
             <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 px-3 py-2 shadow-inner">
                {faviconSrc ? <BrandFavicon settings={settings} alt={`${settings.companyName} favicon`} /> : (
@@ -198,7 +198,7 @@ export function BrandPreviewShowcase({ settings }: BrandPreviewShowcaseProps) {
       </TabsContent>
 
       <TabsContent value="email">
-        <div style={tokenStyle(tokens.light)} className="min-w-0 rounded-[1.75rem] border border-border/60 bg-card p-4 shadow-xl shadow-background/10 ring-1 ring-primary/5">
+        <div style={tokenStyle(tokens.light)} className="min-w-0 rounded-card-xl border border-border/60 bg-card p-4 shadow-xl shadow-background/10 ring-1 ring-primary/5">
           <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Email signature</p>
             <p className="mt-2 font-semibold text-foreground">{settings.emailSignature?.name || settings.companyName}</p>

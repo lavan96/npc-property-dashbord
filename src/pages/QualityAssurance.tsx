@@ -377,7 +377,7 @@ export default function QualityAssurance() {
         )}
 
         {/* Reports List */}
-        <Card className="relative min-w-0 overflow-hidden rounded-[1.75rem] border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(180deg,hsl(var(--card)),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_20px_54px_hsl(var(--primary)/0.09)]">
+        <Card className="relative min-w-0 overflow-hidden rounded-card-xl border-primary/20 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(180deg,hsl(var(--card)),hsl(var(--dashboard-surface-elevated)/0.72))] shadow-[0_20px_54px_hsl(var(--primary)/0.09)]">
           <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
           <CardHeader className="gap-4 border-b border-border/60 pb-5">
             <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -643,7 +643,7 @@ export default function QualityAssurance() {
 
         {/* Selected Report Details */}
         {selectedReport && (
-          <Card className="relative min-w-0 overflow-hidden rounded-[1.75rem] border-primary/20 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--dashboard-surface-elevated)/0.76))] shadow-[0_18px_44px_hsl(var(--primary)/0.08)]">
+          <Card className="relative min-w-0 overflow-hidden rounded-card-xl border-primary/20 bg-[linear-gradient(180deg,hsl(var(--card)),hsl(var(--dashboard-surface-elevated)/0.76))] shadow-[0_18px_44px_hsl(var(--primary)/0.08)]">
             <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
             <CardHeader className="gap-3 border-b border-border/60">
               <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between">

@@ -276,7 +276,7 @@ const Automation = () => {
     <>
       <DashboardThemeFrame
         variant="page"
-        className="min-w-0 space-y-6 overflow-x-hidden rounded-[2rem] bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.92))] p-3 pb-8 text-foreground sm:p-5 lg:p-6"
+        className="min-w-0 space-y-6 overflow-x-hidden rounded-card-2xl bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)/0.92))] p-3 pb-8 text-foreground sm:p-5 lg:p-6"
       >
         {/* Header */}
         <DashboardThemeFrame

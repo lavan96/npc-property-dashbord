@@ -234,7 +234,7 @@ export default function TokenAuditLog() {
           </Button>
         </DashboardThemeFrame>
 
-        <Card className="min-w-0 overflow-hidden rounded-[1.75rem] border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/35 dark:ring-white/5">
+        <Card className="min-w-0 overflow-hidden rounded-card-xl border-border/70 bg-card/95 shadow-[0_22px_60px_rgba(15,23,42,0.10)] ring-1 ring-black/5 transition-shadow duration-200 hover:shadow-[0_28px_75px_rgba(15,23,42,0.13)] dark:border-white/10 dark:bg-background/75 dark:shadow-black/35 dark:ring-white/5">
           <CardHeader className="border-b border-border/60 bg-[linear-gradient(135deg,hsl(var(--muted)/0.28),hsl(var(--card)/0.55))] px-4 py-5 sm:px-6">
             <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-3">

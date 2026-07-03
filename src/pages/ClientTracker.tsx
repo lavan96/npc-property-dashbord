@@ -1123,7 +1123,7 @@ export default function ClientTracker() {
       />
 
       {/* Filters */}
-      <DashboardThemeFrame as="section" variant="section" className="client-tracker-gold-interaction relative overflow-hidden rounded-[1.35rem] border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-sm dark:shadow-black/15">
+      <DashboardThemeFrame as="section" variant="section" className="client-tracker-gold-interaction relative overflow-hidden rounded-card border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)/0.86),hsl(var(--background)/0.74))] p-3 shadow-xl shadow-sm dark:shadow-black/15">
         <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
         <div className="relative flex flex-col gap-3 md:flex-row md:items-center">
           <div className="group relative flex-1">
@@ -1321,7 +1321,7 @@ export default function ClientTracker() {
               </div>
             )}
             
-            <div className="rounded-[1.5rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(135deg,hsl(var(--background)/0.72),hsl(var(--card)/0.62))] p-3 shadow-inner shadow-sm dark:shadow-black/20">
+            <div className="rounded-card-lg border border-border/70 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.10),transparent_24rem),linear-gradient(135deg,hsl(var(--background)/0.72),hsl(var(--card)/0.62))] p-3 shadow-inner shadow-sm dark:shadow-black/20">
               <ScrollArea className="client-tracker-kanban-scroll w-full whitespace-nowrap rounded-[1.15rem]" aria-label="Kanban board stages">
                 <div className="flex gap-4 pb-5 pr-3 sm:gap-5">
                 {/* Render stages in order */}
