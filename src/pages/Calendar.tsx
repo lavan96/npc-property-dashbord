@@ -1613,19 +1613,19 @@ export default function Calendar() {
                 <EventTemplates calendars={calendars} selectedDate={selectedDate || undefined} onCreateAppointment={createAppointment} isUpdating={isUpdating} />
               )}
               {sidebarTab === 'heatmap' && (
-                <ScrollArea className="h-[320px]">
+                <div>
                   <CalendarHeatmap events={filteredEvents} currentMonth={currentMonth} selectedDate={selectedDate} onDateSelect={(date) => { setSelectedDate(date); setSidebarTab('events'); }} />
-                </ScrollArea>
+                </div>
               )}
               {sidebarTab === 'analytics' && (
-                <ScrollArea className="h-[320px]">
+                <div>
                   <TimeAllocationDashboard events={filteredEvents} calendars={calendars} currentWeek={currentWeek} selectedDate={selectedDate} />
-                </ScrollArea>
+                </div>
               )}
               {sidebarTab === 'summary' && (
-                <ScrollArea className="h-[320px]">
+                <div>
                   <WeeklySummaryCards events={filteredEvents} currentWeek={currentWeek} selectedDate={selectedDate} />
-                </ScrollArea>
+                </div>
               )}
               {sidebarTab === 'conflicts' && (
                 <ConflictDetection events={filteredEvents} onEventClick={handleEventClick} selectedDate={selectedDate} />
