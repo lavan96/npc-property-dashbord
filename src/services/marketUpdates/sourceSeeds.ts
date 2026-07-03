@@ -1,0 +1,6 @@
+import type { MarketSource } from '@/types/marketUpdates';
+export const marketSourceSeeds: Array<Omit<MarketSource,'id'|'created_at'|'updated_at'>> = [
+ { name:'Reserve Bank of Australia', description:'Official monetary policy and financial stability updates.', source_type:'rss', url:'https://www.rba.gov.au/rss/rss-cb.xml', category:'finance', geography:'Australia', reliability_tier:'official', enabled:false, refresh_frequency_hours:24, last_fetched_at:null, last_success_at:null, last_error:null },
+ { name:'Australian Bureau of Statistics', description:'Official economic, lending, population and building approvals releases.', source_type:'rss', url:'https://www.abs.gov.au/rss.xml', category:'economy', geography:'Australia', reliability_tier:'official', enabled:false, refresh_frequency_hours:24, last_fetched_at:null, last_success_at:null, last_error:null },
+ { name:'Partner Property Data API', description:'Placeholder for licensed property data provider feed.', source_type:'partner_feed', url:'partner://property-data', category:'property_market', geography:'Australia', reliability_tier:'partner', enabled:false, refresh_frequency_hours:24, last_fetched_at:null, last_success_at:null, last_error:null },
+];

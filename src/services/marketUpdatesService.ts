@@ -1,83 +1,30 @@
-import type { MarketDigest24h, MarketSource, MarketUpdate, MarketQAMessage } from '@/types/marketUpdates';
+import { supabase } from '@/integrations/supabase/client';
+import type { MarketDigest24h, MarketDigestGenerationResult, MarketIngestionSummary, MarketQAMessage, MarketSource, MarketSourceHealth, MarketUpdate, MarketUpdateFilters } from '@/types/marketUpdates';
 
-export const MARKET_RELEVANCE_THRESHOLD = 60;
+const safeArray = <T>(v: unknown): T[] => Array.isArray(v) ? v as T[] : [];
+const db = supabase as any;
+function warnMissing(context: string, error: any) { if (import.meta.env.DEV) console.warn(`[Market Updates] ${context}`, error?.message ?? error); }
+const mapUpdate = (r: any): MarketUpdate => ({ ...r, geography: safeArray(r.geography), audience_tags: safeArray(r.audience_tags), key_points: safeArray(r.key_points), risk_flags: safeArray(r.risk_flags), citation_urls: safeArray(r.citation_urls), relevance_score: Number(r.relevance_score ?? 0) });
+const mapDigest = (r: any): MarketDigest24h => ({ ...r, top_update_ids: safeArray(r.top_update_ids), finance_lending_highlights: safeArray(r.finance_lending_highlights), property_market_highlights: safeArray(r.property_market_highlights), construction_supply_highlights: safeArray(r.construction_supply_highlights), policy_regulation_highlights: safeArray(r.policy_regulation_highlights), political_economic_watchpoints: safeArray(r.political_economic_watchpoints), client_advisory_implications: safeArray(r.client_advisory_implications), recommended_watchlist_for_tomorrow: safeArray(r.recommended_watchlist_for_tomorrow), source_urls: safeArray(r.source_urls) });
 
-const relevanceTerms = [
-  'australian property market', 'interest rates', 'lending policy', 'mortgage serviceability',
-  'rba', 'inflation', 'construction costs', 'housing supply', 'rental market', 'planning approvals',
-  'land releases', 'housing policy', 'first home buyer', 'stamp duty', 'tax changes', 'smsf',
-  'investor lending', 'building approvals', 'migration', 'population growth', 'infrastructure',
-  'real estate regulation',
-];
-
-export async function fetchMarketSources(): Promise<MarketSource[]> {
-  // TODO: Phase 2 - load enabled source registry rows from Supabase/API.
-  return [];
+export async function fetchMarketUpdates(filters: MarketUpdateFilters = {}): Promise<MarketUpdate[]> {
+  try {
+    let q = db.from('market_updates').select('*').eq('status', filters.status ?? 'published').order('source_published_at', { ascending: false, nullsFirst: false }).order('ingested_at', { ascending: false }).limit(filters.limit ?? 100);
+    if (filters.category && filters.category !== 'all') q = q.eq('category', filters.category);
+    if (filters.impact && filters.impact !== 'all') q = q.eq('impact_level', filters.impact);
+    if (filters.geography && filters.geography !== 'all') q = q.contains('geography', [filters.geography]);
+    if (filters.audience && filters.audience !== 'all') q = q.contains('audience_tags', [filters.audience]);
+    if (filters.search) q = q.or(`title.ilike.%${filters.search}%,ai_summary.ilike.%${filters.search}%,source_name.ilike.%${filters.search}%`);
+    if (filters.dateRange?.from) q = q.gte('source_published_at', filters.dateRange.from);
+    if (filters.dateRange?.to) q = q.lte('source_published_at', filters.dateRange.to);
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data ?? []).map(mapUpdate);
+  } catch (error) { warnMissing('Unable to fetch market_updates; returning empty feed.', error); return []; }
 }
-
-export async function fetchMarketUpdates(): Promise<MarketUpdate[]> {
-  // TODO: Phase 2 - replace empty adapter with persisted market_updates query.
-  return [];
-}
-
-export function normaliseSourceItems(_items: unknown[]): Partial<MarketUpdate>[] {
-  // TODO: Phase 2 - normalise RSS/API/manual/partner feed payloads into MarketUpdate candidates.
-  return [];
-}
-
-export function scoreMarketRelevance(input: { title?: string; excerpt?: string; body?: string }): number {
-  const haystack = `${input.title ?? ''} ${input.excerpt ?? ''} ${input.body ?? ''}`.toLowerCase();
-  const matches = relevanceTerms.filter((term) => haystack.includes(term)).length;
-  return Math.min(100, Math.round((matches / 6) * 100));
-}
-
-export async function summariseMarketUpdate(candidate: Partial<MarketUpdate>): Promise<Partial<MarketUpdate>> {
-  // TODO: Phase 2 - call source-grounded AI with MARKET_NEWS_API_KEY/MARKET_DATA_API_KEY/AI_SUMMARY_MODEL as needed.
-  if (!candidate.raw_excerpt && !candidate.source_url) {
-    return { ...candidate, ai_summary: 'Insufficient source detail to generate a reliable analysis.', confidence_score: 0 };
-  }
-  return candidate;
-}
-
-export async function ingestMarketUpdates(): Promise<{ ingested: number; published: number; ignored: number }> {
-  // TODO: Phase 2 - schedule every 24h using cron/serverless infrastructure guarded by MARKET_UPDATE_CRON_SECRET.
-  const sources = await fetchMarketSources();
-  return { ingested: sources.length ? 0 : 0, published: 0, ignored: 0 };
-}
-
-export async function generateMarketDigest24h(updates: MarketUpdate[]): Promise<MarketDigest24h | null> {
-  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  const recent = updates.filter((update) => new Date(update.ingested_at).getTime() >= dayAgo);
-  if (recent.length === 0) return null;
-  return {
-    id: `digest-${new Date().toISOString()}`,
-    generated_at: new Date().toISOString(),
-    period_start: new Date(dayAgo).toISOString(),
-    period_end: new Date().toISOString(),
-    executive_summary: 'Digest generation will use source-grounded summaries once ingestion is connected.',
-    top_update_ids: recent.slice(0, 5).map((update) => update.id),
-    finance_lending_highlights: [], property_market_highlights: [], construction_supply_highlights: [],
-    policy_regulation_highlights: [], political_economic_watchpoints: [], client_advisory_implications: [],
-    recommended_watchlist_for_tomorrow: [], source_urls: recent.flatMap((update) => update.citation_urls),
-  };
-}
-
-export function retrieveRelevantMarketUpdates(question: string, updates: MarketUpdate[]): MarketUpdate[] {
-  const terms = question.toLowerCase().split(/\W+/).filter((term) => term.length > 3);
-  return updates.filter((update) => terms.some((term) => `${update.title} ${update.ai_summary ?? ''}`.toLowerCase().includes(term)));
-}
-
-export function buildMarketQAPrompt(question: string, updates: MarketUpdate[]): string {
-  return `Answer only from the supplied sourced market updates. If unsupported, say: “I do not have enough sourced market updates to answer that yet.”\nQuestion: ${question}\nSources: ${updates.map((u) => `${u.title} (${u.citation_urls.join(', ')})`).join('\n')}`;
-}
-
-export async function answerMarketUpdateQuestion(question: string, updates: MarketUpdate[]): Promise<MarketQAMessage> {
-  const relevant = retrieveRelevantMarketUpdates(question, updates);
-  return {
-    id: `qa-${Date.now()}`,
-    role: 'assistant',
-    content: relevant.length ? 'Market Q&A engine will activate once source-grounded ingestion is connected.' : 'I do not have enough sourced market updates to answer that yet.',
-    citations: relevant.flatMap((update) => update.citation_urls),
-    created_at: new Date().toISOString(),
-  };
-}
+export async function fetchLatestMarketDigest(): Promise<MarketDigest24h | null> { try { const { data, error } = await db.from('market_digests').select('*').eq('status','published').order('generated_at',{ ascending:false }).limit(1).maybeSingle(); if (error) throw error; return data ? mapDigest(data) : null; } catch (e) { warnMissing('Unable to fetch latest market_digests.', e); return null; } }
+export async function fetchMarketSources(): Promise<MarketSource[]> { try { const { data, error } = await db.from('market_sources').select('*').order('name'); if (error) throw error; return data ?? []; } catch (e) { warnMissing('Unable to fetch market_sources.', e); return []; } }
+export async function fetchMarketSourceHealth(): Promise<MarketSourceHealth> { const sources = await fetchMarketSources(); const failed = sources.filter(s => Boolean(s.last_error)); const latest = (field: keyof MarketSource) => sources.map(s => s[field] as string | null | undefined).filter(Boolean).sort().pop() ?? null; return { totalSources: sources.length, enabledSources: sources.filter(s => s.enabled).length, failedSources: failed.length, lastFetchedAt: latest('last_fetched_at'), lastSuccessAt: latest('last_success_at'), lastError: failed[0]?.last_error ?? null }; }
+export async function triggerMarketIngestion(options: { force?: boolean } = {}): Promise<MarketIngestionSummary> { try { const { data, error } = await db.functions.invoke('market-updates-ingest', { body: options }); if (error) throw error; return data as MarketIngestionSummary; } catch (e: any) { warnMissing('Ingestion function unavailable or not authorised.', e); return { ingested:0,published:0,candidates:0,ignored:0,failed:1,skippedDuplicates:0,sourceErrors:[],message:'Market ingestion is unavailable or you are not authorised to run it.' }; } }
+export async function generateMarketDigest24h(): Promise<MarketDigestGenerationResult> { try { const { data, error } = await db.functions.invoke('market-updates-digest', { body: {} }); if (error) throw error; return data as MarketDigestGenerationResult; } catch (e) { warnMissing('Digest function unavailable.', e); return { digest: null, noData: true, message: 'No source-backed market updates were found in the last 24 hours.' }; } }
+export async function answerMarketUpdateQuestion(question: string, updateIds?: string[]): Promise<MarketQAMessage> { try { const { data, error } = await db.functions.invoke('market-updates-qa', { body: { question, updateIds } }); if (error) throw error; return { id: crypto.randomUUID(), role:'assistant', content:data.answer, citations:safeArray(data.citations), source_update_ids:safeArray(data.source_update_ids), confidence_score:data.confidence_score, limitations:safeArray(data.limitations), created_at:new Date().toISOString() }; } catch (e) { warnMissing('Market Q&A function unavailable or insufficient context.', e); return { id: crypto.randomUUID(), role:'assistant', content:'I do not have enough sourced market updates to answer that yet.', citations:[], source_update_ids:[], confidence_score:0, limitations:['Market Q&A only answers from published, source-backed market updates.'], created_at:new Date().toISOString() }; } }
