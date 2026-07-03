@@ -301,34 +301,34 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
         <>
           {/* Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:ring-1 hover:ring-primary/20 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.14)] dark:border-white/10 dark:bg-background/80 dark:shadow-black/25 sm:min-h-[168px]">
+            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/10 backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card/95 hover:ring-1 hover:ring-primary/20 hover:shadow-[0_18px_45px_hsl(var(--primary)/0.13)] dark:border-white/10 dark:bg-background/80 dark:shadow-black/25 dark:hover:bg-background/85 sm:min-h-[156px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:text-muted-foreground">Total Reports</CardTitle>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-3 pt-5">
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-muted-foreground">Total Reports</CardTitle>
                 <div className="rounded-2xl border border-brand-300/20 bg-brand-300/10 p-3 text-brand-200 shadow-lg shadow-brand-950/20 transition-colors group-hover:border-brand-200/40 group-hover:bg-brand-300/15">
                   <FileText className="h-5 w-5" />
                 </div>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-4xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-5xl">{totalReports}</div>
-                <div className="mt-5 h-px bg-gradient-to-r from-brand-300/70 via-brand-100/20 to-transparent" />
+              <CardContent className="px-5 pb-5 pt-0">
+                <div className="text-[clamp(2.25rem,3vw,2.75rem)] font-bold leading-none tracking-[-0.04em] text-foreground dark:text-white">{totalReports}</div>
+                <div className="mt-4 h-px bg-gradient-to-r from-brand-300/70 via-brand-100/20 to-transparent" />
               </CardContent>
             </Card>
 
-            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:ring-1 hover:ring-primary/20 hover:shadow-[0_22px_60px_hsl(var(--primary)/0.14)] dark:border-white/10 dark:bg-background/80 dark:shadow-black/25 sm:min-h-[168px]">
+            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-border/70 bg-card/90 shadow-xl shadow-sm dark:shadow-black/10 backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card/95 hover:ring-1 hover:ring-primary/20 hover:shadow-[0_18px_45px_hsl(var(--primary)/0.13)] dark:border-white/10 dark:bg-background/80 dark:shadow-black/25 dark:hover:bg-background/85 sm:min-h-[156px]">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground dark:text-muted-foreground">Avg Health Score</CardTitle>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-3 pt-5">
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground dark:text-muted-foreground">Avg Health Score</CardTitle>
                 <div className="rounded-2xl border border-border dark:border-white/10 bg-card/5 dark:bg-white/5 p-3 shadow-lg shadow-sm dark:shadow-black/20 transition-colors group-hover:border-brand-200/35 group-hover:bg-white/10">
                   <TrendingUp className={`h-5 w-5 ${avgHealthIconClass}`} />
                 </div>
               </CardHeader>
-              <CardContent className="pt-0">
+              <CardContent className="px-5 pb-5 pt-0">
                 <div className="flex items-end gap-1">
-                  <span className="text-4xl font-bold tracking-[-0.04em] text-foreground dark:text-white sm:text-5xl">{avgHealthScore}</span>
-                  <span className="pb-1.5 text-lg font-semibold text-muted-foreground">/100</span>
+                  <span className="text-[clamp(2.25rem,3vw,2.75rem)] font-bold leading-none tracking-[-0.04em] text-foreground dark:text-white">{avgHealthScore}</span>
+                  <span className="pb-1 text-[clamp(1rem,1.3vw,1.25rem)] font-semibold text-muted-foreground">/100</span>
                 </div>
-                <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-card/8 dark:bg-white/8">
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-card/8 dark:bg-white/8">
                   <div
                     className={`h-full rounded-full bg-gradient-to-r ${avgHealthAccent}`}
                     style={{ width: `${Math.min(Math.max(avgHealthScore, 0), 100)}%` }}
@@ -337,17 +337,17 @@ export function PortfolioAnalysisReportsList({ clientId, showHeader = true }: Po
               </CardContent>
             </Card>
 
-            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-primary/25 bg-gradient-to-br from-primary/15 via-card/90 to-card shadow-xl shadow-primary/10 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/55 hover:ring-1 hover:ring-primary/25 hover:shadow-[0_24px_70px_hsl(var(--primary)/0.18)] sm:col-span-2 sm:min-h-[168px] xl:col-span-1">
+            <Card className="dashboard-theme-premium-card group relative overflow-hidden rounded-3xl border-primary/25 bg-gradient-to-br from-primary/15 via-card/90 to-card shadow-xl shadow-primary/10 backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:from-primary/20 hover:ring-1 hover:ring-primary/25 hover:shadow-[0_20px_52px_hsl(var(--primary)/0.16)] sm:col-span-2 sm:min-h-[156px] xl:col-span-1">
               <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-100/70 to-transparent opacity-80" />
-              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                <CardTitle className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-100/75">Combined Portfolio</CardTitle>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 px-5 pb-3 pt-5">
+                <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-100/75">Combined Portfolio</CardTitle>
                 <div className="rounded-2xl border border-brand-200/30 bg-brand-300/15 p-3 text-brand-100 shadow-lg shadow-brand-950/30 transition-colors group-hover:border-brand-100/50 group-hover:bg-brand-300/20">
                   <Building2 className="h-5 w-5" />
                 </div>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="break-words text-4xl font-bold tracking-[-0.05em] text-brand-50 sm:text-5xl xl:text-4xl 2xl:text-5xl">{formatCurrency(totalPortfolioValue)}</div>
-                <div className="mt-5 h-px bg-gradient-to-r from-brand-200/80 via-brand-100/30 to-transparent" />
+              <CardContent className="px-5 pb-5 pt-0">
+                <div className="min-w-0 whitespace-nowrap text-[clamp(1.875rem,2.6vw,2.625rem)] font-bold leading-none tracking-[-0.045em] text-brand-50">{formatCurrency(totalPortfolioValue)}</div>
+                <div className="mt-4 h-px bg-gradient-to-r from-brand-200/80 via-brand-100/30 to-transparent" />
               </CardContent>
             </Card>
           </div>
