@@ -19,7 +19,7 @@ import { GHLExportDialog } from '@/components/shared/GHLExportDialog';
 import { DashboardThemeFrame } from '@/components/layout/DashboardThemeFrame';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useGHLCalendar, GHLEvent } from '@/hooks/useGHLCalendar';
