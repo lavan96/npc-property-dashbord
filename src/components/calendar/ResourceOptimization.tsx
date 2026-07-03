@@ -3,7 +3,6 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, eachHourOfInterval, 
 import { Sparkles, Clock, TrendingUp, Lightbulb, CheckCircle2, Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
@@ -203,8 +202,7 @@ export function ResourceOptimization({ events, currentWeek, selectedDate, onSlot
         </h3>
       </div>
 
-      <ScrollArea className="h-[380px]">
-        <div className="space-y-4 pr-2">
+      <div className="space-y-4">
           {/* Peak Hours Summary */}
           <Card className="p-3 bg-primary/5 border-primary/20">
             <div className="flex items-center gap-2 mb-2">
@@ -327,8 +325,7 @@ export function ResourceOptimization({ events, currentWeek, selectedDate, onSlot
               </div>
             </div>
           </Card>
-        </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
