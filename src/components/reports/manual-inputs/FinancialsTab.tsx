@@ -513,8 +513,8 @@ export function FinancialsTab({
 
           {/* Stamp Duty Calculator Modal - Using iframe for isolation */}
           <Dialog open={showStampDutyModal} onOpenChange={setShowStampDutyModal}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+            <DialogContent className="flex max-h-[calc(100dvh-4rem)] w-[calc(100vw-2rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-h-[calc(100dvh-4rem)] sm:overflow-hidden sm:p-0">
+              <DialogHeader className="shrink-0 border-b bg-background/95 px-6 pb-4 pt-6 pr-14">
                 <DialogTitle className="flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-primary" />
                   Stamp Duty Calculator
@@ -524,7 +524,12 @@ export function FinancialsTab({
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="space-y-4">
+              <div
+                className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain px-6 py-4 pb-10 [scrollbar-color:rgba(180,180,190,0.28)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400/30 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300/45 [&::-webkit-scrollbar-track]:bg-transparent"
+                role="region"
+                aria-label="Scrollable stamp duty calculator content"
+                tabIndex={0}
+              >
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
                   <div className="flex items-center gap-3">
                     <Home className="h-5 w-5 text-primary" />
@@ -608,11 +613,11 @@ export function FinancialsTab({
                 <Separator />
 
                 {/* External Calculator Embed - Using iframe for complete isolation */}
-                <div className="relative rounded-lg overflow-hidden border bg-white shadow-inner">
+                <div className="relative w-full min-h-0 overflow-visible rounded-lg border bg-white shadow-inner">
                   <iframe
                     ref={stampDutyIframeRef}
                     src={`/stamp-duty-embed.html?state=${detectedState}`}
-                    className="w-full h-[500px] border-0"
+                    className="block w-full min-h-[860px] border-0"
                     title="Stamp Duty Calculator"
                     sandbox="allow-scripts allow-same-origin allow-forms"
                   />
