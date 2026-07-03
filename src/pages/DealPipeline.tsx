@@ -41,10 +41,10 @@ import { useModulePermissions } from "@/hooks/useModulePermissions";
 import type { DealWithClient } from "@/hooks/useAllDeals";
 
 const pipelineTabTriggerClass = cn(
-  "group relative flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-xs font-semibold text-muted-foreground dark:text-foreground/82 transition-all duration-200",
+  "group relative flex h-11 min-w-11 flex-shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[1rem] px-3.5 text-[13px] font-normal text-muted-foreground dark:text-foreground/82 transition-all duration-200",
   "border border-transparent hover:-translate-y-0.5 hover:border-brand-300/40 dark:hover:border-brand-200/20 hover:bg-brand-50/60 dark:hover:bg-white/[0.075] hover:text-brand-800 dark:hover:text-brand-100 hover:shadow-[0_14px_30px_rgba(0,0,0,0.22)]",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:focus-visible:ring-offset-zinc-950",
-  "data-[state=active]:border-brand-100/60 data-[state=active]:bg-[linear-gradient(135deg,#fde68a,#f59e0b_58%,#b45309)] data-[state=active]:text-brand-950",
+  "data-[state=active]:border-brand-100/60 data-[state=active]:bg-[linear-gradient(135deg,#fde68a,#f59e0b_58%,#b45309)] data-[state=active]:font-medium data-[state=active]:text-brand-950",
   "data-[state=active]:shadow-[0_16px_36px_rgba(245,158,11,0.32),inset_0_1px_0_rgba(255,255,255,0.55)] data-[state=active]:hover:text-brand-950 sm:h-12 sm:px-4 sm:text-sm",
 );
 
@@ -166,41 +166,10 @@ export default function DealPipeline() {
       {/* Pipeline Value Summary Bar */}
       <PipelineValueSummaryBar deals={deals} />
 
-      {/* Settlement Countdown & At-Risk Panel */}
-      <DashboardThemeFrame as="section" variant="section" className="grid min-h-0 grid-cols-1 gap-4 p-3 lg:grid-cols-2">
-        <SettlementCountdownCards
-          deals={filteredDeals}
-          onDealClick={handleDealClick}
-        />
-        <AtRiskDealsPanel deals={filteredDeals} onDealClick={handleDealClick} />
-      </DashboardThemeFrame>
-
-      {/* Commission Forecast */}
-      <DashboardThemeFrame as="section" variant="section" className="p-3">
-        <CommissionForecastWidget deals={deals} />
-      </DashboardThemeFrame>
-
-      {/* Linked Finance Files */}
-      <DashboardThemeFrame as="section" variant="section" className="p-3">
-        <LinkedFinanceFilesPanel deals={filteredDeals} />
-      </DashboardThemeFrame>
-
-      {/* Global Pipeline Toolbar */}
-      <DashboardThemeFrame as="section" variant="toolbar" className="overflow-hidden rounded-[1.35rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.75),hsl(var(--background)/0.82)_48%,hsl(var(--background)/0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)]">
-        <PipelineToolbar
-          deals={deals}
-          filters={filters}
-          onFiltersChange={setFilters}
-          filteredCount={filteredDeals.length}
-          isExpanded={filtersExpanded}
-          onExpandedChange={setFiltersExpanded}
-        />
-      </DashboardThemeFrame>
-
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="relative flex flex-col rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] dark:shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
+        className="deal-pipeline-module-board relative flex flex-col gap-4 rounded-[1.5rem] border border-border dark:border-white/10 bg-[linear-gradient(180deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(0,0,0,0.34))] p-2 shadow-[0_22px_70px_rgba(15,23,42,0.10),inset_0_1px_0_rgba(255,255,255,0.45)] dark:shadow-[0_22px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur sm:p-3"
       >
         <TabsList aria-label="Deal Pipeline sections" className={cn("relative inline-flex h-auto w-full shrink-0 justify-start gap-1.5 overflow-x-auto rounded-[1.35rem] border border-brand-300/30 dark:border-brand-100/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.95),hsl(var(--muted)/0.55)_40%,hsl(var(--background)/0.85))] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.085),rgba(24,24,27,0.82)_40%,rgba(0,0,0,0.72))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_18px_46px_rgba(15,23,42,0.10)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_-18px_34px_rgba(0,0,0,0.24),0_18px_46px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:gap-2 sm:p-2.5", premiumScrollbarClass)}>
           <TabsTrigger value="summary" className={pipelineTabTriggerClass}>
@@ -236,6 +205,39 @@ export default function DealPipeline() {
             <span className="hidden sm:inline">Builder </span>Invoices
           </TabsTrigger>
         </TabsList>
+
+      {/* Settlement Countdown & At-Risk Panel */}
+      <DashboardThemeFrame as="section" variant="section" className="grid min-h-0 grid-cols-1 gap-4 p-3 lg:grid-cols-2">
+        <SettlementCountdownCards
+          deals={filteredDeals}
+          onDealClick={handleDealClick}
+        />
+        <AtRiskDealsPanel deals={filteredDeals} onDealClick={handleDealClick} />
+      </DashboardThemeFrame>
+
+      {/* Commission Forecast */}
+      <DashboardThemeFrame as="section" variant="section" className="p-3">
+        <CommissionForecastWidget deals={deals} />
+      </DashboardThemeFrame>
+
+      {/* Linked Finance Files */}
+      <DashboardThemeFrame as="section" variant="section" className="p-3">
+        <LinkedFinanceFilesPanel deals={filteredDeals} />
+      </DashboardThemeFrame>
+
+      {/* Global Pipeline Toolbar */}
+      <DashboardThemeFrame as="section" variant="toolbar" className="overflow-hidden rounded-[1.35rem] border-primary/15 bg-[linear-gradient(135deg,hsl(var(--card)/0.75),hsl(var(--background)/0.82)_48%,hsl(var(--background)/0.68))] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.07)]">
+        <PipelineToolbar
+          deals={deals}
+          filters={filters}
+          onFiltersChange={setFilters}
+          filteredCount={filteredDeals.length}
+          isExpanded={filtersExpanded}
+          onExpandedChange={setFiltersExpanded}
+        />
+      </DashboardThemeFrame>
+
+
 
         <TabsContent
           value="summary"
